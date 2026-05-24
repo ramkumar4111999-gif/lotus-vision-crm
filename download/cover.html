@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Toilet Shop Business Analysis - Sankarankovil</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+@page {
+  size: 794px 1123px;
+  margin: 0;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  width: 794px;
+  height: 1123px;
+  overflow: visible;
+  background: linear-gradient(160deg, #f5f3ff 0%, #ede9fe 40%, #e0e7ff 100%);
+  font-family: 'Inter', sans-serif;
+}
+
+.poster {
+  position: relative;
+  width: 794px;
+  height: 1123px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+/* Layer 0: Background Fill */
+.bg-fill {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(160deg, #f5f3ff 0%, #ede9fe 40%, #e0e7ff 100%);
+  z-index: 0;
+}
+
+/* Layer 1: Decorative Elements */
+.accent-line-left {
+  position: absolute;
+  left: 8%;
+  top: 12%;
+  width: 3px;
+  height: 200px;
+  background: #4a28af;
+  opacity: 0.7;
+  z-index: 1;
+  border-radius: 2px;
+}
+
+.accent-line-right {
+  position: absolute;
+  right: 8%;
+  bottom: 18%;
+  width: 3px;
+  height: 180px;
+  background: #4a28af;
+  opacity: 0.4;
+  z-index: 1;
+  border-radius: 2px;
+}
+
+.circle-accent {
+  position: absolute;
+  right: -30px;
+  top: -60px;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  border: 2px solid #4a28af;
+  opacity: 0.08;
+  z-index: 1;
+}
+
+.circle-accent-2 {
+  position: absolute;
+  left: -20px;
+  bottom: -40px;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  border: 1.5px solid #4a28af;
+  opacity: 0.06;
+  z-index: 1;
+}
+
+.dot-grid {
+  position: absolute;
+  right: 10%;
+  top: 45%;
+  width: 80px;
+  height: 80px;
+  z-index: 1;
+  opacity: 0.06;
+}
+
+/* Layer 2: Structure Lines */
+.divider-main {
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  top: 52%;
+  height: 1px;
+  background: #4a28af;
+  opacity: 0.2;
+  z-index: 2;
+}
+
+.divider-sub {
+  position: absolute;
+  left: 12%;
+  width: 60px;
+  top: 52.5%;
+  height: 2px;
+  background: #4a28af;
+  opacity: 0.6;
+  z-index: 2;
+}
+
+/* Layer 3: Text Content */
+.kicker {
+  position: absolute;
+  left: 12%;
+  top: 18%;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #4a28af;
+  opacity: 0.7;
+  z-index: 3;
+}
+
+.hero-title {
+  position: absolute;
+  left: 12%;
+  top: 26%;
+  width: 65%;
+  font-family: 'Playfair Display', serif;
+  font-size: 42px;
+  font-weight: 900;
+  line-height: 1.2;
+  color: #1b1c1e;
+  z-index: 3;
+}
+
+.hero-title .accent {
+  color: #4a28af;
+}
+
+.subtitle {
+  position: absolute;
+  left: 12%;
+  top: 55%;
+  width: 55%;
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 300;
+  line-height: 1.7;
+  color: #70767c;
+  z-index: 3;
+}
+
+.meta-block {
+  position: absolute;
+  left: 12%;
+  bottom: 14%;
+  z-index: 3;
+}
+
+.meta-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #70767c;
+  margin-bottom: 6px;
+}
+
+.meta-value {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: #1b1c1e;
+  line-height: 1.6;
+}
+
+.tag-pill {
+  position: absolute;
+  right: 12%;
+  bottom: 14%;
+  display: inline-block;
+  padding: 8px 18px;
+  background: #4a28af;
+  color: white;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  border-radius: 4px;
+  z-index: 3;
+}
+
+.watermark {
+  position: absolute;
+  right: 10%;
+  top: 22%;
+  font-family: 'Playfair Display', serif;
+  font-size: 72px;
+  font-weight: 900;
+  color: #4a28af;
+  opacity: 0.04;
+  z-index: 1;
+  transform: rotate(-90deg);
+  transform-origin: right center;
+  white-space: nowrap;
+}
+</style>
+</head>
+<body>
+<div class="poster">
+  <!-- Layer 0: Background -->
+  <div class="bg-fill"></div>
+
+  <!-- Layer 1: Decorative -->
+  <div class="accent-line-left"></div>
+  <div class="accent-line-right"></div>
+  <div class="circle-accent"></div>
+  <div class="circle-accent-2"></div>
+  <svg class="dot-grid" viewBox="0 0 80 80">
+    <pattern id="dots" x="0" y="0" width="16" height="16" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.5" fill="#4a28af"/>
+    </pattern>
+    <rect width="80" height="80" fill="url(#dots)"/>
+  </svg>
+  <div class="watermark">BUSINESS ANALYSIS</div>
+
+  <!-- Layer 2: Structure -->
+  <div class="divider-main"></div>
+  <div class="divider-sub"></div>
+
+  <!-- Layer 3: Text -->
+  <div class="kicker">Comprehensive Business Report</div>
+
+  <div class="hero-title">
+    Toilet & Sanitary<br>
+    Ware Shop<br>
+    <span class="accent">Near New Bus Stand</span>
+  </div>
+
+  <div class="subtitle">
+    Complete analysis with competitor mapping, investment breakdown, profit projections, government schemes, key contacts with phone numbers, rental rates, and a 90-day action plan for Sankarankovil, Tamil Nadu.
+  </div>
+
+  <div class="meta-block">
+    <div class="meta-label">Prepared For</div>
+    <div class="meta-value">Ram Kumar - Sankaran Kovil Opticals</div>
+    <div class="meta-label" style="margin-top: 10px;">Date & Location</div>
+    <div class="meta-value">May 2026 | Sankarankovil, Tirunelveli District, Tamil Nadu</div>
+  </div>
+
+  <div class="tag-pill">INCLUDES PREVIOUS OPTICALS ANALYSIS</div>
+</div>
+</body>
+</html>
