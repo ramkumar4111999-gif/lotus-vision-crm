@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  @page { size: 794px 1123px; margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 794px; height: 1123px; overflow: visible; background: #f3f3f2; }
+
+  .cover {
+    position: relative;
+    width: 794px;
+    height: 1123px;
+    background: #f3f3f2;
+    overflow: hidden;
+  }
+
+  /* Layer 1 - Background */
+  .bg-layer {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    z-index: 1;
+  }
+  .bg-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(49,132,160,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(49,132,160,0.04) 1px, transparent 1px);
+    background-size: 50px 50px;
+  }
+  .bg-watermark {
+    position: absolute;
+    top: 12%;
+    right: -5%;
+    font-family: 'Playfair Display', serif;
+    font-size: 180px;
+    font-weight: 900;
+    color: rgba(49,132,160,0.04);
+    letter-spacing: -5px;
+    z-index: 0;
+  }
+  .bg-accent-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 8px;
+    background: #3184a0;
+  }
+
+  /* Layer 2 - Structure */
+  .struct-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+  }
+  .vline-thick {
+    position: absolute;
+    left: 12%;
+    top: 10%;
+    bottom: 10%;
+    width: 5px;
+    background: #3184a0;
+  }
+  .hline-meta {
+    position: absolute;
+    left: calc(12% + 30px);
+    bottom: 28%;
+    width: 200px;
+    height: 1px;
+    background: rgba(49,132,160,0.3);
+  }
+
+  /* Layer 3 - Content */
+  .content-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    padding: 0;
+  }
+  .kicker {
+    position: absolute;
+    left: calc(12% + 30px);
+    top: 15%;
+    font-family: 'Inter', sans-serif;
+    font-size: 13pt;
+    font-weight: 400;
+    letter-spacing: 4pt;
+    text-transform: uppercase;
+    color: rgba(35,34,32,0.5);
+  }
+  .hero-title {
+    position: absolute;
+    left: calc(12% + 30px);
+    top: 22%;
+    width: 55%;
+    font-family: 'Playfair Display', serif;
+    font-size: 48pt;
+    font-weight: 900;
+    line-height: 1.15;
+    color: #232220;
+  }
+  .summary {
+    position: absolute;
+    left: calc(12% + 30px);
+    top: 50%;
+    width: 55%;
+    font-family: 'Inter', sans-serif;
+    font-size: 13pt;
+    font-weight: 300;
+    line-height: 1.7;
+    color: rgba(35,34,32,0.75);
+  }
+  .meta-date {
+    position: absolute;
+    left: calc(12% + 30px);
+    bottom: 22%;
+    font-family: 'Inter', sans-serif;
+    font-size: 14pt;
+    font-weight: 400;
+    color: rgba(35,34,32,0.6);
+  }
+  .meta-detail {
+    position: absolute;
+    left: calc(12% + 30px);
+    bottom: 18%;
+    font-family: 'Inter', sans-serif;
+    font-size: 11pt;
+    font-weight: 300;
+    color: rgba(35,34,32,0.4);
+  }
+  .footer {
+    position: absolute;
+    left: calc(12% + 30px);
+    bottom: 10%;
+    font-family: 'Inter', sans-serif;
+    font-size: 10pt;
+    font-weight: 400;
+    letter-spacing: 2pt;
+    text-transform: uppercase;
+    color: rgba(35,34,32,0.35);
+  }
+
+  /* Bottom-right metrics */
+  .metrics-box {
+    position: absolute;
+    right: 8%;
+    bottom: 12%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-end;
+  }
+  .metric-item {
+    text-align: right;
+  }
+  .metric-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 22pt;
+    font-weight: 700;
+    color: #3184a0;
+  }
+  .metric-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 9pt;
+    font-weight: 300;
+    color: rgba(35,34,32,0.4);
+    letter-spacing: 1pt;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+<div class="cover">
+  <!-- Layer 1: Background -->
+  <div class="bg-layer">
+    <div class="bg-grid"></div>
+    <div class="bg-watermark">2026</div>
+    <div class="bg-accent-bar"></div>
+  </div>
+
+  <!-- Layer 2: Structure -->
+  <div class="struct-layer">
+    <div class="vline-thick"></div>
+    <div class="hline-meta"></div>
+  </div>
+
+  <!-- Layer 3: Content -->
+  <div class="content-layer">
+    <div class="kicker">Complete Business Strategy</div>
+    <div class="hero-title">Sankaran Kovil<br>Opticals</div>
+    <div class="summary">A comprehensive Master Business Plan for launching and growing a full-service optical retail establishment in Sankarankovil, Tenkasi District, Tamil Nadu. Developed through 20 specialized research agents covering marketing, competitive analysis, sales strategy, and operational management.</div>
+    <div class="meta-date">May 2026</div>
+    <div class="meta-detail">20 Agents | 18,292 Lines | 4 Strategic Teams</div>
+    <div class="footer">Confidential Business Plan</div>
+  </div>
+
+  <!-- Metrics -->
+  <div class="metrics-box">
+    <div class="metric-item">
+      <div class="metric-value">157%</div>
+      <div class="metric-label">3-Year ROI</div>
+    </div>
+    <div class="metric-item">
+      <div class="metric-value">INR 26.4L</div>
+      <div class="metric-label">Year 3 Revenue</div>
+    </div>
+    <div class="metric-item">
+      <div class="metric-value">20</div>
+      <div class="metric-label">Research Reports</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
