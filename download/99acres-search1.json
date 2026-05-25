@@ -1,0 +1,413 @@
+{
+  "report_metadata": {
+    "title": "99acres Detailed Search #1 - Commercial Shop Rentals in Sankarankovil, Tamil Nadu",
+    "search_date": "2025-05-25",
+    "search_timestamp": "2025-05-25T12:45:00Z",
+    "agent": "99acres-detailed-search-1",
+    "area_searched": "Sankarankovil (Sankarankoil), Tirunelveli District, Tamil Nadu 627756",
+    "search_queries_attempted": [
+      "site:99acres.com commercial shop rent Sankarankovil Tirunelveli contact",
+      "99acres Sankarankovil shop rent phone number owner",
+      "99acres.com Sankarankovil commercial property rent contact details",
+      "99acres Sankarankoil shop for rent broker contact",
+      "99acres Sankarankovil 75 sqft shop rent phone",
+      "99acres Sankarankovil ground floor shop rent address"
+    ],
+    "search_status": "API_RATE_LIMITED - z-ai web_search, page_reader, and chat_completions APIs were persistently rate-limited (HTTP 429) during this session. Additionally, 99acres.com blocks all automated access via Akamai CDN (Access Denied). All major search engines (Google, Bing, DuckDuckGo, Brave, Yahoo, Yandex, Ecosia, Startpage, Mojeek) returned CAPTCHA/bot detection pages for our IP. Data below is compiled from previous successful searches stored in project files.",
+    "data_sources_used": [
+      "Previous web_search API results (search1.json through search8.json)",
+      "Previous DuckDuckGo meta-search results (ddg_*.html files)",
+      "Previous agent2-99acres.json detailed report",
+      "Previous 99acres-deepscan.json comprehensive report",
+      "Previous search result snippets from multiple sessions"
+    ]
+  },
+
+  "listings": [
+    {
+      "listing_id": "L1",
+      "platform": "99acres.com",
+      "listing_url": "https://www.99acres.com/commercial-shops-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "property_type": "Commercial Shop - First Floor",
+      "full_address": "Sankarankovil, Tirunelveli, Tamil Nadu 627756",
+      "street_area": "Sankarankovil (exact street not specified in snippet)",
+      "shop_size_sqft": 75,
+      "floor": "First Floor",
+      "rent_monthly_inr": 6000,
+      "rent_currency": "INR",
+      "deposit_amount": "Not mentioned",
+      "brokerage_applicable": "Not mentioned",
+      "contact_phone": "NOT AVAILABLE - 99acres page blocked (Access Denied); contact numbers are gated behind page access",
+      "owner_name": "NOT AVAILABLE - 99acres page blocked",
+      "broker_agent_name": "NOT AVAILABLE",
+      "amenities": "Neatly built commercial shops",
+      "availability": "3 identical shops available on first floor",
+      "listing_date": "Not available from snippet",
+      "data_source": "Previous web_search snippet from search1.json",
+      "data_reliability": "From search engine snippet only - full details not extractable",
+      "notes": "3 neatly built commercial shops available for rent on the first floor, each measuring 75 sq.ft at rent of ₹6,000 per month. This is the most relevant 99acres listing directly in Sankarankovil."
+    },
+    {
+      "listing_id": "L2",
+      "platform": "99acres.com",
+      "listing_url": "https://www.99acres.com/commercial-shops-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "property_type": "Commercial Shop - Ground Floor",
+      "full_address": "Sankarankovil, Tirunelveli, Tamil Nadu 627756",
+      "street_area": "Sankarankovil (exact street not specified in snippet)",
+      "shop_size_sqft": 120,
+      "floor": "Ground Floor",
+      "rent_monthly_inr": null,
+      "rent_currency": "INR",
+      "deposit_amount": "Not mentioned",
+      "brokerage_applicable": "Not mentioned",
+      "contact_phone": "NOT AVAILABLE - 99acres page blocked",
+      "owner_name": "NOT AVAILABLE",
+      "broker_agent_name": "NOT AVAILABLE",
+      "amenities": "Neatly built commercial shop, ground floor access",
+      "availability": "1 shop on ground floor (same building as L1)",
+      "listing_date": "Not available",
+      "data_source": "Previous web_search snippet from search1.json",
+      "data_reliability": "From search snippet - rent amount was truncated",
+      "notes": "One ground floor shop measuring 120 sq.ft available. Rent was mentioned but truncated in the search snippet. Same building/property as the first-floor shops (L1)."
+    },
+    {
+      "listing_id": "L3",
+      "platform": "99acres.com",
+      "listing_url": "https://www.99acres.com/commercial-shops-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "property_type": "Commercial Shop - Ground Floor",
+      "full_address": "Maharaja Nagar, Tirunelveli, Tamil Nadu",
+      "street_area": "Maharaja Nagar, Tirunelveli",
+      "shop_size_sqft": 220,
+      "floor": "Ground Floor",
+      "rent_monthly_inr": 20000,
+      "rent_currency": "INR",
+      "deposit_amount": "Not mentioned",
+      "brokerage_applicable": "Not mentioned",
+      "contact_phone": "NOT AVAILABLE - 99acres page blocked",
+      "owner_name": "NOT AVAILABLE",
+      "broker_agent_name": "NOT AVAILABLE",
+      "amenities": "Convenient access, immediate lease available",
+      "availability": "Available for immediate lease",
+      "listing_date": "Not available",
+      "data_source": "Previous web_search snippet from search1_housing.json",
+      "data_reliability": "From search snippet",
+      "notes": "Located in Maharaja Nagar, Tirunelveli. 220 sq.ft ground floor commercial shop. Available for immediate lease at ₹20,000/month. ~56 km from Sankarankovil."
+    },
+    {
+      "listing_id": "L4",
+      "platform": "99acres.com",
+      "listing_url": "https://www.99acres.com/commercial-shops-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "property_type": "Commercial Shop - Ground Floor",
+      "full_address": "VM Chatram, Tirunelveli, Tamil Nadu",
+      "street_area": "VM Chatram, Tirunelveli",
+      "shop_size_sqft": 480,
+      "floor": "Ground Floor",
+      "rent_monthly_inr": 10000,
+      "rent_currency": "INR",
+      "deposit_amount": "Not mentioned",
+      "brokerage_applicable": "Not mentioned",
+      "contact_phone": "NOT AVAILABLE - 99acres page blocked",
+      "owner_name": "NOT AVAILABLE",
+      "broker_agent_name": "NOT AVAILABLE",
+      "amenities": "North-facing, ground floor access, immediate lease available",
+      "availability": "Available for immediate lease",
+      "listing_date": "Not available",
+      "data_source": "Previous web_search snippet from search3_classified.json",
+      "data_reliability": "From search snippet",
+      "notes": "Ground floor commercial shops in VM Chatram area. 480 sq.ft, north-facing at ₹10,000/month. Available for immediate lease."
+    },
+    {
+      "listing_id": "L5",
+      "platform": "99acres.com",
+      "listing_url": "https://www.99acres.com/commercial-shops-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "property_type": "Commercial Shop - Main Road",
+      "full_address": "Tirunelveli Ambai Road, Tirunelveli, Tamil Nadu",
+      "street_area": "Tirunelveli Ambai Road (main road)",
+      "shop_size_sqft": 1000,
+      "floor": "Not specified",
+      "rent_monthly_inr": 15000,
+      "rent_currency": "INR",
+      "deposit_amount": "10 months rent (₹150,000)",
+      "brokerage_applicable": "Not mentioned",
+      "contact_phone": "NOT AVAILABLE - 99acres page blocked",
+      "owner_name": "NOT AVAILABLE",
+      "broker_agent_name": "NOT AVAILABLE",
+      "amenities": "Main road location, adjacent to ICICI Bank",
+      "availability": "Available",
+      "listing_date": "Not available",
+      "data_source": "Previous web_search snippet from search6.json",
+      "data_reliability": "From search snippet",
+      "notes": "Property located on Tirunelveli Ambai main road, adjacent to ICICI Bank. 1,000 sq.ft at ₹15,000/month. Deposit of 10 months rent required."
+    },
+    {
+      "listing_id": "L6",
+      "platform": "99acres.com",
+      "listing_url": "https://www.99acres.com/commercial-land-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "property_type": "Commercial Space / Land for Lease",
+      "full_address": "Kandiyaperi Road, Palaya Pettai, near Tirunelveli-Tenkasi Highway, Sankarankovil, Tirunelveli, Tamil Nadu",
+      "street_area": "Kandiyaperi Road, Palaya Pettai",
+      "shop_size_sqft": null,
+      "floor": "Not specified",
+      "rent_monthly_inr": null,
+      "rent_currency": "INR",
+      "deposit_amount": "Not mentioned",
+      "brokerage_applicable": "Not mentioned",
+      "contact_phone": "NOT AVAILABLE - 99acres page blocked",
+      "owner_name": "NOT AVAILABLE",
+      "broker_agent_name": "NOT AVAILABLE",
+      "amenities": "Bore facility, 24 hours water supply, 500 meters from Tirunelveli-Tenkasi Highway",
+      "availability": "Available",
+      "listing_date": "Not available",
+      "data_source": "Previous web_search snippet from search3_classified.json",
+      "data_reliability": "From search snippet",
+      "notes": "Commercial space for rent on Kandiyaperi Road, Palaya Pettai. Just 500 meters from Tirunelveli-Tenkasi Highway. Bore facility with 24-hour water supply. Rent and size not mentioned in snippet."
+    },
+    {
+      "listing_id": "L7",
+      "platform": "99acres.com",
+      "listing_url": "https://www.99acres.com/commercial-land-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "property_type": "Commercial Land for Rent",
+      "full_address": "Tirunelveli, Tamil Nadu (near highway)",
+      "street_area": "Near highway (exact location not specified)",
+      "shop_size_sqft": 5000,
+      "floor": "Not applicable (land)",
+      "rent_monthly_inr": null,
+      "rent_currency": "INR",
+      "deposit_amount": "Not mentioned",
+      "brokerage_applicable": "Not mentioned",
+      "contact_phone": "NOT AVAILABLE - 99acres page blocked",
+      "owner_name": "NOT AVAILABLE",
+      "broker_agent_name": "NOT AVAILABLE",
+      "amenities": "Near highway, suitable for any commercial use",
+      "availability": "Available",
+      "listing_date": "Not available",
+      "data_source": "Previous web_search snippet from search5_lease.json",
+      "data_reliability": "From search snippet",
+      "notes": "Commercial land for rent in Tirunelveli area. 5,000 sq.ft near highway. Can be used for any purpose."
+    },
+    {
+      "listing_id": "L8",
+      "platform": "99acres.com",
+      "listing_url": "https://www.99acres.com/factory-land-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "property_type": "Warehouse / Factory Land",
+      "full_address": "Gangaikondan, Tirunelveli, Tamil Nadu",
+      "street_area": "Gangaikondan, near main road",
+      "shop_size_sqft": 3750,
+      "floor": "Not applicable (warehouse)",
+      "rent_monthly_inr": 20000,
+      "rent_currency": "INR",
+      "deposit_amount": "Not mentioned",
+      "brokerage_applicable": "Not mentioned",
+      "contact_phone": "NOT AVAILABLE - 99acres page blocked",
+      "owner_name": "NOT AVAILABLE",
+      "broker_agent_name": "NOT AVAILABLE",
+      "amenities": "Near main road, easy transportation, safe area",
+      "availability": "Available",
+      "listing_date": "Not available",
+      "data_source": "Previous web_search snippet from search6.json",
+      "data_reliability": "From search snippet",
+      "notes": "Warehouse for rent in Gangaikondan. 3,750 sq.ft at ₹20,000/month. Near main road with easy transportation."
+    },
+    {
+      "listing_id": "L9",
+      "platform": "MagicBricks.com (cross-listed reference)",
+      "listing_url": "https://www.magicbricks.com/propertyDetails/700-Sq-ft-Commercial-Shop-FOR-Rent-Sankarankoil-in-Tirunelveli&id=4d423134373135343837",
+      "property_type": "Commercial Shop for Rent",
+      "full_address": "Sri Muthu Bhavanam, opposite to Ganapathi Silks, Thiruvengadam Road, near bus stand, Sankarankoil, Tirunelveli, Tamil Nadu",
+      "street_area": "Thiruvengadam Road, near bus stand, Sankarankoil",
+      "shop_size_sqft": 700,
+      "floor": "Not specified",
+      "rent_monthly_inr": 5000,
+      "rent_currency": "INR",
+      "deposit_amount": "Not mentioned",
+      "brokerage_applicable": "Not mentioned",
+      "contact_phone": "NOT AVAILABLE - MagicBricks page also blocked",
+      "owner_name": "NOT AVAILABLE",
+      "broker_agent_name": "NOT AVAILABLE",
+      "amenities": "Near bus stand, opposite Ganapathi Silks",
+      "availability": "Available",
+      "listing_date": "Not available",
+      "data_source": "Previous web_search snippet from search3_indiaproperty.json and search_mb1.json",
+      "data_reliability": "From search snippet - detailed address available",
+      "notes": "700 sq.ft commercial shop for rent at ₹5,000/month. Located at Sri Muthu Bhavanam, opposite Ganapathi Silks, Thiruvengadam Road, near Sankarankoil bus stand. Very well-located in the heart of Sankarankovil."
+    },
+    {
+      "listing_id": "L10",
+      "platform": "RealEstateIndia.com (cross-reference)",
+      "listing_url": "https://www.realestateindia.com/tirunelveli-property/commercial-property-for-rent-in-sankarankoil.htm",
+      "property_type": "Commercial Shops for Rent",
+      "full_address": "Tirunelveli to Sankarankovil State Highway, Tamil Nadu",
+      "street_area": "Tirunelveli-Sankarankovil State Highway",
+      "shop_size_sqft": null,
+      "floor": "Not specified",
+      "rent_monthly_inr": null,
+      "rent_currency": "INR",
+      "deposit_amount": "Not mentioned",
+      "brokerage_applicable": "Not mentioned",
+      "contact_phone": "Contact via website (phone gated)",
+      "owner_name": "S. Selvaraj (Owner)",
+      "broker_agent_name": "Owner listing",
+      "amenities": "On State Highway, suitable for any business",
+      "availability": "2 shops available",
+      "listing_date": "Not available",
+      "data_source": "Previous web_search snippet from search3_indiaproperty.json",
+      "data_reliability": "From search snippet - owner name confirmed",
+      "notes": "Two shops are available at Tirunelveli to Sankarankovil State Highway for Rent. Suitable for any business. Owner: S. Selvaraj. Phone number is gated behind RealEstateIndia website."
+    }
+  ],
+
+  "additional_nearby_listings_from_previous_searches": [
+    {
+      "listing_id": "L11",
+      "platform": "99acres.com",
+      "listing_url": "https://www.99acres.com/commercial-property-for-rent-in-thyagaraja-nagar-tirunelveli-ffid",
+      "property_type": "Commercial Property (two units)",
+      "full_address": "Thyagaraja Nagar, Tirunelveli, Tamil Nadu",
+      "shop_size_sqft": "850 and 2,750",
+      "rent_monthly_inr": "35,000 and 80,000",
+      "notes": "Two units in Thyagaraja Nagar. ~45 km from Sankarankovil."
+    },
+    {
+      "listing_id": "L12",
+      "platform": "99acres.com",
+      "listing_url": "https://www.99acres.com/commercial-property-for-rent-in-voc-nagar-tirunelveli-ffid",
+      "property_type": "Commercial Property (two units)",
+      "full_address": "VOC Nagar, Tirunelveli, Tamil Nadu",
+      "shop_size_sqft": "350 and 2,711",
+      "rent_monthly_inr": "3,000 and 75,000",
+      "notes": "Budget option at ₹3,000/month for 350 sq.ft. ~45 km from Sankarankovil."
+    },
+    {
+      "listing_id": "L13",
+      "platform": "99acres.com",
+      "listing_url": "https://www.99acres.com/commercial-property-for-rent-in-tirunelveli-without-brokerage-ffid-page-3",
+      "property_type": "Commercial Space (no brokerage)",
+      "full_address": "Palayamkottai, Tirunelveli, Tamil Nadu",
+      "shop_size_sqft": 15000,
+      "rent_monthly_inr": 10000,
+      "notes": "Large commercial space, no brokerage. Very low per-sqft rate - likely warehouse."
+    },
+    {
+      "listing_id": "L14",
+      "platform": "99acres.com",
+      "listing_url": "https://www.99acres.com/commercial-property-for-rent-in-ramayanpatti-tirunelveli-ffid",
+      "property_type": "Godown / Warehouse",
+      "full_address": "Sankarankovil Road, Thachanallur, Tirunelveli, Tamil Nadu",
+      "shop_size_sqft": null,
+      "rent_monthly_inr": null,
+      "notes": "Godown available on Sankarankovil Road, Thachanallur."
+    }
+  ],
+
+  "local_business_contacts_near_sankarankovil": {
+    "disclaimer": "These are NOT rental listings but local businesses whose phone numbers and addresses may help identify nearby commercial areas and potential property owners",
+    "contacts": [
+      {
+        "business": "Samsung Experience Store Sankarankovil",
+        "address": "No 113/B5, RV Tower, Sankarankovil Rajapalayam - 626117",
+        "phone": "+919843052289",
+        "source": "search4.json / samsungexclusivestores.in"
+      },
+      {
+        "business": "TVS Siva Auto Agencies",
+        "address": "No 396, Rajapalayam Main Road, Sankarankovil, Tirunelveli - 627756",
+        "phone": "+919355036373, +919442422568",
+        "source": "search4.json / dealers.tvsmotor.com"
+      },
+      {
+        "business": "Apollo Pharmacy Sankarankovil",
+        "address": "No.9, North Car Street, Sankaran Kovil - 627756",
+        "phone": "7949291234",
+        "source": "search5.json / apollopharmacy.in"
+      },
+      {
+        "business": "Reliance SMART Bazaar",
+        "address": "Sankarankovil Main Road, Rajapalayam",
+        "phone": "180089100xx (toll-free)",
+        "source": "search4.json / stores.reliancesmartbazaar.com"
+      },
+      {
+        "business": "Shanthi Shopping Complex (Justdial listing for estate agents)",
+        "address": "No 43 Shanthi Shopping Complex, Thiruvenkadam Salai, Sankarankoil Tirunelveli Road, Sankarankovil - 627756 (Opposite Bus Stand)",
+        "phone": "Available on Justdial",
+        "source": "search3_indiaproperty.json / justdial.com"
+      }
+    ]
+  },
+
+  "known_local_real_estate_agents": [
+    {
+      "agent_name": "Santhosh Agency",
+      "location": "Sankarankoil, Tirunelveli",
+      "phone": "Contact via RealEstateIndia.com (gated)",
+      "source": "realestateindia.com listing #913810",
+      "notes": "Local Sankarankoil-based real estate agent. Handles agricultural and commercial land."
+    },
+    {
+      "agent_name": "Sri Saravana Real Estate",
+      "location": "Rajapalayam (covers Sankarankovil area)",
+      "phone": "Contact via RealEstateIndia.com (gated)",
+      "source": "realestateindia.com listing #1033711",
+      "notes": "Based in Rajapalayam but covers Sankarankovil area properties."
+    },
+    {
+      "agent_name": "S. Selvaraj (Owner)",
+      "location": "Tirunelveli-Sankarankovil State Highway",
+      "phone": "Contact via RealEstateIndia.com (gated)",
+      "source": "realestateindia.com",
+      "notes": "Has 2 shops for rent on the State Highway."
+    }
+  ],
+
+  "search_limitations": {
+    "api_rate_limiting": "z-ai web_search, page_reader, and chat_completions APIs returned persistent HTTP 429 (Too Many Requests) throughout this session. Previous sessions also encountered this issue after 4-10 successful queries.",
+    "99acres_blocking": "99acres.com uses Akamai/EdgeSuite CDN-level bot protection that returns 'Access Denied' (HTTP 403) for all automated requests from cloud servers. Individual listing pages cannot be accessed to extract contact phone numbers, owner names, exact addresses, or detailed amenities.",
+    "search_engine_blocking": "All major search engines (Google, Bing, DuckDuckGo, Brave, Yahoo, Yandex, Ecosia, Startpage, Mojeek) returned CAPTCHA or bot detection pages during this session, preventing new searches.",
+    "contact_info_gating": "Even when listing snippets are visible in search results, contact phone numbers and owner names are always gated behind the listing page, which is inaccessible due to 99acres bot protection.",
+    "critical_missing_data": {
+      "contact_phone_numbers": "UNABLE TO EXTRACT ANY CONTACT PHONE NUMBERS FROM 99ACRES - all contact info requires page-level access which is blocked",
+      "owner_names": "UNABLE TO EXTRACT ANY OWNER NAMES FROM 99ACRES - only found S. Selvaraj (RealEstateIndia, not 99acres)",
+      "exact_street_addresses": "PARTIALLY AVAILABLE - only 2 listings had specific street addresses (L9: Thiruvengadam Road; L10: Tirunelveli-Sankarankovil Highway)",
+      "brokerage_info": "NOT AVAILABLE for any listing",
+      "deposit_amounts": "Only found for L5 (10 months rent)"
+    }
+  },
+
+  "recommended_next_steps": {
+    "to_get_contact_numbers": [
+      "Visit 99acres.com URLs directly from a regular web browser (not automated) - the listing pages should be accessible with normal browser cookies/JS",
+      "Create a free 99acres account and use their 'Contact Seller' feature for each listing",
+      "Call 99acres customer support: 1800-102-2663 for assistance with specific listings",
+      "Contact Santhosh Agency in Sankarankoil directly (search their number on Justdial)",
+      "Visit Shanthi Shopping Complex, opposite Sankarankovil Bus Stand to find local estate agents"
+    ],
+    "to_find_more_listings": [
+      "Search OLX.in manually: https://www.olx.in/sankarankoil_g4059208/for-rent-shops-offices_c1731 (3,600+ listings found in previous searches)",
+      "Search Housing.com: https://housing.com/commercial/rent/commercial-shop-for-rent-in-sankarankoil-tenkasi-tirunelveli-MA4P6l6bhqj9f6kdxnq",
+      "Check Reeltor.com: https://www.reeltor.com/tamil-nadu/sankarankoil/shop-for-rent-in-serndamaram-sankarankoil",
+      "Check Justdial for estate agents: https://www.justdial.com/Sankarankovil/Estate-Agents-For-Commercial-Rental/nct-10192647",
+      "Check Dinamalar and Dinathanthi newspaper classifieds (primary channel for Tier-3 towns)",
+      "Ask local contacts to add you to Sankarankovil WhatsApp property groups",
+      "Conduct physical survey around: Bus Stand area, Kandiyaperi Road, Rajapalayam Road, Thiruvengadam Road"
+    ]
+  },
+
+  "summary": {
+    "total_99acres_listings_found": 8 (L1-L8) + 4 nearby (L11-L14),
+    "total_listings_with_rent_info": 7,
+    "total_listings_with_contact_phone": 0,
+    "total_listings_with_owner_name": 0 (on 99acres),
+    "rent_range_in_sankarankovil": "₹5,000/month (MagicBricks 700sqft) to ₹6,000/month (99acres 75sqft first-floor)",
+    "rent_range_nearby_tirunelveli": "₹3,000/month (VOC Nagar 350sqft) to ₹80,000/month (Thyagaraja Nagar 2750sqft)",
+    "estimated_market_rate_sankarankovil": {
+      "small_shop_75_150_sqft": "₹5,000 - ₹10,000 per month",
+      "medium_shop_200_500_sqft": "₹8,000 - ₹25,000 per month",
+      "per_sqft_monthly": "₹40 - ₹150 (in-town), ₹8 - ₹50 (outskirts/industrial)"
+    },
+    "key_99acres_urls_to_visit_manually": [
+      "https://www.99acres.com/commercial-shops-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "https://www.99acres.com/commercial-land-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "https://www.99acres.com/commercial-property-in-sankarankovil-tirunelveli-ffid"
+    ]
+  }
+}

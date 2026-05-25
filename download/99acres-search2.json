@@ -1,0 +1,304 @@
+{
+  "search_session": "99acres Detailed Search #2",
+  "search_date": "2025-05-25",
+  "search_location": "New Bus Stand, Sankarankovil, Tamil Nadu 627756",
+  "search_methodology": "Multiple Yahoo/Bing web searches + direct page scraping via curl + agent-browser. 99acres.com, MagicBricks.com, and Google were all blocking access (Access Denied / CAPTCHA). z-ai web_search and page_reader APIs were rate-limited (HTTP 429) throughout the entire session.",
+  "api_status": {
+    "z_ai_web_search": "RATE LIMITED (HTTP 429) - all attempts failed after initial rate limit",
+    "z_ai_page_reader": "RATE LIMITED (HTTP 429) - all attempts failed",
+    "99acres.com_direct": "ACCESS DENIED - Akamai/EdgeSuite blocking from server IP",
+    "magicbricks.com_direct": "ACCESS DENIED - Akamai/EdgeSuite blocking from server IP",
+    "google.com_search": "CAPTCHA/blocked (sorry/index page)",
+    "duckduckgo.com": "CAPTCHA/blocked (anomaly challenge)",
+    "yahoo.com_search": "SUCCESS - primary data source for this session",
+    "bing.com_search": "SUCCESS (via curl) - supplementary data source"
+  },
+  "search_queries_executed": [
+    "99acres commercial shops for rent Sankarankovil Tirunelveli address phone",
+    "99acres Sankarankovil retail shop lease contact number broker",
+    "99acres near new bus stand Sankarankovil shop available contact",
+    "Sankarankovil 99acres property listing rental commercial",
+    "99acres Sankarankovil Tirunelveli district commercial space rent",
+    "99acres agents dealers Sankarankovil Tirunelveli property contact phone number",
+    "Sankarankovil shop rent contact number broker new bus stand",
+    "Sankarankovil Tirunelveli commercial shop for rent near bus stand contact owner",
+    "\"Sankarankovil\" \"shop for rent\" \"contact\" \"phone\"",
+    "site:99acres.com Sankarankovil commercial shop rent",
+    "site:magicbricks.com Sankarankovil shop rent bus stand Ganapathi contact phone",
+    "\"Sri Muthu bhavanam\" \"Ganapathi Silks\" Sankarankovil rent contact phone",
+    "\"NEST Real Estate\" Sankarankovil contact phone number WhatsApp",
+    "site:olx.in Sankarankoil shop rent Rs contact phone number",
+    "Sankarankovil property broker agent real estate phone number contact",
+    "Sankarankovil new bus stand commercial shop Godown warehouse for rent Rs contact"
+  ],
+  "confirmed_listings": [
+    {
+      "listing_id": "MB-SANKARANKOVIL-001",
+      "source": "MagicBricks",
+      "source_url": "https://www.magicbricks.com/commercial-property-for-rent-in-sankarankoil-tirunelveli-pppfr",
+      "also_listed_on": "OLX (cross-posted)",
+      "property_type": "Commercial Shop / Office Space",
+      "full_address": "Sri Muthu Bhavanam, opposite to Ganapathi Silks, Thiruvengadam Road, near Bus Stand, Sankarankovil, Sankarankoil, Tirunelveli, Tamil Nadu 627756",
+      "landmark": "Opposite to Ganapathi Silks, Near Bus Stand (New Bus Stand area)",
+      "nearby_landmarks": [
+        "Ganapathi Silks (landmark building)",
+        "Sankarankovil Bus Stand",
+        "Kannan Sweets",
+        "Thiruvengadam Road"
+      ],
+      "location_description": "At the heart of commercial area in Sankarankovil, opposite to Ganapathi Silks, near BUS STAND",
+      "rent_monthly": 3000,
+      "rent_currency": "INR",
+      "rent_alternate": 2800,
+      "other_charges": "See other charges on listing page",
+      "construction_age": "5 to 10 years",
+      "maintenance": "Well maintained",
+      "suitable_for": ["Retail", "Service Centre", "Parlours", "Offices", "Clinics"],
+      "description": "At the heart of commercial area in Sankarankovil. It is opposite to Ganapathi Silks. Near BUS STAND. Lot of commercial shops available and residence available around the project. Suitable for Retail, Service centre parlours, offices, clinics etc.",
+      "contact_type": "Contact Owner",
+      "contact_phone": "NOT EXTRACTABLE - MagicBricks page access blocked from server",
+      "owner_broker_name": "NOT EXTRACTABLE - requires login/page access",
+      "photos": "No Image Available",
+      "floor_details": "Not specified in snippet",
+      "shop_size_sqft": "Not specified in snippet",
+      "data_reliability": "From Yahoo/Bing search engine snippet - details confirmed across multiple searches",
+      "confidence_level": "HIGH - listing confirmed on both MagicBricks and OLX",
+      "notes": "This is the most relevant listing near New Bus Stand, Sankarankovil. Cross-posted on multiple platforms. Contact details require direct access to MagicBricks or OLX listing page."
+    },
+    {
+      "listing_id": "99ACRES-SANKARANKOVIL-001",
+      "source": "99acres (from previous session agent2-99acres.json)",
+      "source_url": "https://www.99acres.com/commercial-shops-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "property_type": "Commercial Shop - First Floor",
+      "shop_address": "Sankarankovil, Tirunelveli, Tamil Nadu 627756",
+      "shop_size": "75 sq.ft (each of 3 shops)",
+      "rent_monthly": 6000,
+      "rent_currency": "INR",
+      "floor_details": "First Floor - 3 shops available",
+      "amenities": "Neatly built commercial shops",
+      "contact_phone": "NOT EXTRACTABLE - 99acres page access blocked",
+      "owner_broker_name": "NOT EXTRACTABLE",
+      "data_reliability": "From search snippet in previous session",
+      "notes": "3 neatly built commercial shops for rent on the first floor, each measuring 75 sq.ft at ₹6,000 per month."
+    },
+    {
+      "listing_id": "99ACRES-SANKARANKOVIL-002",
+      "source": "99acres (from previous session agent2-99acres.json)",
+      "source_url": "https://www.99acres.com/commercial-shops-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "property_type": "Commercial Shop - Ground Floor",
+      "shop_address": "Sankarankovil, Tirunelveli, Tamil Nadu 627756",
+      "shop_size": "120 sq.ft",
+      "rent_monthly": null,
+      "rent_currency": "INR",
+      "floor_details": "Ground Floor - 1 shop available",
+      "amenities": "Neatly built commercial shop, ground floor access",
+      "contact_phone": "NOT EXTRACTABLE",
+      "owner_broker_name": "NOT EXTRACTABLE",
+      "data_reliability": "From search snippet in previous session",
+      "notes": "One ground floor shop measuring 120 sq.ft. Rent amount was truncated in search snippet."
+    },
+    {
+      "listing_id": "99ACRES-SANKARANKOVIL-003",
+      "source": "99acres (from previous session agent2-99acres.json)",
+      "source_url": "https://www.99acres.com/commercial-land-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "property_type": "Commercial Space / Land for Lease",
+      "shop_address": "Kandiyaperi Road, Palaya Pettai, near Tirunelveli-Tenkasi Highway, Sankarankovil, Tirunelveli, Tamil Nadu 627756",
+      "shop_size": "Not specified",
+      "rent_monthly": null,
+      "floor_details": "Not specified",
+      "amenities": "Bore facility available, 24 hours water supply, 500 meters from Tirunelveli-Tenkasi highway",
+      "contact_phone": "NOT EXTRACTABLE",
+      "owner_broker_name": "NOT EXTRACTABLE",
+      "data_reliability": "From search snippet in previous session",
+      "notes": "Commercial space for rent on Kandiyaperi Road, Palaya Pettai. Just 500 meters from Tirunelveli-Tenkasi Highway."
+    }
+  ],
+  "contact_numbers_found": {
+    "verified_contacts": [
+      {
+        "name": "Sri Kaveri Agency",
+        "type": "Property Dealer / Real Estate Agency",
+        "address": "No 24, South Car Street, Sankarankovil, Sankarankoil Ho, Tirunelveli - 627756",
+        "phone_1": "+91-9500698281",
+        "phone_2": "+91-9944315171",
+        "source": "tamilnadu.business",
+        "source_url": "https://www.tamilnadu.business/tirunelveli/d/sri-kaveri-agency/I7bZNgE-ZxP",
+        "location": "Sankarankovil, Tirunelveli",
+        "pincode": "627756",
+        "confidence": "HIGH - confirmed on business directory",
+        "notes": "Local property agency in Sankarankovil. Located on South Car Street. May have commercial shop rental listings."
+      },
+      {
+        "name": "NEST Real Estate and Properties",
+        "type": "Real Estate Agency / Builder",
+        "address": "Sankarankovil, Tamil Nadu",
+        "phone": "7010284245",
+        "whatsapp": "7010284245 (same number - confirmed via Facebook posts)",
+        "facebook_page": "https://www.facebook.com/p/NEST-Real-Estate-and-Properties-100063785746160/",
+        "facebook_group": "https://www.facebook.com/groups/SankarankovilPropertiesAds/",
+        "source": "Facebook (via Yahoo search snippets)",
+        "associated_entity": "NEST ARCHI BUILDERS",
+        "facebook_builder_page": "https://www.facebook.com/profile.php?id=100063749053369",
+        "builder_likes": "9,977+ likes on Facebook",
+        "confidence": "HIGH - phone number confirmed via multiple Facebook posts and reels",
+        "notes": "Active real estate agency and builder in Sankarankovil. Posts property listings regularly. Has both a real estate services page and an architectural design/construction company (NEST ARCHI BUILDERS). Listed plots and houses for sale in Sankarankovil area. Very likely has commercial shop rental listings as well."
+      }
+    ],
+    "platform_contact_methods": {
+      "99acres": {
+        "status": "All contact numbers hidden behind 'Contact Owner' / 'Contact Agent' button requiring login or page access",
+        "recommendation": "Visit 99acres.com directly in web browser and search 'commercial shops for rent in Sankarankovil Tirunelveli'"
+      },
+      "magicbricks": {
+        "status": "Contact Owner button requires direct page access (blocked from server)",
+        "recommendation": "Visit magicbricks.com directly in web browser and search 'commercial property for rent in Sankarankoil Tirunelveli'"
+      },
+      "olx": {
+        "status": "Phone numbers visible on listing pages (requires direct access)",
+        "recommendation": "Visit olx.in directly - has 3,418+ shops & offices for rent in Sankarankoil area"
+      },
+      "housing_com": {
+        "status": "Phone numbers visible on listing pages - 'Contact Owner' / 'View Phone No' buttons",
+        "recommendation": "Visit housing.com directly and search for commercial property for rent in Tirunelveli"
+      }
+    }
+  },
+  "property_agents_brokers_sankarankovil": [
+    {
+      "name": "Sri Kaveri Agency",
+      "address": "No 24, South Car Street, Sankarankovil, Tirunelveli - 627756",
+      "phone": ["+91-9500698281", "+91-9944315171"],
+      "source": "tamilnadu.business",
+      "services": "Property dealing"
+    },
+    {
+      "name": "NEST Real Estate and Properties",
+      "address": "Sankarankovil, Tamil Nadu",
+      "phone": "7010284245",
+      "facebook": "https://www.facebook.com/p/NEST-Real-Estate-and-Properties-100063785746160/",
+      "services": "Real estate services, property listings, buy/sale/rent"
+    },
+    {
+      "name": "NEST ARCHI BUILDERS",
+      "address": "Sankarankovil, Tamil Nadu",
+      "phone": "7010284245",
+      "facebook": "https://www.facebook.com/profile.php?id=100063749053369",
+      "services": "Architectural design, construction, property development"
+    }
+  ],
+  "useful_platforms_and_urls": {
+    "99acres": {
+      "main_search_url": "https://www.99acres.com/commercial-shops-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "status": "ACCESS DENIED from server - visit directly in browser",
+      "expected_content": "Direct 99acres listing page for Sankarankovil commercial shops"
+    },
+    "magicbricks": {
+      "search_url": "https://www.magicbricks.com/commercial-property-for-rent-in-sankarankoil-tirunelveli-pppfr",
+      "shops_url": "https://www.magicbricks.com/shops-for-rent-in-tirunelveli-pppfr",
+      "furnished_url": "https://www.magicbricks.com/furnished-office-space-for-rent-in-sankarankoil-tirunelveli-pppfr",
+      "status": "ACCESS DENIED from server - visit directly in browser",
+      "expected_content": "Listing at Sri Muthu Bhavanam near Ganapathi Silks/Bus Stand at ₹3,000/month"
+    },
+    "olx": {
+      "search_url": "https://www.olx.in/sankarankoil_g4059208/for-rent-shops-offices_c1731",
+      "status": "JS-rendered page - requires browser",
+      "listing_count": "3,418 to 3,962 shops & offices for rent",
+      "price_range": "₹1,000 to ₹5 Crores (or ₹11 Crores in broader area)",
+      "categories": ["grocery", "mobile", "salon", "clothing", "chemist shops"]
+    },
+    "housing_com": {
+      "search_url": "https://housing.com/commercial/rent/commercial-property-for-rent-in-tirunelveli-Poq2ujxpx778yask",
+      "status": "May be accessible in browser"
+    },
+    "sulekha": {
+      "agents_url": "https://www.sulekha.com/real-estate-agents/sankarankovil-tirunelveli",
+      "property_url": "https://property.sulekha.com/commercial-property-for-rent/sankarankovil-tirunelveli",
+      "status": "JS-rendered page - requires browser",
+      "agent_count": "12+ verified agents"
+    },
+    "quikr": {
+      "agents_url": "https://www.quikr.com/homes/property/real-estate-brokers-in-sankarankovil-tirunelveli-cid_1106383-lid_20821",
+      "property_url": "https://www.quikr.com/homes/property/commercial-for-rent-in-tirunelveli-cid_1106383",
+      "status": "Accessible"
+    },
+    "realestateindia": {
+      "agents_url": "https://www.realestateindia.com/agents-brokers-in-sankarankoil-tirunelveli.htm",
+      "shops_url": "https://www.realestateindia.com/tirunelveli-property/commercial-shops-for-rent.htm",
+      "status": "May be accessible"
+    },
+    "commonfloor": {
+      "agents_url": "https://groups.commonfloor.com/real-estate-agents-india/real-estate-brokers-tirunelveli/real-estate-property-dealers-sankarankovil/rad-41646",
+      "property_url": "https://groups.commonfloor.com/sankarankovil-tirunelveli/lvp-oegz9j",
+      "status": "May be accessible"
+    },
+    "facebook_groups": {
+      "sankarankovil_properties": "https://www.facebook.com/groups/SankarankovilPropertiesAds/",
+      "description": "Sankarankovil Properties (Buy, Sale & Rent) - Facebook community group for property listings in Sankarankovil area",
+      "recommendation": "Join this group and post requirements or browse existing listings with direct owner contact"
+    }
+  },
+  "new_bus_stand_area_context": {
+    "location": "New Bus Stand, Sankarankovil, Tamil Nadu 627756",
+    "main_road": "Rajapalayam Road / Thiruvengadam Road / Sankarankovil Main Road",
+    "key_landmarks": [
+      "Ganapathi Silks (opposite to main listing at Sri Muthu Bhavanam)",
+      "Sankarankovil New Bus Stand",
+      "Reliance SMART Bazaar, Sankarankovil Main Road",
+      "Kannan Sweets",
+      "South Car Street (where Sri Kaveri Agency is located)",
+      "Tirunelveli-Tenkasi Highway (NH44/NH744)"
+    ],
+    "nearby_commercial_areas": [
+      "Rajapalayam Road / Main Road",
+      "Thiruvengadam Road",
+      "Kandiyaperi Road, Palaya Pettai",
+      "South Car Street",
+      "Thachanallur (on Sankarankovil Road)"
+    ]
+  },
+  "estimated_market_rates": {
+    "sankarankovil_town": {
+      "small_shop_75_150_sqft": "₹3,000 - ₹10,000 per month",
+      "medium_shop_200_500_sqft": "₹8,000 - ₹25,000 per month",
+      "large_space_1000_plus_sqft": "₹30,000 - ₹80,000 per month",
+      "per_sqft_monthly_range": "₹40 - ₹150 per sq.ft (in-town)"
+    },
+    "sankarankovil_outskirts": {
+      "per_sqft_monthly_range": "₹8 - ₹50 per sq.ft (outskirts/industrial)"
+    },
+    "deposit_norms": "Typically 1-3 months rent as security deposit",
+    "lease_terms": "Usually 11-month lease with option to renew; some owners prefer longer 3-5 year leases"
+  },
+  "key_findings_summary": {
+    "total_unique_listings_found": 4,
+    "total_contact_numbers_found": 3,
+    "total_agents_brokers_identified": 3,
+    "99acres_direct_access": "BLOCKED - cannot access listing pages from server environment",
+    "best_listing_near_bus_stand": {
+      "id": "MB-SANKARANKOVIL-001",
+      "address": "Sri Muthu Bhavanam, opposite to Ganapathi Silks, Thiruvengadam Road, near Bus Stand",
+      "rent": "₹3,000/month (alternate ₹2,800/month)",
+      "suitable_for": "Retail, Service Centre, Parlours, Offices, Clinics"
+    },
+    "most_reliable_contact": {
+      "name": "NEST Real Estate and Properties",
+      "phone": "7010284245",
+      "confidence": "HIGH - confirmed via Facebook"
+    },
+    "recommended_next_steps": [
+      "1. Visit 99acres.com directly in a web browser and search 'commercial shops for rent in Sankarankovil Tirunelveli' to get owner contact numbers",
+      "2. Visit MagicBricks.com directly and search 'commercial property for rent in Sankarankoil Tirunelveli' to contact the owner of the Sri Muthu Bhavanam listing",
+      "3. Visit OLX.in and browse the 3,418+ shop listings in Sankarankoil area",
+      "4. Call NEST Real Estate at 7010284245 for local property assistance",
+      "5. Call Sri Kaveri Agency at +91-9500698281 or +91-9944315171 for property dealing services",
+      "6. Join the Facebook group 'Sankarankovil Properties (Buy, Sale & Rent)' for direct owner listings",
+      "7. Visit Justdial or Google Maps and search 'property dealers near new bus stand Sankarankovil' for more local contacts"
+    ]
+  },
+  "limitations": {
+    "primary_limitation": "99acres.com completely blocks access from server/cloud environments (Akamai/EdgeSuite protection). All listing contact numbers are hidden behind interactive buttons requiring browser JavaScript execution and often login/authentication.",
+    "secondary_limitation": "z-ai SDK web_search and page_reader APIs were rate-limited (HTTP 429) throughout the entire session, preventing use of these tools.",
+    "tertiary_limitation": "Google Search, DuckDuckGo, and MagicBricks all block or redirect automated access from server IPs.",
+    "data_sources_used": "Yahoo/Bing search engine result snippets provided the primary data for this session."
+  }
+}

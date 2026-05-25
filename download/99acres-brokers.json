@@ -1,0 +1,397 @@
+{
+  "report_metadata": {
+    "title": "Real Estate Brokers & Agents in Sankarankovil - Commercial Shop Rentals",
+    "search_location": "Sankarankovil, Tenkasi District, Tamil Nadu 627756",
+    "search_date": "2025-05-25",
+    "data_period": "2024-2025",
+    "search_queries_used": [
+      "99acres Sankarankovil real estate agent commercial broker phone number",
+      "Sankarankovil property broker commercial rental contact",
+      "Sankarankovil estate agent shop rent JustDial contact",
+      "commercial property agent Sankarankovil Tamil Nadu phone",
+      "Sankarankovil real estate broker near bus stand contact",
+      "99acres agent Sankarankovil Tirunelveli district",
+      "property dealer Sankarankovil new bus stand phone number",
+      "Sankarankovil commercial rental agent address phone 2024 2025"
+    ],
+    "sources_searched": [
+      "z-ai Web Search API (8 queries)",
+      "JustDial.com (blocked - Access Denied)",
+      "99acres.com (blocked - Access Denied)",
+      "Housing.com (blocked - Access Denied)",
+      "OLX.in (JS-rendered, partial data via Quikr scrape)",
+      "Quikr.com (successfully scraped)",
+      "RealEstateIndia.com (successfully scraped)",
+      "Instagram.com (from search snippets)",
+      "Facebook.com (from search snippets)",
+      "Reeltor.com (accessible but AI-generated listings)",
+      "MagicBricks.com (from search snippets)",
+      "Previous agent reports (agent2, agent4, agent5)"
+    ],
+    "data_reliability_note": "JustDial, 99acres, and Housing.com all block automated access. Broker phone numbers on these platforms require manual browser access. Phone numbers listed below are from publicly accessible sources (Instagram, Facebook, RealEstateIndia.com, and previous agent reports).",
+    "disclaimer": "Phone numbers and contact details should be verified before use. Some listings may be outdated."
+  },
+  "brokers_and_agents": [
+    {
+      "id": "BRK-001",
+      "name": "360 Promoters",
+      "phone_numbers": ["9600891919"],
+      "office_address": "R.G. Complex, Rajapalayam Road, Sankarankovil, Tamil Nadu 627756",
+      "agency_company": "360 Promoters / R.G. Complex",
+      "specialization": "Commercial shop rentals, property promotion",
+      "years_experience": "Not specified",
+      "website": null,
+      "listing_profile_url": "https://www.instagram.com/reel/DYHM50nzNyq",
+      "facebook_url": "https://www.facebook.com/youtuber.pattani.n/videos/841364141633370",
+      "typical_listings": "Shop rentals in R.G. Complex on Rajapalayam Road; has multiple shops and warehouse space available for rent",
+      "listing_count_estimate": "Multiple units in R.G. Complex",
+      "data_source": "Instagram & Facebook (confirmed contact number in multiple posts)",
+      "data_confidence": "HIGH - Phone number confirmed in multiple independent social media posts",
+      "notes": "Key broker/promoter in Sankarankovil with direct shop rental availability at R.G. Complex on Rajapalayam Road. Active on social media promoting properties."
+    },
+    {
+      "id": "BRK-002",
+      "name": "Bilal Builders and Real Estate",
+      "phone_numbers": ["9629099026"],
+      "office_address": "Sankarankovil area, Tamil Nadu (exact address not specified)",
+      "agency_company": "Bilal Builders and Real Estate",
+      "specialization": "Commercial land, residential plots, land buy & sales, shop rentals",
+      "years_experience": "Not specified",
+      "website": null,
+      "listing_profile_url": "https://www.instagram.com/reel/DPYFl90Dint",
+      "typical_listings": "Commercial land on 7-cent plots, properties near Tirunelveli-Tenkasi highway, land facing District Police Office Tenkasi on 80-feet road",
+      "listing_count_estimate": "Multiple land and property listings",
+      "data_source": "Instagram reel (search4.json)",
+      "data_confidence": "MEDIUM - Phone number from Instagram business listing",
+      "notes": "Active real estate promoter dealing in both commercial and residential properties in Sankarankovil and Tenkasi district. Handles land sales, commercial space, and property promotion."
+    },
+    {
+      "id": "BRK-003",
+      "name": "S. Selvaraj",
+      "phone_numbers": ["8929175327"],
+      "office_address": "Tirunelveli to Sankarankovil State Highway, Tamil Nadu",
+      "agency_company": "Individual (Owner/Landlord)",
+      "specialization": "Commercial shop rentals (direct owner)",
+      "years_experience": "Not specified",
+      "website": null,
+      "listing_profile_url": "https://www.realestateindia.com/tirunelveli-property/commercial-property-for-rent-in-sankarankoil.htm",
+      "typical_listings": "Two shops on Tirunelveli-Sankarankovil State Highway (600 sq.ft combined), suitable for any business",
+      "listing_count_estimate": "2 shops on highway",
+      "data_source": "RealEstateIndia.com (directly scraped)",
+      "data_confidence": "HIGH - Phone number directly scraped from listing page",
+      "notes": "Direct property owner with shops on the State Highway corridor. Not a professional broker but a landlord with commercial rental space on the highway."
+    },
+    {
+      "id": "BRK-004",
+      "name": "Property Listing Contact (Facebook)",
+      "phone_numbers": ["8508505602"],
+      "office_address": "Sankarankovil, Tamil Nadu",
+      "agency_company": "Individual / Small Broker",
+      "specialization": "Residential and commercial property (2.5 cent new house listed at 53 lakhs)",
+      "years_experience": "Not specified",
+      "website": null,
+      "listing_profile_url": "https://www.facebook.com/61569648765806/posts/122148297098654958",
+      "typical_listings": "New houses, land plots, and property in Sankarankovil area",
+      "listing_count_estimate": "Multiple property listings on Facebook",
+      "data_source": "Facebook public post (search1.json)",
+      "data_confidence": "MEDIUM - Phone number from Facebook property listing post",
+      "notes": "Active property dealer on Facebook. Listed a 2.5 cent new house at 53,00,000 in Sankarankovil. Accepts DM for more details."
+    },
+    {
+      "id": "BRK-005",
+      "name": "Estate Agents at Shanthi Shopping Complex (JustDial Cluster)",
+      "phone_numbers": ["Visit JustDial page for phone numbers"],
+      "office_address": "No 43, Shanthi Shopping Complex, Thiruvenkadam Salai, Sankarankoil Tirunelveli Road, Sankarankovil - 627756 (OPPOSITE BUS STAND)",
+      "agency_company": "Multiple agents listed on JustDial",
+      "specialization": "Commercial rentals, office space, property management",
+      "years_experience": "Various",
+      "website": null,
+      "listing_profile_url": "https://www.justdial.com/Sankarankovil/Estate-Agents-For-Commercial-Rental/nct-10192647",
+      "typical_listings": "Commercial shops, office rooms, rental properties near bus stand",
+      "listing_count_estimate": "Multiple agents/brokers (exact count unknown - page blocked)",
+      "data_source": "JustDial search snippets + previous agent reports (agent4-justdial.json)",
+      "data_confidence": "MEDIUM - Address confirmed from multiple sources, but individual agent names and phones require manual JustDial access",
+      "notes": "CRITICAL LOCATION: These agents are located OPPOSITE the bus stand in Shanthi Shopping Complex - the most strategically important location for finding commercial shop rentals near New Bus Stand. Must visit JustDial page manually in a browser to get individual agent phone numbers."
+    },
+    {
+      "id": "BRK-006",
+      "name": "Nellai Land Promoters",
+      "phone_numbers": ["Visit JustDial page for phone number"],
+      "office_address": "Sankarankovil, Tamil Nadu (exact address not confirmed)",
+      "agency_company": "Nellai Land Promoters",
+      "specialization": "Office space rentals, commercial property, land promotion",
+      "years_experience": "Not specified",
+      "website": null,
+      "listing_profile_url": "https://www.justdial.com/Sankarankovil/Offices-On-Rent/nct-11209271",
+      "typical_listings": "Office rooms and commercial properties on rent in Sankarankovil",
+      "listing_count_estimate": "Multiple listings (exact count unknown)",
+      "data_source": "JustDial search snippets (search1.json, search5.json, search6.json)",
+      "data_confidence": "LOW-MEDIUM - Name confirmed in search snippets but no phone number available",
+      "notes": "Listed on JustDial under 'Commercial Spaces & Office Rentals' for Sankarankovil. Name suggests they may also operate in Tirunelveli (Nellai = Tirunelveli)."
+    },
+    {
+      "id": "BRK-007",
+      "name": "Medose (Shanthi Complex)",
+      "phone_numbers": ["Visit JustDial page for phone number"],
+      "office_address": "Shanthi Complex, Near New Bus Stand, Melapalayam / Sankarankovil area",
+      "agency_company": "Medose",
+      "specialization": "Office rooms for rent",
+      "years_experience": "Not specified",
+      "website": null,
+      "listing_profile_url": "https://www.justdial.com/Sankarankovil/Offices-On-Rent/nct-11209271",
+      "typical_listings": "Office rooms for rent near New Bus Stand",
+      "listing_count_estimate": "Office room rentals",
+      "data_source": "JustDial search snippets (search1.json, search6.json)",
+      "data_confidence": "LOW-MEDIUM - Name confirmed but no phone or full address",
+      "notes": "Located at Shanthi Complex near New Bus Stand. Offers office rooms for rent. JustDial page must be accessed manually for contact details."
+    },
+    {
+      "id": "BRK-008",
+      "name": "Rameshkumar",
+      "phone_numbers": ["Contact via Quikr listing"],
+      "office_address": "Thachanallur area, Tirunelveli District",
+      "agency_company": "Individual (No Brokerage)",
+      "specialization": "Commercial shop/godown rental",
+      "years_experience": "Not specified",
+      "website": null,
+      "listing_profile_url": "https://www.quikr.com/homes/property/commercial-for-rent-in-sankarankovil-tirunelveli-cid_1106383-lid_20821",
+      "typical_listings": "4000 sq.ft commercial shop/godown in Thachanallur at Rs 80,000/month",
+      "listing_count_estimate": "1 listing found",
+      "data_source": "Quikr.com (directly scraped)",
+      "data_confidence": "MEDIUM - Name confirmed on Quikr but phone requires visiting listing page",
+      "notes": "Listed as 'Individual' not broker. Thachanallur is ~50km from Sankarankovil but on the Tirunelveli corridor. Large commercial space available."
+    },
+    {
+      "id": "BRK-009",
+      "name": "Thangaraj Sivanaintha Perumal",
+      "phone_numbers": ["Contact via Quikr listing"],
+      "office_address": "Alangulam area, Tirunelveli District",
+      "agency_company": "Individual (No Brokerage)",
+      "specialization": "Commercial shop rental",
+      "years_experience": "Not specified",
+      "website": null,
+      "listing_profile_url": "https://www.quikr.com/homes/property/commercial-for-rent-in-sankarankovil-tirunelveli-cid_1106383-lid_20821",
+      "typical_listings": "1500 sq.ft commercial shop in Alangulam at Rs 18,000/month",
+      "listing_count_estimate": "1 listing found",
+      "data_source": "Quikr.com (directly scraped)",
+      "data_confidence": "MEDIUM - Name confirmed on Quikr but phone requires visiting listing page",
+      "notes": "Listed as 'Individual'. Alangulam is ~20km from Sankarankovil. RENT SHOP listing at affordable rate."
+    }
+  ],
+  "verified_phone_numbers_summary": [
+    {
+      "phone": "9600891919",
+      "name": "360 Promoters / R.G. Complex",
+      "source": "Instagram + Facebook (multiple confirmations)",
+      "confidence": "HIGH"
+    },
+    {
+      "phone": "9629099026",
+      "name": "Bilal Builders and Real Estate",
+      "source": "Instagram",
+      "confidence": "MEDIUM"
+    },
+    {
+      "phone": "8929175327",
+      "name": "S. Selvaraj (Owner - Highway Shops)",
+      "source": "RealEstateIndia.com (scraped)",
+      "confidence": "HIGH"
+    },
+    {
+      "phone": "8508505602",
+      "name": "Property Dealer (Facebook)",
+      "source": "Facebook public post",
+      "confidence": "MEDIUM"
+    }
+  ],
+  "platforms_requiring_manual_access": [
+    {
+      "platform": "JustDial",
+      "url": "https://www.justdial.com/Sankarankovil/Estate-Agents-For-Commercial-Rental/nct-10192647",
+      "expected_data": "Multiple estate agents with phone numbers, addresses, ratings",
+      "access_status": "BLOCKED - Returns Access Denied via automated tools",
+      "how_to_access": "Visit directly in Chrome/Firefox browser on desktop",
+      "broker_cluster_address": "No 43 Shanthi Shopping Complex, Opposite Bus Stand, Sankarankovil - 627756"
+    },
+    {
+      "platform": "JustDial (Offices)",
+      "url": "https://www.justdial.com/Sankarankovil/Offices-On-Rent/nct-11209271",
+      "expected_data": "Nellai Land Promoters, Medose (Shanthi Complex) - phone numbers and addresses",
+      "access_status": "BLOCKED",
+      "how_to_access": "Visit directly in browser"
+    },
+    {
+      "platform": "99acres",
+      "url": "https://www.99acres.com/commercial-shops-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "expected_data": "Agent/broker contact numbers on individual listing pages",
+      "access_status": "BLOCKED - Returns Access Denied",
+      "how_to_access": "Visit directly in Chrome/Firefox. Look for 'Contact Agent' buttons on listings."
+    },
+    {
+      "platform": "99acres (Agent Directory)",
+      "url": "https://www.99acres.com/real-estate-agents-in-sankarankovil-tirunelveli-ffid",
+      "expected_data": "Directory of real estate agents serving Sankarankovil area",
+      "access_status": "BLOCKED",
+      "how_to_access": "Visit directly in browser"
+    },
+    {
+      "platform": "Housing.com",
+      "url": "https://housing.com/commercial/rent/commercial-shop-for-rent-in-sankarankoil-tenkasi-tirunelveli-MA4P6l6bhqj9f6kdxnq",
+      "expected_data": "Verified listings with broker contact information",
+      "access_status": "BLOCKED",
+      "how_to_access": "Visit directly in browser"
+    },
+    {
+      "platform": "OLX India",
+      "url": "https://www.olx.in/sankarankoil_g4059208/for-rent-shops-offices_c1731",
+      "expected_data": "3,655+ shops & offices for rent with owner/dealer phone numbers",
+      "access_status": "JS-rendered - requires browser",
+      "how_to_access": "Visit in browser. Use 'listed_by_eq_dealer' filter for broker listings."
+    },
+    {
+      "platform": "Facebook Marketplace",
+      "url": "https://www.facebook.com/marketplace/search/?query=shop+for+rent+sankarankovil",
+      "expected_data": "Local property listings from individuals and small brokers",
+      "access_status": "Requires login",
+      "how_to_access": "Login to Facebook and search marketplace. Also check local groups."
+    },
+    {
+      "platform": "Quikr",
+      "url": "https://www.quikr.com/homes/property/commercial-for-rent-in-sankarankovil-tirunelveli-cid_1106383-lid_20821",
+      "expected_data": "3 commercial properties for rent (broker listed)",
+      "access_status": "PARTIALLY ACCESSIBLE",
+      "how_to_access": "Accessible but phone numbers require clicking 'Contact' on listing"
+    }
+  ],
+  "listing_portal_urls": {
+    "ninety_nine_acres": {
+      "shops_rent": "https://www.99acres.com/commercial-shops-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "commercial_property": "https://www.99acres.com/commercial-property-for-rent-in-tenkasi-tirunelveli-ffid",
+      "commercial_land": "https://www.99acres.com/commercial-land-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "agents_directory": "https://www.99acres.com/real-estate-agents-in-sankarankovil-tirunelveli-ffid"
+    },
+    "justdial": {
+      "estate_agents_commercial": "https://www.justdial.com/Sankarankovil/Estate-Agents-For-Commercial-Rental/nct-10192647",
+      "offices_on_rent": "https://www.justdial.com/Sankarankovil/Offices-On-Rent/nct-11209271",
+      "real_estate_agents": "https://www.justdial.com/Sankarankovil/Real-Estate-Agents/nct-10192643",
+      "property_dealers_rent": "https://www.justdial.com/Sankarankovil/Property-Dealers-For-Rent/nct-10882090"
+    },
+    "housing_com": {
+      "commercial_shops": "https://housing.com/commercial/rent/commercial-shop-for-rent-in-sankarankoil-tenkasi-tirunelveli-MA4P6l6bhqj9f6kdxnq",
+      "commercial_property": "https://housing.com/commercial/rent/commercial-property-for-rent-in-sankarankoil-tenkasi-tirunelveli-P6l6bhqj9f6kdxnq",
+      "office_space": "https://housing.com/commercial/rent/commercial-office-space-for-rent-in-sankarankoil-tenkasi-tirunelveli-MA3P6l6bhqj9f6kdxnq"
+    },
+    "olx": {
+      "shops_offices": "https://www.olx.in/sankarankoil_g4059208/for-rent-shops-offices_c1731",
+      "shops_offices_by_dealer": "https://www.olx.in/sankarankoil_g4059208/_c1731?filter=listed_by_eq_dealer",
+      "all_properties": "https://www.olx.in/sankarankoil_g4059208/properties_c3"
+    },
+    "magicbricks": {
+      "shops_rent": "https://www.magicbricks.com/shops-for-rent-in-tirunelveli-pppfr",
+      "verified_listing_near_bus_stand": "https://www.magicbricks.com/propertyDetails/700-Sq-ft-Commercial-Shop-FOR-Rent-Sankarankoil-in-Tirunelveli&id=4d423134373135343837"
+    },
+    "quikr": {
+      "commercial_by_broker": "https://www.quikr.com/homes/property/commercial-for-rent-by-broker-in-sankarankovil-tirunelveli-cid_1106383-lid_20821"
+    },
+    "realestateindia": {
+      "sankarankoil_commercial": "https://www.realestateindia.com/tirunelveli-property/commercial-property-for-rent-in-sankarankoil.htm"
+    }
+  },
+  "nearby_area_brokers_for_reference": [
+    {
+      "name": "Apollo Pharmacy (Sankarankovil)",
+      "phone": "7949291234",
+      "address": "No.9, North Car Street, Sankaran Kovil - 627756",
+      "type": "Pharmacy (commercial business reference)",
+      "source": "Apollo Pharmacy website"
+    },
+    {
+      "name": "Sri Venkateshwara Jewellers",
+      "phone": "9942807312",
+      "address": "Sankarankovil, Tirunelveli District",
+      "type": "Jewellery Showroom (commercial business reference)",
+      "source": "Facebook business page"
+    },
+    {
+      "name": "TVS Siva Auto Agencies",
+      "phone": "9355036373 / 9442422568",
+      "address": "No 396, Rajapalayam Main Road, Sankarankovil, Tirunelveli - 627756",
+      "type": "Automobile Dealership (commercial landmark on Rajapalayam Road)",
+      "source": "TVS Motor dealer directory"
+    },
+    {
+      "name": "Nandhini Super Market",
+      "phone": "9865489515",
+      "address": "No 24, Geethalaya Road, Opp To AVA Complex, Sankarankovil, Tamil Nadu",
+      "type": "Supermarket (commercial business reference)",
+      "source": "TheFindShop directory"
+    }
+  ],
+  "action_plan_for_finding_more_brokers": [
+    {
+      "priority": 1,
+      "action": "Visit JustDial in a real browser for estate agent listings",
+      "url": "https://www.justdial.com/Sankarankovil/Estate-Agents-For-Commercial-Rental/nct-10192647",
+      "expected_result": "Multiple agent names, phone numbers, and addresses - especially agents at Shanthi Shopping Complex opposite bus stand"
+    },
+    {
+      "priority": 2,
+      "action": "Call 360 Promoters at 9600891919",
+      "note": "Confirmed broker with shop rentals at R.G. Complex on Rajapalayam Road. Ask for additional commercial space options."
+    },
+    {
+      "priority": 3,
+      "action": "Call Bilal Builders at 9629099026",
+      "note": "Active real estate promoter in Sankarankovil. Ask about commercial shop availability near bus stand."
+    },
+    {
+      "priority": 4,
+      "action": "Call Selvaraj at 8929175327",
+      "note": "Owner with 2 shops on Tirunelveli-Sankarankovil highway. Direct deal, no brokerage."
+    },
+    {
+      "priority": 5,
+      "action": "Visit OLX.in and filter by 'Dealer' listings",
+      "url": "https://www.olx.in/sankarankoil_g4059208/_c1731?filter=listed_by_eq_dealer",
+      "expected_result": "Dealer/broker listed properties with phone numbers"
+    },
+    {
+      "priority": 6,
+      "action": "Physically visit Shanthi Shopping Complex opposite bus stand",
+      "address": "No 43, Shanthi Shopping Complex, Sankarankovil - 627756",
+      "note": "Multiple estate agents operate from this complex. Walk-in visits are common in small towns."
+    },
+    {
+      "priority": 7,
+      "action": "Check local Tamil newspaper classifieds",
+      "newspapers": ["Dinamalar", "Dina Thanthi", "Dinakaran"],
+      "note": "Many Sankarankovil brokers advertise in daily Tamil newspapers' property sections"
+    },
+    {
+      "priority": 8,
+      "action": "Post requirement on local WhatsApp groups",
+      "note": "Post 'WANTED: Commercial shop for rent near New Bus Stand, Sankarankovil' in local community WhatsApp groups"
+    },
+    {
+      "priority": 9,
+      "action": "Walk around New Bus Stand and Rajapalayam Road",
+      "note": "Look for 'TO LET' boards on shops - many small-town commercial rentals are never listed online"
+    },
+    {
+      "priority": 10,
+      "action": "Login to Facebook and check local groups",
+      "groups": ["Sankarankovil Buy & Sell", "Tirunelveli District Properties", "Tenkasi Real Estate"],
+      "note": "Local Facebook groups often have the most current rental listings from small brokers"
+    }
+  ],
+  "summary": {
+    "total_brokers_agents_found": 9,
+    "brokers_with_confirmed_phone": 4,
+    "brokers_requiring_manual_justdial_access": 3,
+    "individual_landlords_noted": 2,
+    "platforms_with_sankarankovil_listings": 8,
+    "key_physical_location": "Shanthi Shopping Complex, Opposite Bus Stand, Sankarankovil - 627756",
+    "primary_contact_recommendation": "Call 360 Promoters at 9600891919 (R.G. Complex, Rajapalayam Road)",
+    "secondary_contact_recommendation": "Visit JustDial manually to get agent phone numbers at Shanthi Shopping Complex"
+  }
+}
