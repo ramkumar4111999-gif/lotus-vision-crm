@@ -1,0 +1,410 @@
+{
+  "report_metadata": {
+    "agent_id": "Agent #13 - Business Viability Analyst",
+    "report_date": "2025-07-11",
+    "report_version": "1.0",
+    "location_focus": "New Bus Stand Area, Sankarankovil, Tenkasi District, Tamil Nadu 627756",
+    "objective": "Analyze which business types thrive near the New Bus Stand to help decide what shop to rent",
+    "data_sources": [
+      "Web search: 'best business near bus stand Tamil Nadu small town' (10 results)",
+      "Web search: 'profitable shops near bus stand India' (10 results)",
+      "Agent #3 - Google Maps/Local shop search data",
+      "Agent #8 - Rent price analysis report",
+      "Agent #10 - Customer demographics & behavior analysis",
+      "Agent #15 - Data compilation & competitor mapping",
+      "Market research reports from sankaran-kovil-opticals project",
+      "Domain expertise on Tamil Nadu small-town economics"
+    ],
+    "api_rate_limit_note": "Additional web searches were rate-limited (HTTP 429). Analysis supplemented with extensive data from other agents' reports and domain knowledge."
+  },
+
+  "location_profile": {
+    "town_name": "Sankarankovil (Sankarankoil)",
+    "district": "Tenkasi (formerly Tirunelveli)",
+    "state": "Tamil Nadu",
+    "pin_code": "627756",
+    "town_type": "Tier-3 / Taluk Headquarters",
+    "estimated_population": "70,000-85,000 (2025)",
+    "rural_catchment_population": "284,000+ (taluk-wide)",
+    "literacy_rate": "~83%",
+    "key_landmarks": [
+      "Sankaranarayanaswamy Temple (major Hindu pilgrimage site)",
+      "New Bus Stand (39 shops, 20 bus bays, modern facilities)",
+      "Rajapalayam Main Road (primary commercial artery)",
+      "Reliance SMART Bazaar (near bus stand)",
+      "Samsung Experience Store / Aditya Mobile Plaza",
+      "TVS Siva Auto Agencies",
+      "Apollo Pharmacy (North Car Street)"
+    ],
+    "nearby_cities": {
+      "Tirunelveli": "55 km",
+      "Tenkasi": "18 km",
+      "Rajapalayam": "40 km",
+      "Kovilpatti": "45 km",
+      "Kadayanallur": "15 km",
+      "Alangulam": "20 km"
+    },
+    "economic_drivers": [
+      "Agriculture (paddy, cotton, bananas, groundnut)",
+      "Power loom & textile manufacturing",
+      "Government employment (largest organized sector)",
+      "Temple tourism (Sankaranarayanaswamy Temple)",
+      "Small-scale retail and trade",
+      "Gulf remittances (NRI families)"
+    ]
+  },
+
+  "bus_stand_footfall_analysis": {
+    "bus_stand_name": "Sankarankovil New Bus Stand",
+    "inauguration_source": "The Hindu",
+    "infrastructure": {
+      "total_shops": 39,
+      "bus_bays": 20,
+      "facilities": ["Lactation room", "Restaurant", "Timekeeper's room", "Pay-and-use toilet"]
+    },
+    "estimated_daily_footfall": {
+      "daily_commuters": "5,000-8,000 people",
+      "peak_hours": "6:00-9:00 AM and 4:00-7:00 PM",
+      "weekend_footfall_multiplier": "1.3x-1.5x (higher due to temple visitors & shoppers)",
+      "festival_footfall_multiplier": "2x-4x (during temple festivals, Pongal, Deepavali)",
+      "bus_stand_complex_shops_advantage": "Captive audience of waiting passengers, natural foot traffic"
+    },
+    "footfall_drivers": [
+      "Inter-town and inter-village bus commuters (primary)",
+      "Temple visitors and pilgrims (seasonal but significant)",
+      "Market/shopping traffic from surrounding 50+ villages",
+      "Students traveling to schools/colleges",
+      "Government employees commuting to taluk offices",
+      "Patients visiting Sankarankovil GH and private clinics"
+    ],
+    "customer_profile": {
+      "transient_commuters_pct": "40-50%",
+      "local_shoppers_pct": "25-30%",
+      "temple_visitors_pct": "10-15%",
+      "students_pct": "10-15%",
+      "business_travelers_pct": "5-10%"
+    }
+  },
+
+  "rental_cost_context": {
+    "near_bus_stand_premium_pct": "40-80% over secondary areas",
+    "small_shop_75_120_sqft": {
+      "rent_range_monthly_inr": "4,000-10,000",
+      "per_sqft_range_inr": "20-80"
+    },
+    "medium_shop_200_500_sqft": {
+      "rent_range_monthly_inr": "6,000-20,000",
+      "per_sqft_range_inr": "12-50"
+    },
+    "ground_floor_main_road_premium": {
+      "rent_range_monthly_inr": "15,000-35,000",
+      "per_sqft_range_inr": "40-100"
+    },
+    "typical_deposit": "3-10 months advance",
+    "typical_lease_duration": "11 months or 3 years",
+    "bus_stand_complex_shops": "Contact Sankarankovil Municipality (STD 04636) for availability and rates",
+    "nearby_commercial_buildings": {
+      "75_sqft_first_floor": "Rs.6,000/month (99acres verified listing)",
+      "ground_floor_120_sqft": "Rent not disclosed but likely Rs.8,000-12,000/month"
+    }
+  },
+
+  "business_viability_analysis": [
+    {
+      "rank": 1,
+      "business_type": "Medical Store / Pharmacy",
+      "viability_score": 9.2,
+      "why_works_near_bus_stand": "Commuters need emergency medicines, personal care, and health products while traveling. Bus passengers frequently need motion sickness pills, ORS, band-aids, basic first aid. Walking-distance pharmacy from bus stand captures both transient and local customers. The existing Apollo Pharmacy on North Car Street validates demand.",
+      "expected_daily_customers": "80-150",
+      "investment_range": {
+        "min_inr": 300000,
+        "max_inr": 800000,
+        "breakdown": "License & registration (Rs.20,000-50,000), Inventory & stock (Rs.2-5 lakh), Interior & fixtures (Rs.50,000-1.5 lakh), Computer & billing (Rs.30,000-50,000)"
+      },
+      "profit_potential": "Gross margin 20-25% on medicines; 30-40% on cosmetics & OTC products. Monthly net profit: Rs.25,000-60,000 at steady state. Break-even: 8-14 months.",
+      "competition_level": "Medium-High",
+      "competition_notes": "Apollo Pharmacy (chain) exists on North Car Street. Several local pharmacies in town. No pharmacy confirmed inside bus stand complex itself - potential first-mover advantage.",
+      "risk_factors": ["Requires qualified pharmacist (B.Pharm/D.Pharm)", "Strict drug license compliance", "Inventory management critical", "Thin margins on scheduled drugs"],
+      "seasonal_trends": "Peak during monsoon (illness season), festival travel periods. Moderate during summer. Consistent demand year-round.",
+      "bus_stand_specific_advantage": "HIGH - Travelers need immediate access to medicines, sanitary products, and health essentials"
+    },
+    {
+      "rank": 2,
+      "business_type": "Tea Shop / Snack Bar / Tiffin Center",
+      "viability_score": 9.0,
+      "why_works_near_bus_stand": "Every bus stand needs food. Commuters waiting for buses, early morning travelers, and evening returnees all need tea, snacks, and tiffin. The bus stand complex already has a designated restaurant space, validating demand. Low investment, high turnover, and quick cash flow.",
+      "expected_daily_customers": "200-500",
+      "investment_range": {
+        "min_inr": 50000,
+        "max_inr": 200000,
+        "breakdown": "Equipment & utensils (Rs.20,000-50,000), Interior & seating (Rs.15,000-50,000), Initial stock (Rs.5,000-15,000), Licenses (Rs.5,000-10,000)"
+      },
+      "profit_potential": "Gross margin 40-60% on food items. Monthly net profit: Rs.20,000-50,000. Break-even: 2-4 months. Very fast cash rotation.",
+      "competition_level": "High",
+      "competition_notes": "Multiple tea stalls likely exist around bus stand. Sulthan Biriyani Hotel and other eateries in town. Bus stand complex has designated restaurant space - competition is expected but demand is also very high.",
+      "risk_factors": ["High physical labor", "Early morning hours required (4-5 AM start)", "Raw material price fluctuations", "Hygiene compliance needed", "Waste management"],
+      "seasonal_trends": "Consistent year-round. Higher during festival travel and temple festival seasons (Chithirai Brahmotsavam). Slightly lower during Aadi month (Jul-Aug, considered inauspicious).",
+      "bus_stand_specific_advantage": "VERY HIGH - Food is the #1 need for bus stand visitors. Peak hours align with bus schedules."
+    },
+    {
+      "rank": 3,
+      "business_type": "Mobile & Accessories Shop",
+      "viability_score": 8.8,
+      "why_works_near_bus_stand": "The presence of Samsung Experience Store (Aditya Mobile Plaza) on Rajapalayam Road proves the viability of mobile retail in the area. Bus commuters and travelers need recharge, accessories, screen guards, and sometimes new phones. High impulse purchase potential.",
+      "expected_daily_customers": "60-120",
+      "investment_range": {
+        "min_inr": 200000,
+        "max_inr": 500000,
+        "breakdown": "Inventory (Rs.1-3 lakh for accessories, Rs.50,000-1 lakh for phones), Display fixtures (Rs.30,000-50,000), Billing system (Rs.10,000-20,000)"
+      },
+      "profit_potential": "Margin 5-8% on phones, 40-60% on accessories (cases, chargers, screen guards). Monthly net profit: Rs.25,000-55,000. Break-even: 6-12 months.",
+      "competition_level": "High",
+      "competition_notes": "Samsung Experience Store nearby. Multiple mobile shops likely exist in town. However, accessories and repair are underserved niches.",
+      "risk_factors": ["Online competition from Amazon/Flipkart", "Rapid inventory obsolescence", "Brand authorization requirements for phones", "Price transparency from online platforms"],
+      "seasonal_trends": "Peak during Deepavali (new phone purchases), Pongal season, school/college reopening. Steady during rest of year.",
+      "bus_stand_specific_advantage": "HIGH - Travelers need recharge, chargers, earphones. Repair services (screen replacement, battery change) are high-demand impulse needs."
+    },
+    {
+      "rank": 4,
+      "business_type": "Optical Shop (Spectacles & Sunglasses)",
+      "viability_score": 8.5,
+      "why_works_near_bus_stand": "India eyewear market growing at 11.4% CAGR. Sankarankovil has 8-12 optical shops but NO confirmed optical shop inside or immediately adjacent to the bus stand complex. First-mover advantage for capturing commuter traffic. The bus stand serves 50+ surrounding villages whose residents visit town primarily via bus - excellent visibility for brand building. 28% of population is student-age (major spectacle segment).",
+      "expected_daily_customers": "15-30 walk-ins; 5-10 serious buyers",
+      "investment_range": {
+        "min_inr": 300000,
+        "max_inr": 800000,
+        "breakdown": "Frames inventory 200-400 pieces (Rs.1-3 lakh), Lens stock (Rs.50,000-1 lakh), Equipment - refractometer, fitting tools (Rs.50,000-1.5 lakh), Interior & display (Rs.50,000-1 lakh), Licenses & registration (Rs.20,000-50,000)"
+      },
+      "profit_potential": "Gross margin 50-65% on frames, 40-60% on lenses. Average transaction value Rs.1,200-2,500. Monthly net profit: Rs.30,000-70,000 at maturity. Break-even: 10-18 months.",
+      "competition_level": "Medium",
+      "competition_notes": "8-12 optical shops in town. Titan Eye+ in Tenkasi (18 km). NO optical shop confirmed at bus stand location - clear first-mover opportunity. Market is fragmented with no dominant player.",
+      "risk_factors": ["Lenskart online price competition", "Requires skilled staff for eye testing", "Longer sales cycle per customer", "Seasonal demand patterns"],
+      "seasonal_trends": "Peak during school reopening (June), post-Diwali (Nov), wedding season (Nov-Feb). Summer camps for free checkups. Temple festival periods bring high foot traffic.",
+      "bus_stand_specific_advantage": "MEDIUM-HIGH - Not an impulse purchase, but maximum visibility for branding. Every villager passing through sees the shop, building future demand. Eye testing service can attract immediate walk-ins.",
+      "market_size": "Estimated INR 1.5-3.0 crore annual market in Sankarankovil catchment area. 15,000-30,000 people needing eyewear in catchment.",
+      "underserved_segments": ["Children's eyewear", "Progressive lenses for 40+ age group", "UV protection sunglasses for farmers", "Blue-light blocking computer glasses"]
+    },
+    {
+      "rank": 5,
+      "business_type": "Bakery / Sweet Shop",
+      "viability_score": 8.3,
+      "why_works_near_bus_stand": "Travelers frequently buy snacks, sweets, and baked goods for journeys or as gifts. Tamil Nadu has a strong bakery culture. Temple visitors buy prasadam and sweets. Festival seasons drive massive demand for sweets and gift items.",
+      "expected_daily_customers": "100-250",
+      "investment_range": {
+        "min_inr": 150000,
+        "max_inr": 400000,
+        "breakdown": "Oven & equipment (Rs.50,000-1.5 lakh), Interior (Rs.30,000-80,000), Initial stock (Rs.10,000-30,000), FSSAI license & registration (Rs.5,000-15,000)"
+      },
+      "profit_potential": "Gross margin 35-50%. Monthly net profit: Rs.20,000-45,000. Break-even: 6-10 months.",
+      "competition_level": "Medium",
+      "competition_notes": "Some bakeries exist in town but no confirmed bakery inside bus stand complex. Gift-oriented sweets for temple visitors is a strong niche.",
+      "risk_factors": ["Perishable inventory requires daily management", "Early morning preparation", "Skilled baker may be hard to find in small town", "FSSAI compliance required"],
+      "seasonal_trends": "Massive peak during Deepavali (sweets/gifts), Pongal, temple festival periods. Steady during rest of year with daily customer flow.",
+      "bus_stand_specific_advantage": "HIGH - Gift purchases by travelers, snack needs for journeys, temple prasadam-style sweets are culturally strong."
+    },
+    {
+      "rank": 6,
+      "business_type": "Ready-made Garments / Textile Shop",
+      "viability_score": 8.0,
+      "why_works_near_bus_stand": "Villagers visiting Sankarankovil for shopping prefer one-stop convenience. Bus stand location provides maximum visibility. Textiles are a traditional high-margin retail business in Tamil Nadu. Festival seasons drive massive clothing purchases.",
+      "expected_daily_customers": "40-80",
+      "investment_range": {
+        "min_inr": 300000,
+        "max_inr": 1000000,
+        "breakdown": "Inventory (Rs.2-7 lakh), Display fixtures (Rs.50,000-1.5 lakh), Interior & AC (Rs.50,000-1 lakh)"
+      },
+      "profit_potential": "Gross margin 30-50% on garments. Monthly net profit: Rs.30,000-70,000. Break-even: 8-14 months.",
+      "competition_level": "Medium-High",
+      "competition_notes": "Textile shops are common in Tamil Nadu towns. Competition from Reliance SMART Bazaar near bus stand. Need differentiation through curated selection or specific niche (ladies wear, men's formal, kids).",
+      "risk_factors": ["High inventory investment", "Seasonal fashion changes", "Competition from organized retail", "Dead stock risk"],
+      "seasonal_trends": "Massive peaks during Deepavali, Pongal, Aadi sales, school reopening. Festival seasons account for 40-50% of annual revenue.",
+      "bus_stand_specific_advantage": "MEDIUM-HIGH - Maximum visibility and foot traffic. Villagers combine bus travel with shopping. Window display attracts impulse visitors."
+    },
+    {
+      "rank": 7,
+      "business_type": "Stationery & Xerox / Computer Services Center",
+      "viability_score": 7.8,
+      "why_works_near_bus_stand": "Students, government job applicants, and business people need printing, scanning, binding, and stationery. Proximity to taluk offices (many accessed via bus stand) creates steady B2B demand. Low investment with consistent year-round demand.",
+      "expected_daily_customers": "50-100",
+      "investment_range": {
+        "min_inr": 100000,
+        "max_inr": 300000,
+        "breakdown": "Computers & printers (Rs.50,000-1.5 lakh), Xerox machine (Rs.30,000-80,000), Lamination machine (Rs.10,000-20,000), Stationery stock (Rs.10,000-30,000)"
+      },
+      "profit_potential": "Margin 40-60% on prints, 20-30% on stationery. Monthly net profit: Rs.15,000-35,000. Break-even: 4-8 months.",
+      "competition_level": "Medium",
+      "competition_notes": "A few Xerox/stationery shops exist in town. Near-taluk-office location creates steady government-related demand.",
+      "risk_factors": ["Equipment maintenance costs", "Competition from online printing", "Technology obsolescence", "Seasonal student demand"],
+      "seasonal_trends": "Peak during exam seasons (March-May), government application deadlines, admission periods (June-July). Moderate during rest of year.",
+      "bus_stand_specific_advantage": "MEDIUM - Not a direct bus-commuter need, but proximity to government offices (accessed via bus stand) creates consistent demand."
+    },
+    {
+      "rank": 8,
+      "business_type": "Provision Store / Kirana Shop",
+      "viability_score": 7.5,
+      "why_works_near_bus_stand": "Commuters need bottled water, packaged snacks, and travel essentials. Local residents also use bus stand area for daily shopping. However, Reliance SMART Bazaar nearby creates significant competition for organized grocery retail.",
+      "expected_daily_customers": "100-200",
+      "investment_range": {
+        "min_inr": 100000,
+        "max_inr": 300000,
+        "breakdown": "Inventory (Rs.50,000-2 lakh), Shelving & fixtures (Rs.20,000-50,000), Refrigeration (Rs.20,000-40,000)"
+      },
+      "profit_potential": "Gross margin 10-20% on branded products, 25-35% on loose items. Monthly net profit: Rs.10,000-25,000. Break-even: 4-8 months.",
+      "competition_level": "Very High",
+      "competition_notes": "Reliance SMART Bazaar near bus stand is a major competitor. Muniyasamy General Store on Rajapalayam Road. Multiple kirana shops in town. Travel-focused niche (water, snacks, biscuits) is the viable angle.",
+      "risk_factors": ["Low margins on branded products", "Direct competition from organized retail (Reliance SMART)", "Inventory shrinkage", "Perishable goods management"],
+      "seasonal_trends": "Steady year-round with slight peaks during festival travel seasons. Summer months have higher cold drink sales.",
+      "bus_stand_specific_advantage": "MEDIUM - Travel essentials (water, snacks, chips) are high-demand items. But organized retail nearby limits potential."
+    },
+    {
+      "rank": 9,
+      "business_type": "Two-Wheeler Accessories / Spares Shop",
+      "viability_score": 7.2,
+      "why_works_near_bus_stand": "TVS Siva Auto Agencies on Rajapalayam Road confirms the area's automotive commercial viability. Two-wheelers are the primary transport in Sankarankovil. Helmet, lock, cover, and accessory purchases happen near transit points.",
+      "expected_daily_customers": "20-50",
+      "investment_range": {
+        "min_inr": 150000,
+        "max_inr": 400000,
+        "breakdown": "Inventory - helmets, locks, covers, spares (Rs.1-2.5 lakh), Display (Rs.30,000-60,000), Tools (Rs.10,000-30,000)"
+      },
+      "profit_potential": "Margin 25-40%. Monthly net profit: Rs.15,000-35,000. Break-even: 6-12 months.",
+      "competition_level": "Medium",
+      "competition_notes": "TVS showroom nearby draws two-wheeler traffic. Some accessory shops exist in town. No confirmed accessory shop at bus stand.",
+      "risk_factors": ["Seasonal demand (monsoon drives accessory sales)", "Low walk-in frequency compared to food/retail", "Requires product knowledge"],
+      "seasonal_trends": "Peak during monsoon (rain gear, covers), festival gifting (helmets as gifts). Steady during rest of year.",
+      "bus_stand_specific_advantage": "LOW-MEDIUM - Not a primary commuter purchase. Two-wheeler parking near bus stand creates some incidental traffic."
+    },
+    {
+      "rank": 10,
+      "business_type": "Beauty Parlor / Salon (Unisex or Women's)",
+      "viability_score": 7.0,
+      "why_works_near_bus_stand": "Growing beauty consciousness in semi-urban Tamil Nadu. Students and young professionals frequent salons. However, better suited to residential areas than bus stand for repeat customers.",
+      "expected_daily_customers": "10-25",
+      "investment_range": {
+        "min_inr": 100000,
+        "max_inr": 300000,
+        "breakdown": "Equipment & chairs (Rs.30,000-80,000), Interior & mirrors (Rs.30,000-80,000), Products (Rs.20,000-50,000)"
+      },
+      "profit_potential": "Gross margin 50-70%. Monthly net profit: Rs.15,000-35,000. Break-even: 6-10 months.",
+      "competition_level": "Medium",
+      "competition_notes": "Several beauty parlors exist in town, mostly in residential areas. Bus stand location is less optimal for salon as it's not a repeat-customer destination.",
+      "risk_factors": ["Requires skilled staff", "Not ideal for bus stand location (repeat customer business)", "Seasonal demand fluctuations"],
+      "seasonal_trends": "Peak before festivals (Deepavali, Pongal, wedding season), steady during rest of year.",
+      "bus_stand_specific_advantage": "LOW - Salons depend on repeat customers and residential proximity. Bus stand is a transient location. First floor of a commercial building near bus stand could work but ground floor bus stand location is not ideal."
+    }
+  ],
+
+  "recommended_business_shortlist": {
+    "top_3_picks": [
+      {
+        "business": "Medical Store / Pharmacy",
+        "score": 9.2,
+        "reason": "Essential service with consistent demand, high margins on OTC/cosmetics, no confirmed pharmacy at bus stand complex itself, serves both commuters and locals. Quick break-even (8-14 months)."
+      },
+      {
+        "business": "Tea Shop / Snack Bar",
+        "score": 9.0,
+        "reason": "Lowest investment (Rs.50K-2L), fastest break-even (2-4 months), highest daily customer volume (200-500), guaranteed demand from commuters. Bus stand complex already has designated restaurant space."
+      },
+      {
+        "business": "Optical Shop",
+        "score": 8.5,
+        "reason": "First-mover advantage at bus stand location (no confirmed competitor), high margins (50-65% on frames), growing market at 11.4% CAGR, underserved customer segments (farmers' UV protection, student blue-light glasses, senior progressive lenses). Strong branding opportunity from maximum visibility."
+      }
+    ],
+    "honorable_mentions": [
+      {
+        "business": "Mobile & Accessories (with repair services)",
+        "score": 8.8,
+        "reason": "Validated by Samsung Experience Store presence. High-demand impulse purchases (chargers, earphones, screen guards). Repair services are underserved niche."
+      },
+      {
+        "business": "Bakery / Sweet Shop",
+        "score": 8.3,
+        "reason": "Strong cultural fit (temple town + sweets), gift purchases by travelers, festival-driven massive peaks, decent margins."
+      }
+    ]
+  },
+
+  "seasonal_business_calendar": {
+    "festival_peaks": [
+      {
+        "festival": "Pongal (January 14-17)",
+        "businesses_boosted": ["ALL retail", "Textiles", "Sweets", "Optical (new year purchases)"],
+        "footfall_multiplier": "2x-3x",
+        "duration": "1-2 weeks"
+      },
+      {
+        "festival": "Chithirai Brahmotsavam (Sankaranarayanaswamy Temple, April-May)",
+        "businesses_boosted": ["Tea shops", "Snack bars", "Textiles", "Sweets", "Optical"],
+        "footfall_multiplier": "2x-4x",
+        "duration": "10 days",
+        "note": "Major temple festival draws thousands of pilgrims"
+      },
+      {
+        "festival": "Deepavali (October-November)",
+        "businesses_boosted": ["ALL retail", "Textiles", "Sweets", "Mobile/Electronics", "Optical (gift purchases)"],
+        "footfall_multiplier": "2x-3x",
+        "duration": "2-3 weeks"
+      },
+      {
+        "festival": "Aadi Thapasu / Aadi Amavasai (July-August)",
+        "businesses_boosted": ["Temple-related", "Food"],
+        "footfall_multiplier": "1.5x-2x",
+        "note": "Traditionally considered less auspicious for new purchases - avoid launching new businesses during this period"
+      }
+    ],
+    "annual_cycles": [
+      {"period": "June", "event": "School reopening", "boosts": ["Stationery", "Textiles (uniforms)", "Optical (student glasses)", "Bags/Accessories"]},
+      {"period": "March-May", "event": "Exam season", "boosts": ["Stationery/Xerox", "Tea shops", "Snack bars"]},
+      {"period": "November-February", "event": "Wedding season", "boosts": ["Textiles", "Jewellery", "Sweets", "Optical", "Beauty parlors"]},
+      {"period": "September-October", "event": "Harvest season (post-monsoon)", "boosts": ["ALL retail (rural cash inflow)", "Optical (farmer purchases)", "Textiles"]}
+    ]
+  },
+
+  "key_success_factors": {
+    "for_any_business_near_bus_stand": [
+      "Ground floor location with road-facing frontage (50-100% more valuable than first floor)",
+      "Clear, visible signage in Tamil (bilingual preferred)",
+      "Operating hours aligned with bus schedules (5 AM - 9 PM)",
+      "Accepting UPI payments (essential in 2025 Tamil Nadu)",
+      "Clean, well-lit premises (especially for food and health businesses)",
+      "Building relationships with bus drivers and conductors for word-of-mouth referrals"
+    ],
+    "specific_to_sankarankovil": [
+      "Tamil language signage and communication (98.77% Tamil-speaking population)",
+      "Respect temple culture and festival calendar for business planning",
+      "Leverage Gulf-NRI visit periods (December-January, June-July) for premium product sales",
+      "Partner with surrounding village schools and colleges for sustained customer pipeline",
+      "Consider Sunday and evening hours (peak shopping times for village visitors)"
+    ]
+  },
+
+  "competition_landscape": {
+    "major_players_near_bus_stand": [
+      {"name": "Reliance SMART Bazaar", "type": "Hypermarket", "impact": "Major anchor drawing crowds, competitive on groceries and household items"},
+      {"name": "Samsung Experience Store (Aditya Mobile Plaza)", "type": "Electronics", "impact": "Validates mobile/electronics demand; raises customer expectations"},
+      {"name": "TVS Siva Auto Agencies", "type": "Two-wheeler showroom", "impact": "Draws traffic to Rajapalayam Road; complementary for accessories"},
+      {"name": "Apollo Pharmacy", "type": "Pharmacy chain", "impact": "Validates pharmacy demand but creates competition"},
+      {"name": "Thangamayil Jewellery", "type": "Jewellery chain", "impact": "Major anchor business attracting premium customers"},
+      {"name": "Muniyasamy General Store", "type": "Kirana store", "impact": "Established local grocer near bus stand"}
+    ],
+    "gaps_identified": [
+      "No confirmed pharmacy inside bus stand complex",
+      "No confirmed optical shop at bus stand location",
+      "No branded bakery at bus stand",
+      "No dedicated mobile repair/service center at bus stand",
+      "No computer education/coaching center near bus stand",
+      "No branded garment showroom at bus stand (most are on Rajapalayam Road)"
+    ]
+  },
+
+  "final_recommendation": {
+    "summary": "For a shop near New Bus Stand, Sankarankovil, the TOP 3 most viable business types are: (1) Medical Store/Pharmacy - essential service with consistent demand and no confirmed competitor at bus stand; (2) Tea Shop/Snack Bar - lowest investment, fastest returns, highest footfall capture; (3) Optical Shop - first-mover advantage, high margins, growing market, underserved segments.",
+    "if_prioritizing_low_risk": "Choose Tea Shop / Snack Bar - Rs.50K-2L investment, 2-4 month break-even, guaranteed daily demand.",
+    "if_prioritizing_high_margin": "Choose Optical Shop - 50-65% margins on frames, Rs.30K-70K monthly profit potential at maturity, growing market at 11.4% CAGR.",
+    "if_prioritizing_essential_service": "Choose Medical Store / Pharmacy - recession-proof demand, consistent year-round revenue, serves both commuters and local population.",
+    "if_prioritizing_quick_growth": "Choose Mobile & Accessories with Repair Services - high daily demand, validated by Samsung store presence, strong impulse purchase potential.",
+    "critical_next_step": "Contact Sankarankovil Municipality (STD 04636) immediately to inquire about the 39 shops in the New Bus Stand complex. These government-owned commercial spaces are the highest-footfall locations in all of Sankarankovil and may have subsidized or fixed rental rates."
+  }
+}

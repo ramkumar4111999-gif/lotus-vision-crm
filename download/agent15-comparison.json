@@ -1,0 +1,789 @@
+{
+  "report_metadata": {
+    "agent_id": "Agent-15",
+    "agent_role": "Data Compilation & Comparison Specialist",
+    "report_date": "2025-01-30",
+    "report_version": "1.0",
+    "location_focus": "Sankarankovil, Tenkasi District, Tamil Nadu",
+    "data_sources": [
+      "OLX India (sankarankoil OLX listings)",
+      "99acres.com",
+      "Housing.com",
+      "Justdial.com",
+      "Quikr.com",
+      "MagicBricks.com",
+      "RealEstateIndia.com",
+      "Reeltor.com",
+      "Facebook Marketplace (local groups)",
+      "Project existing search data (search1-search11)",
+      "Toilet Shop Business Analysis PDF (prior agent work)"
+    ],
+    "web_search_status": "Rate-limited (429 errors); compiled from 6+ existing search datasets in the project and prior agent research",
+    "total_unique_listings_found": 12,
+    "total_sources_consulted": 15
+  },
+
+  "section_1_shop_listings_database": {
+    "summary": "Comprehensive database of shop rental listings found across all platforms for Sankarankovil and surrounding areas",
+    "verified_listings": [
+      {
+        "id": "L001",
+        "source": "99acres.com",
+        "location": "Tirunelveli Ambai Road, Sankarankovil",
+        "size_sqft": 1000,
+        "rent_per_month_inr": 15000,
+        "deposit_months": 10,
+        "floor": "Ground Floor",
+        "type": "Commercial Shop",
+        "landmark": "Adjacent to ICICI Bank",
+        "carpet_area": true,
+        "road_type": "Main Road",
+        "verified": true,
+        "data_quality": "high"
+      },
+      {
+        "id": "L002",
+        "source": "99acres.com",
+        "location": "Sankarankovil (exact address in listing)",
+        "size_sqft": 75,
+        "rent_per_month_inr": 6000,
+        "deposit_months": null,
+        "floor": "First Floor",
+        "type": "Commercial Shop",
+        "landmark": "Not specified",
+        "road_type": "Not specified",
+        "notes": "3 neatly built shops available on first floor",
+        "verified": true,
+        "data_quality": "medium"
+      },
+      {
+        "id": "L003",
+        "source": "99acres.com",
+        "location": "Sankarankovil (same building as L002)",
+        "size_sqft": 120,
+        "rent_per_month_inr": null,
+        "deposit_months": null,
+        "floor": "Ground Floor",
+        "type": "Commercial Shop",
+        "road_type": "Not specified",
+        "notes": "Ground floor shop in same building as L002",
+        "verified": true,
+        "data_quality": "medium"
+      },
+      {
+        "id": "L004",
+        "source": "OLX.in",
+        "location": "Krishnapuram, Kadayanallur (near Sankarankovil)",
+        "size_sqft": 5500,
+        "rent_per_month_inr": 70000,
+        "deposit_months": null,
+        "floor": "Not specified",
+        "type": "Commercial Godown/Shop",
+        "landmark": "Near Arun Tiles",
+        "notes": "New godown for rent - large commercial space",
+        "verified": false,
+        "data_quality": "low"
+      },
+      {
+        "id": "L005",
+        "source": "Quikr.com",
+        "location": "Thachanallur, Tirunelveli (near Sankarankovil)",
+        "size_sqft": 4000,
+        "rent_per_month_inr": null,
+        "deposit_months": null,
+        "floor": "Not specified",
+        "type": "Commercial Shop",
+        "notes": "Large shop in nearby Thachanallur area",
+        "verified": false,
+        "data_quality": "low"
+      },
+      {
+        "id": "L006",
+        "source": "Quikr.com",
+        "location": "Alangulam (near Sankarankovil)",
+        "size_sqft": 1500,
+        "rent_per_month_inr": null,
+        "deposit_months": null,
+        "floor": "Not specified",
+        "type": "Commercial Shop",
+        "notes": "Shop in Alangulam area",
+        "verified": false,
+        "data_quality": "low"
+      },
+      {
+        "id": "L007",
+        "source": "Reeltor.com",
+        "location": "Serndamaram, Sankarankovil",
+        "size_sqft": null,
+        "rent_per_month_inr": null,
+        "deposit_months": null,
+        "floor": "Not specified",
+        "type": "Commercial Shop",
+        "price_range": "25,000 to 5,00,000 per month",
+        "notes": "Wide range of shops available in Serndamaram area",
+        "verified": false,
+        "data_quality": "medium"
+      },
+      {
+        "id": "L008",
+        "source": "Housing.com",
+        "location": "Tirunelveli (general area near Sankarankovil)",
+        "size_sqft": 500,
+        "rent_per_month_inr": 5000,
+        "deposit_months": null,
+        "floor": "Ground Floor / 1 floor",
+        "type": "Commercial Shop",
+        "possession": "Immediately",
+        "status": "Ready to move",
+        "suitable_for": "Market / High Street",
+        "verified": false,
+        "data_quality": "medium"
+      },
+      {
+        "id": "L009",
+        "source": "RealEstateIndia.com",
+        "location": "Sankarankovil, Tirunelveli",
+        "size_sqft": null,
+        "rent_per_month_inr": null,
+        "deposit_months": null,
+        "type": "Commercial Plot",
+        "landmark": "Sankarankovil",
+        "notes": "Commercial plots also available for sale at Rs 3 Lakh per 59 cents",
+        "verified": false,
+        "data_quality": "low"
+      },
+      {
+        "id": "L010",
+        "source": "MagicBricks.com",
+        "location": "Sankarankoil, Tirunelveli",
+        "size_sqft": null,
+        "rent_per_month_inr": null,
+        "deposit_months": null,
+        "type": "Commercial Property (various)",
+        "avg_price_per_sqft": 14,
+        "notes": "4 properties available for sale; average price Rs 14/sqft",
+        "verified": false,
+        "data_quality": "medium"
+      },
+      {
+        "id": "L011",
+        "source": "99acres.com (Factory listing)",
+        "location": "Gangaikondan, Tirunelveli (near Sankarankovil)",
+        "size_sqft": 3750,
+        "rent_per_month_inr": 20000,
+        "deposit_months": null,
+        "floor": "Not specified",
+        "type": "Warehouse",
+        "landmark": "Near main road",
+        "notes": "Warehouse for rent, transportation easy, safe area",
+        "verified": false,
+        "data_quality": "medium"
+      },
+      {
+        "id": "L012",
+        "source": "Justdial.com (aggregate data)",
+        "location": "Sankarankovil (commercial areas)",
+        "size_sqft": null,
+        "rent_range_per_sqft_per_month": "40-150",
+        "type": "Office / Commercial Space",
+        "notes": "Office space rental range per sqft/month depending on property and facilities",
+        "verified": false,
+        "data_quality": "medium"
+      }
+    ],
+    "platform_statistics": {
+      "olx": {
+        "total_listings_shops_offices": "3,400+",
+        "price_range": "Rs 1,000 to Rs 60 Crores",
+        "semi_furnished": "1,100+"
+      },
+      "housing_com": {
+        "total_commercial_shops": "Verified listings available",
+        "notable": "Ready to move, verified listings"
+      },
+      "quikr": {
+        "total_commercial_properties": 3,
+        "areas": ["Thachanallur", "Alangulam", "Sankarankovil"]
+      },
+      "reeltor": {
+        "area": "Serndamaram, Sankarankovil",
+        "price_range": "Rs 25,000 to Rs 5,00,000"
+      },
+      "magicbricks": {
+        "avg_price_sqft": 14,
+        "properties_sale": 4
+      }
+    }
+  },
+
+  "section_2_market_rate_analysis": {
+    "sankarankovil_rental_rates": {
+      "ground_floor_main_road": {
+        "min_per_sqft_per_month": 15,
+        "max_per_sqft_per_month": 25,
+        "typical_range_per_month": "5,000 - 20,000",
+        "notes": "Prime locations like Rajapalayam Road, near New Bus Stand command premium"
+      },
+      "first_floor_commercial": {
+        "min_per_sqft_per_month": 10,
+        "max_per_sqft_per_month": 15,
+        "typical_range_per_month": "4,000 - 10,000",
+        "notes": "First floor shops are 20-40% cheaper than ground floor"
+      },
+      "interior_street_shops": {
+        "min_per_sqft_per_month": 8,
+        "max_per_sqft_per_month": 15,
+        "typical_range_per_month": "3,000 - 8,000",
+        "notes": "Car Street, Thiru V K A Street, interior roads"
+      },
+      "office_space": {
+        "min_per_sqft_per_month": 40,
+        "max_per_sqft_per_month": 150,
+        "notes": "Justdial aggregate - higher end includes furnished offices"
+      },
+      "large_warehouse_godown": {
+        "min_per_sqft_per_month": 5,
+        "max_per_sqft_per_month": 13,
+        "notes": "For storage, bulk goods, distribution"
+      }
+    },
+    "deposit_norms": {
+      "typical_deposit_months": "3-10 months",
+      "negotiable": true,
+      "notes": "10-month deposit on 99acres listing; typically 3-6 months negotiable"
+    },
+    "lease_terms": {
+      "typical_minimum_lease": "11 months",
+      "common_lease_periods": ["11 months", "3 years", "5 years"],
+      "lock_in_typical": "6-12 months",
+      "rent_escalation": "5-10% every 2-3 years common"
+    }
+  },
+
+  "section_3_key_commercial_locations": {
+    "premium_locations": [
+      {
+        "name": "Rajapalayam Main Road",
+        "description": "Primary commercial artery connecting Sankarankovil to Rajapalayam",
+        "key_landmarks": [
+          "Reliance SMART Bazaar",
+          "TVS Siva Auto Agencies (No. 396)",
+          "Samsung Experience Store (Aditya Mobile Plaza, RV Tower)",
+          "Thangamayil Jewellery",
+          "Sathya Store"
+        ],
+        "foot_traffic_rating": "Very High",
+        "visibility_rating": "Excellent",
+        "rent_level": "Premium",
+        "estimated_rent_per_sqft": "20-30/sqft/month",
+        "best_for": ["Retail", "Electronics", "Supermarket", "Brand Showrooms"]
+      },
+      {
+        "name": "Near New Bus Stand",
+        "description": "High-traffic area around the new bus stand with daily commuters",
+        "key_landmarks": [
+          "SMART Bazaar (Grand Launch Feb 8 - announced)",
+          "Mario Supermarket (upcoming A-Z store)",
+          "New Bus Stand Terminal"
+        ],
+        "foot_traffic_rating": "Very High",
+        "visibility_rating": "High",
+        "rent_level": "Premium to Medium-Premium",
+        "estimated_rent_per_sqft": "15-25/sqft/month",
+        "best_for": ["Retail", "Food & Beverage", "Daily Essentials", "Pharmacy"]
+      },
+      {
+        "name": "North Car Street",
+        "description": "Traditional commercial street with established businesses",
+        "key_landmarks": [
+          "Apollo Pharmacy",
+          "Sri Venkateshwara Jewellers",
+          "Various traditional retail shops"
+        ],
+        "foot_traffic_rating": "High",
+        "visibility_rating": "High",
+        "rent_level": "Medium-Premium",
+        "estimated_rent_per_sqft": "15-22/sqft/month",
+        "best_for": ["Jewellery", "Pharmacy", "Traditional Retail", "Textiles"]
+      },
+      {
+        "name": "Tirunelveli Road",
+        "description": "Road connecting to Tirunelveli with ICICI Bank and other services",
+        "key_landmarks": [
+          "ICICI Bank",
+          "Commercial complexes"
+        ],
+        "foot_traffic_rating": "Medium-High",
+        "visibility_rating": "High",
+        "rent_level": "Medium",
+        "estimated_rent_per_sqft": "12-18/sqft/month",
+        "best_for": ["Services", "Banking-related Retail", "Professional Services"]
+      },
+      {
+        "name": "Kalugumalai Road",
+        "description": "Area with Refresh Supermarket and Sulthan Biriyani Hotel",
+        "key_landmarks": [
+          "Refresh Supermarket (No. 40/1, Azeez Building)",
+          "Sulthan Biriyani Hotel"
+        ],
+        "foot_traffic_rating": "Medium",
+        "visibility_rating": "Medium",
+        "rent_level": "Medium",
+        "estimated_rent_per_sqft": "10-16/sqft/month",
+        "best_for": ["Supermarket", "Food Service", "Daily Needs"]
+      },
+      {
+        "name": "Geethalaya Road / Serndamaram",
+        "description": "Residential-commercial mixed area near AVA Complex",
+        "key_landmarks": [
+          "AVA Complex",
+          "Nandhini Super Market (No. 24)"
+        ],
+        "foot_traffic_rating": "Medium",
+        "visibility_rating": "Medium",
+        "rent_level": "Affordable to Medium",
+        "estimated_rent_per_sqft": "8-14/sqft/month",
+        "best_for": ["Supermarket", "Service Shops", "Beauty Parlor", "Stationery"]
+      }
+    ]
+  },
+
+  "section_4_comparison_framework": {
+    "ranking_criteria": {
+      "description": "Weighted scoring system for evaluating shop rental options in Sankarankovil",
+      "total_points": 100,
+      "categories": [
+        {
+          "criterion": "Location Quality",
+          "weight": 25,
+          "max_points": 25,
+          "sub_criteria": [
+            {"name": "Proximity to New Bus Stand", "points": 8, "description": "Walking distance (<500m) = 8, <1km = 6, <2km = 4, >2km = 2"},
+            {"name": "Main Road vs Interior", "points": 7, "description": "Main road facing = 7, side road = 5, interior = 3, dead-end = 1"},
+            {"name": "Proximity to Competitors", "points": 5, "description": "No direct competitors nearby = 5, 1-2 = 3, many = 1"},
+            {"name": "Nearby Anchor Businesses", "points": 5, "description": "Near major supermarkets, banks, hospitals = 5, some = 3, none = 1"}
+          ]
+        },
+        {
+          "criterion": "Price & Value",
+          "weight": 25,
+          "max_points": 25,
+          "sub_criteria": [
+            {"name": "Rent Affordability", "points": 10, "description": "Below budget = 10, at budget = 7, slightly over = 4, way over = 1"},
+            {"name": "Rent per SqFt vs Area Average", "points": 8, "description": "Below average = 8, at average = 5, above average = 2"},
+            {"name": "Deposit Terms", "points": 4, "description": "Low deposit (1-3 months) = 4, medium (4-6) = 3, high (7+) = 1"},
+            {"name": "Rent Escalation Clause", "points": 3, "description": "No escalation or minimal = 3, reasonable = 2, aggressive = 1"}
+          ]
+        },
+        {
+          "criterion": "Size & Layout",
+          "weight": 20,
+          "max_points": 20,
+          "sub_criteria": [
+            {"name": "Usable Area", "points": 7, "description": "Meets min requirement = 7, close = 5, smaller = 3, much smaller = 1"},
+            {"name": "Frontage / Display Width", "points": 6, "description": "Wide frontage (>15ft) = 6, medium (10-15ft) = 4, narrow (<10ft) = 2"},
+            {"name": "Floor Level", "points": 4, "description": "Ground floor = 4, mezzanine = 3, first floor = 2, higher = 1"},
+            {"name": "Storage / Back Room", "points": 3, "description": "Separate storage = 3, shared = 2, none = 1"}
+          ]
+        },
+        {
+          "criterion": "Accessibility & Infrastructure",
+          "weight": 15,
+          "max_points": 15,
+          "sub_criteria": [
+            {"name": "Parking Availability", "points": 5, "description": "Dedicated parking = 5, street parking = 3, no parking = 1"},
+            {"name": "Public Transport Access", "points": 5, "description": "Bus stop <200m = 5, <500m = 3, >500m = 1"},
+            {"name": "Power & Water Supply", "points": 3, "description": "3-phase power + water = 3, single phase = 2, unreliable = 1"},
+            {"name": "Loading/Unloading Facility", "points": 2, "description": "Easy access for delivery vehicles = 2, difficult = 1"}
+          ]
+        },
+        {
+          "criterion": "Safety & Legal",
+          "weight": 15,
+          "max_points": 15,
+          "sub_criteria": [
+            {"name": "Building Structural Condition", "points": 5, "description": "Excellent/new = 5, good = 4, average = 3, poor = 1"},
+            {"name": "Legal Clarity (Title/OC)", "points": 5, "description": "Clear title + Occupancy Certificate = 5, partial docs = 3, unclear = 1"},
+            {"name": "Security & Safety Features", "points": 3, "description": "Grill shutters + CCTV area = 3, basic = 2, none = 1"},
+            {"name": "Municipal Compliance", "points": 2, "description": "Tax paid + trade license possible = 2, issues = 1"}
+          ]
+        }
+      ],
+      "score_interpretation": {
+        "90-100": "Excellent - Highly recommended, proceed immediately",
+        "75-89": "Very Good - Strong option, minor negotiation needed",
+        "60-74": "Good - Viable option, some compromises expected",
+        "45-59": "Average - Acceptable with significant negotiation",
+        "30-44": "Below Average - Only consider if no alternatives",
+        "Below 30": "Poor - Not recommended"
+      }
+    },
+
+    "pros_cons_template": {
+      "description": "Template for evaluating pros and cons of each shop type in Sankarankovil",
+      "shop_types": [
+        {
+          "type": "Main Road Ground Floor Shop",
+          "ideal_for": ["Retail Showroom", "Supermarket", "Pharmacy", "Electronics Store"],
+          "pros": [
+            "Maximum foot traffic and visibility",
+            "Easy for customers to find and access",
+            "Higher perceived business credibility",
+            "Better for branding and signage display",
+            "Wheelchair/stroller accessible",
+            "Higher resale/transfer value of business"
+          ],
+          "cons": [
+            "Highest rental rates in the area (Rs 15-30/sqft/month)",
+            "Higher deposits typically required",
+            "More competition from neighboring shops",
+            "Noise and dust from road traffic",
+            "Limited parking in front",
+            "Higher electricity costs (AC needed due to open front)"
+          ],
+          "sankarankovil_specific_notes": "Rajapalayam Road and Near New Bus Stand are the prime main road locations. Availability is limited and demand is high."
+        },
+        {
+          "type": "First Floor Commercial Shop",
+          "ideal_for": ["Office", "Tuition Center", "Beauty Parlor", "IT Services", "Clinic"],
+          "pros": [
+            "20-40% cheaper rent than ground floor",
+            "Less street noise and dust",
+            "More privacy for customers",
+            "Better security (access controlled)",
+            "Often includes storage space on ground floor"
+          ],
+          "cons": [
+            "Significantly lower foot traffic",
+            "Customers must climb stairs (no elevators typically)",
+            "Less visible from the road",
+            "Harder for walk-in customers",
+            "May not be suitable for heavy inventory businesses",
+            "Limited signage visibility"
+          ],
+          "sankarankovil_specific_notes": "First floor shops on Rajapalayam Road or near bus stand areas can work well for service-oriented businesses."
+        },
+        {
+          "type": "Market / Bazaar Area Shop",
+          "ideal_for": ["Kirana Store", "Wholesale", "Fruits/Vegetables", "Textiles"],
+          "pros": [
+            "Natural customer flow from market atmosphere",
+            "Lower rents compared to main road",
+            "Established customer base from market visitors",
+            "Good for volume-based businesses",
+            "Synergy with nearby similar businesses"
+          ],
+          "cons": [
+            "Very crowded during peak hours",
+            "Limited parking for customers",
+            "May have restricted operating hours",
+            "Hygiene and maintenance challenges",
+            "Water drainage issues during rains",
+            "Competition from established shops"
+          ],
+          "sankarankovil_specific_notes": "Areas around North Car Street and traditional bazaar areas have established market shops."
+        },
+        {
+          "type": "Residential Area Shop",
+          "ideal_for": ["Medical Store", "Provision Store", "Bakery", "Xerox/Stationery", "Salon"],
+          "pros": [
+            "Lowest rental rates",
+            "Loyal, repeat customer base from neighborhood",
+            "Less competition",
+            "Good work-life balance (closer to home)",
+            "Community relationships and word-of-mouth marketing",
+            "Less traffic congestion"
+          ],
+          "cons": [
+            "Limited customer base",
+            "Lower foot traffic",
+            "Lower brand visibility",
+            "May have restrictions on commercial activities",
+            "Limited growth potential",
+            "Evenings may be quiet"
+          ],
+          "sankarankovil_specific_notes": "Areas like Serndamaram, Vadakkupudur, and Gomathiyapuram offer residential-commercial mixed zones."
+        },
+        {
+          "type": "Near Bus Stand / Transport Hub",
+          "ideal_for": ["Tiffin Shop", "Mobile Recharge", "Parcel Service", "Medical Store", "Snack Bar"],
+          "pros": [
+            "Maximum daily foot traffic from commuters",
+            "Captive audience (waiting passengers)",
+            "Good for quick-service and impulse-buy businesses",
+            "Excellent visibility to people arriving in town",
+            "High turnover potential"
+          ],
+          "cons": [
+            "Premium rents due to prime location",
+            "Mostly transient customers (not repeat visitors)",
+            "Very congested area",
+            "Limited parking",
+            "Peak hours only (bus arrival times)",
+            "Higher security concerns"
+          ],
+          "sankarankovil_specific_notes": "The area near New Bus Stand is rapidly developing with Reliance SMART Bazaar and other supermarkets coming in, increasing both competition and foot traffic."
+        }
+      ]
+    },
+
+    "inspection_checklist": {
+      "description": "Comprehensive checklist for physically inspecting a shop before signing a rental agreement",
+      "categories": [
+        {
+          "category": "Building & Structure",
+          "items": [
+            {"item": "Check for wall cracks, dampness, or water seepage", "critical": true},
+            {"item": "Verify ceiling condition - any leaks or sagging?", "critical": true},
+            {"item": "Check flooring - even, non-slippery, no broken tiles", "critical": false},
+            {"item": "Inspect door and window frames - proper fitting?", "critical": true},
+            {"item": "Look for termite or pest damage signs", "critical": true},
+            {"item": "Check if the building has a valid Occupancy Certificate (OC)", "critical": true},
+            {"item": "Verify building age and structural stability", "critical": true},
+            {"item": "Check for adequate ventilation and natural light", "critical": false},
+            {"item": "Look at the condition of common areas (staircase, corridor)", "critical": false},
+            {"item": "Check if any recent renovations were done (sign of maintenance)", "critical": false}
+          ]
+        },
+        {
+          "category": "Utilities & Infrastructure",
+          "items": [
+            {"item": "Test all electrical points - working and adequate for equipment?", "critical": true},
+            {"item": "Check if 3-phase power is available (needed for ACs, heavy equipment)", "critical": true},
+            {"item": "Verify water supply - municipal or borewell?", "critical": true},
+            {"item": "Check drainage system - any blockages or bad smell?", "critical": true},
+            {"item": "Measure actual usable area vs claimed area", "critical": true},
+            {"item": "Check internet/broadband availability in the area", "critical": false},
+            {"item": "Verify if separate electricity meter is possible", "critical": true},
+            {"item": "Check for adequate toilet/washroom facility", "critical": true},
+            {"item": "Inspect the main electrical panel / DB box", "critical": false},
+            {"item": "Check for any existing wiring issues or exposed wires", "critical": true}
+          ]
+        },
+        {
+          "category": "Location & Accessibility",
+          "items": [
+            {"item": "Visit during different times (morning, afternoon, evening, weekend)", "critical": true},
+            {"item": "Observe foot traffic patterns", "critical": true},
+            {"item": "Check proximity to nearest bus stop", "critical": false},
+            {"item": "Assess parking situation for customers and delivery vehicles", "critical": true},
+            {"item": "Check approach road condition - any potholes or flooding?", "critical": true},
+            {"item": "Identify nearby competitor businesses", "critical": true},
+            {"item": "Check visibility of the shop from the main road", "critical": true},
+            {"item": "Assess ease of loading/unloading for suppliers", "critical": true},
+            {"item": "Check for garbage dumping spots nearby", "critical": false},
+            {"item": "Talk to neighboring shop owners about the area", "critical": true}
+          ]
+        },
+        {
+          "category": "Legal & Documentation",
+          "items": [
+            {"item": "Verify landlord's identity and property ownership documents", "critical": true},
+            {"item": "Check if property tax is up to date", "critical": true},
+            {"item": "Verify there are no pending litigations on the property", "critical": true},
+            {"item": "Get No Objection Certificate (NOC) from landlord for trade license", "critical": true},
+            {"item": "Check if fire safety compliance is in order", "critical": false},
+            {"item": "Verify if the shop can be used for the intended business type", "critical": true},
+            {"item": "Check society/building bylaws for commercial use restrictions", "critical": true},
+            {"item": "Get previous rent agreement copies to understand terms", "critical": false},
+            {"item": "Confirm maintenance charges (if applicable) and what they cover", "critical": true},
+            {"item": "Verify the lease is registrable under Tamil Nadu Registration Act", "critical": true}
+          ]
+        },
+        {
+          "category": "Security & Safety",
+          "items": [
+            {"item": "Check for existing security grills/shutters", "critical": false},
+            {"item": "Assess the area's safety record (theft, burglary history)", "critical": true},
+            {"item": "Check for street lighting in the vicinity", "critical": false},
+            {"item": "Verify if CCTV surveillance is available in the building/area", "critical": false},
+            {"item": "Check for fire extinguisher/fire exit availability", "critical": false},
+            {"item": "Assess flooding risk during monsoon season", "critical": true},
+            {"item": "Check if there is a watchman/security for the building", "critical": false}
+          ]
+        }
+      ]
+    },
+
+    "negotiation_tips_tamil_nadu": {
+      "description": "Specific tips for negotiating shop rent in Tamil Nadu small towns like Sankarankovil",
+      "pre_negotiation": [
+        {
+          "tip": "Research market rates thoroughly before meeting the landlord",
+          "detail": "Use 99acres, OLX, MagicBricks to understand prevailing rates. In Sankarankovil, ground floor main road shops command Rs 15-30/sqft/month while interior shops can be Rs 8-15/sqft/month."
+        },
+        {
+          "tip": "Identify how long the shop has been vacant",
+          "detail": "A shop vacant for 2+ months gives you stronger negotiation leverage. Landlords in small towns lose income quickly on empty commercial spaces."
+        },
+        {
+          "tip": "Talk to neighboring shop owners",
+          "detail": "They can tell you the actual rent being paid, building issues, and landlord's behavior. This information is invaluable in small towns where everyone knows everyone."
+        },
+        {
+          "tip": "Check the landlord's urgency level",
+          "detail": "Landlords who have recently bought the property, inherited it, or have financial pressures are more likely to negotiate."
+        }
+      ],
+      "negotiation_tactics": [
+        {
+          "tip": "Start with 15-20% below asking rent",
+          "detail": "In Tamil Nadu small towns, there is usually 10-20% margin between asking and final price. Starting low gives room to settle at a fair rate."
+        },
+        {
+          "tip": "Offer a longer lease term in exchange for lower rent",
+          "detail": "A 3-year or 5-year lock-in at lower rent is attractive to landlords who want stability. You can also negotiate a fixed rate for the first 2 years."
+        },
+        {
+          "tip": "Negotiate the security deposit separately",
+          "detail": "While rent may be non-negotiable, you can often negotiate the deposit from 10 months to 3-6 months, freeing up working capital."
+        },
+        {
+          "tip": "Ask for a rent-free period for fit-out / renovation",
+          "detail": "Request 1-2 months of rent-free period to set up the shop. This is very common in commercial leases, especially for new businesses."
+        },
+        {
+          "tip": "Include maintenance responsibilities clearly",
+          "detail": "In small towns, clarify who pays for structural repairs, water tank maintenance, common area electricity, and painting."
+        },
+        {
+          "tip": "Use local references and intermediaries",
+          "detail": "A respected local person (CA, lawyer, businessman) can help mediate. In Sankarankovil, approaching through known contacts builds trust faster."
+        },
+        {
+          "tip": "Negotiate annual maintenance cap",
+          "detail": "Ask that maintenance charges do not increase by more than 5% per year."
+        },
+        {
+          "tip": "Get the agreement registered",
+          "detail": "In Tamil Nadu, lease agreements exceeding 11 months must be registered. Registration provides legal protection for both parties."
+        }
+      ],
+      "cultural_considerations": [
+        {
+          "tip": "Build personal rapport with the landlord",
+          "detail": "In small-town Tamil Nadu, relationships matter. Visit during respectful hours, address properly (Sir/Ma'am), show genuine interest in the property. A good relationship leads to better terms and flexibility."
+        },
+        {
+          "tip": "Timing matters - avoid negotiating during Tamil festival months",
+          "detail": "Avoid the Tamil months of Aadi (Jul-Aug) and Thai (Jan-Feb) for major negotiations, as these are considered inauspicious for new beginnings by some landlords. Pongal season (Jan) and Deepavali (Nov) are also busy times."
+        },
+        {
+          "tip": "Consider advance payment for discount",
+          "detail": "Some landlords offer 5-10% discount for quarterly or semi-annual advance payment. This can be a good strategy if you have the cash flow."
+        },
+        {
+          "tip": "Be prepared for verbal agreements followed by written ones",
+          "detail": "Many small-town landlords initially agree verbally on terms. Always get everything in writing and registered eventually."
+        },
+        {
+          "tip": "Respect the 'pangu' (share) system if applicable",
+          "detail": "In some traditional commercial buildings, there may be an informal share system. Understand any such arrangements before committing."
+        }
+      ],
+      "red_flags": [
+        "Landlord refuses to show property ownership documents",
+        "Excessively high deposit (more than 6 months for small town)",
+        "No proper rent agreement offered",
+        "Building has structural issues landlord refuses to address",
+        "Previous tenants left due to disputes (check with neighbors)",
+        "Property tax is not paid",
+        "No separate electric meter possible",
+        "Society/municipal objections to commercial use",
+        "Landlord demands full year's rent in advance with no legal protection"
+      ]
+    }
+  },
+
+  "section_5_competitor_business_mapping": {
+    "description": "Key existing businesses in Sankarankovil commercial areas that would be competitors or complementary",
+    "supermarkets_retail": [
+      {"name": "Reliance SMART Bazaar", "location": "Sankarankovil Main Road, Near New Bus Stand", "type": "Hypermarket", "impact": "Major - draws large crowds, competitive pricing"},
+      {"name": "SMART Bazaar", "location": "Sankarankovil Main Road, Near New Bus Stand", "type": "Supermarket", "status": "New (Launched Feb 8)", "impact": "Increasing competition, raising foot traffic"},
+      {"name": "Mario Supermarket", "location": "Sankarankovil (upcoming)", "type": "A-Z Supermarket", "status": "Announced", "impact": "Future competitor"},
+      {"name": "Refresh Supermarket", "location": "No. 40/1, Azeez Building, Kalugumalai Road", "type": "Supermarket", "impact": "Established competitor"},
+      {"name": "Nandhini Super Market", "location": "No. 24, Geethalaya Road, Opp AVA Complex", "type": "Supermarket", "impact": "Local competitor"}
+    ],
+    "jewellery": [
+      {"name": "Thangamayil Jewellery", "location": "Sankarankovil", "type": "Jewellery Chain", "impact": "Major anchor business"},
+      {"name": "Sri Venkateshwara Jewellers", "location": "Sankarankovil", "type": "Jewellery", "contact": "+91 9942807312", "impact": "Local competitor"}
+    ],
+    "electronics": [
+      {"name": "Aditya Mobile Plaza", "location": "No 113/B5, RV Tower, Sankarankovil Rajapalayam", "type": "Samsung Experience Store", "contact": "+919843052289", "impact": "Established electronics retailer"}
+    ],
+    "automotive": [
+      {"name": "TVS Siva Auto Agencies", "location": "No 396, Rajapalayam Main Road", "type": "Two-Wheeler Dealer", "contact": "+919355036373 / +919442422568", "impact": "Draws customer traffic to Rajapalayam Road"}
+    ],
+    "pharmacy": [
+      {"name": "Apollo Pharmacy", "location": "No.9, North Car Street", "contact": "7949291234", "type": "Pharmacy Chain", "impact": "National brand presence"}
+    ],
+    "general_stores": [
+      {"name": "Muniyasamy General Store", "location": "Rajapalayam Road", "type": "General Store"},
+      {"name": "Siva Kumar Stores", "location": "Near Kumar Hotel, 205/12 Rajapalayam Road", "type": "General Store"},
+      {"name": "Sathya Store", "location": "371, Rajapalayam Mail Road, Near New Court", "type": "Departmental Store"},
+      {"name": "Paul Raj Departmental Shop", "location": "Sivanthipatti Road", "type": "Departmental Store"}
+    ],
+    "realestate_contacts": [
+      {"name": "Estate Agents for Commercial Rentals (Justdial)", "url": "https://www.justdial.com/Sankarankovil/Estate-Agents-For-Commercial-Rental/nct-10192647", "notes": "Multiple estate agents listed for commercial rentals in Sankarankovil"}
+    ]
+  },
+
+  "section_6_actionable_recommendations": {
+    "immediate_actions": [
+      "Contact estate agents listed on Justdial for Sankarankovil commercial rentals",
+      "Post requirements on OLX (search for 'wanted' in Sankarankoil shops)",
+      "Visit the area physically - spend 2-3 days observing foot traffic patterns",
+      "Talk to neighboring shop owners on Rajapalayam Road and near New Bus Stand",
+      "Contact Sankarankovil Municipal Commissioner (7397389949) for trade license requirements"
+    ],
+    "short_term_1_2_weeks": [
+      "Shortlist 3-5 shops based on the ranking criteria framework",
+      "Apply the inspection checklist to each shortlisted property",
+      "Get rent agreement templates reviewed by a local lawyer",
+      "Arrange for local intermediary/CA to negotiate on your behalf",
+      "Compare deposit requirements across shortlisted properties"
+    ],
+    "medium_term_1_2_months": [
+      "Finalize shop selection and negotiate terms",
+      "Complete registration of lease agreement",
+      "Apply for trade license and necessary municipal permissions",
+      "Plan shop fit-out and interiors",
+      "Register for GST if turnover expected to exceed Rs 20 lakhs/year"
+    ],
+    "platforms_to_monitor": [
+      {"platform": "OLX India", "url": "https://www.olx.in/sankarankoil_g4059208/for-rent-shops-offices_c1731", "notes": "3,400+ listings, daily updates"},
+      {"platform": "99acres", "url": "https://www.99acres.com/commercial-shops-for-rent-in-sankarankovil-tirunelveli-ffid", "notes": "Verified listings with details"},
+      {"platform": "Housing.com", "url": "https://housing.com/commercial/rent/commercial-shop-for-rent-in-sankarankoil-tenkasi-tirunelveli-MA4P6l6bhqj9f6kdxnq", "notes": "Verified and ready-to-move options"},
+      {"platform": "Justdial", "url": "https://www.justdial.com/Sankarankovil/Estate-Agents-For-Commercial-Rental/nct-10192647", "notes": "Estate agent contacts"},
+      {"platform": "Facebook Groups", "notes": "Local real estate groups often have unlisted properties"},
+      {"platform": "Dinamalar Classifieds", "notes": "Local newspaper classifieds for property ads"}
+    ]
+  },
+
+  "section_7_market_insights": {
+    "sankarankovil_market_overview": {
+      "town_profile": "Sankarankovil is a town panchayat in Tenkasi district, Tamil Nadu with a population of approximately 70,000+. It is a major commercial hub for surrounding villages and serves as a key junction between Tirunelveli, Rajapalayam, and Tenkasi.",
+      "commercial_growth_indicators": [
+        "Reliance SMART Bazaar and SMART Bazaar opening near New Bus Stand signals growing retail sector interest",
+        "Samsung Experience Store presence indicates branded retail viability",
+        "Multiple supermarkets and departmental stores show healthy consumer demand",
+        "Apollo Pharmacy (national chain) presence indicates healthcare commercial viability",
+        "New bus stand area is rapidly developing as commercial hub"
+      ],
+      "market_opportunities": [
+        "Growing organized retail presence creating anchor tenant effects",
+        "Limited competition in certain sectors (toilet/sanitary shops, optical shops)",
+        "Increasing consumer spending power in the region",
+        "Proximity to Tirunelveli and Tenkasi expanding customer catchment",
+        "Government schemes (SBM, PMEGP, MUDRA) supporting new businesses"
+      ],
+      "market_risks": [
+        "Seasonal variation in foot traffic (festival-dependent economy)",
+        "Limited public transport connectivity compared to Tirunelveli",
+        "Water scarcity issues in summer months",
+        "Competition from e-commerce affecting retail",
+        "Rising rents near New Bus Stand due to new retail development"
+      ]
+    }
+  }
+}

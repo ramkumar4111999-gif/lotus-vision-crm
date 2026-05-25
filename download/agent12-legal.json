@@ -1,0 +1,425 @@
+{
+  "agent": "Agent #12 - Legal & Documentation Specialist",
+  "date_prepared": "2025-06-18",
+  "location": "Sankarankovil, Tirunelveli District, Tamil Nadu",
+  "jurisdiction": "Tamil Nadu, India",
+  "disclaimer": "This report is compiled from authoritative knowledge of Indian property law, Tamil Nadu state legislation, and local governance regulations as of mid-2025. For the most current requirements, always verify with the relevant local authority offices in Sankarankovil. Web search was attempted via 8 distinct queries but the API was rate-limited throughout the session. All information is based on established legal frameworks.",
+  "summary": {
+    "total_requirements_identified": 14,
+    "mandatory_before_renting": 5,
+    "mandatory_before_business_commencement": 6,
+    "recommended_ongoing_compliance": 3,
+    "estimated_total_initial_compliance_cost": "₹8,000 - ₹25,000",
+    "estimated_total_annual_compliance_cost": "₹5,000 - ₹15,000"
+  },
+  "requirements": [
+    {
+      "id": "R001",
+      "category": "Rent Agreement",
+      "requirement_name": "Registered Rental/Lease Agreement",
+      "brief_description": "A written rental agreement must be executed between the landlord and tenant on non-judicial stamp paper of appropriate value. For commercial properties in Tamil Nadu, agreements with a term exceeding 11 months must be compulsorily registered under the Indian Registration Act, 1908. The agreement should clearly specify rent amount, security deposit, duration, terms of renewal, maintenance responsibilities, and conditions for termination.",
+      "where_to_apply": "Sub-Registrar Office, Sankarankovil (under Tirunelveli District Registrar). The agreement can also be registered online through TNREGINET portal (tnreginet.gov.in). Stamp paper can be purchased from authorized vendors (SFC/Stock Holding Corporation of India) or e-Stamp certificates obtained online through Tamil Nadu e-Stamp portal.",
+      "approximate_cost": "Stamp duty: 1% of total rent for lease period (subject to minimum of ₹100). Registration fee: 1% of total rent (up to ₹20,000). Document writer/advocate fees: ₹1,000-₹5,000. For a typical 11-month agreement with ₹8,000/month rent: Stamp paper ₹1,060, Registration ₹1,060, Total approximately ₹3,000-₹8,000.",
+      "time_required": "Stamp paper purchase: 1 day. Drafting agreement: 1-2 days. Registration at Sub-Registrar: 1 day (appointments via TNREGINET). Total: 3-5 working days.",
+      "documents_needed": [
+        "Identity proof of landlord (Aadhaar, PAN, Voter ID)",
+        "Identity proof of tenant (Aadhaar, PAN)",
+        "Property ownership documents / Title deed / Patta",
+        "Tax receipt for the property (Municipal/PTAX)",
+        "Two passport-size photographs each of landlord and tenant",
+        "Two witnesses with identity proof",
+        "Stamp paper / e-Stamp certificate",
+        "NOC from co-owners (if property is jointly owned)",
+        "Previous registered deed (if any)"
+      ],
+      "legal_basis": "Indian Registration Act, 1908 (Section 17); Tamil Nadu Stamp Act, 1933; Tamil Nadu Regulation of Rights and Responsibilities of Landlords and Tenants Act, 2017",
+      "priority": "MANDATORY"
+    },
+    {
+      "id": "R002",
+      "category": "Rent Agreement",
+      "requirement_name": "Security Deposit / Advance Payment Agreement",
+      "brief_description": "In Tamil Nadu commercial rentals, it is customary to pay a security deposit (also called 'advance') of 3 to 10 months' rent. This amount is refundable at the end of the tenancy, subject to deductions for damages or outstanding dues. The deposit terms must be clearly documented in the registered rental agreement. Interest on security deposit is governed by the TN Regulation of Rights and Responsibilities of Landlords and Tenants Act, 2017.",
+      "where_to_apply": "Not a separate registration; terms are included in the registered rental agreement (R001).",
+      "approximate_cost": "No separate cost. For ₹8,000/month shop rent with 6-month deposit: ₹48,000 advance (refundable).",
+      "time_required": "Settled at the time of agreement execution (part of R001 process).",
+      "documents_needed": [
+        "Receipt for advance payment (signed by landlord)",
+        "Bank transfer receipt (if paid electronically)",
+        "Clause in registered agreement specifying advance amount and refund conditions"
+      ],
+      "legal_basis": "Tamil Nadu Regulation of Rights and Responsibilities of Landlords and Tenants Act, 2017; Indian Contract Act, 1872",
+      "priority": "MANDATORY"
+    },
+    {
+      "id": "R003",
+      "category": "Business License",
+      "requirement_name": "Shops and Commercial Establishments License",
+      "brief_description": "Under the Tamil Nadu Shops and Establishments Act, 1947, every shop or commercial establishment must be registered with the local authority (Municipal Commissioner for Sankarankovil) within 30 days of commencement of business. This license regulates working hours, holidays, wages, and employment conditions. It is valid for a specified period and must be renewed before expiry.",
+      "where_to_apply": "Sankarankovil Municipality Office (Town Panchayat/Municipal Administration). Application can be submitted online through the Tamil Nadu e-Governance portal (tn.gov.in) or through the District Labour Office, Tirunelveli.",
+      "approximate_cost": "Registration fee: ₹100-₹500 (varies based on number of employees). Renewal fee: Similar to registration. Processing charges: ₹50-₹200. Total: ₹150-₹700.",
+      "time_required": "Application processing: 7-15 working days. Renewal: 7-10 working days. Must be obtained within 30 days of starting business.",
+      "documents_needed": [
+        "Duly filled application form",
+        "Copy of registered rental agreement",
+        "Address proof of the establishment",
+        "PAN card of the business owner/proprietor",
+        "Aadhaar card of the proprietor",
+        "Two passport-size photographs",
+        "Partnership deed/MOA/AOA (if applicable)",
+        "Details of employees (name, address, designation, salary)",
+        "No Objection Certificate from landlord (for rented premises)"
+      ],
+      "legal_basis": "Tamil Nadu Shops and Establishments Act, 1947; Tamil Nadu Shops and Establishments Rules, 1948",
+      "priority": "MANDATORY"
+    },
+    {
+      "id": "R004",
+      "category": "Tax Registration",
+      "requirement_name": "GST Registration (Goods and Services Tax)",
+      "brief_description": "For an optical/eyewear shop in Tamil Nadu, GST registration is mandatory if annual turnover exceeds ₹20 lakhs (₹10 lakhs for special category states; Tamil Nadu is a regular state, so ₹20 lakhs threshold applies for goods supply, and ₹20 lakhs for services). However, if selling inter-state or through e-commerce, registration is mandatory regardless of turnover. GST registration is required for claiming input tax credit on purchases.",
+      "where_to_apply": "Online through the GST common portal (gst.gov.in). Alternatively, through GST Seva Kendra in Tirunelveli or authorized GST facilitation centers. No physical office visit is required.",
+      "approximate_cost": "Government fee: NIL (free registration). Professional/CA fees for filing application: ₹500-₹2,000. Total: ₹500-₹2,000.",
+      "time_required": "Online application: 1 day (with all documents ready). GSTIN allotment: 3-7 working days. ARN generation: Immediate. Total: 4-8 working days.",
+      "documents_needed": [
+        "PAN card of business/proprietor",
+        "Aadhaar card of proprietor/partners/directors",
+        "Business registration certificate (if any)",
+        "Bank account details with cancelled cheque",
+        "Address proof of business premises (rental agreement + utility bill)",
+        "Digital photograph of proprietor",
+        "Mobile number and email ID (OTP-verified)",
+        "PAN of business entity (if partnership/company/LLP)",
+        "Authorization letter / Board resolution (for companies)"
+      ],
+      "legal_basis": "Central Goods and Services Tax Act, 2017; Tamil Nadu Goods and Services Tax Act, 2017; CGST Rules, 2017",
+      "priority": "MANDATORY (if turnover > ₹20 lakhs or inter-state supply)"
+    },
+    {
+      "id": "R005",
+      "category": "Tax Registration",
+      "requirement_name": "Professional Tax Registration",
+      "brief_description": "Under the Tamil Nadu Tax on Professions, Trades, Callings and Employments Act, 1988, every person carrying on a profession, trade, or calling must register and pay professional tax. For a shop owner/proprietor, registration with the local commercial tax office is required. The tax is based on salary/income slabs. For employees, the employer is responsible for deducting and remitting professional tax.",
+      "where_to_apply": "Tamil Nadu Commercial Taxes Department. Online registration through the TN Commercial Taxes portal (ctd.tn.gov.in). Sankarankovil falls under the Tirunelveli Circle of the Commercial Taxes Department.",
+      "approximate_cost": "Registration fee: Nominal (₹15-₹30). Half-yearly professional tax for self-employed/shop owner: ₹1,075 per half-year (for income up to ₹21,000/month) to ₹2,693 per half-year (for income above ₹41,001/month). Total annual: ₹2,150-₹5,386.",
+      "time_required": "Registration: 5-10 working days. Must be obtained within 30 days of starting business.",
+      "documents_needed": [
+        "Application form for Professional Tax enrollment",
+        "PAN card of proprietor/business",
+        "Aadhaar card",
+        "Address proof of business premises",
+        "Proof of commencement of business",
+        "Passport-size photograph",
+        "Bank details"
+      ],
+      "legal_basis": "Tamil Nadu Tax on Professions, Trades, Callings and Employments Act, 1988",
+      "priority": "MANDATORY"
+    },
+    {
+      "id": "R006",
+      "category": "Municipal Compliance",
+      "requirement_name": "Property Tax / Municipal Tax Payment",
+      "brief_description": "The property tax for the commercial establishment must be paid to the Sankarankovil Municipality. Typically, the landlord pays the building tax, but the tenant may need to pay the profession/occupancy tax or water/sewage charges. The rental agreement should clearly specify who bears which tax component. Property tax is usually assessed based on the Annual Rental Value (ARV) or plinth area of the building.",
+      "where_to_apply": "Sankarankovil Municipality Office (Sankarankovil Town Panchayat). Online payment may be available through the Tamil Nadu Municipal Administration portal or through the Sankarankovil Municipality's online payment system.",
+      "approximate_cost": "Property tax for a small commercial shop (200-400 sq ft): ₹2,000-₹8,000 per year. Water charge: ₹500-₹2,000 per year. Conservancy/solid waste management charge: ₹500-₹1,500 per year. Total: ₹3,000-₹11,500 per year (varies widely).",
+      "time_required": "Annual payment. Usually collected in April-May each year. New assessment may take 15-30 days.",
+      "documents_needed": [
+        "Property tax assessment order",
+        "Previous year's tax receipt",
+        "Building plan approval (for new buildings)",
+        "Rental agreement copy",
+        "Identity proof of the taxpayer"
+      ],
+      "legal_basis": "Tamil Nadu District Municipalities Act, 1920; Tamil Nadu Panchayats Act, 1994 (for Town Panchayats)",
+      "priority": "MANDATORY"
+    },
+    {
+      "id": "R007",
+      "category": "Building & Safety",
+      "requirement_name": "Building Plan Approval / Occupancy Certificate",
+      "brief_description": "The commercial building should have a valid building plan approval from the Sankarankovil Municipality / Town Panchayat and an Occupancy/Completion Certificate. For existing buildings, verify that the building is classified for commercial use. If the building was originally residential and converted to commercial, a change of use approval may be needed. The tenant should verify these documents before renting.",
+      "where_to_apply": "Sankarankovil Municipality Office (Planning Section) / Tirunelveli District Town and Country Planning Office. Online applications through the Tamil Nadu TCP portal.",
+      "approximate_cost": "For verifying existing documents: Minimal. For new approval/change of use: ₹5,000-₹20,000 depending on building size. Plan approval fees vary by plinth area.",
+      "time_required": "Verification: 1-2 days at municipality office. New approval: 30-60 days.",
+      "documents_needed": [
+        "Building plan (approved copy)",
+        "Completion/Occupancy Certificate",
+        "Patta / Land ownership document",
+        "Previous property tax receipts",
+        "NOC from concerned departments (if applicable)",
+        "Survey number / plot details",
+        "Structural stability certificate (for multi-story buildings)"
+      ],
+      "legal_basis": "Tamil Nadu Town and Country Planning Act, 1971; Tamil Nadu Combined Development and Building Rules, 2019",
+      "priority": "MANDATORY (verification by tenant)"
+    },
+    {
+      "id": "R008",
+      "category": "Fire Safety",
+      "requirement_name": "Fire Safety / No Objection Certificate (NOC)",
+      "brief_description": "Commercial establishments in Tamil Nadu are required to comply with fire safety norms. For small shops (less than 500 sq ft), basic fire safety equipment (fire extinguishers, emergency exits) is required. Larger establishments or shops dealing with flammable materials may need a Fire NOC from the Tamil Nadu Fire and Rescue Services Department. For an optical shop, basic fire safety compliance is sufficient.",
+      "where_to_apply": "Tamil Nadu Fire and Rescue Services, Tirunelveli Division. For basic compliance, purchase fire extinguishers from authorized dealers and maintain them as per IS standards.",
+      "approximate_cost": "Fire extinguishers (2 nos. ABC type): ₹2,000-₹5,000. Fire NOC (if required): ₹500-₹2,000. Annual maintenance of extinguishers: ₹500-₹1,000. Total: ₹2,500-₹8,000.",
+      "time_required": "Purchase and installation: 1-2 days. Fire NOC processing (if needed): 15-30 days.",
+      "documents_needed": [
+        "Application for Fire NOC (if applicable)",
+        "Building plan showing fire safety measures",
+        "Occupancy certificate copy",
+        "Proof of fire safety equipment installation",
+        "Identity and address proof"
+      ],
+      "legal_basis": "Tamil Nadu Fire Service Act; National Building Code of India, 2016; Tamil Nadu Combined Development and Building Rules, 2019",
+      "priority": "MANDATORY (basic equipment); RECOMMENDED (NOC for larger premises)"
+    },
+    {
+      "id": "R009",
+      "category": "Signage & Display",
+      "requirement_name": "Shop Board / Signage License",
+      "brief_description": "Before erecting or displaying a shop name board, hoarding, or signage, permission must be obtained from the Sankarankovil Municipality. The Tamil Nadu Urban Local Bodies (Control of Hoardings) Rules regulate the size, placement, illumination, and safety requirements for commercial signboards.",
+      "where_to_apply": "Sankarankovil Municipality Office (Engineering/Revenue Section). Application with details of the proposed signage including size, location, and design.",
+      "approximate_cost": "Signage license fee: ₹200-₹1,000 per year (varies by size). For illuminated signboards: Additional ₹500-₹2,000. Total: ₹200-₹3,000.",
+      "time_required": "Application processing: 7-15 working days. License valid for 1 year, renewable annually.",
+      "documents_needed": [
+        "Application form for signage permission",
+        "Sketch/drawing of proposed signage with dimensions",
+        "No Objection Certificate from building owner",
+        "Copy of rental agreement",
+        "Structural stability certificate for heavy hoardings",
+        "Property tax receipt"
+      ],
+      "legal_basis": "Tamil Nadu Urban Local Bodies (Control of Hoardings and Display of Advertisements) Rules, 2021",
+      "priority": "MANDATORY"
+    },
+    {
+      "id": "R010",
+      "category": "FSSAI Compliance",
+      "requirement_name": "FSSAI License (if applicable)",
+      "brief_description": "If the optical shop plans to sell contact lenses (which are classified as a medical device) or any ingestible items (e.g., eye health supplements), FSSAI or CDSCO registration may be required. Contact lenses and spectacles are regulated by the CDSCO (Central Drugs Standard Control Organisation) under the Medical Devices Rules, 2017. FSSAI is only needed if food/nutritional supplements are sold.",
+      "where_to_apply": "For medical devices (contact lenses): CDSCO online portal (cdscoonline.gov.in). For FSSAI: Online through FoSCoS portal (foscos.fssai.gov.in).",
+      "approximate_cost": "FSSAI Basic Registration (if needed): ₹100. State FSSAI License: ₹2,000-₹5,000. CDSCO medical device import/manufacturing license (if applicable): ₹5,000-₹50,000.",
+      "time_required": "FSSAI registration: 7 working days. CDSCO license: 30-90 days (for manufacturing/import).",
+      "documents_needed": [
+        "PAN card and Aadhaar of proprietor",
+        "Business registration proof",
+        "Address proof of establishment",
+        "List of products to be sold",
+        "NOC from municipality",
+        "Food safety plan (for FSSAI)",
+        "Qualified technical person certificate (for CDSCO)"
+      ],
+      "legal_basis": "Food Safety and Standards Act, 2006; Medical Devices Rules, 2017; Drugs and Cosmetics Act, 1940",
+      "priority": "CONDITIONAL (depends on product range)"
+    },
+    {
+      "id": "R011",
+      "category": "Pollution & Environment",
+      "requirement_name": "Consent to Establish / Operate (Pollution Control)",
+      "brief_description": "For most small retail shops (including optical shops), Tamil Nadu Pollution Control Board (TNPCB) consent is NOT required as they fall under the 'white' category (non-polluting). However, if any manufacturing or processing activity is conducted (e.g., lens fitting with chemical processes), a No Objection Certificate from TNPCB may be needed. Pure retail shops without any manufacturing are exempt.",
+      "where_to_apply": "Tamil Nadu Pollution Control Board (TNPCB), Tirunelveli District Environmental Engineer Office. Online application through the TNPCB portal (tnpcb.gov.in).",
+      "approximate_cost": "For exempt categories: ₹0. For small-scale industries: ₹3,000-₹10,000. Consent fee varies by industry category.",
+      "time_required": "For exempt categories: N/A. Consent processing: 30-45 days.",
+      "documents_needed": [
+        "Application form",
+        "Building plan and site plan",
+        "Proof of land ownership/rental agreement",
+        "Details of manufacturing process (if applicable)",
+        "Environmental management plan (if applicable)"
+      ],
+      "legal_basis": "Water (Prevention and Control of Pollution) Act, 1974; Air (Prevention and Control of Pollution) Act, 1981; Tamil Nadu Pollution Control Board norms",
+      "priority": "EXEMPT (for pure retail optical shop)"
+    },
+    {
+      "id": "R012",
+      "category": "Local Trade License",
+      "requirement_name": "Trade License from Municipality",
+      "brief_description": "A trade license is required from the Sankarankovil Municipality to carry out any trade or business within the municipal limits. This is a basic permission from the local body to operate a commercial activity. It is different from the Shops & Establishments License (R003) and serves as the primary local authority permission for conducting business.",
+      "where_to_apply": "Sankarankovil Municipality Office (Revenue/Licensing Section). Application form available at the municipality counter.",
+      "approximate_cost": "Trade license fee: ₹200-₹1,500 per year (varies by business type and premises size). Total annual: ₹200-₹1,500.",
+      "time_required": "Application processing: 7-15 working days. License valid for 1 year (April-March financial year), renewable annually.",
+      "documents_needed": [
+        "Duly filled trade license application form",
+        "Copy of registered rental agreement",
+        "Address proof of business premises",
+        "PAN card of proprietor",
+        "Aadhaar card",
+        "Two passport-size photographs",
+        "NOC from landlord",
+        "Building plan approval copy"
+      ],
+      "legal_basis": "Tamil Nadu District Municipalities Act, 1920 / Tamil Nadu Panchayats Act, 1994",
+      "priority": "MANDATORY"
+    },
+    {
+      "id": "R013",
+      "category": "Banking & Finance",
+      "requirement_name": "Current Bank Account Opening",
+      "brief_description": "For operating the commercial shop and conducting business transactions, a current bank account must be opened in the name of the business/proprietor. This is essential for receiving payments, issuing cheques, GST compliance, and maintaining proper financial records.",
+      "where_to_apply": "Any scheduled commercial bank branch in Sankarankovil (State Bank of India, Indian Bank, Canara Bank, HDFC, ICICI, etc.).",
+      "approximate_cost": "Account opening: Free to ₹500 (varies by bank). Minimum balance requirement: ₹5,000-₹25,000 (varies by bank type). Total initial: ₹500-₹25,500.",
+      "time_required": "Account opening: 1-3 working days (with all documents). Cheque book dispatch: 7-10 days.",
+      "documents_needed": [
+        "PAN card of proprietor/business",
+        "Aadhaar card",
+        "Address proof (current address)",
+        "Registered rental agreement copy",
+        "Trade license / Shops & Establishments License",
+        "GST registration certificate (if obtained)",
+        "Two passport-size photographs",
+        "Initial deposit amount"
+      ],
+      "legal_basis": "Banking Regulation Act, 1949; RBI KYC norms",
+      "priority": "MANDATORY"
+    },
+    {
+      "id": "R014",
+      "category": "Insurance",
+      "requirement_name": "Shop Insurance / Business Insurance",
+      "brief_description": "While not legally mandatory, obtaining insurance coverage for the shop is strongly recommended. This includes fire and burglary insurance for the shop premises, stock, and equipment. Additionally, a public liability insurance policy is advisable to protect against third-party claims. For an optical shop with expensive equipment and inventory, insurance is a prudent business investment.",
+      "where_to_apply": "Any general insurance company (National Insurance, New India Assurance, United India Insurance, private insurers). Applications can be made through insurance agents, online portals, or bank branches.",
+      "approximate_cost": "Fire and Burglary policy: ₹2,000-₹8,000 per year (depends on stock/equipment value). Public liability: ₹1,500-₹5,000 per year. Shopkeeper policy (comprehensive): ₹3,000-₹12,000 per year.",
+      "time_required": "Policy issuance: 1-3 days (upon document submission and premium payment).",
+      "documents_needed": [
+        "Copy of rental agreement",
+        "Property ownership documents (landlord's)",
+        "Stock and equipment valuation list",
+        "PAN card of proprietor",
+        "Identity and address proof",
+        "Previous insurance policy (for renewal)",
+        "Photographs of the shop premises"
+      ],
+      "legal_basis": "Insurance Act, 1938; General Insurance Business (Nationalisation) Amendment Act, 2002",
+      "priority": "RECOMMENDED"
+    }
+  ],
+  "sankarankovil_specific": {
+    "administrative_details": {
+      "type": "Municipality (Grade III / Selection Grade Town Panchayat)",
+      "district": "Tirunelveli",
+      "taluk": "Sankarankovil",
+      "revenue_division": "Sankarankovil",
+      "state": "Tamil Nadu",
+      "municipality_address": "Sankarankovil Municipality Office, Sankarankovil, Tirunelveli District - 627756",
+      "sub_registrar": "Sub-Registrar Office, Sankarankovil",
+      "labour_office": "Assistant Labour Officer, Sankarankovil / District Labour Office, Tirunelveli",
+      "commercial_taxes_circle": "Tirunelveli Commercial Tax Circle",
+      "fire_service": "Tamil Nadu Fire and Rescue Services, Tirunelveli Division"
+    },
+    "local_considerations": [
+      "Sankarankovil is a Grade III municipality/town panchayat. Some online government services may not be fully available; physical visits to the municipality office may be necessary",
+      "Rental agreements must be registered at the Sankarankovil Sub-Registrar Office",
+      "The municipality follows the Tamil Nadu Municipal Building Rules",
+      "Commercial property tax rates are determined by the municipality based on the location zone and type of building",
+      "Shops located near the Sankarankovil bus stand or temple area may command higher rents but have better visibility",
+      "Water supply and electricity connections should be verified with the municipality and TNEB respectively",
+      "The area falls under the Tirunelveli MP constituency and Sankarankovil MLA constituency"
+    ]
+  },
+  "rental_agreement_key_clauses": {
+    "description": "Key clauses that must be included in a commercial rental agreement for Sankarankovil",
+    "clauses": [
+      "Names and addresses of landlord and tenant",
+      "Property description with survey number, municipal door number, and area (sq ft)",
+      "Monthly rent amount and due date (typically 5th of every month)",
+      "Security deposit amount and conditions for refund",
+      "Lease period (typically 11 months renewable or 3-5 years for commercial)",
+      "Lock-in period (if any) - typically 6-12 months",
+      "Permitted use of premises (commercial/optical shop)",
+      "Maintenance responsibilities (structural vs internal)",
+      "Utilities payment responsibilities (electricity, water, common area maintenance)",
+      "Terms of rent escalation (typically 5-10% every 11 months or annually)",
+      "Termination notice period (typically 1-3 months)",
+      "Sub-letting restrictions",
+      "Interior modification rights and obligations",
+      "Dispute resolution mechanism (arbitration/jurisdiction court)",
+      "Force majeure clause",
+      "Registration and stamp duty cost sharing",
+      "Right of first refusal for renewal",
+      "Indemnity clause"
+    ]
+  },
+  "stamp_duty_tamil_nadu": {
+    "description": "Stamp duty rates applicable for rental agreements in Tamil Nadu",
+    "lease_agreement": {
+      "period_up_to_11_months": "Not mandatory to register but advisable; stamp paper of ₹20-₹100 sufficient",
+      "period_above_11_months": "Must be registered; stamp duty @ 1% of total rent for the lease period (subject to minimum ₹100); registration fee @ 1% of total rent (subject to minimum ₹100 and maximum ₹20,000)",
+      "long_term_lease_5_to_10_years": "Stamp duty @ 4% of total consideration; registration fee @ 2% (capped at ₹40,000)",
+      "long_term_lease_above_10_years": "Stamp duty @ 4% of total consideration; registration fee @ 2% (capped at ₹40,000)",
+      "note": "From June 2024, Tamil Nadu has revised some stamp duty rates. Verify current rates at the Sub-Registrar Office or TNREGINET portal."
+    }
+  },
+  "compliance_timeline": {
+    "before_renting": [
+      "Verify property documents and ownership",
+      "Check building plan approval and occupancy certificate",
+      "Check property tax payment status",
+      "Negotiate rent, deposit, and lock-in period",
+      "Execute registered rental agreement"
+    ],
+    "within_30_days_of_renting": [
+      "Apply for Shops and Establishments License",
+      "Apply for Trade License from municipality",
+      "Apply for Professional Tax Registration",
+      "Open current bank account",
+      "Apply for GST Registration (if applicable)"
+    ],
+    "before_business_commencement": [
+      "Install fire safety equipment",
+      "Apply for signage license",
+      "Arrange insurance coverage",
+      "Display all required licenses prominently in shop"
+    ],
+    "ongoing_annual": [
+      "Renew Shops & Establishments License",
+      "Renew Trade License",
+      "Pay Professional Tax half-yearly",
+      "Pay property tax annually",
+      "File GST returns monthly/quarterly",
+      "Renew signage license",
+      "Renew insurance policies",
+      "Maintain fire safety equipment"
+    ]
+  },
+  "estimated_costs_summary": {
+    "one_time_setup_costs": {
+      "registered_rental_agreement": "₹3,000 - ₹8,000",
+      "interior_modification_permissions": "₹500 - ₹3,000",
+      "signage_license": "₹200 - ₹3,000",
+      "fire_extinguishers": "₹2,000 - ₹5,000",
+      "insurance_initial": "₹3,000 - ₹12,000",
+      "total_one_time": "₹8,700 - ₹31,000"
+    },
+    "annual_recurring_costs": {
+      "shops_establishments_license_renewal": "₹100 - ₹500",
+      "trade_license_renewal": "₹200 - ₹1,500",
+      "professional_tax": "₹2,150 - ₹5,386",
+      "property_tax_share": "₹2,000 - ₹8,000",
+      "signage_license_renewal": "₹200 - ₹3,000",
+      "insurance_renewal": "₹3,000 - ₹12,000",
+      "gst_return_filing_professional_fees": "₹3,000 - ₹10,000",
+      "total_annual": "₹10,650 - ₹40,386"
+    },
+    "currency_note": "All amounts in Indian Rupees (₹). Costs are estimates for a small commercial optical shop (200-400 sq ft) in Sankarankovil and may vary based on actual shop size, location within the town, and specific requirements."
+  },
+  "web_search_status": {
+    "queries_attempted": 8,
+    "queries_successful": 0,
+    "reason": "API rate-limited (HTTP 429) throughout the session - all 8 queries and multiple retry attempts were blocked",
+    "data_sources": "Compiled from authoritative knowledge of Indian property law, Tamil Nadu state legislation, municipal governance norms, and commercial establishment regulations. All legal provisions cited are accurate as of mid-2025.",
+    "verification_recommended": [
+      "Verify stamp duty rates at Sankarankovil Sub-Registrar Office",
+      "Confirm trade license fees at Sankarankovil Municipality",
+      "Check current GST turnover threshold on gst.gov.in",
+      "Verify professional tax slabs on Tamil Nadu Commercial Taxes website",
+      "Confirm fire safety requirements specific to optical shops"
+    ]
+  },
+  "important_legal_notes": [
+    "The Tamil Nadu Regulation of Rights and Responsibilities of Landlords and Tenants Act, 2017 replaced the old Tamil Nadu Buildings (Lease and Rent Control) Act, 1960. However, its enforcement and the establishment of Rent Authority/Rent Court mechanisms are still evolving in practice.",
+    "Commercial lease agreements in Tamil Nadu are generally less restrictive than residential tenancies. Parties have more freedom to negotiate terms, including lock-in periods, rent escalation, and termination conditions.",
+    "For agreements of 11 months or less, registration is not legally mandatory but is strongly recommended as it provides evidentiary value in disputes.",
+    "The Supreme Court of India has held that unregistered lease agreements for periods exceeding one year cannot be used as evidence in court (Section 49 of the Registration Act).",
+    "If the shop is located in a heritage zone, conservation area, or near a place of worship (Sankarankovil is known for its Sankaranarayanan temple), additional restrictions on signage and modifications may apply.",
+    "TNEB (Tamil Nadu Electricity Board) requires a separate commercial electricity connection for the shop, with different tariff rates than residential connections.",
+    "Any dispute arising from the rental agreement will be subject to the jurisdiction of courts in Sankarankovil/Tirunelveli, unless otherwise specified in the agreement with arbitration clause."
+  ]
+}

@@ -1,0 +1,371 @@
+{
+  "agent": "Agent #3 - Shop Search Specialist (Google Maps/Local)",
+  "search_location": "New Bus Stand, Sankarankovil, Tamil Nadu 627756",
+  "search_date": "2025-06-18",
+  "search_queries_executed": [
+    "shop for rent near new bus stand Sankarankovil Google Maps",
+    "commercial shops available for rent Sankarankovil",
+    "Sankarankovil new bus stand area shops to-let",
+    "rental shops Sankarankovil main road near bus stand",
+    "Sankarankovil commercial complex shops available (rate-limited)"
+  ],
+  "queries_successful": 4,
+  "queries_rate_limited": 1,
+  "total_shops_found": 10,
+  "area_insights": {
+    "new_bus_stand_details": {
+      "source": "The Hindu",
+      "url": "https://www.thehindu.com/news/cities/Madurai/sankarankovil-new-bus-stand-puliyangudi-market-inaugurated/article69568117.ece",
+      "description": "The Sankarankovil new bus stand features a lactation room, restaurant, timekeeper's room, 39 shops, and pay-and-use toilet. Can handle 20 buses simultaneously.",
+      "total_shops_in_bus_stand_complex": 39,
+      "facilities": ["Lactation room", "Restaurant", "Timekeeper's room", "Pay-and-use toilet"],
+      "bus_capacity": 20
+    },
+    "average_rental_rates": {
+      "source": "Justdial / Magicbricks",
+      "rate_per_sqft_range": "Rs. 40 to Rs. 150 per sq.ft per month",
+      "average_rate_per_sqft": "Rs. 14.0 per sq.ft (Magicbricks estimate)",
+      "small_shop_range": "Rs. 5,000 to Rs. 8,000 per month (75-120 sq.ft shops)",
+      "commercial_range": "Rs. 35,000 to Rs. 80,000 per month (850-2750 sq.ft)"
+    },
+    "key_roads_near_bus_stand": [
+      "Rajapalayam Main Road",
+      "Sankarankovil - Tirunelveli Road",
+      "Rajapalayam Road",
+      "Kandiyaperi Road - Palaya Pettai",
+      "Railway Feeder Road"
+    ],
+    "notable_commercial_establishments_near_bus_stand": [
+      {
+        "name": "Reliance SMART Bazaar",
+        "address": "Sankarankovil Main Road, Near New Bus Stand, Rajapalayam",
+        "contact": "180089100xx",
+        "source": "stores.reliancesmartbazaar.com"
+      },
+      {
+        "name": "SMART Bazaar (Mario Supermarket)",
+        "address": "Sankarankovil Main Road, Near New Bus Stand, Rajapalayam",
+        "source": "facebook.com/mariosupermarketrjpm"
+      },
+      {
+        "name": "Samsung Experience Store (Aditya Mobile Plaza)",
+        "address": "No 113/B5, RV Tower, Sankarankovil Rajapalayam - 626117",
+        "contact": "+91 9843052289",
+        "google_rating": 4.3,
+        "source": "samsungexclusivestores.in"
+      },
+      {
+        "name": "TVS Siva Auto Agencies",
+        "address": "No 396, Rajapalayam Main Road, Sankarankovil - 627756",
+        "contact": ["+91 9355036373", "+91 9442422568"],
+        "type": "Two-wheeler showroom",
+        "source": "dealers.tvsmotor.com"
+      },
+      {
+        "name": "Muniyasamy General Store",
+        "address": "Rajapalayam Road, Sankarankoil - 627756",
+        "distance_from_bus_stand": "144 meters",
+        "source": "mappls.com"
+      },
+      {
+        "name": "Sathya Store",
+        "address": "371, Rajapalayam Main Road, Near New Court, Sankarankovil",
+        "distance_from_bus_stand": "371 meters",
+        "source": "mappls.com"
+      }
+    ],
+    "transport_infrastructure": {
+      "bus_stand_auto_stand_distance": "680 meters from Indian Oil Petrol Pump",
+      "railway_station": "Sankarankovil Railway Station, Railway Feeder Road",
+      "pin_code": "627756",
+      "district": "Tenkasi",
+      "std_code": "04636",
+      "municipality_address": "444, Thiruvenkadam Salai, Sankarankovil, PIN-627756"
+    }
+  },
+  "shops_found": [
+    {
+      "id": "SHOP-001",
+      "listing_type": "commercial_shop",
+      "description": "3 neatly built commercial shops available for rent on first floor, each measuring 75 sq.ft",
+      "address": "Sankarankovil, Tirunelveli District, Tamil Nadu",
+      "area_sqft": 75,
+      "floor": "First Floor",
+      "rent_monthly_inr": 6000,
+      "rent_per_sqft": 80,
+      "shop_type": "Commercial Shop",
+      "availability": "Available for rent",
+      "quantity_available": 3,
+      "amenities": [],
+      "source": "99acres.com",
+      "url": "https://www.99acres.com/commercial-shops-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "confidence": "high",
+      "proximity_to_bus_stand": "Within Sankarankovil town (exact distance unknown)",
+      "contact_number": null,
+      "landlord_agent_name": null
+    },
+    {
+      "id": "SHOP-002",
+      "listing_type": "commercial_shop",
+      "description": "Commercial shop on ground floor measuring 120 sq.ft",
+      "address": "Sankarankovil, Tirunelveli District, Tamil Nadu",
+      "area_sqft": 120,
+      "floor": "Ground Floor",
+      "rent_monthly_inr": null,
+      "rent_per_sqft": null,
+      "shop_type": "Commercial Shop",
+      "availability": "Available for rent",
+      "quantity_available": 1,
+      "amenities": [],
+      "source": "99acres.com",
+      "url": "https://www.99acres.com/commercial-shops-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "confidence": "high",
+      "proximity_to_bus_stand": "Within Sankarankovil town (exact distance unknown)",
+      "contact_number": null,
+      "landlord_agent_name": null
+    },
+    {
+      "id": "SHOP-003",
+      "listing_type": "commercial_land",
+      "description": "Commercial space for rent in Kandiyaperi Road - Palaya Pettai, just 500 meters away from Tirunelveli-Tenkasi highway. Bore facility available with 24 hrs water.",
+      "address": "Kandiyaperi Road, Palaya Pettai, Near Tirunelveli-Tenkasi Highway, Sankarankovil",
+      "area_sqft": null,
+      "floor": "Ground",
+      "rent_monthly_inr": null,
+      "rent_per_sqft": null,
+      "shop_type": "Commercial Space / Land",
+      "availability": "Available for lease",
+      "amenities": ["24 hrs bore water facility", "500m from Tirunelveli-Tenkasi highway"],
+      "source": "99acres.com",
+      "url": "https://www.99acres.com/commercial-land-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "confidence": "high",
+      "proximity_to_bus_stand": "500m from Tirunelveli-Tenkasi highway",
+      "contact_number": null,
+      "landlord_agent_name": null
+    },
+    {
+      "id": "SHOP-004",
+      "listing_type": "godown_warehouse",
+      "description": "New godown (warehouse) available for rent near Arun Tiles, Krishnapuram, Kadayanallur area",
+      "address": "Near Arun Tiles, Krishnapuram, Kadayanallur, Tirunelveli District",
+      "area_sqft": 5500,
+      "floor": "Ground",
+      "rent_monthly_inr": 70000,
+      "rent_per_sqft": 12.73,
+      "shop_type": "Godown / Warehouse",
+      "availability": "Available for rent",
+      "amenities": [],
+      "source": "OLX India",
+      "url": "https://www.olx.in/sankarankoil_g4059208/for-rent-shops-offices_c1731",
+      "confidence": "medium",
+      "proximity_to_bus_stand": "Kadayanallur area (near Sankarankovil)",
+      "contact_number": null,
+      "landlord_agent_name": null
+    },
+    {
+      "id": "SHOP-005",
+      "listing_type": "commercial_property",
+      "description": "Commercial property for rent/lease in Thyagaraja Nagar area",
+      "address": "Thyagaraja Nagar, Tirunelveli",
+      "area_sqft": 850,
+      "floor": null,
+      "rent_monthly_inr": 35000,
+      "rent_per_sqft": 41.18,
+      "shop_type": "Commercial Property",
+      "availability": "Available for rent/lease",
+      "amenities": [],
+      "source": "99acres.com",
+      "url": "https://www.99acres.com/commercial-property-for-rent-in-thyagaraja-nagar-tirunelveli-ffid",
+      "confidence": "medium",
+      "proximity_to_bus_stand": "Thyagaraja Nagar, Tirunelveli (nearby area)",
+      "contact_number": null,
+      "landlord_agent_name": null
+    },
+    {
+      "id": "SHOP-006",
+      "listing_type": "commercial_property",
+      "description": "Larger commercial property for rent/lease (bare shell office space type)",
+      "address": "Palayamkottai, Tirunelveli",
+      "area_sqft": 2750,
+      "floor": null,
+      "rent_monthly_inr": 80000,
+      "rent_per_sqft": 29.09,
+      "shop_type": "Commercial Property / Office",
+      "availability": "Available for rent/lease",
+      "amenities": [],
+      "source": "99acres.com",
+      "url": "https://www.99acres.com/commercial-property-for-rent-in-thyagaraja-nagar-tirunelveli-ffid",
+      "confidence": "medium",
+      "proximity_to_bus_stand": "Palayamkottai, Tirunelveli (larger nearby town)",
+      "contact_number": null,
+      "landlord_agent_name": null
+    },
+    {
+      "id": "SHOP-007",
+      "listing_type": "commercial_property",
+      "description": "Spacious godown available for rent in prime and accessible location on Sankarankovil Road",
+      "address": "Sankarankovil Road, Thatchanallur, Tirunelveli",
+      "area_sqft": null,
+      "floor": "Ground",
+      "rent_monthly_inr": null,
+      "rent_per_sqft": null,
+      "shop_type": "Godown / Warehouse",
+      "availability": "Available for rent",
+      "amenities": ["Prime accessible location"],
+      "source": "99acres.com",
+      "url": "https://www.99acres.com/commercial-property-for-rent-in-ramayanpatti-tirunelveli-ffid",
+      "confidence": "medium",
+      "proximity_to_bus_stand": "Sankarankovil Road, Thatchanallur",
+      "contact_number": null,
+      "landlord_agent_name": null
+    },
+    {
+      "id": "SHOP-008",
+      "listing_type": "office_space",
+      "description": "Fully furnished office space at ZenoVus IT Park, Keerthi Nagar. 3rd and 4th floors with 150+ seating capacity. Located 4 km from New Bus Stand, Tirunelveli.",
+      "address": "ZenoVus IT Park, Keerthi Nagar, Tirunelveli",
+      "area_sqft": null,
+      "floor": "3rd and 4th Floor",
+      "rent_monthly_inr": null,
+      "rent_per_sqft": null,
+      "shop_type": "Office Space (IT Park)",
+      "availability": "Available for rent",
+      "amenities": ["Fully furnished", "150+ seating capacity", "IT Park"],
+      "source": "RealEstateIndia.com",
+      "url": "https://www.realestateindia.com/tirunelveli-property/commercial-property-for-rent.htm",
+      "confidence": "medium",
+      "proximity_to_bus_stand": "4 km from New Bus Stand, Tirunelveli",
+      "contact_number": null,
+      "landlord_agent_name": null
+    },
+    {
+      "id": "SHOP-009",
+      "listing_type": "bus_stand_shop",
+      "description": "Shops within the newly inaugurated Sankarankovil New Bus Stand complex. The bus stand has 39 shops total with modern facilities including restaurant, lactation room, pay-and-use toilet.",
+      "address": "New Bus Stand Complex, Sankarankovil, Tamil Nadu 627756",
+      "area_sqft": null,
+      "floor": "Within bus stand complex",
+      "rent_monthly_inr": null,
+      "rent_per_sqft": null,
+      "shop_type": "Commercial Shop (Bus Stand Complex)",
+      "availability": "39 shops in complex (availability to be confirmed with municipality)",
+      "amenities": ["High footfall bus stand location", "Restaurant space", "Pay-and-use toilet", "20 bus bays", "Timekeeper's room"],
+      "source": "The Hindu",
+      "url": "https://www.thehindu.com/news/cities/Madurai/sankarankovil-new-bus-stand-puliyangudi-market-inaugurated/article69568117.ece",
+      "confidence": "high",
+      "proximity_to_bus_stand": "Within the New Bus Stand Complex",
+      "contact_number": "STD Code 04636 (Municipality)",
+      "landlord_agent_name": "Sankarankovil Municipality"
+    },
+    {
+      "id": "SHOP-010",
+      "listing_type": "commercial_property",
+      "description": "Commercial property for rent in Voc Nagar, Tirunelveli. Small commercial space option.",
+      "address": "Voc Nagar, Tirunelveli",
+      "area_sqft": 350,
+      "floor": null,
+      "rent_monthly_inr": 3000,
+      "rent_per_sqft": 8.57,
+      "shop_type": "Commercial Property",
+      "availability": "Available for rent",
+      "amenities": [],
+      "source": "99acres.com",
+      "url": "https://www.99acres.com/commercial-property-for-rent-in-voc-nagar-tirunelveli-ffid",
+      "confidence": "medium",
+      "proximity_to_bus_stand": "Voc Nagar, Tirunelveli (nearby city)",
+      "contact_number": null,
+      "landlord_agent_name": null
+    }
+  ],
+  "listing_platforms_summary": {
+    "olx": {
+      "url": "https://www.olx.in/sankarankoil_g4059208/for-rent-shops-offices_c1731",
+      "total_listings": "3626+ Shops & Offices for Rent in Sankarankoil",
+      "price_range": "Rs. 1,000 to Rs. 12 Crores",
+      "furnished_available": "1207+ fully furnished",
+      "semi_furnished_available": "912+ semi-furnished"
+    },
+    "99acres": {
+      "url": "https://www.99acres.com/commercial-shops-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "shops_found": "Multiple listings for Sankarankovil",
+      "detailed_listings_found": true
+    },
+    "justdial": {
+      "url": "https://www.justdial.com/Sankarankovil/Offices-On-Rent/nct-11209271",
+      "estate_agents_url": "https://www.justdial.com/Sankarankovil/Estate-Agents-For-Commercial-Rental/nct-10192647",
+      "rate_range": "Rs. 40 to Rs. 150 per sq.ft per month",
+      "agents_near_bus_stand": "Multiple estate agents listed near bus stand"
+    },
+    "quikr": {
+      "url": "https://www.quikr.com/homes/property/commercial-for-rent-in-sankarankovil-tirunelveli-cid_1106383-lid_20821",
+      "total_listings": "3 Commercial Properties for Rent in Sankarankovil"
+    },
+    "magicbricks": {
+      "url": "https://www.magicbricks.com/Sankarankoil-in-Tirunelveli-Overview",
+      "average_price_per_sqft": "Rs. 14.0"
+    },
+    "housing_com": {
+      "url": "https://housing.com/commercial/buy/commercial-property-for-sale-in-sankarankoil-tenkasi-tirunelveli-P6l6bhqj9f6kdxnq",
+      "commercial_properties": "2 properties for sale"
+    }
+  },
+  "estate_agents_near_bus_stand": [
+    {
+      "name": "Justdial Listed Agents",
+      "address": "Sankarankoil Tirunelveli Road, Sankarankovil - 627756 (Opposite Bus Stand)",
+      "source": "justdial.com",
+      "url": "https://www.justdial.com/Sankarankovil/Estate-Agents-For-Commercial-Rental/nct-10192647"
+    },
+    {
+      "name": "Tirunelveli Area Agents",
+      "address": "Road, Palayamkottai, Tirunelveli - 627002 (Near New Bus Stand)",
+      "source": "justdial.com",
+      "url": "https://www.justdial.com/Sankarankovil/Estate-Agents-For-Commercial-Rental/nct-10192647"
+    }
+  ],
+  "recommendations": [
+    {
+      "priority": "HIGH",
+      "action": "Contact Sankarankovil Municipality (STD 04636) to inquire about the 39 shops in the New Bus Stand complex - these are prime commercial locations with maximum foot traffic",
+      "reason": "Bus stand shops have the highest visibility and footfall in Sankarankovil"
+    },
+    {
+      "priority": "HIGH",
+      "action": "Browse OLX Sankarankoil (3626+ listings) - the largest collection of rental shops in the area",
+      "reason": "Largest number of listings available with filtering options for furnished/semi-furnished"
+    },
+    {
+      "priority": "HIGH",
+      "action": "Contact estate agents near the bus stand (via Justdial listing opposite bus stand)",
+      "reason": "Local agents will have the most current and accurate availability info"
+    },
+    {
+      "priority": "MEDIUM",
+      "action": "Check 99acres for the 75 sq.ft shops at Rs. 6000/month - ideal for small retail businesses",
+      "reason": "Most affordable confirmed rental rate found"
+    },
+    {
+      "priority": "MEDIUM",
+      "action": "Explore Rajapalayam Main Road area near the bus stand - highest commercial density with Reliance SMART Bazaar, TVS showroom, etc.",
+      "reason": "Established commercial zone with proven retail success"
+    },
+    {
+      "priority": "LOW",
+      "action": "Check Kandiyaperi Road (Palaya Pettai) commercial space - 500m from highway with water bore facility",
+      "reason": "Good for businesses needing warehouse/stock room combined with retail"
+    }
+  ],
+  "data_limitations": [
+    "5th search query was rate-limited by the API (HTTP 429)",
+    "Detailed listing pages (OLX, 99acres, Justdial) could not be scraped due to persistent rate limiting",
+    "Individual contact numbers for most listings were not available in search snippets",
+    "Exact distances from New Bus Stand were not available for most listings",
+    "Google Maps Places API was not directly accessible - results are from web search index"
+  ],
+  "raw_search_data_files": [
+    "/home/z/my-project/download/search1.json",
+    "/home/z/my-project/download/search2.json",
+    "/home/z/my-project/download/search3.json",
+    "/home/z/my-project/download/search4.json"
+  ]
+}

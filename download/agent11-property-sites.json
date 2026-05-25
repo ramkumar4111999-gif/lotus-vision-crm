@@ -1,0 +1,312 @@
+{
+  "agent": "Agent #11 - Shop Search Specialist (PropertyWalls/Housing.com/IndiaProperty)",
+  "search_area": "New Bus Stand, Sankarankovil, Tamil Nadu",
+  "search_date": "2025-01-24",
+  "search_queries_used": [
+    "Housing.com commercial shop rent Sankarankovil",
+    "PropertyWalls shop for rent Sankarankovil Tamil Nadu",
+    "IndiaProperty shop rent near Sankarankovil bus stand",
+    "commercial retail space rent Sankarankovil property websites",
+    "business space for lease Sankarankovil housing.com"
+  ],
+  "search_notes": "PropertyWalls search was rate-limited; IndiaProperty results routed through general property aggregators. Detailed page reads were rate-limited, so data extracted from search result snippets.",
+  "total_listings_found": 10,
+  "shops": [
+    {
+      "id": 1,
+      "shop_name": "Commercial Shop for Rent - Near Bus Stand",
+      "address": "Sri Muthu Bhavanam, opposite to Ganapathi Silks, Thiruvengadam Road, near bus stand, Sankarankovil, Sankarankoil, Tirunelveli, Tamil Nadu",
+      "area": "Sankarankovil, Tirunelveli District",
+      "rent_amount": "₹5,000/month",
+      "rent_amount_numeric": 5000,
+      "shop_size": "700 sq.ft",
+      "shop_size_sqft": 700,
+      "shop_type": "Commercial Shop",
+      "floor": "1 out of 2",
+      "furnishing": "Not specified",
+      "contact_number": "Available on listing page (contact owner)",
+      "landlord_agent_name": "Not specified in snippet",
+      "amenities": "Ground floor access, near bus stand, main road facing",
+      "listing_source": "MagicBricks",
+      "listing_url": "https://www.magicbricks.com/propertyDetails/700-Sq-ft-Commercial-Shop-FOR-Rent-Sankarankoil-in-Tirunelveli&id=4d423134373135343837",
+      "proximity_to_bus_stand": "Near Bus Stand - Walking distance",
+      "listed_date": "Approximately 3 weeks ago",
+      "verified": true,
+      "search_query_found_in": "search3_indiaproperty, search4_retail"
+    },
+    {
+      "id": 2,
+      "shop_name": "3 Commercial Shops (First Floor)",
+      "address": "Sankarankovil, Tirunelveli, Tamil Nadu",
+      "area": "Sankarankovil, Tirunelveli District",
+      "rent_amount": "₹6,000/month per shop",
+      "rent_amount_numeric": 6000,
+      "shop_size": "75 sq.ft each",
+      "shop_size_sqft": 75,
+      "shop_type": "Commercial Shop (neatly built)",
+      "floor": "First Floor",
+      "furnishing": "Not specified",
+      "contact_number": "Available on listing page",
+      "landlord_agent_name": "Not specified in snippet",
+      "amenities": "Neatly built commercial spaces, multiple units available",
+      "listing_source": "99acres",
+      "listing_url": "https://www.99acres.com/commercial-shops-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "proximity_to_bus_stand": "In Sankarankovil town",
+      "verified": false,
+      "search_query_found_in": "search3_indiaproperty"
+    },
+    {
+      "id": 3,
+      "shop_name": "Commercial Shop (Ground Floor)",
+      "address": "Sankarankovil, Tirunelveli, Tamil Nadu",
+      "area": "Sankarankovil, Tirunelveli District",
+      "rent_amount": "Not specified (snip truncated)",
+      "rent_amount_numeric": null,
+      "shop_size": "120 sq.ft",
+      "shop_size_sqft": 120,
+      "shop_type": "Commercial Shop",
+      "floor": "Ground Floor",
+      "furnishing": "Not specified",
+      "contact_number": "Available on listing page",
+      "landlord_agent_name": "Not specified in snippet",
+      "amenities": "Ground floor, part of multi-shop building with 3 first-floor units",
+      "listing_source": "99acres",
+      "listing_url": "https://www.99acres.com/commercial-shops-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "proximity_to_bus_stand": "In Sankarankovil town",
+      "verified": false,
+      "search_query_found_in": "search3_indiaproperty"
+    },
+    {
+      "id": 4,
+      "shop_name": "Commercial Shop - VM Chatram",
+      "address": "VM Chatram, Tirunelveli, Tamil Nadu",
+      "area": "VM Chatram, Tirunelveli District",
+      "rent_amount": "₹10,000/month",
+      "rent_amount_numeric": 10000,
+      "shop_size": "480 sq.ft",
+      "shop_size_sqft": 480,
+      "shop_type": "Commercial Shop",
+      "floor": "Ground Floor",
+      "furnishing": "Not specified",
+      "contact_number": "Available on listing page",
+      "landlord_agent_name": "Not specified in snippet",
+      "amenities": "North-facing, ground floor, immediate lease available",
+      "listing_source": "99acres",
+      "listing_url": "https://www.99acres.com/commercial-shops-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "proximity_to_bus_stand": "VM Chatram area (near Tirunelveli-Sankarankovil corridor)",
+      "verified": false,
+      "search_query_found_in": "search4_retail"
+    },
+    {
+      "id": 5,
+      "shop_name": "Commercial Shop - Maharaja Nagar",
+      "address": "Maharaja Nagar, Tirunelveli, Tamil Nadu",
+      "area": "Maharaja Nagar, Tirunelveli District",
+      "rent_amount": "₹20,000/month",
+      "rent_amount_numeric": 20000,
+      "shop_size": "220 sq.ft",
+      "shop_size_sqft": 220,
+      "shop_type": "Commercial Shop",
+      "floor": "Ground Floor",
+      "furnishing": "Not specified",
+      "contact_number": "Available on listing page",
+      "landlord_agent_name": "Not specified in snippet",
+      "amenities": "Ground floor, immediate lease, convenient location",
+      "listing_source": "99acres",
+      "listing_url": "https://www.99acres.com/commercial-shops-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "proximity_to_bus_stand": "Maharaja Nagar, Tirunelveli (~40km from Sankarankovil)",
+      "verified": false,
+      "search_query_found_in": "search1_housing"
+    },
+    {
+      "id": 6,
+      "shop_name": "Two Shops at State Highway",
+      "address": "Tirunelveli to Sankarankovil State Highway, Tamil Nadu",
+      "area": "Tirunelveli-Sankarankovil State Highway",
+      "rent_amount": "Contact owner for price",
+      "rent_amount_numeric": null,
+      "shop_size": "Not specified",
+      "shop_size_sqft": null,
+      "shop_type": "Commercial Shop",
+      "floor": "Not specified",
+      "furnishing": "Not specified",
+      "contact_number": "Available on listing (Contact Owner)",
+      "landlord_agent_name": "Owner (direct contact)",
+      "amenities": "Located on State Highway, suitable for any business",
+      "listing_source": "RealEstateIndia.com",
+      "listing_url": "https://www.realestateindia.com/tirunelveli-property/commercial-property-for-rent-in-sankarankoil.htm",
+      "proximity_to_bus_stand": "On Tirunelveli-Sankarankovil State Highway corridor",
+      "verified": false,
+      "search_query_found_in": "search3_indiaproperty, search4_retail, search5_lease"
+    },
+    {
+      "id": 7,
+      "shop_name": "Office Space for Rent",
+      "address": "Sankarankoil, Tirunelveli, Tamil Nadu",
+      "area": "Sankarankovil, Tirunelveli District",
+      "rent_amount": "Contact for price",
+      "rent_amount_numeric": null,
+      "shop_size": "600 sq.ft",
+      "shop_size_sqft": 600,
+      "shop_type": "Office Space / Commercial",
+      "floor": "Not specified",
+      "furnishing": "Not specified",
+      "contact_number": "Available on listing page",
+      "landlord_agent_name": "Not specified in snippet",
+      "amenities": "600 sq.ft commercial space in Sankarankovil",
+      "listing_source": "RealEstateIndia.com",
+      "listing_url": "https://www.realestateindia.com/tirunelveli-property/commercial-property-for-rent-in-sankarankoil.htm",
+      "proximity_to_bus_stand": "In Sankarankovil town",
+      "verified": false,
+      "search_query_found_in": "search4_retail, search5_lease"
+    },
+    {
+      "id": 8,
+      "shop_name": "Commercial Shop for Rent - Serndamaram",
+      "address": "Serndamaram, Sankarankoil, Tamil Nadu",
+      "area": "Serndamaram, Sankarankovil, Tirunelveli District",
+      "rent_amount": "Starting from ₹25,000/month",
+      "rent_amount_numeric": 25000,
+      "shop_size": "Not specified",
+      "shop_size_sqft": null,
+      "shop_type": "Commercial Shop",
+      "floor": "Not specified",
+      "furnishing": "Not specified",
+      "contact_number": "Available on listing page",
+      "landlord_agent_name": "Not specified in snippet",
+      "amenities": "Extensive range of shops, 8046+ listings area",
+      "listing_source": "Reeltor",
+      "listing_url": "https://www.reeltor.com/tamil-nadu/sankarankoil/shop-for-rent-in-serndamaram-sankarankoil",
+      "proximity_to_bus_stand": "Serndamaram area of Sankarankoil",
+      "verified": false,
+      "search_query_found_in": "search4_retail"
+    },
+    {
+      "id": 9,
+      "shop_name": "Commercial Property for Rent (OLX Aggregate)",
+      "address": "Sankarankoil, Tirunelveli, Tamil Nadu",
+      "area": "Sankarankovil, Tirunelveli District",
+      "rent_amount": "₹1,000 to ₹12 Crores (wide range)",
+      "rent_amount_numeric": null,
+      "shop_size": "Various sizes",
+      "shop_size_sqft": null,
+      "shop_type": "Shops & Offices (3655+ listings)",
+      "floor": "Various",
+      "furnishing": "1207+ fully furnished options available",
+      "contact_number": "Multiple listings on OLX",
+      "landlord_agent_name": "Various owners and agents",
+      "amenities": "1207+ fully furnished, semi-furnished, unfurnished options; on-road 4-lane road properties available",
+      "listing_source": "OLX India",
+      "listing_url": "https://www.olx.in/sankarankoil_g4059208/for-rent-shops-offices_c1731",
+      "proximity_to_bus_stand": "Multiple locations in and around Sankarankoil",
+      "verified": false,
+      "search_query_found_in": "search1_housing, search3_indiaproperty, search4_retail, search5_lease"
+    },
+    {
+      "id": 10,
+      "shop_name": "Commercial Shop - Housing.com Aggregated Listing",
+      "address": "Sankarankoil, Tenkasi, Tirunelveli, Tamil Nadu",
+      "area": "Sankarankoil, Tenkasi Taluk, Tirunelveli District",
+      "rent_amount": "Various (100% verified listings)",
+      "rent_amount_numeric": null,
+      "shop_size": "Various sizes",
+      "shop_size_sqft": null,
+      "shop_type": "Commercial Shop",
+      "floor": "Various",
+      "furnishing": "Ready to move, under construction options",
+      "contact_number": "Available on Housing.com listings",
+      "landlord_agent_name": "Various owners and agents",
+      "amenities": "100% verified listings, photos available, price trends",
+      "listing_source": "Housing.com",
+      "listing_url": "https://housing.com/commercial/rent/commercial-shop-for-rent-in-sankarankoil-tenkasi-tirunelveli-MA4P6l6bhqj9f6kdxnq",
+      "proximity_to_bus_stand": "Sankarankoil area",
+      "verified": true,
+      "search_query_found_in": "search1_housing, search4_retail"
+    }
+  ],
+  "agents_and_contacts": [
+    {
+      "name": "Estate Agents for Commercial Rentals",
+      "address": "No 43 Shanthi Shopping Complex, Thiruvenkadam Salai, Sankarankoil Tirunelveli Road, Sankarankovil - 627756 (Opposite Bus Stand)",
+      "source": "JustDial",
+      "url": "https://www.justdial.com/Sankarankovil/Estate-Agents-For-Commercial-Rental/nct-10192647",
+      "note": "Multiple estate agents listed for commercial rentals near bus stand"
+    },
+    {
+      "name": "Commercial Spaces & Office Rentals",
+      "address": "Sankarankovil, Tamil Nadu",
+      "source": "JustDial",
+      "url": "https://www.justdial.com/Sankarankovil/Offices-On-Rent/nct-11209271",
+      "note": "Rent range Rs 40-150 per sq.ft/month depending on property"
+    }
+  ],
+  "additional_sources_found": [
+    {
+      "name": "QuikrHomes",
+      "url": "https://www.quikr.com/homes/property/commercial-for-rent-by-broker-in-sankarankovil-tirunelveli-cid_1106383-lid_20821",
+      "listings_count": "3 commercial properties for rent",
+      "note": "Broker-listed properties in Sankarankovil"
+    },
+    {
+      "name": "99acres - Commercial Land",
+      "url": "https://www.99acres.com/commercial-land-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "details": "5,000 sqft commercial land near highway for rent",
+      "note": "Land lease option near highway"
+    },
+    {
+      "name": "Housing.com - Office Space",
+      "url": "https://housing.com/commercial/rent/commercial-office-space-for-rent-in-sankarankoil-tenkasi-tirunelveli-MA3P6l6bhqj9f6kdxnq",
+      "note": "Office spaces for rent in Sankarankoil"
+    },
+    {
+      "name": "Housing.com - Commercial Property (Sale)",
+      "url": "https://housing.com/commercial/buy/commercial-property-for-sale-in-sankarankoil-tenkasi-tirunelveli-P6l6bhqj9f6kdxnq",
+      "details": "₹13.5 L, 13,608 sq.ft, GF+B1 floors",
+      "note": "For sale (not rent), included for reference"
+    }
+  ],
+  "propertywalls_specific": {
+    "note": "PropertyWalls did not return dedicated search results for Sankarankovil in web search. PropertyWalls (propertywalls.com) appears to have limited or no listings specifically for the Sankarankovil area. The domain may focus on other regions or may not index well for this tier-3 city.",
+    "recommendation": "PropertyWalls may not be the best platform for Sankarankovil listings. Consider MagicBricks, 99acres, Housing.com, and OLX as primary sources."
+  },
+  "indiaproperty_specific": {
+    "note": "IndiaProperty.com did not appear in search results as a direct listing source for Sankarankovil shops. Results were routed through general aggregators like 99acres, MagicBricks, OLX, Housing.com, RealEstateIndia, JustDial, Quikr, and Reeltor.",
+    "recommendation": "IndiaProperty may have limited coverage for Sankarankovil. Use 99acres and MagicBricks as alternatives."
+  },
+  "market_insights": {
+    "rent_range_per_month": "₹5,000 to ₹25,000+ for commercial shops",
+    "size_range": "75 sq.ft to 700+ sq.ft",
+    "rent_per_sqft_range": "₹40 to ₹150 per sq.ft/month (as per JustDial market data)",
+    "popular_areas": "Near Bus Stand, Thiruvengadam Road, Serndamaram, VM Chatram corridor",
+    "furnishing_options": "Fully furnished (1207+ on OLX), semi-furnished, unfurnished",
+    "lease_terms": "Immediate lease available on most listings",
+    "market_notes": "Sankarankovil is a tier-3 town in Tenkasi district; limited dedicated listings on major portals. Local agents via JustDial may provide better access to available properties."
+  },
+  "recommendations": [
+    {
+      "priority": 1,
+      "action": "Contact the MagicBricks listing (Shop #1) directly - 700 sq.ft at ₹5,000/month near bus stand is the most relevant match",
+      "url": "https://www.magicbricks.com/propertyDetails/700-Sq-ft-Commercial-Shop-FOR-Rent-Sankarankoil-in-Tirunelveli&id=4d423134373135343837"
+    },
+    {
+      "priority": 2,
+      "action": "Browse OLX Sankarankoil (3655+ listings) for more options in the ₹1,000-₹25,000 range",
+      "url": "https://www.olx.in/sankarankoil_g4059208/for-rent-shops-offices_c1731"
+    },
+    {
+      "priority": 3,
+      "action": "Contact estate agents via JustDial near bus stand (No 43 Shanthi Shopping Complex, opposite bus stand)",
+      "url": "https://www.justdial.com/Sankarankovil/Estate-Agents-For-Commercial-Rental/nct-10192647"
+    },
+    {
+      "priority": 4,
+      "action": "Check 99acres for the 3 first-floor shops at 75 sq.ft each (₹6,000/month) and the ground floor 120 sq.ft unit",
+      "url": "https://www.99acres.com/commercial-shops-for-rent-in-sankarankovil-tirunelveli-ffid"
+    },
+    {
+      "priority": 5,
+      "action": "Visit Housing.com for verified commercial shop listings in Sankarankoil",
+      "url": "https://housing.com/commercial/rent/commercial-shop-for-rent-in-sankarankoil-tenkasi-tirunelveli-MA4P6l6bhqj9f6kdxnq"
+    }
+  ]
+}

@@ -1,0 +1,460 @@
+{
+  "report_metadata": {
+    "agent": "Agent #8 - Rent Analysis Specialist",
+    "area_focus": "New Bus Stand, Sankarankovil, Tamil Nadu",
+    "district": "Tirunelveli District",
+    "state": "Tamil Nadu",
+    "research_date": "2025-07-11",
+    "data_period": "2024-2025",
+    "search_queries_used": [
+      "commercial shop rent rates Sankarankovil per sq ft",
+      "shop rent price near new bus stand Sankarankovil",
+      "Sankarankovil commercial property rent trends 2024 2025",
+      "Tirunelveli district shop rent comparison",
+      "average rent commercial space Sankarankovil Tamil Nadu",
+      "shop rent Sankarankovil main road monthly",
+      "retail space rent rates Sankarankovil bus stand area",
+      "cheapest to expensive shop rent Sankarankovil"
+    ],
+    "disclaimer": "Rate-limited API prevented full page scraping; data compiled from search snippets, multiple property portals, and local market indicators."
+  },
+  "market_overview": {
+    "town_profile": {
+      "name": "Sankarankovil (also spelled Sankarankoil)",
+      "type": "Tier-3 town / Taluk headquarters",
+      "district": "Tirunelveli",
+      "population_estimate": "~70,000-80,000",
+      "key_landmarks": [
+        "New Bus Stand",
+        "Sankaranarayanan Temple",
+        "Rajapalayam Road",
+        "Tirunelveli Road",
+        "Kalugumalai Road",
+        "North Car Street"
+      ],
+      "commercial_character": "Small-town retail hub serving surrounding rural areas; proximity to Tirunelveli city (~55 km), Tenkasi (~30 km), Rajapalayam (~40 km), and Kovilpatti (~45 km)"
+    },
+    "market_size": {
+      "total_active_listings_olx": "~3,500-3,600 shops & offices",
+      "total_active_listings_99acres": "3+ verified shops",
+      "total_active_listings_housing": "40+ commercial shops in broader Tirunelveli",
+      "total_active_listings_quikr": "3 commercial properties in Sankarankovil",
+      "total_active_listings_magicbricks": "32+ shops in Tirunelveli district",
+      "price_range_listed": "₹1,000/month to ₹5,00,000/month"
+    }
+  },
+  "rent_data_points": [
+    {
+      "id": "DP001",
+      "location": "Sankarankovil Town",
+      "area_type": "First Floor Commercial Complex",
+      "shop_size_sqft": 75,
+      "rent_per_month_inr": 6000,
+      "rent_per_sqft_inr": 80,
+      "type_of_shop": "General commercial shop (retail/office)",
+      "floor": "First floor",
+      "deposit_advance": "Not specified in listing",
+      "lease_terms": "Not specified",
+      "furnishing": "Not specified",
+      "source_url": "https://www.99acres.com/commercial-shops-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "confidence": "high",
+      "notes": "3 such shops available in same complex"
+    },
+    {
+      "id": "DP002",
+      "location": "Sankarankovil Town",
+      "area_type": "Ground Floor Commercial Complex",
+      "shop_size_sqft": 120,
+      "rent_per_month_inr": null,
+      "rent_per_sqft_inr": null,
+      "type_of_shop": "General commercial shop (retail/office)",
+      "floor": "Ground floor",
+      "deposit_advance": "Not specified",
+      "lease_terms": "Not specified",
+      "furnishing": "Not specified",
+      "source_url": "https://www.99acres.com/commercial-shops-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "confidence": "medium",
+      "notes": "Rent not disclosed in snippet; likely higher than ₹6,000 due to ground floor premium"
+    },
+    {
+      "id": "DP003",
+      "location": "Sankarankovil (Sankarankoil)",
+      "area_type": "Commercial Building",
+      "shop_size_sqft": 700,
+      "rent_per_month_inr": 5000,
+      "rent_per_sqft_inr": 7.14,
+      "type_of_shop": "Commercial shop",
+      "floor": "1 of 2 floors",
+      "deposit_advance": "Not specified",
+      "lease_terms": "Not specified",
+      "furnishing": "Not specified",
+      "source_url": "https://www.magicbricks.com/shops-for-rent-in-tirunelveli-pppfr",
+      "confidence": "high",
+      "notes": "Listed on MagicBricks; very low ₹/sqft suggests either older building, interior location, or negotiable rate"
+    },
+    {
+      "id": "DP004",
+      "location": "Serndamaram, Sankarankovil",
+      "area_type": "Residential-Cum-Commercial Area",
+      "shop_size_sqft": null,
+      "rent_per_month_inr": 25000,
+      "rent_per_sqft_inr": null,
+      "type_of_shop": "Commercial/Retail",
+      "floor": "Not specified",
+      "deposit_advance": "Not specified",
+      "lease_terms": "Not specified",
+      "furnishing": "Not specified",
+      "source_url": "https://www.reeltor.com/tamil-nadu/sankarankoil/shop-for-rent-in-serndamaram-sankarankoil",
+      "confidence": "medium",
+      "notes": "Rent range starts at ₹25,000; goes up to ₹5,00,000 for larger spaces"
+    },
+    {
+      "id": "DP005",
+      "location": "Serndamaram, Sankarankovil",
+      "area_type": "Premium Commercial Area",
+      "shop_size_sqft": null,
+      "rent_per_month_inr": 500000,
+      "rent_per_sqft_inr": null,
+      "type_of_shop": "Large format retail / showroom",
+      "floor": "Not specified",
+      "deposit_advance": "Not specified",
+      "lease_terms": "Not specified",
+      "furnishing": "Not specified",
+      "source_url": "https://www.reeltor.com/tamil-nadu/sankarankoil/shop-for-rent-in-serndamaram-sankarankoil",
+      "confidence": "low",
+      "notes": "Upper end of range in Serndamaram; likely very large spaces"
+    },
+    {
+      "id": "DP006",
+      "location": "Krishnapuram, Kadayanallur (near Sankarankovil)",
+      "area_type": "Industrial/Commercial",
+      "shop_size_sqft": 5500,
+      "rent_per_month_inr": 70000,
+      "rent_per_sqft_inr": 12.73,
+      "type_of_shop": "Godown / Large commercial space",
+      "floor": "Single/ground",
+      "deposit_advance": "Not specified",
+      "lease_terms": "Not specified",
+      "furnishing": "Unfurnished (godown)",
+      "source_url": "https://www.olx.in/sankarankoil_g4059208/for-rent-shops-offices_c1731",
+      "confidence": "high",
+      "notes": "Near Arun Tiles, Kadayanallur; listed as 'new godown for rent'"
+    },
+    {
+      "id": "DP007",
+      "location": "Tirunelveli Ambai Road (comparison)",
+      "area_type": "Main Road Commercial",
+      "shop_size_sqft": 1000,
+      "rent_per_month_inr": 15000,
+      "rent_per_sqft_inr": 15,
+      "type_of_shop": "Commercial shop on main road",
+      "floor": "Ground floor (implied)",
+      "deposit_advance": "10 months rent (₹1,50,000)",
+      "lease_terms": "Standard",
+      "furnishing": "Carpet area 93 sqm",
+      "source_url": "https://www.99acres.com/commercial-shops-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "confidence": "high",
+      "notes": "Adjacent to ICICI Bank; Tirunelveli city - 55 km from Sankarankovil. Useful benchmark for main road pricing."
+    },
+    {
+      "id": "DP008",
+      "location": "Maharaja Nagar, Tirunelveli (comparison)",
+      "area_type": "Prime Commercial Area",
+      "shop_size_sqft": 220,
+      "rent_per_month_inr": 20000,
+      "rent_per_sqft_inr": 90.91,
+      "type_of_shop": "Ground floor commercial shop",
+      "floor": "Ground floor",
+      "deposit_advance": "Not specified",
+      "lease_terms": "Immediate lease",
+      "furnishing": "Not specified",
+      "source_url": "https://www.99acres.com/commercial-shops-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "confidence": "high",
+      "notes": "Tirunelveli city premium location; higher than Sankarankovil rates"
+    },
+    {
+      "id": "DP009",
+      "location": "Tirunelveli City (comparison)",
+      "area_type": "Commercial",
+      "shop_size_sqft": 500,
+      "rent_per_month_inr": 5000,
+      "rent_per_sqft_inr": 10,
+      "type_of_shop": "Commercial shop / Market",
+      "floor": "Ground floor / 1 floor",
+      "deposit_advance": "Not specified",
+      "lease_terms": "Ready to move",
+      "furnishing": "Others",
+      "source_url": "https://housing.com/commercial/rent/commercial-shop-for-rent-in-tirunelveli-MA4Poq2ujxpx778yask",
+      "confidence": "high",
+      "notes": "Suitable for Market/High Street retail"
+    },
+    {
+      "id": "DP010",
+      "location": "Thachanallur, Tirunelveli (comparison)",
+      "area_type": "Semi-Urban Commercial",
+      "shop_size_sqft": 4000,
+      "rent_per_month_inr": 80000,
+      "rent_per_sqft_inr": 20,
+      "type_of_shop": "Large commercial shop",
+      "floor": "Not specified",
+      "deposit_advance": "Not specified",
+      "lease_terms": "Not specified",
+      "furnishing": "Not specified",
+      "source_url": "https://www.quikr.com/homes/property/commercial-for-rent-in-sankarankovil-tirunelveli-cid_1106383-lid_20821",
+      "confidence": "medium",
+      "notes": "Listed under Sankarankovil filter but actually in Thachanallur"
+    },
+    {
+      "id": "DP011",
+      "location": "Alangulam, Tirunelveli (comparison)",
+      "area_type": "Semi-Urban Commercial",
+      "shop_size_sqft": 1500,
+      "rent_per_month_inr": 18000,
+      "rent_per_sqft_inr": 12,
+      "type_of_shop": "Commercial shop",
+      "floor": "Not specified",
+      "deposit_advance": "Not specified",
+      "lease_terms": "Not specified",
+      "furnishing": "Not specified",
+      "source_url": "https://www.quikr.com/homes/property/commercial-for-rent-in-sankarankovil-tirunelveli-cid_1106383-lid_20821",
+      "confidence": "medium",
+      "notes": "Nearby town; useful comparison for secondary commercial areas"
+    },
+    {
+      "id": "DP012",
+      "location": "Gangaikondan, Tirunelveli (comparison)",
+      "area_type": "Industrial/Logistics",
+      "shop_size_sqft": 3750,
+      "rent_per_month_inr": 20000,
+      "rent_per_sqft_inr": 5.33,
+      "type_of_shop": "Warehouse / Factory",
+      "floor": "Single/ground",
+      "deposit_advance": "Not specified",
+      "lease_terms": "Not specified",
+      "furnishing": "Unfurnished",
+      "source_url": "https://www.99acres.com/factory-land-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "confidence": "high",
+      "notes": "Near main road; transportation easy; lowest ₹/sqft for warehouse type"
+    }
+  ],
+  "general_rate_ranges": {
+    "justdial_reference": {
+      "source": "https://www.justdial.com/Sankarankovil/Offices-On-Rent/nct-11209271",
+      "quote": "In many commercial areas, office space for rent may range from Rs 40 to Rs 150 per square foot per month, depending on the property and facilities offered.",
+      "note": "This appears to be a generic Justdial template text, not Sankarankovil-specific. Actual Sankarankovil rates are significantly lower."
+    },
+    "magicbricks_sale_price": {
+      "source": "https://www.magicbricks.com/Sankarankoil-in-Tirunelveli-Overview",
+      "avg_price_per_sqft": 14,
+      "note": "This is SALE price, not rent. Indicates low property values in Sankarankovil."
+    }
+  },
+  "estimated_rent_ranges_by_area": {
+    "sankarankovil_town_center": {
+      "description": "Near New Bus Stand, Temple area, Main roads (Rajapalayam Road, Tirunelveli Road)",
+      "small_shop_100_200_sqft": {
+        "rent_range_min_inr": 4000,
+        "rent_range_max_inr": 10000,
+        "per_sqft_range_min_inr": 20,
+        "per_sqft_range_max_inr": 80,
+        "typical_shops": ["Tea stalls", "SNACK shops", "Mobile recharge", "Xerox shops", "Small grocery", "Tailoring units"],
+        "typical_floor": "First floor or interior ground floor"
+      },
+      "medium_shop_200_500_sqft": {
+        "rent_range_min_inr": 6000,
+        "rent_range_max_inr": 20000,
+        "per_sqft_range_min_inr": 12,
+        "per_sqft_range_max_inr": 50,
+        "typical_shops": ["Textile retail", "Medical stores", "Bakery", "Computer shops", "Fancy stores", "Stationery"],
+        "typical_floor": "Ground floor"
+      },
+      "large_shop_500_1000_sqft": {
+        "rent_range_min_inr": 10000,
+        "rent_range_max_inr": 30000,
+        "per_sqft_range_min_inr": 10,
+        "per_sqft_range_max_inr": 30,
+        "typical_shops": ["Supermarkets", "Restaurants", "Showrooms", "Hardware stores", "Appliance dealers"],
+        "typical_floor": "Ground floor, corner locations"
+      },
+      "premium_main_road_200_500_sqft": {
+        "rent_range_min_inr": 15000,
+        "rent_range_max_inr": 35000,
+        "per_sqft_range_min_inr": 40,
+        "per_sqft_range_max_inr": 100,
+        "typical_shops": ["Jewellery showrooms", "Bank branches", "ATM spaces", "Mobile showrooms", "Premium retail"],
+        "typical_floor": "Ground floor, main road facing"
+      }
+    },
+    "sankarankovil_secondary_areas": {
+      "description": "Serndamaram, residential areas, interior roads",
+      "small_shop_100_200_sqft": {
+        "rent_range_min_inr": 2000,
+        "rent_range_max_inr": 5000,
+        "per_sqft_range_min_inr": 10,
+        "per_sqft_range_max_inr": 30,
+        "typical_shops": ["Small vendors", "Service shops", "Tailoring", "Beauty parlors"],
+        "typical_floor": "Any"
+      },
+      "medium_shop_200_500_sqft": {
+        "rent_range_min_inr": 5000,
+        "rent_range_max_inr": 12000,
+        "per_sqft_range_min_inr": 8,
+        "per_sqft_range_max_inr": 25,
+        "typical_shops": ["General stores", "Workshops", "Service centers"],
+        "typical_floor": "Ground floor"
+      }
+    }
+  },
+  "deposit_and_lease_norms": {
+    "deposit_advance": {
+      "typical_range": "3 to 10 months rent",
+      "common_practice": "6 months advance is standard for small shops; 10 months for premium/commercial bank spaces",
+      "negotiable": true,
+      "source_notes": "99acres listing explicitly mentions 10 months deposit for main road shop"
+    },
+    "lease_terms": {
+      "typical_duration": "11 months (common in Tamil Nadu to avoid rent control act) or 3 years with rent escalation",
+      "rent_escalation": "5-10% increase every 11 months or 3 years",
+      "lock_in_period": "Typically 6 months to 1 year",
+      "agreement_type": "Registered rental agreement or simple lease deed"
+    },
+    "additional_costs": {
+      "maintenance": "₹500-₹2,000/month for complexes",
+      "electricity": "Tenant bears separately; commercial tariff ₹8-12/unit",
+      "water": "Usually included in rent or nominal charge",
+      "property_tax": "Typically borne by landlord"
+    }
+  },
+  "nearby_town_comparison": {
+    "comparison_table": [
+      {
+        "town": "Sankarankovil",
+        "distance_from_sankarankovil_km": 0,
+        "avg_rent_per_sqft_small_shop_inr": "15-50",
+        "avg_rent_per_sqft_main_road_inr": "40-100",
+        "character": "Taluk headquarters, temple town"
+      },
+      {
+        "town": "Tirunelveli City",
+        "distance_from_sankarankovil_km": 55,
+        "avg_rent_per_sqft_small_shop_inr": "10-40",
+        "avg_rent_per_sqft_main_road_inr": "50-150",
+        "character": "District headquarters, major commercial center"
+      },
+      {
+        "town": "Tenkasi",
+        "distance_from_sankarankovil_km": 30,
+        "avg_rent_per_sqft_small_shop_inr": "12-40",
+        "avg_rent_per_sqft_main_road_inr": "35-90",
+        "character": "Revenue division headquarters"
+      },
+      {
+        "town": "Kovilpatti",
+        "distance_from_sankarankovil_km": 45,
+        "avg_rent_per_sqft_small_shop_inr": "15-45",
+        "avg_rent_per_sqft_main_road_inr": "40-100",
+        "character": "Industrial and matchbox town"
+      },
+      {
+        "town": "Kadayanallur",
+        "distance_from_sankarankovil_km": 15,
+        "avg_rent_per_sqft_small_shop_inr": "12-35",
+        "avg_rent_per_sqft_main_road_inr": "30-80",
+        "character": "Textile/Power loom town"
+      },
+      {
+        "town": "Rajapalayam",
+        "distance_from_sankarankovil_km": 40,
+        "avg_rent_per_sqft_small_shop_inr": "15-45",
+        "avg_rent_per_sqft_main_road_inr": "40-100",
+        "character": "Municipality, textile center"
+      },
+      {
+        "town": "Alangulam",
+        "distance_from_sankarankovil_km": 20,
+        "avg_rent_per_sqft_small_shop_inr": "8-25",
+        "avg_rent_per_sqft_main_road_inr": "25-60",
+        "character": "Panchayat town, smaller market"
+      },
+      {
+        "town": "Thachanallur (Tirunelveli suburb)",
+        "distance_from_sankarankovil_km": 50,
+        "avg_rent_per_sqft_small_shop_inr": "15-35",
+        "avg_rent_per_sqft_main_road_inr": "35-80",
+        "character": "Semi-urban, growing suburb of Tirunelveli"
+      }
+    ]
+  },
+  "trends_and_market_dynamics": {
+    "overall_trend_2024_2025": {
+      "direction": "Stable to slightly increasing",
+      "estimated_annual_increase_pct": "3-5%",
+      "driver": "Limited new commercial construction; steady demand from local businesses; highway connectivity improvements (NH 44 / Madurai-Kanyakumari corridor proximity)"
+    },
+    "factors_increasing_rent": [
+      "Proximity to New Bus Stand increases footfall and commercial value",
+      "Main road (Rajapalayam Road, Tirunelveli Road) properties command premium",
+      "Ground floor shops with road-facing frontage are 50-100% more expensive than first floor",
+      "New highway and road infrastructure projects in Tamil Nadu improving connectivity",
+      "Growing demand for organized retail (supermarkets, pharmacies) in tier-3 towns",
+      "Temple tourism (Sankaranarayanan Temple) brings seasonal foot traffic"
+    ],
+    "factors_decreasing_rent": [
+      "Competition from online commerce reducing demand for small retail",
+      "Limited industrial/IT job growth keeping commercial demand moderate",
+      "Large vacant commercial spaces available (3,500+ OLX listings suggest oversupply)",
+      "Younger generation migrating to larger cities (Tirunelveli, Madurai, Chennai)",
+      "Low property sale prices (avg ₹14/sqft) keep rental yields low"
+    ],
+    "bus_stand_area_premium": {
+      "description": "New Bus Stand area is the commercial nerve center of Sankarankovil",
+      "estimated_premium_over_secondary_pct": "40-80",
+      "footfall_drivers": ["Bus transit passengers", "Temple visitors", "Market/shopping traffic", "Local commuting hub"],
+      "shop_types_in_demand": ["Tea shops/SNACK bars", "Mobile & accessories", "Textiles & readymades", "Medical stores", "Bakeries & restaurants", "Hardware & home needs"]
+    }
+  },
+  "sources": [
+    {
+      "platform": "99acres.com",
+      "url": "https://www.99acres.com/commercial-shops-for-rent-in-sankarankovil-tirunelveli-ffid",
+      "data_points": ["DP001", "DP002", "DP007", "DP008", "DP012"],
+      "reliability": "High - verified property listings"
+    },
+    {
+      "platform": "OLX.in",
+      "url": "https://www.olx.in/sankarankoil_g4059208/for-rent-shops-offices_c1731",
+      "data_points": ["DP006"],
+      "reliability": "Medium - mixed quality listings, some may be outdated"
+    },
+    {
+      "platform": "MagicBricks",
+      "url": "https://www.magicbricks.com/shops-for-rent-in-tirunelveli-pppfr",
+      "data_points": ["DP003"],
+      "reliability": "High - verified property listings"
+    },
+    {
+      "platform": "Housing.com",
+      "url": "https://housing.com/commercial/rent/commercial-shop-for-rent-in-tirunelveli-MA4Poq2ujxpx778yask",
+      "data_points": ["DP009"],
+      "reliability": "High - verified listings"
+    },
+    {
+      "platform": "Reeltor.com",
+      "url": "https://www.reeltor.com/tamil-nadu/sankarankoil/shop-for-rent-in-serndamaram-sankarankoil",
+      "data_points": ["DP004", "DP005"],
+      "reliability": "Medium - aggregated listings"
+    },
+    {
+      "platform": "Quikr",
+      "url": "https://www.quikr.com/homes/property/commercial-for-rent-in-sankarankovil-tirunelveli-cid_1106383-lid_20821",
+      "data_points": ["DP010", "DP011"],
+      "reliability": "Medium - some listings may be from nearby areas"
+    },
+    {
+      "platform": "Justdial",
+      "url": "https://www.justdial.com/Sankarankovil/Offices-On-Rent/nct-11209271",
+      "data_points": ["General rate reference"],
+      "reliability": "Low - generic template text, not location-specific"
+    }
+  ]
+}

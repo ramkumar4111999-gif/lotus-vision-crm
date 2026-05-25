@@ -1,0 +1,202 @@
+{
+  "search_metadata": {
+    "agent": "Agent #1 - Shop Search Specialist (MagicBricks)",
+    "search_date": "2025-05-25",
+    "search_target": "Rentable/To-Let Commercial Shops near New Bus Stand, Sankarankovil, Tamil Nadu",
+    "search_platform": "MagicBricks (www.magicbricks.com)",
+    "search_queries_used": [
+      "commercial shop for rent near Sankarankovil new bus stand site:magicbricks.com",
+      "rentable shops Sankarankovil main road site:magicbricks.com",
+      "shop for rent Sankarankovil Tamil Nadu site:magicbricks.com",
+      "retail space for rent Sankarankovil bus stand area site:magicbricks.com"
+    ],
+    "total_shops_found": 2,
+    "total_shops_detailed": 2,
+    "data_collection_notes": "MagicBricks.com was blocked by Cloudflare protection for direct page access (both via agent-browser and curl). Detailed listing data was extracted from search engine snippets. The z-ai web_search API was rate-limited after the first successful query, preventing additional searches and page reads. MagicBricks search results page confirmed there are exactly 2 commercial shops available for rent in Sankarankoil, Tirunelveli."
+  },
+  "shops": [
+    {
+      "shop_id": "MB-001",
+      "listing_title": "Rent Commercial Shop in Sankarankoil, Tirunelveli - 700 Sq-ft",
+      "shop_type": "Commercial Shop",
+      "listing_type": "For Rent",
+      "address": {
+        "full_address": "Sri Muthu Bhavanam, opposite to Ganapathi Silks, Thiruvengadam Road, near bus stand, Sankarankovil, Sankarankoil, Tirunelveli, Tamil Nadu",
+        "building": "Sri Muthu Bhavanam",
+        "landmark": "Opposite to Ganapathi Silks",
+        "road": "Thiruvengadam Road",
+        "area": "Near Bus Stand",
+        "locality": "Sankarankovil",
+        "city": "Sankarankoil",
+        "district": "Tirunelveli",
+        "state": "Tamil Nadu"
+      },
+      "rent": {
+        "amount": 5000,
+        "currency": "INR",
+        "period": "monthly",
+        "display_text": "₹5,000/month"
+      },
+      "size": {
+        "super_area": 700,
+        "unit": "sq.ft",
+        "display_text": "700 sq.ft"
+      },
+      "floor": {
+        "floor_number": "1",
+        "total_floors": 2,
+        "display_text": "1 out of 2"
+      },
+      "proximity_to_target": {
+        "target": "New Bus Stand, Sankarankovil",
+        "distance_note": "Located near bus stand on Thiruvengadam Road - very close proximity to the target location",
+        "landmark_confirmation": "Address explicitly mentions 'near bus stand'"
+      },
+      "contact": {
+        "phone": "Not available from search snippet",
+        "landlord_agent_name": "Not available from search snippet"
+      },
+      "amenities": {
+        "mentioned": [],
+        "notes": "No amenities details available from search snippet"
+      },
+      "listing_details": {
+        "posted": "Approximately 3 weeks ago (as of search date)",
+        "property_url": "https://www.magicbricks.com/propertyDetails/700-Sq-ft-Commercial-Shop-FOR-Rent-Sankarankoil-in-Tirunelveli&id=4d423134373135343837",
+        "listing_id": "4d423134373135343837",
+        "platform": "MagicBricks",
+        "data_source": "Search engine snippet (direct page access blocked by Cloudflare)"
+      },
+      "confidence_score": "high",
+      "match_relevance": "Excellent - Located on Thiruvengadam Road, opposite Ganapathi Silks, explicitly near bus stand"
+    },
+    {
+      "shop_id": "MB-002",
+      "listing_title": "Shop for Rent in Sankarankoil, Tirunelveli",
+      "shop_type": "Commercial Shop (Small Shop)",
+      "listing_type": "For Rent",
+      "address": {
+        "full_address": "Sankarankoil, Tirunelveli, Tamil Nadu",
+        "locality": "Sankarankoil",
+        "city": "Sankarankoil",
+        "district": "Tirunelveli",
+        "state": "Tamil Nadu",
+        "notes": "Exact address not available from search snippet - listed under Sankarankoil locality"
+      },
+      "rent": {
+        "amount": "Not specified",
+        "currency": "INR",
+        "period": "monthly",
+        "display_text": "Contact for rent details"
+      },
+      "size": {
+        "super_area": "Not specified",
+        "unit": "sq.ft",
+        "display_text": "Size not available"
+      },
+      "floor": {
+        "floor_number": "Not specified",
+        "total_floors": "Not specified",
+        "display_text": "Not specified"
+      },
+      "proximity_to_target": {
+        "target": "New Bus Stand, Sankarankovil",
+        "distance_note": "Listed under Sankarankoil - exact proximity to bus stand unknown"
+      },
+      "contact": {
+        "phone": "Not available from search snippet",
+        "landlord_agent_name": "Not available from search snippet"
+      },
+      "amenities": {
+        "mentioned": [],
+        "notes": "No amenities details available"
+      },
+      "listing_details": {
+        "posted": "Date not specified",
+        "property_url": "https://www.magicbricks.com/shops-for-rent-in-tirunelveli-pppfr",
+        "listing_id": "Not available",
+        "platform": "MagicBricks",
+        "data_source": "Search engine snippet indicating 2 shops total in Sankarankoil; detailed page access blocked"
+      },
+      "confidence_score": "medium",
+      "match_relevance": "Moderate - Confirmed in Sankarankoil area, but exact location and details not available"
+    }
+  ],
+  "market_summary": {
+    "total_shops_available": 2,
+    "platform": "MagicBricks",
+    "area": "Sankarankoil, Tirunelveli",
+    "price_range": {
+      "minimum_rent": 5000,
+      "maximum_rent": "Unknown (2nd listing rent not specified)",
+      "currency": "INR",
+      "period": "monthly"
+    },
+    "size_range": {
+      "minimum_size": 700,
+      "maximum_size": "Unknown",
+      "unit": "sq.ft"
+    },
+    "supply_assessment": "Very limited supply - only 2 commercial shops listed for rent in the entire Sankarankoil area on MagicBricks",
+    "demand_indicator": "Low listing count suggests either low supply or this is a niche market area"
+  },
+  "alternative_sources_found": {
+    "note": "The initial search also revealed listings from other platforms. These are not MagicBricks but may be relevant for comparison.",
+    "sources": [
+      {
+        "platform": "99acres.com",
+        "url": "https://www.99acres.com/commercial-shops-for-rent-in-sankarankovil-tirunelveli-ffid",
+        "snippet": "Located in Maharaja Nagar, Tirunelveli, this 220 sq.ft. commercial shop on the ground floor is available for immediate lease at Rs.20,000.",
+        "note": "This listing appears to be in Maharaja Nagar, Tirunelveli - may not be in Sankarankovil specifically"
+      },
+      {
+        "platform": "OLX India",
+        "url": "https://www.olx.in/sankarankoil_g4059208/for-rent-shops-offices_c1731",
+        "snippet": "Two new shops available for commercial purpose. Near New Bus Stand, STC College Road.",
+        "note": "This listing mentions 'Near New Bus Stand' but is in Palayankottai, Tirunelveli - not Sankarankovil"
+      },
+      {
+        "platform": "Housing.com",
+        "url": "https://housing.com/commercial/rent/commercial-shop-for-rent-in-sankarankoil-tenkasi-tirunelveli-MA4P6l6bhqj9f6kdxnq",
+        "snippet": "Explore from commercial shops for rent in Sankarankoil, Tenkasi, Tirunelveli.",
+        "note": "Confirmed Sankarankoil listing on Housing.com"
+      },
+      {
+        "platform": "JustDial",
+        "url": "https://www.justdial.com/Sankarankovil/Estate-Agents-For-Commercial-Rental/nct-10192647",
+        "snippet": "Estate Agents for Commercial Rentals in Sankarankovil",
+        "note": "Directory of estate agents who may have shop rental listings"
+      }
+    ]
+  },
+  "search_challenges": {
+    "cloudflare_blocking": "MagicBricks.com blocked direct page access via both agent-browser (headless Chrome) and curl, showing Cloudflare 'Access Denied' pages.",
+    "api_rate_limiting": "The z-ai web_search and page_reader APIs experienced persistent rate limiting (HTTP 429) after the first successful search, preventing additional data retrieval.",
+    "google_captcha": "Google search was blocked by CAPTCHA verification when accessed via agent-browser.",
+    "duckduckgo_captcha": "DuckDuckGo showed CAPTCHA challenges, preventing browser-based searches.",
+    "wayback_machine": "The Wayback Machine had not archived the specific MagicBricks listing URLs.",
+    "housing_99acres_blocked": "Housing.com and 99acres.com also blocked agent-browser access."
+  },
+  "recommendations": [
+    {
+      "action": "Direct Visit",
+      "description": "Visit MagicBricks.com manually from a residential browser to get full listing details including contact information, exact photos, and amenities for both shops."
+    },
+    {
+      "action": "Contact Estate Agents",
+      "description": "Contact local estate agents in Sankarankovil via JustDial listing (https://www.justdial.com/Sankarankovil/Estate-Agents-For-Commercial-Rental/nct-10192647) who may have more commercial shop options near the New Bus Stand."
+    },
+    {
+      "action": "Cross-Reference Housing.com",
+      "description": "Check Housing.com listing (https://housing.com/commercial/rent/commercial-shop-for-rent-in-sankarankoil-tenkasi-tirunelveli-MA4P6l6bhqj9f6kdxnq) which confirmed commercial shops for rent in Sankarankoil."
+    },
+    {
+      "action": "On-Ground Survey",
+      "description": "Since online listings are extremely limited (only 2 shops on MagicBricks for entire Sankarankoil), conduct an on-ground survey around New Bus Stand and Thiruvengadam Road to find shops with 'To-Let' boards."
+    },
+    {
+      "action": "Local Newspaper",
+      "description": "Check local Tamil newspapers (Dinakaran, Dinamalar, Daily Thanthi) classifieds for shop rental advertisements in Sankarankovil area."
+    }
+  ]
+}
