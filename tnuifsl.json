@@ -1,0 +1,35 @@
+{
+  "code": 200,
+  "data": {
+    "description": "",
+    "html": "",
+    "metadata": {
+      "Author": "user",
+      "CreationDate": "D:20090318155915+05'30'",
+      "Creator": "PScript5.dll Version 5.2.2",
+      "EncryptFilterName": null,
+      "IsAcroFormPresent": false,
+      "IsCollectionPresent": false,
+      "IsLinearized": true,
+      "IsSignaturesPresent": false,
+      "IsXFAPresent": false,
+      "Language": null,
+      "ModDate": "D:20090318155915+05'30'",
+      "PDFFormatVersion": "1.3",
+      "Producer": "Acrobat Distiller 5.0 (Windows)",
+      "Title": "Microsoft Word - 02 sankarankovil_FR.doc"
+    },
+    "publishedTime": "Fri, 17 Feb 2012 17:22:00 GMT",
+    "title": "Microsoft Word - 02 sankarankovil_FR.doc",
+    "url": "http://tnuifsl.com/documents/ccpbp/Sankarankovil.pdf",
+    "usage": {
+      "tokens": 0
+    }
+  },
+  "meta": {
+    "usage": {
+      "tokens": 0
+    }
+  },
+  "status": 20000
+}
