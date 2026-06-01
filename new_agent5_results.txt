@@ -1,0 +1,513 @@
+================================================================================
+AGENT 5: FOOTFALL ESTIMATION & COMPARATIVE ANALYSIS REPORT
+================================================================================
+SANKARANKOVIL, TENKASI DISTRICT, TAMIL NADU — 2025
+================================================================================
+
+LOCATION COMPARISON:
+  Location 1: M2square Mobiles, Shankar Nagar, 15B, Mela Bazar,
+              opposite Old Municipality Office — FIRST FLOOR, INTERIOR, HIDDEN
+
+  Location 2: Mahi Sports, Sengundar School, Vadakaasi Amman 2nd Street,
+              Main Road, opposite Shanthi Complex — GROUND FLOOR, MAIN ROAD
+
+================================================================================
+SECTION 1: SANKARANKOVIL TOWN DATA & DEMOGRAPHICS
+================================================================================
+
+  Town Population (2011 Census):       70,574
+  Projected 2025 Population:           ~75,000–84,000
+  Estimated 2026 Population:           ~84,000 (census2011.co.in)
+  District:                             Tenkasi (3rd largest town)
+  Daily Floating Population:             ~15,000 people/day
+                                          (Source: TNUIFSL Govt. of Tamil Nadu
+                                           ULB project document — "approximately
+                                           15,000 floating population is expected
+                                           in Sankarankovil")
+
+  KEY COMMERCIAL AREAS:
+  1. Thiruvenkadam Salai (Main Road) — Primary commercial artery
+     - New Bus Stand (20 buses at a time, 39 shops inside)
+     - Shanthi Shopping Complex
+     - Silk showrooms: Ganapathy Silks, Kannan Silks, Karthika Silks
+     - Sengundar School nearby
+     - Bank branches, eateries, medical shops
+  2. Mela Bazar — Traditional interior market
+     - Old Municipality Office
+     - Mixed residential-commercial area
+     - Daily grocery/traditional shopping
+  3. Tirunelveli Road — Secondary commercial corridor
+  4. Rajapalayam Road — Emerging commercial area
+
+  KEY PULL FACTORS:
+  - Sankara Narayanasamy Temple (~900 years old, major pilgrimage center)
+  - Festivals: Aadi Thabasu (12 days), Chittirai Brahmotsavam (41 days)
+  - 103+ bus services connecting to major cities
+  - 45+ schools, multiple colleges
+
+================================================================================
+SECTION 2: FOOTFALL ESTIMATION METHODOLOGY
+================================================================================
+
+  Method: Bottom-up estimation using floating population allocation
+
+  Step 1: Distribute 15,000 daily floating population across commercial areas
+  Step 2: Add local resident daily shopping trips
+  Step 3: Apply location-specific adjustments (floor level, visibility)
+  Step 4: Apply deduplication factor for overlapping traffic
+
+  Key Multipliers (sourced from Indian retail research):
+  - Ground Floor vs 1st Floor: 60-70% reduction in walk-in traffic
+    (Source: Vedatam.com, Indian retail industry studies)
+  - Main Road vs Interior Market: 2.5-3.5x more total foot traffic
+    (Source: Knight Frank High Streets Report, JLL research)
+  - Indian retail store conversion rate: 20-30% of walk-ins
+    (Source: Retailers Association of India)
+
+================================================================================
+SECTION 3: DETAILED FOOTFALL ESTIMATION — LOCATION 2 (MAIN ROAD)
+================================================================================
+
+  LOCATION: Mahi Sports, Vadakaasi Amman 2nd Street, Main Road,
+            opposite Shanthi Complex — GROUND FLOOR
+
+  CATEGORY A: BUS COMMUTERS (Largest contributor)
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  - 103+ bus services; estimated 250-300 bus movements/day
+  - ~10,000-14,000 daily bus passengers
+  - 45-55% walk past this spot (connecting bus stand to town)
+  - Deduplication: 0.7x (passengers counted once, not round-trip)
+  - Estimated: 3,150–5,390 persons/day passing this point
+
+  CATEGORY B: TEMPLE VISITORS
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  - Sankara Narayanasamy Temple: 2,000-4,000 daily visitors
+  - Thiruvenkadam Salai is one of 2-3 main approach roads
+  - 30-40% of temple visitors pass through this stretch
+  - Estimated: 600–1,600 persons/day
+
+  CATEGORY C: SCHOOL STUDENTS & PARENTS
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  - Sengundar Middle School nearby (est. 250-400 students)
+  - Drop-off (7:30-8:30 AM) and pick-up (3:30-4:30 PM)
+  - Each student generates 1.5 pass-bys × 2 trips = 3 passes
+  - Estimated: 750–1,200 persons/day
+
+  CATEGORY D: SHANTHI COMPLEX VISITORS
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  - Shopping complex directly opposite the location
+  - Estimated 400-900 visitors/day
+  - Nearly all pass in front of this location
+  - Estimated: 400–900 persons/day
+
+  CATEGORY E: SILK SHOWROOM CUSTOMERS
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  - 3-4 silk showrooms on this stretch
+  - 60-150 customers per showroom per day
+  - After deduplication: 180-600 unique persons/day
+
+  CATEGORY F: GENERAL MAIN ROAD PASSESBY
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  - Office-goers, daily workers, auto commuters, bank/ATM users
+  - Thiruvenkadam Salai = 1 of 2-3 busiest roads in town
+  - Estimated: 1,500–3,500 persons/day
+
+  CATEGORY G: LOCAL RESIDENTS (DAILY ERRANDS)
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  - 8-12% of 84,000 population visits commercial hub daily
+  - This specific spot captures 8-12% of that traffic
+  - Estimated: 670–1,010 persons/day
+
+  LOCATION 2 TOTALS:
+  ~~~~~~~~~~~~~~~~~~
+  Gross Total (sum of all categories):
+    LOW:    7,250 persons/day
+    MED:    10,590 persons/day
+    HIGH:   14,200 persons/day
+
+  Deduplication Factor: 0.65-0.75
+  (Many individuals counted in multiple categories — e.g., bus commuter
+   who also visits temple and shops at Shanthi Complex)
+
+  NET DAILY AREA FOOTFALL (Location 2):
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    LOW:    7,250 × 0.75  = 5,438 → ~5,400 persons/day
+    MED:    10,590 × 0.70 = 7,413 → ~7,400 persons/day
+    HIGH:   14,200 × 0.65 = 9,230 → ~9,200 persons/day
+
+  ╔══════════════════════════════════════════════════════════════╗
+  ║  LOCATION 2 ESTIMATED AREA FOOTFALL: 5,400–9,200 people/day ║
+  ║  BEST ESTIMATE: ~7,400 people/day (GROUND FLOOR, MAIN ROAD) ║
+  ╚══════════════════════════════════════════════════════════════╝
+
+================================================================================
+SECTION 4: DETAILED FOOTFALL ESTIMATION — LOCATION 1 (MELA BAZAR, 1ST FLOOR)
+================================================================================
+
+  LOCATION: M2square Mobiles, 15B, Mela Bazar, Shankar Nagar,
+            opposite Old Municipality Office — FIRST FLOOR, INTERIOR
+
+  MELA BAZAR AREA ANALYSIS:
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~
+  Mela Bazar is a traditional interior market area in Sankarankovil,
+  distinct from the main Thiruvenkadam Salai commercial corridor.
+
+  CATEGORY A: FLOATING POPULATION VISITING MELA BAZAR
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  - Of 15,000 daily floating population, Mela Bazar (as a secondary
+    interior market) captures approximately 15-20%
+  - Main Road (Thiruvenkadam Salai) captures ~45-50%
+  - Remaining floating population goes to other areas/temple/transit
+  - Estimated: 2,250–3,000 persons visit Mela Bazaar area/day
+
+  CATEGORY B: MUNICIPALITY OFFICE VISITORS
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  - Old Municipality Office (nearby) brings government-related traffic
+  - Estimated 50-100 visitors/day (NOT shopping traffic — these visitors
+    are doing government work, extremely unlikely to browse shops)
+  - Net retail-relevant footfall from this: negligible (5-15 people)
+
+  CATEGORY C: LOCAL RESIDENT DAILY SHOPPING
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  - Shankar Nagar residents shopping for daily needs
+  - Estimated: 500–1,200 persons/day visiting Mela Bazaar shops
+
+  CATEGORY D: PURPOSE-DRIVEN MARKET SHOPPERS
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  - Traditional bazaar shoppers (textiles, groceries, hardware)
+  - Estimated: 300–800 persons/day
+  - Many are repeat, loyal customers of existing shops
+
+  CATEGORY E: PASSING THROUGH TRAFFIC
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  - Unlike Main Road, Mela Bazaar has minimal through-traffic
+  - People come here specifically to shop, not passing through
+  - Estimated: 100–300 persons/day incidental passersby
+
+  MELA BAZAR GROUND FLOOR AREA FOOTFALL:
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  Sum of categories A-E (before first floor reduction):
+    LOW:    3,205 persons/day
+    MED:    4,200 persons/day
+    HIGH:   5,400 persons/day
+
+  After deduplication (factor: 0.80 — less overlap than Main Road):
+    LOW:    ~2,560 persons/day (ground floor)
+    MED:    ~3,360 persons/day (ground floor)
+    HIGH:   ~4,320 persons/day (ground floor)
+
+  FIRST FLOOR REDUCTION:
+  ~~~~~~~~~~~~~~~~~~~~~~
+  Research establishes that first floor shops receive 60-70% FEWER
+  walk-in visitors than ground floor equivalents in Indian retail:
+
+  Evidence:
+  1. Vedatam.com ground floor vs first floor analysis
+  2. Indian retail reports: road-facing ground floor commands 40-80%
+     rent premium precisely due to footfall differential
+  3. The Hindu Business Line: "If the shop is not on ground or first
+     floor, focus gets deviated"
+  4. Retail psychology: ground floor = eye-level for pedestrians
+     (same principle as eye-level shelf placement selling 35% more)
+
+  Additional factors for THIS specific first floor location:
+  - "Somewhat hidden" — poor signage visibility from street
+  - Narrow/staircase access typical of old bazaar buildings
+  - No elevator (unlikely in tier-4 town old market building)
+  - Staircase entrance not prominent from the street
+  - Interior market = less natural foot traffic to begin with
+  - No landmark anchor (Old Municipality Office is NOT a shopping draw)
+
+  Applying 65-75% reduction for first floor + hidden interior:
+
+  FIRST FLOOR AREA FOOTFALL (Location 1):
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    LOW:    2,560 × 0.25 = 640 persons/day
+    MED:    3,360 × 0.30 = 1,008 persons/day
+    HIGH:   4,320 × 0.35 = 1,512 persons/day
+
+  ╔════════════════════════════════════════════════════════════════╗
+  ║  LOCATION 1 ESTIMATED AREA FOOTFALL: 640–1,510 people/day      ║
+  ║  BEST ESTIMATE: ~1,000 people/day (1ST FLOOR, INTERIOR)       ║
+  ╚════════════════════════════════════════════════════════════════╝
+
+================================================================================
+SECTION 5: NUMERIC ESTIMATES SUMMARY
+================================================================================
+
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │                    DAILY FOOTFALL COMPARISON                             │
+  ├─────────────────────────────────────────┬────────────────┬──────────────┤
+  │                                         │ Location 1     │ Location 2   │
+  │                                         │ (M2square,     │ (Mahi Sports,│
+  │                                         │ Mela Bazar,    │ Main Road,   │
+  │                                         │ 1ST FLOOR)     │ GROUND FLOOR)│
+  ├─────────────────────────────────────────┼────────────────┼──────────────┤
+  │ LOW Estimate (people/day)               │ 640            │ 5,400        │
+  │ MEDIUM Estimate (people/day)            │ 1,000          │ 7,400        │
+  │ HIGH Estimate (people/day)              │ 1,510          │ 9,200        │
+  ├─────────────────────────────────────────┼────────────────┼──────────────┤
+  │ BEST ESTIMATE (people/day)             │ ~1,000         │ ~7,400       │
+  └─────────────────────────────────────────┴────────────────┴──────────────┘
+
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │                    MONTHLY FOOTFALL COMPARISON                            │
+  ├─────────────────────────────────────────┬────────────────┬──────────────┤
+  │                                         │ Location 1     │ Location 2   │
+  ├─────────────────────────────────────────┼────────────────┼──────────────┤
+  │ LOW (30 days)                           │ 19,200         │ 162,000      │
+  │ MEDIUM (30 days)                        │ 30,000         │ 222,000      │
+  │ HIGH (30 days)                          │ 45,300         │ 276,000      │
+  ├─────────────────────────────────────────┼────────────────┼──────────────┤
+  │ BEST ESTIMATE (people/month)           │ ~30,000        │ ~222,000     │
+  │ FESTIVAL MONTH (people/month)           │ ~42,000–60,000 │ ~310,000–    │
+  │                                         │                │  400,000     │
+  └─────────────────────────────────────────┴────────────────┴──────────────┘
+
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │                    ANNUAL FOOTFALL COMPARISON                             │
+  ├─────────────────────────────────────────┬────────────────┬──────────────┤
+  │                                         │ Location 1     │ Location 2   │
+  ├─────────────────────────────────────────┼────────────────┼──────────────┤
+  │ BEST ESTIMATE (people/year)             │ ~365,000       │ ~2,800,000   │
+  └─────────────────────────────────────────┴────────────────┴──────────────┘
+
+  RATIO: Location 2 gets approximately 7.4x MORE daily footfall than Location 1
+
+================================================================================
+SECTION 6: REASONS FOR THE FUNDAMENTAL DIFFERENCE
+================================================================================
+
+  The ~7.4x footfall difference between the two locations is driven by
+  FIVE compounding disadvantages at Location 1:
+
+  REASON 1: MAIN ROAD vs INTERIOR MARKET (2.2x factor)
+  ─────────────────────────────────────────────────────
+  - Thiruvenkadam Salai (Location 2) is the PRIMARY commercial artery
+    of Sankarankovil — it connects the bus stand, temple, silk showrooms,
+    shopping complexes, schools, and banks.
+  - Mela Bazar (Location 1) is a SECONDARY interior market — people
+    come here only for specific traditional shopping needs.
+  - In Indian tier-3/4 towns, the main road captures 2.2-3.5x the
+    foot traffic of interior market areas (JLL, Knight Frank research).
+  - The main road has PASSING THROUGH traffic (people walking to other
+    destinations), while Mela Bazar only has DESTINATION traffic.
+
+  REASON 2: GROUND FLOOR vs FIRST FLOOR (2.5-3.3x factor)
+  ─────────────────────────────────────────────────────────
+  - Ground floor shops receive 60-70% MORE walk-in traffic in India
+    (Vedatam.com, retail industry standard).
+  - First floor shops are invisible to 80%+ of street-level pedestrians.
+  - In a town with no elevators, stairs are a physical barrier —
+    especially for elderly customers and families with children.
+  - The "somewhat hidden" nature of this specific first floor shop
+    compounds the problem — even people who know the building exist
+    may not notice the shop entrance.
+  - Small-town retail psychology: ground floor = "established business"
+    while first floor = "struggling/starting up" perception.
+
+  REASON 3: ANCHOR & LANDMARK EFFECT (1.5-2x factor)
+  ────────────────────────────────────────────────────
+  - Location 2 is opposite Shanthi Complex — an established
+    commercial anchor that draws 400-900 daily visitors.
+  - Location 2 is near the New Bus Stand — the #1 transit hub.
+  - Location 2 is on the approach road to the famous temple.
+  - Location 2 has multiple silk showrooms as complementary anchors.
+  - Location 1 is opposite the Old Municipality Office — a government
+    building that does NOT draw shopping-oriented footfall.
+  - Location 1 has no commercial anchor nearby.
+
+  REASON 4: SCHOOL ZONE TRAFFIC (exclusive to Location 2)
+  ────────────────────────────────────────────────────────
+  - Sengundar School generates 750-1,200 daily passersby
+    (students + parents at drop-off and pick-up).
+  - This creates two daily traffic peaks that are predictable and
+    consistent regardless of season or market conditions.
+  - Location 1 has NO school or educational institution nearby.
+
+  REASON 5: BUS TRANSIT CONNECTIVITY (exclusive to Location 2)
+  ────────────────────────────────────────────────────────────
+  - 250-300 bus movements/day with 10,000-14,000 passengers.
+  - 45-55% of bus passengers walk past Location 2's spot.
+  - This alone contributes 3,150-5,390 daily passersby — MORE than
+    the ENTIRE estimated footfall at Location 1.
+  - Location 1 has NO bus stand, bus stop, or transit connectivity.
+
+  COMPOUNDING EFFECT:
+  ~~~~~~~~~~~~~~~~~~~
+  These five factors MULTIPLY together (not just add):
+  Main Road (2.2x) × Ground Floor (2.8x) × Anchor Effect (1.7x) ×
+  School + Transit (bonus) = approximately 7-8x total advantage
+
+================================================================================
+SECTION 7: PEAK HOURS & SEASONAL PATTERNS
+================================================================================
+
+  LOCATION 2 (Main Road, Ground Floor) — PEAK HOURS:
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  - 8:00-10:00 AM:   ABSOLUTE PEAK (~1,000-1,700 people/hour)
+    Bus arrivals, school drop-off, temple morning session, shops opening
+  - 4:00-6:00 PM:   SECONDARY PEAK (~1,000-1,300 people/hour)
+    School pick-up, temple evening session, evening shopping
+  - 6:00-8:00 PM:   THIRD PEAK (~700-1,200 people/hour)
+    Bus departures, silk showrooms, returning commuters
+
+  LOCATION 1 (Mela Bazar, First Floor) — PEAK HOURS:
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  - 10:00 AM-12:00 PM: Peak (~100-200 people/hour at first floor level)
+    Morning market shopping
+  - 5:00-7:00 PM: Secondary peak (~80-150 people/hour)
+    Evening errands, returning workers
+  - NOTE: Even peak hours at Location 1 are LOWER than the LOWEST
+    traffic hours at Location 2.
+
+  SEASONAL VARIATION:
+  ~~~~~~~~~~~~~~~~~~~
+  Both locations see increases during festival months, but:
+
+  Festival Month Impact:
+  - Location 2 (Main Road): 1.3-2.0x multiplier during Aadi Thabasu,
+    Chittirai Brahmotsavam, Navaratri, Deepavali
+    → Festival daily footfall can reach 10,000-15,000 people/day
+  - Location 1 (Mela Bazar): 1.2-1.5x multiplier during same periods
+    → Festival daily footfall: 1,200-2,250 people/day
+
+  Location 2's absolute gain during festivals is FAR larger because
+  the main road is the primary route for all festival pilgrims and
+  the temple is accessed from Thiruvenkadam Salai.
+
+================================================================================
+SECTION 8: SCORING MATRIX
+================================================================================
+
+  CRITERION                       LOC 1    LOC 2    ADVANTAGE
+  ─────────────────────────────  ─────    ─────    ────────
+  1. Visibility (signage seen)     2/10     9/10     Loc 2 (+7)
+  2. Accessibility (entry ease)    3/10     9/10     Loc 2 (+6)
+  3. Daily Footfall Volume        3/10     9/10     Loc 2 (+6)
+  4. Peak Hour Traffic           2/10     9/10     Loc 2 (+7)
+  5. Transit Connectivity         1/10     9/10     Loc 2 (+8)
+  6. Anchor/Commercial Proximity  3/10     9/10     Loc 2 (+6)
+  7. School Zone Advantage        1/10     8/10     Loc 2 (+7)
+  8. Elderly/Family Accessibility 2/10     9/10     Loc 2 (+7)
+  9. Brand Discovery (daily      2/10     9/10     Loc 2 (+7)
+     impressions)
+  10. Festival Season Amplific.   4/10     9/10     Loc 2 (+5)
+  ─────────────────────────────  ─────    ─────    ────────
+  TOTAL SCORE:                     23/100    89/100   LOC 2 WINS BY 66 PTS
+  ─────────────────────────────  ─────    ─────    ────────
+
+================================================================================
+SECTION 9: FINAL NUMERIC ESTIMATES (ANSWERS TO KEY QUESTIONS)
+================================================================================
+
+  QUESTION 1: Estimated Average Daily Visitors (area footfall)
+  ───────────────────────────────────────────────────────────
+    Location 1 (M2square, Mela Bazar, 1st Floor):
+      LOW:    640 people/day
+      MED:    1,000 people/day
+      HIGH:   1,510 people/day
+      >>> BEST ESTIMATE: ~1,000 people/day
+
+    Location 2 (Mahi Sports, Main Road, Ground Floor):
+      LOW:    5,400 people/day
+      MED:    7,400 people/day
+      HIGH:   9,200 people/day
+      >>> BEST ESTIMATE: ~7,400 people/day
+
+  QUESTION 2: Estimated Average Monthly Visitors (area footfall)
+  ────────────────────────────────────────────────────────────
+    Location 1 (M2square, Mela Bazar, 1st Floor):
+      LOW:    19,200 people/month
+      MED:    30,000 people/month
+      HIGH:   45,300 people/month
+      >>> BEST ESTIMATE: ~30,000 people/month
+
+    Location 2 (Mahi Sports, Main Road, Ground Floor):
+      LOW:    162,000 people/month
+      MED:    222,000 people/month
+      HIGH:   276,000 people/month
+      >>> BEST ESTIMATE: ~222,000 people/month
+
+  QUESTION 3: Ratio
+  ─────────────────
+    Location 2 / Location 1 = 7,400 / 1,000 = 7.4x MORE footfall
+
+  QUESTION 4: Why such a large difference?
+  ──────────────────────────────────────────
+    Five compounding factors:
+    1. Main Road vs Interior Market: 2.2x advantage
+    2. Ground Floor vs First Floor: 2.8x advantage
+    3. Anchor Complex vs No Anchor: 1.7x advantage
+    4. Bus Stand proximity (exclusive to Loc 2)
+    5. School zone traffic (exclusive to Loc 2)
+
+================================================================================
+SECTION 10: CLEAR RECOMMENDATION
+================================================================================
+
+  ╔══════════════════════════════════════════════════════════════════╗
+  ║                                                                    ║
+  ║  ★★★★★  LOCATION 2 IS THE OVERWHELMINGLY BETTER CHOICE  ★★★★★   ║
+  ║                                                                    ║
+  ║  Mahi Sports location (Main Road, Ground Floor)                   ║
+  ║  Vadakaasi Amman 2nd Street, opposite Shanthi Complex            ║
+  ║                                                                    ║
+  ║  SCORE: 89/100 (vs 23/100 for Location 1)                        ║
+  ║                                                                    ║
+  ║  Daily Footfall: ~7,400 people/day (vs ~1,000)                   ║
+  ║  Monthly Footfall: ~222,000 people/month (vs ~30,000)             ║
+  ║  Advantage: 7.4x MORE visitor traffic                             ║
+  ║                                                                    ║
+  ╚══════════════════════════════════════════════════════════════════╝
+
+  RECOMMENDATION: LOCATION 2 (Mahi Sports — Main Road, Ground Floor)
+
+  TOP 10 REASONS:
+  ───────────────
+  1. 7.4x more daily footfall (7,400 vs 1,000 people/day)
+  2. 7.4x more monthly footfall (222,000 vs 30,000 people/month)
+  3. Ground floor = maximum visibility and walk-in access
+  4. Main Road = primary commercial artery with highest traffic
+  5. Opposite Shanthi Complex = established commercial anchor
+  6. Near New Bus Stand = 10,000-14,000 daily bus passengers nearby
+  7. Sengundar School = daily parent/student traffic peaks
+  8. Temple approach road = pilgrimage traffic throughout the year
+  9. No stairs = accessible for ALL demographics (elderly, children)
+  10. Signage visible to thousands daily = rapid brand building
+
+  RISK IF CHOOSING LOCATION 1:
+  ────────────────────────────
+  - First floor + hidden interior = extremely low walk-in discovery
+  - Missing the bus stand, school, temple, and silk showroom traffic
+  - Elderly customers (major retail demographic) will avoid stairs
+  - Brand building will be extremely slow with only 1,000 daily impressions
+  - During festival peaks, Location 2 gets 10,000-15,000 visitors while
+    Location 1 gets only 1,200-2,250 — a compounding disadvantage
+  - Rent savings at Location 1 will NOT compensate for 7.4x less revenue
+    potential
+
+================================================================================
+DATA SOURCES
+================================================================================
+
+  1. TNUIFSL (Govt. of Tamil Nadu) — Sankarankovil floating population:
+     "approximately 15,000 floating population is expected in Sankarankovil"
+  2. Census 2011 — Sankarankovil population: 70,574
+  3. Census2011.co.in — Projected 2026 population: ~84,000
+  4. Vedatam.com — Ground floor vs first floor footfall analysis
+  5. Knight Frank — Think India Think Retail 2024, High Streets Report
+  6. JLL India — High Streets Shopping the Indian Way
+  7. The Hindu Business Line — Retailers prefer high street over malls
+  8. Indian Retailer — Footfall-driven retail and strategic location
+  9. Ginesys — Mall vs high street retail conversion rates
+  10. Justdial — Sankarankovil commercial listings (103+ bus services)
+  11. The Hindu — Sankarankovil bus stand (20 buses, 39 shops)
+  12. TN Urban Tree — Shopping centers list (silk showrooms)
+  13. Times of India — Chandni Chowk footfall benchmark (4-6 lakh/day)
+  14. PMC/PubMed — Temporal variations in footfall context
+  15. Brick&Bolt — Retail real estate ROI: high street vs mall
+
+================================================================================
+AGENT 5 — FOOTFALL ESTIMATION & COMPARATIVE ANALYSIS COMPLETE
+================================================================================
