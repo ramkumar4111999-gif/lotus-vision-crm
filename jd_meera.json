@@ -1,0 +1,21 @@
+{
+  "code": 200,
+  "data": {
+    "description": "",
+    "external": {},
+    "html": "<html><head>\n<title>Access Denied</title>\n</head><body>\n<h1>Access Denied</h1>\n \nYou don't have permission to access \"http://www.justdial.com/Sankarankovil/New-Meera-Opticals-Sankarankoil-Tirunelveli-Road/0462PX462-X462-190517222550-F6M4_BZDET\" on this server.<p>\nReference #18.63d02e17.1780373170.9178746e\n</p><p>https://errors.edgesuite.net/18.63d02e17.1780373170.9178746e</p>\n\n\n</body></html>",
+    "metadata": {},
+    "title": "Access Denied",
+    "url": "https://www.justdial.com/Sankarankovil/New-Meera-Opticals-Sankarankoil-Tirunelveli-Road/0462PX462-X462-190517222550-F6M4_BZDET",
+    "usage": {
+      "tokens": 150
+    },
+    "warning": "Target URL returned error 403: Forbidden"
+  },
+  "meta": {
+    "usage": {
+      "tokens": 150
+    }
+  },
+  "status": 20000
+}
