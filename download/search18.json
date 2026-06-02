@@ -1,0 +1,47 @@
+[
+  {
+    "url": "https://play.google.com/store/apps/details?id=com.google.android.contacts&hl=en",
+    "name": "Contacts - Apps on Google Play",
+    "snippet": "View your contacts by account (such as work or personal) • Easily add contacts and edit information like phone numbers, emails, and photos.",
+    "host_name": "play.google.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://contacts.google.com",
+    "name": "Google Contacts",
+    "snippet": "Loading. Sign in. Use your Google Account. Email or phone. Forgot email? CAPTCHA image of text used to distinguish humans from robots. Type the text you hear or ...",
+    "host_name": "contacts.google.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://support.google.com/contacts/answer/7280886?hl=en&co=GENIE.Platform%3DAndroid",
+    "name": "Edit or delete contacts - Android - Google Help",
+    "snippet": "Tap the contact you want to edit. At the top right, tap Edit . If asked, choose the account. Enter the contact's name, email, and phone number.",
+    "host_name": "support.google.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.flaticon.com/free-icons/phone-contact",
+    "name": "Phone contact Icons & Symbols - Flaticon",
+    "snippet": "17651 phone contact icons. Vector icons in SVG, PSD, PNG, EPS and ICON FONT.",
+    "host_name": "www.flaticon.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://contactmobile.co.nz",
+    "name": "Contact",
+    "snippet": "Contact. The new home for your phone. Buy now. Sign in · Terms and Conditions · Privacy Policy · Help. © 2026 Contact Energy Ltd.",
+    "host_name": "contactmobile.co.nz",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  }
+]
