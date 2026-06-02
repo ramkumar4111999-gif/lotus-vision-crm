@@ -1,0 +1,24 @@
+{
+  "code": 200,
+  "data": {
+    "description": "",
+    "external": {},
+    "html": "<html lang=\"en\"><head>\n    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0\">\n    <title>403 Forbidden</title>\n\n    <style type=\"text/css\">\n        body {\n            margin: 0;\n            padding: 0;\n            font-family: 'Open Sans', sans-serif;\n            font-size: 14px;\n            color: #4d4d4d;\n        }\n\n        .container {\n            position: relative;\n            max-width: 1340px;\n            min-width: 1000px;\n            margin: 0 auto;\n            padding: 15px 20px;\n        }\n\n        header {\n            border-bottom: 1px solid #ddd;\n        }\n\n        .t-centar {\n            position: absolute;\n            left: 0;\n            right: 0;\n            top: 0;\n            bottom: 0;\n            margin: auto;\n            height: 404px;\n        }\n\n        footer {\n            font-size: 12px;\n            border-top: 1px solid #ddd;\n        }\n\n        h1, h2 {\n            font-size: 26px;\n            font-weight: 300;\n            margin: 0 0 20px;\n            line-height: 32px;\n        }\n\n        h3 {\n            border: 1px solid #c5c5c5;\n            border-radius: 5px;\n            font-size: 30px;\n            font-weight: 300;\n            margin: 0;\n            padding: 15px 0;\n            line-height: 28px;\n        }\n\n        a {\n            padding: 10px 15px;\n            background-color: #dc0028;\n            color: #fff;\n            text-decoration: none;\n            border-radius: 2px;\n            width: 160px;\n            text-align: center;\n            margin: 30px auto;\n            display: block;\n        }\n\n        .wrapper {\n            width: 650px;\n            margin: 0 auto;\n            text-align: center;\n        }\n\n        .wrapper img {\n            margin-bottom: 20px;\n        }\n\n        .call img {\n            display: inline-block;\n            vertical-align: middle;\n            margin-bottom: 0;\n            margin-right: 10px;\n        }\n\n        body {\n            position: relative;\n        }\n\n        html, body {\n            height: 100%;\n        }\n\n        footer.sticky {\n            position: absolute;\n            bottom: 0;\n            left: 0;\n            right: 0;\n        }\n\n        footer {\n            text-align: center;\n        }\n\n        \n    </style>\n</head>\n<body>\n    <header>\n        <div class=\"container\">\n            <img src=\"//sulcdn.azureedge.net/content/images/v8/sulekha-logo.png\">\n        </div>\n    </header>\n    <div class=\"page-wrap\">\n        <div class=\"container t-centar\">\n            <div class=\"wrapper\">\n                <img src=\"//sulcdn.azureedge.net/content/images/403-error.jpg\">\n                <h2>Sorry, you are not authorized to access this page.</h2>\n                <h2>If you believe this is a mistake, please contact our support team.</h2>\n                <h3 class=\"call\"><b><img src=\"//sulcdn.azureedge.net/content/images/403-icon-phone.jpg\">1800-420-1212</b></h3>\n            </div>\n        </div>\n        <footer>\n            <div class=\"container\">\n                © 2024. Copyright Sulekha.com. All Rights Reserved.\n            </div>\n        </footer>\n    </div>\n\n\n</body></html>",
+    "metadata": {
+      "lang": "en",
+      "viewport": "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"
+    },
+    "title": "403 Forbidden",
+    "url": "https://www.sulekha.com/ophthalmologists/tenkasi",
+    "usage": {
+      "tokens": 799
+    },
+    "warning": "Target URL returned error 403: Forbidden"
+  },
+  "meta": {
+    "usage": {
+      "tokens": 799
+    }
+  },
+  "status": 20000
+}

@@ -1,0 +1,144 @@
+{
+  "search_summary": {
+    "location": "Tenkasi, Tamil Nadu, India",
+    "search_date": "2025",
+    "sources": [
+      "Justdial.com",
+      "Lenskart.com",
+      "TitanEyePlus.com",
+      "tenkasi.idbf.in",
+      "rafaeyecareclinic.com",
+      "gvreyeclinic.com",
+      "dragarwal.com",
+      "mypro.vision",
+      "Google Search Results"
+    ],
+    "notes": "Justdial lists 35 opticians and IDBF lists 54 optical shops in Tenkasi. Justdial pages returned empty/403 due to JS-rendering and bot protection. Detailed scraping was rate-limited. The shops below were extracted from search snippets, schema.org structured data, known brand pages, and clinic websites. Some shops have partial address/phone info."
+  },
+  "shops": [
+    {
+      "name": "Tenkasi Opticals",
+      "address": "103/75, Mela Masi Veethi N, Near Annai Mobiles, Tenkasi - 627811, Tamil Nadu",
+      "phone": "9042606700",
+      "source": "tenkasi.idbf.in (schema.org data)",
+      "type": "Optical Shop",
+      "hours": "Opens 10 AM on working days",
+      "payment": "Cash"
+    },
+    {
+      "name": "Super Vision Opticals",
+      "address": "South Car Street, Tenkasi, Tamil Nadu",
+      "phone": "Not available in search results",
+      "source": "Justdial",
+      "type": "Optician / Optical Shop"
+    },
+    {
+      "name": "Jesie Opticals Eye Clinic",
+      "address": "Alangulam, Near Westside CSI Church, Opposite to Bus Stand, Tenkasi, Tamil Nadu",
+      "phone": "Not available in search results",
+      "source": "Justdial",
+      "type": "Eye Clinic / Optical Shop",
+      "rating": "5.0 (155 reviews)"
+    },
+    {
+      "name": "Lenskart - Railway Road Tenkasi",
+      "address": "#57 H, Ward No 1, Railway Station Road, Tenkasi, Tamil Nadu 627811",
+      "phone": "Not available in search results",
+      "source": "lenskart.com",
+      "type": "National Chain Optical Store",
+      "services": "Free eye check-up by certified optometrists"
+    },
+    {
+      "name": "Titan Eye Plus - Tenkasi",
+      "address": "154, Railway Feeder Road, Opposite to Well Kamraj Silks, Tenkasi, Tamil Nadu",
+      "phone": "Not available in search results",
+      "source": "titaneyeplus.com",
+      "type": "National Chain Optical Store",
+      "services": "Free eye test, consultation with expert optometrist, free eyewear repairs"
+    },
+    {
+      "name": "G.V.R Eye Hospital & Opticals",
+      "address": "Tenkasi, Tamil Nadu",
+      "phone": "+91 8870024305",
+      "source": "Justdial / gvreyeclinic.com",
+      "type": "Eye Hospital with Optical Showroom",
+      "hours": "09:30 AM to 01:30 PM, 05:00 PM to 08:30 PM"
+    },
+    {
+      "name": "Chandra Opticals",
+      "address": "Tenkasi, Tamil Nadu",
+      "phone": "Not available in search results",
+      "source": "Justdial",
+      "type": "Optician / Spectacle Dealer"
+    },
+    {
+      "name": "Lenskraffters Eyecare",
+      "address": "Tenkasi, Tamil Nadu",
+      "phone": "Not available in search results",
+      "source": "Justdial",
+      "type": "Eyecare / Optical Shop"
+    },
+    {
+      "name": "Optical World",
+      "address": "Tenkasi, Tamil Nadu",
+      "phone": "Not available in search results",
+      "source": "Justdial",
+      "type": "Optical Shop"
+    },
+    {
+      "name": "Rafa Eye Care Clinic",
+      "address": "SH 40, Tenkasi Vaikalpaalam, Melapuliyur, Tenkasi, Tamil Nadu 627814",
+      "phone": "04633-226001",
+      "email": "rafaeyecareclinic@gmail.com",
+      "source": "rafaeyecareclinic.com / Justdial",
+      "type": "Eye Care Clinic with Optical Dispensary",
+      "rating": "4.3 (19 reviews)"
+    },
+    {
+      "name": "GVR Eye Clinic",
+      "address": "Tenkasi, Tamil Nadu",
+      "phone": "+91 8870024305",
+      "source": "gvreyeclinic.com",
+      "type": "Eye Clinic with Optical Showroom",
+      "hours": "09:30 AM to 01:30 PM, 05:00 PM to 08:30 PM",
+      "services": "Personalized eye care, various treatment for eye-related diagnosis, eye camps"
+    },
+    {
+      "name": "Dr. Agarwals Eye Hospital - Tenkasi",
+      "address": "Tenkasi, Tamil Nadu",
+      "phone": "9594924144",
+      "source": "dragarwal.com",
+      "type": "National Chain Eye Hospital",
+      "services": "Pediatric eye care, comprehensive eye treatments"
+    },
+    {
+      "name": "Pro Vision",
+      "address": "Tenkasi, Tamil Nadu",
+      "phone": "Not available in search results",
+      "source": "mypro.vision",
+      "type": "Eye Care / Optical",
+      "services": "Advanced eye testing equipment, diagnosis, affordable charges"
+    }
+  ],
+  "additional_context": {
+    "justdial_total": "35 opticians listed on Justdial for Tenkasi",
+    "idbf_total": "54 optical shops listed on tenkasi.idbf.in (including nearby areas within 100 km)",
+    "gap": "~22+ additional shops exist on Justdial and IDBF but their details could not be extracted due to JS-rendering and API rate limits. Direct browsing of justdial.com/Tenkasi/Opticians is needed for the complete list.",
+    "shop_categories_on_justdial": [
+      "Opticians",
+      "Optical World",
+      "Spectacle Glass Dealers",
+      "Optical Frame Wholesalers",
+      "Contact Lens Experts",
+      "Eye Glass Experts",
+      "Optical Center"
+    ]
+  },
+  "nearby_area_shops": [
+    {
+      "name": "Jesie Opticals Eye Clinic",
+      "area": "Alangulam (near Tenkasi)",
+      "note": "Located near Westside CSI Church, opposite to Bus Stand"
+    }
+  ]
+}
