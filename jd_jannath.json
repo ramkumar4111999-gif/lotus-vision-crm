@@ -1,0 +1,21 @@
+{
+  "code": 200,
+  "data": {
+    "description": "",
+    "external": {},
+    "html": "<html><head>\n<title>Access Denied</title>\n</head><body>\n<h1>Access Denied</h1>\n \nYou don't have permission to access \"http://www.justdial.com/Tirunelveli/Jannath-Opticals-Near-Sathya-Clinic-Puliyangudi/0462PX462-X462-230123120600-S8M9_BZDET\" on this server.<p>\nReference #18.c0622c17.1780374050.1b2a1329\n</p><p>https://errors.edgesuite.net/18.c0622c17.1780374050.1b2a1329</p>\n\n\n</body></html>",
+    "metadata": {},
+    "title": "Access Denied",
+    "url": "https://www.justdial.com/Tirunelveli/Jannath-Opticals-Near-Sathya-Clinic-Puliyangudi/0462PX462-X462-230123120600-S8M9_BZDET",
+    "usage": {
+      "tokens": 151
+    },
+    "warning": "Target URL returned error 403: Forbidden"
+  },
+  "meta": {
+    "usage": {
+      "tokens": 151
+    }
+  },
+  "status": 20000
+}
