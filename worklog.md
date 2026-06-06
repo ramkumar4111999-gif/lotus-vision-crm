@@ -111,3 +111,23 @@ Stage Summary:
 - Highest rated: Apollo Opticals (5.0, 688 reviews)
 - Chain presence: Titan Eye Plus, Lenskart, Dr. Agarwal's Eye Hospital
 - Regional chain: Jesie Opticals (3 branches across Tenkasi district)
+---
+Task ID: 3
+Agent: Main Agent (3 parallel subagents)
+Task: Research wholesale spectacle lens shops in Rajapalayam and generate PDF with sources
+
+Work Log:
+- Deployed 3 AI agents with 20+ web searches across 8+ sources
+- Agent 1: Justdial, IndiaMART, Google searches (6 queries + 4 page scrapes)
+- Agent 2: Wholesale-focused searches (7 queries + 12 page scrapes)
+- Agent 3: Optical wholesale distributor searches (4 queries + 6 page scrapes)
+- Found 11 shops total: 3 confirmed wholesale, 7 probable retail-cum-wholesale, 1 retail only
+- Key finding: Star Opticals is the best B2B wholesale contact (5 phone numbers, IndiaMART verified)
+- Generated comprehensive PDF with sources using reportlab
+- Sent PDF via Discord
+
+Stage Summary:
+- PDF saved at: /home/z/my-project/download/Rajapalayam_Wholesale_Spectacle_Lenses.pdf
+- Best wholesale contacts: Star Opticals (98848 84332), Sha Opticals (90870 71990), Rajapalayam Opticals (89258 99048)
+- Rajapalayam has limited dedicated wholesale-only shops - most are retail-cum-wholesale
+- Justdial lists 21 opticians, 12 spectacle dealers, and multiple lens/frame dealers

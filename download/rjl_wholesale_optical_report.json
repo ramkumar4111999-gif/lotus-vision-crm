@@ -1,0 +1,67 @@
+{
+  "shops": [
+    {
+      "name": "Star Opticals",
+      "address": "Tenkasi Road, Rajapalayam, Tamil Nadu 626117",
+      "phone": "+91 8047819729, +91 9342352477, +91 9884884332, +91 7010204644, +91 9600559786",
+      "source": "https://www.indiamart.com/company/131336115/",
+      "notes": "Wholesale supplier of Spectacle Frames, Sunglasses, Aviator Sunglasses, Reading Glasses, Protective Eyewear, Titanium Optical Frames, Magnet Sunglasses, Sports Sunglasses, Goggle Frames. IndiaMART B2B supplier. Also deals Essilor & Zeiss lenses (per Instagram). GST registered in Rajapalayam."
+    },
+    {
+      "name": "Aditya Opticals",
+      "address": "Rajapalayam, Tamil Nadu (exact address not confirmed)",
+      "phone": "Not available from website",
+      "source": "https://www.adityaopticals.com",
+      "notes": "Describes itself as 'a leading wholesale distributor of high quality Spectacle cases, Spectacle frames, Lens and Goggles'. Website exists but full contact details not scraped due to dynamic content. Appears in Rajapalayam search results."
+    },
+    {
+      "name": "JVJ Opticals",
+      "address": "Sevalpatti Street, Rajapalayam, Tamil Nadu",
+      "phone": "+91 9944050540",
+      "source": "https://www.justdial.com/Virudhunagar/Spectacle-Dealers-in-Rajapalayam/nct-10446742",
+      "notes": "Listed on JustDial with 79 ratings. Mentioned as spectacle dealer in Rajapalayam."
+    },
+    {
+      "name": "J K Eye Care & Opticals",
+      "address": "Rajapalayam, Tamil Nadu",
+      "phone": "+91 9486238407",
+      "source": "https://a2v.in/000/Optical-Showrooms/List-in-Tamilnadu.html",
+      "notes": "Listed in Tamil Nadu optical showroom database for Rajapalayam."
+    },
+    {
+      "name": "Sri Sai Opticals",
+      "address": "Rajapalayam, Tamil Nadu",
+      "phone": "+91 7667558811",
+      "source": "https://a2v.in/000/Optical-Showrooms/List-in-Tamilnadu.html",
+      "notes": "Listed in Tamil Nadu optical showroom database for Rajapalayam."
+    },
+    {
+      "name": "SHA Opticals",
+      "address": "Rajapalayam, Tamil Nadu",
+      "phone": "+91 9087071990",
+      "source": "https://www.instagram.com/sha_optical_rjpm",
+      "notes": "Active optical showroom in Rajapalayam. Handles quality eyewear and expert vision care."
+    },
+    {
+      "name": "Rajapalayam Opticals",
+      "address": "Rajapalayam, Tamil Nadu",
+      "phone": "+91 8925899048",
+      "source": "https://a2v.in/000/Optical-Showrooms/List-in-Tamilnadu.html",
+      "notes": "Listed in Tamil Nadu optical showroom database for Rajapalayam."
+    },
+    {
+      "name": "Titan Eye+ Rajapalayam",
+      "address": "No 431, Tenkasi Road, Near DBS Bank, Rajapalayam, Tamil Nadu",
+      "phone": "+91 7845948668",
+      "source": "https://www.titaneyeplus.com/stores/india/tamil-nadu/rajapalayam/titan-eyeplus-rajapalayam",
+      "notes": "Titan Eye+ chain store. Offers free eye test, consultation with optometrist, and free eyewear repairs. Retail chain but may sell wholesale to some extent."
+    }
+  ],
+  "search_summary": {
+    "total_searches_run": 4,
+    "total_web_pages_scraped": 6,
+    "wholesale_specific_found": 2,
+    "retail_optical_shops_found": 6,
+    "notes": "Rajapalayam is a smaller town (Virudhunagar district, Tamil Nadu). The optical wholesale market here is limited. Most businesses are retail optical showrooms. Star Opticals (IndiaMART supplier) and Aditya Opticals are the closest to wholesale operations found. Major wholesale lens distributors (Essilor, Zeiss) serve this area through regional distributors rather than having dedicated offices in Rajapalayam itself. For bulk lens procurement, nearby larger cities like Madurai, Sivakasi, or Chennai would have more wholesale options. JustDial pages returned empty content due to anti-scraping measures."
+  }
+}
