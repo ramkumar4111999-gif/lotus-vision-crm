@@ -1,0 +1,2005 @@
+"use client";
+
+import * as React from "react";
+import { toast } from "sonner";
+import {
+  Plus,
+  Search,
+  Eye,
+  Printer,
+  RotateCcw,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Loader2,
+  AlertCircle,
+  ShoppingCart,
+  FileText,
+  UserPlus,
+  Trash2,
+  IndianRupee,
+  Package,
+} from "lucide-react";
+
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableFooter,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  stock: number;
+  sku?: string;
+}
+
+interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  address?: string;
+}
+
+interface SaleItem {
+  id: string;
+  productId: string;
+  productName: string;
+  price: number;
+  qty: number;
+  lineTotal: number;
+}
+
+interface Sale {
+  id: string;
+  invoiceNo: string;
+  customerId: string;
+  customerName: string;
+  customerPhone?: string;
+  customerEmail?: string;
+  customerAddress?: string;
+  items: SaleItem[];
+  subtotal: number;
+  discount: number;
+  discountType: "percentage" | "flat";
+  cgst: number;
+  sgst: number;
+  total: number;
+  paymentMode: "Cash" | "Card" | "UPI" | "Credit";
+  status: "Completed" | "Pending" | "Return";
+  notes?: string;
+  createdAt: string;
+}
+
+interface SaleListItem {
+  id: string;
+  invoiceNo: string;
+  customerName: string;
+  itemsCount: number;
+  subtotal: number;
+  discount: number;
+  cgst: number;
+  sgst: number;
+  total: number;
+  paymentMode: string;
+  status: "Completed" | "Pending" | "Return";
+  createdAt: string;
+}
+
+interface SalesResponse {
+  sales: SaleListItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+interface CreateSaleItem {
+  productId: string;
+  productName: string;
+  price: number;
+  qty: number;
+}
+
+interface ReturnItem {
+  saleItemId: string;
+  productName: string;
+  originalQty: number;
+  returnQty: number;
+  price: number;
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+const INR = (amount: number): string =>
+  new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+
+const CGST_RATE = 0.09;
+const SGST_RATE = 0.09;
+
+function generateInvoiceNo(): string {
+  const now = new Date();
+  const y = now.getFullYear().toString().slice(-2);
+  const m = (now.getMonth() + 1).toString().padStart(2, "0");
+  const d = now.getDate().toString().padStart(2, "0");
+  const rand = Math.floor(Math.random() * 9000) + 1000;
+  return `INV-${y}${m}${d}-${rand}`;
+}
+
+function uid(): string {
+  return Math.random().toString(36).slice(2, 11);
+}
+
+// ---------------------------------------------------------------------------
+// Mock Data (used when API returns 404 / for demo purposes)
+// ---------------------------------------------------------------------------
+
+const MOCK_PRODUCTS: Product[] = [
+  { id: "p1", name: "Premium Basmati Rice (5kg)", price: 450, stock: 120, sku: "RICE-001" },
+  { id: "p2", name: "Organic Toor Dal (1kg)", price: 180, stock: 200, sku: "DAL-001" },
+  { id: "p3", name: "Cold Pressed Coconut Oil (1L)", price: 320, stock: 85, sku: "OIL-001" },
+  { id: "p4", name: "Assam Tea (250g)", price: 210, stock: 150, sku: "TEA-001" },
+  { id: "p5", name: "Jaggery Powder (500g)", price: 95, stock: 300, sku: "JAG-001" },
+  { id: "p6", name: "Almond Butter (350g)", price: 550, stock: 60, sku: "BUT-001" },
+  { id: "p7", name: "Quinoa (500g)", price: 420, stock: 90, sku: "QUI-001" },
+  { id: "p8", name: "Raw Honey (500ml)", price: 380, stock: 70, sku: "HON-001" },
+  { id: "p9", name: "Chia Seeds (250g)", price: 290, stock: 110, sku: "CHI-001" },
+  { id: "p10", name: "A2 Ghee (500ml)", price: 680, stock: 45, sku: "GHE-001" },
+];
+
+const MOCK_CUSTOMERS: Customer[] = [
+  { id: "c1", name: "Rajesh Kumar", phone: "9876543210", email: "rajesh@email.com", address: "12, MG Road, Bengaluru" },
+  { id: "c2", name: "Priya Sharma", phone: "9876543211", email: "priya@email.com", address: "34, Park Street, Kolkata" },
+  { id: "c3", name: "Amit Patel", phone: "9876543212", email: "amit@email.com", address: "56, CG Road, Ahmedabad" },
+  { id: "c4", name: "Sunita Devi", phone: "9876543213", email: "sunita@email.com", address: "78, Civil Lines, Delhi" },
+  { id: "c5", name: "Vikram Reddy", phone: "9876543214", email: "vikram@email.com", address: "90, Jubilee Hills, Hyderabad" },
+];
+
+const MOCK_SALES: SaleListItem[] = Array.from({ length: 23 }, (_, i) => {
+  const statuses: Array<"Completed" | "Pending" | "Return"> = ["Completed", "Completed", "Completed", "Pending", "Return"];
+  const modes = ["Cash", "Card", "UPI", "Credit"];
+  const customers = MOCK_CUSTOMERS.map((c) => c.name);
+  const day = 28 - (i % 28);
+  const date = `2025-01-${day.toString().padStart(2, "0")}`;
+
+  const subtotal = Math.floor(Math.random() * 8000) + 500;
+  const discount = i % 5 === 0 ? Math.floor(subtotal * 0.05) : 0;
+  const taxable = subtotal - discount;
+  const cgst = Math.round(taxable * CGST_RATE * 100) / 100;
+  const sgst = Math.round(taxable * SGST_RATE * 100) / 100;
+  const total = taxable + cgst + sgst;
+  const itemsCount = Math.floor(Math.random() * 5) + 1;
+
+  return {
+    id: `sale-${i + 1}`,
+    invoiceNo: `INV-2501${day.toString().padStart(2, "0")}-${1000 + i}`,
+    customerName: customers[i % customers.length],
+    itemsCount,
+    subtotal,
+    discount,
+    cgst,
+    sgst,
+    total: Math.round(total * 100) / 100,
+    paymentMode: modes[i % modes.length],
+    status: statuses[i % statuses.length],
+    createdAt: date,
+  };
+});
+
+const MOCK_SALE_DETAIL: Record<string, Sale> = Object.fromEntries(
+  MOCK_SALES.slice(0, 10).map((s, idx) => {
+    const items: SaleItem[] = Array.from({ length: s.itemsCount }, (_, j) => {
+      const p = MOCK_PRODUCTS[(idx + j) % MOCK_PRODUCTS.length];
+      return {
+        id: `si-${s.id}-${j}`,
+        productId: p.id,
+        productName: p.name,
+        price: p.price,
+        qty: Math.floor(Math.random() * 5) + 1,
+        lineTotal: 0,
+      };
+    });
+    items.forEach((item) => {
+      item.lineTotal = item.price * item.qty;
+    });
+
+    const sub = items.reduce((a, b) => a + b.lineTotal, 0);
+    const disc = s.discount;
+    const taxable = sub - disc;
+    const cg = Math.round(taxable * CGST_RATE * 100) / 100;
+    const sg = Math.round(taxable * SGST_RATE * 100) / 100;
+    const tot = taxable + cg + sg;
+
+    const cust = MOCK_CUSTOMERS[idx % MOCK_CUSTOMERS.length];
+
+    return [
+      s.id,
+      {
+        ...s,
+        subtotal: sub,
+        cgst: cg,
+        sgst: sg,
+        total: Math.round(tot * 100) / 100,
+        discountType: "flat",
+        items,
+        customerId: cust.id,
+        customerPhone: cust.phone,
+        customerEmail: cust.email,
+        customerAddress: cust.address,
+        notes: idx % 3 === 0 ? "Customer requested express packaging." : undefined,
+      },
+    ];
+  })
+);
+
+// ---------------------------------------------------------------------------
+// Component: Status Badge
+// ---------------------------------------------------------------------------
+
+function StatusBadge({ status }: { status: string }) {
+  switch (status) {
+    case "Completed":
+      return (
+        <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-800">
+          Completed
+        </Badge>
+      );
+    case "Pending":
+      return (
+        <Badge className="bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-800">
+          Pending
+        </Badge>
+      );
+    case "Return":
+      return (
+        <Badge className="bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-100 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-800">
+          Return
+        </Badge>
+      );
+    default:
+      return <Badge variant="outline">{status}</Badge>;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Component: Customer Search/Select
+// ---------------------------------------------------------------------------
+
+interface CustomerSelectProps {
+  customers: Customer[];
+  selectedCustomerId: string | null;
+  onSelect: (customer: Customer | null) => void;
+  onCreateNew: () => void;
+}
+
+function CustomerSelect({
+  customers,
+  selectedCustomerId,
+  onSelect,
+  onCreateNew,
+}: CustomerSelectProps) {
+  const [query, setQuery] = React.useState("");
+  const [open, setOpen] = React.useState(false);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  const filtered = query
+    ? customers.filter(
+        (c) =>
+          c.name.toLowerCase().includes(query.toLowerCase()) ||
+          c.phone.includes(query)
+      )
+    : customers;
+
+  const selected = customers.find((c) => c.id === selectedCustomerId) ?? null;
+
+  React.useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <Label className="mb-1.5">Customer</Label>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+        <Input
+          placeholder="Search customer by name or phone..."
+          value={selected ? selected.name : query}
+          onChange={(e) => {
+            if (selected) {
+              onSelect(null);
+            }
+            setQuery(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          className="pl-9 pr-20"
+        />
+        {selected && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 text-xs"
+            onClick={() => {
+              onSelect(null);
+              setQuery("");
+            }}
+          >
+            <X className="size-3" />
+          </Button>
+        )}
+        {!selected && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 text-xs"
+            onClick={onCreateNew}
+          >
+            <UserPlus className="size-3 mr-1" />
+            New
+          </Button>
+        )}
+      </div>
+
+      {open && !selected && filtered.length > 0 && (
+        <div className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto rounded-md border bg-popover shadow-md">
+          {filtered.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center justify-between gap-2"
+              onClick={() => {
+                onSelect(c);
+                setQuery("");
+                setOpen(false);
+              }}
+            >
+              <div>
+                <div className="font-medium">{c.name}</div>
+                <div className="text-xs text-muted-foreground">{c.phone}</div>
+              </div>
+              {c.email && (
+                <span className="text-xs text-muted-foreground truncate max-w-32">
+                  {c.email}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {open && !selected && query && filtered.length === 0 && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md p-3 text-sm text-muted-foreground text-center">
+          No customers found.
+          <Button
+            type="button"
+            variant="link"
+            size="sm"
+            className="ml-1 h-auto p-0 text-primary"
+            onClick={onCreateNew}
+          >
+            Create new customer
+          </Button>
+        </div>
+      )}
+
+      {selected && (
+        <div className="mt-1.5 text-xs text-muted-foreground space-y-0.5">
+          <div>
+            {selected.phone}
+            {selected.email && ` · ${selected.email}`}
+          </div>
+          {selected.address && <div>{selected.address}</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Component: New Customer Inline Form
+// ---------------------------------------------------------------------------
+
+interface NewCustomerFormProps {
+  onSave: (customer: Customer) => void;
+  onCancel: () => void;
+}
+
+function NewCustomerForm({ onSave, onCancel }: NewCustomerFormProps) {
+  const [name, setName] = React.useState("");
+  const [phone, setPhone] = React.useState("");
+  const [email, setEmail] = React.useState("");
+  const [address, setAddress] = React.useState("");
+
+  const valid = name.trim().length > 0 && phone.trim().length >= 10;
+
+  return (
+    <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium">New Customer</span>
+        <Button type="button" variant="ghost" size="icon" className="size-7" onClick={onCancel}>
+          <X className="size-3.5" />
+        </Button>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <Label className="mb-1">Name *</Label>
+          <Input placeholder="Full name" value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div>
+          <Label className="mb-1">Phone *</Label>
+          <Input placeholder="Phone number" value={phone} onChange={(e) => setPhone(e.target.value)} />
+        </div>
+        <div>
+          <Label className="mb-1">Email</Label>
+          <Input placeholder="Email (optional)" value={email} onChange={(e) => setEmail(e.target.value)} type="email" />
+        </div>
+        <div>
+          <Label className="mb-1">Address</Label>
+          <Input placeholder="Address (optional)" value={address} onChange={(e) => setAddress(e.target.value)} />
+        </div>
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          disabled={!valid}
+          onClick={() => {
+            if (!valid) return;
+            onSave({
+              id: `c-${uid()}`,
+              name: name.trim(),
+              phone: phone.trim(),
+              email: email.trim() || undefined,
+              address: address.trim() || undefined,
+            });
+          }}
+        >
+          Add Customer
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Component: Product Item Row (for Create Sale)
+// ---------------------------------------------------------------------------
+
+interface ItemRowProps {
+  row: CreateSaleItem;
+  index: number;
+  products: Product[];
+  onUpdate: (index: number, data: Partial<CreateSaleItem>) => void;
+  onRemove: (index: number) => void;
+  canRemove: boolean;
+}
+
+function ItemRow({ row, index, products, onUpdate, onRemove, canRemove }: ItemRowProps) {
+  const [search, setSearch] = React.useState("");
+  const [dropdownOpen, setDropdownOpen] = React.useState(false);
+  const rowRef = React.useRef<HTMLTableRowElement>(null);
+
+  const filteredProducts = row.productId
+    ? products.filter((p) => p.id === row.productId)
+    : search
+      ? products.filter(
+          (p) =>
+            p.name.toLowerCase().includes(search.toLowerCase()) ||
+            p.sku?.toLowerCase().includes(search.toLowerCase())
+        )
+      : products;
+
+  React.useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (rowRef.current && !rowRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const selectedProduct = products.find((p) => p.id === row.productId);
+
+  return (
+    <TableRow ref={rowRef}>
+      <TableCell className="relative">
+        {row.productId ? (
+          <div className="flex items-center gap-2 min-w-0">
+            <Package className="size-3.5 text-muted-foreground shrink-0" />
+            <div className="min-w-0">
+              <div className="font-medium text-sm truncate max-w-56">{row.productName}</div>
+              {selectedProduct?.sku && (
+                <div className="text-xs text-muted-foreground">{selectedProduct.sku}</div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="relative">
+            <div className="flex items-center gap-1">
+              <Search className="size-3.5 text-muted-foreground shrink-0" />
+              <Input
+                placeholder="Search product..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setDropdownOpen(true);
+                }}
+                onFocus={() => setDropdownOpen(true)}
+                className="h-8 text-sm min-w-[180px]"
+              />
+            </div>
+            {dropdownOpen && filteredProducts.length > 0 && (
+              <div className="absolute z-50 left-0 top-full mt-1 w-72 max-h-48 overflow-y-auto rounded-md border bg-popover shadow-md">
+                {filteredProducts.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center justify-between"
+                    onClick={() => {
+                      onUpdate(index, {
+                        productId: p.id,
+                        productName: p.name,
+                        price: p.price,
+                      });
+                      setSearch("");
+                      setDropdownOpen(false);
+                    }}
+                  >
+                    <div>
+                      <div className="font-medium">{p.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {p.sku} · Stock: {p.stock}
+                      </div>
+                    </div>
+                    <span className="text-sm font-medium shrink-0 ml-2">{INR(p.price)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </TableCell>
+      <TableCell className="text-right font-mono text-sm">
+        {row.price > 0 ? INR(row.price) : "—"}
+      </TableCell>
+      <TableCell>
+        <Input
+          type="number"
+          min={1}
+          value={row.qty}
+          onChange={(e) => {
+            const val = parseInt(e.target.value, 10);
+            if (!isNaN(val) && val >= 1) {
+              onUpdate(index, { qty: val });
+            }
+          }}
+          disabled={!row.productId}
+          className="h-8 w-20 text-right"
+        />
+      </TableCell>
+      <TableCell className="text-right font-mono text-sm font-medium">
+        {row.productId ? INR(row.price * row.qty) : "—"}
+      </TableCell>
+      <TableCell>
+        {canRemove && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+            onClick={() => onRemove(index)}
+          >
+            <Trash2 className="size-3.5" />
+          </Button>
+        )}
+      </TableCell>
+    </TableRow>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Component: Create Sale Dialog
+// ---------------------------------------------------------------------------
+
+interface CreateSaleDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCreated: () => void;
+}
+
+function CreateSaleDialog({ open, onOpenChange, onCreated }: CreateSaleDialogProps) {
+  const [customers, setCustomers] = React.useState<Customer[]>(MOCK_CUSTOMERS);
+  const [products] = React.useState<Product[]>(MOCK_PRODUCTS);
+  const [selectedCustomer, setSelectedCustomer] = React.useState<Customer | null>(null);
+  const [showNewCustomer, setShowNewCustomer] = React.useState(false);
+  const [items, setItems] = React.useState<CreateSaleItem[]>([
+    { productId: "", productName: "", price: 0, qty: 1 },
+  ]);
+  const [discount, setDiscount] = React.useState(0);
+  const [discountType, setDiscountType] = React.useState<"percentage" | "flat">("flat");
+  const [paymentMode, setPaymentMode] = React.useState<"Cash" | "Card" | "UPI" | "Credit">("Cash");
+  const [notes, setNotes] = React.useState("");
+  const [submitting, setSubmitting] = React.useState(false);
+
+  const handleItemUpdate = (index: number, data: Partial<CreateSaleItem>) => {
+    setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...data } : item)));
+  };
+
+  const handleItemRemove = (index: number) => {
+    setItems((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
+  };
+
+  const handleAddItem = () => {
+    setItems((prev) => [...prev, { productId: "", productName: "", price: 0, qty: 1 }]);
+  };
+
+  const subtotal = items.reduce((sum, item) => sum + item.price * item.qty, 0);
+  const discountAmount =
+    discountType === "percentage" ? Math.round((subtotal * discount) / 100) : discount;
+  const taxable = Math.max(0, subtotal - discountAmount);
+  const cgst = Math.round(taxable * CGST_RATE * 100) / 100;
+  const sgst = Math.round(taxable * SGST_RATE * 100) / 100;
+  const total = Math.round((taxable + cgst + sgst) * 100) / 100;
+
+  const totalQty = items.reduce((sum, item) => sum + (item.productId ? item.qty : 0), 0);
+  const hasValidItems = items.some((item) => item.productId && item.qty > 0);
+
+  const handleCreate = async () => {
+    if (!selectedCustomer) {
+      toast.error("Please select a customer");
+      return;
+    }
+    if (!hasValidItems) {
+      toast.error("Please add at least one product");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const invoiceNo = generateInvoiceNo();
+      const validItems = items.filter((i) => i.productId && i.qty > 0);
+
+      const payload = {
+        invoiceNo,
+        customerId: selectedCustomer.id,
+        customerName: selectedCustomer.name,
+        customerPhone: selectedCustomer.phone,
+        customerEmail: selectedCustomer.email,
+        customerAddress: selectedCustomer.address,
+        items: validItems.map((item, idx) => ({
+          id: `si-${uid()}-${idx}`,
+          productId: item.productId,
+          productName: item.productName,
+          price: item.price,
+          qty: item.qty,
+          lineTotal: item.price * item.qty,
+        })),
+        subtotal,
+        discount: discountAmount,
+        discountType,
+        cgst,
+        sgst,
+        total,
+        paymentMode,
+        status: "Completed" as const,
+        notes: notes.trim() || undefined,
+      };
+
+      const res = await fetch("/api/sales", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        toast.success(`Invoice ${invoiceNo} created successfully!`);
+        resetForm();
+        onOpenChange(false);
+        onCreated();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Failed to create invoice");
+      }
+    } catch {
+      toast.error("Network error. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const resetForm = () => {
+    setSelectedCustomer(null);
+    setItems([{ productId: "", productName: "", price: 0, qty: 1 }]);
+    setDiscount(0);
+    setDiscountType("flat");
+    setPaymentMode("Cash");
+    setNotes("");
+    setShowNewCustomer(false);
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) resetForm();
+        onOpenChange(o);
+      }}
+    >
+      <DialogContent className="sm:max-w-4xl max-h-[92vh] overflow-y-auto p-0">
+        <div className="p-6 pb-0">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShoppingCart className="size-5" />
+              Create New Invoice
+            </DialogTitle>
+            <DialogDescription>
+              Add customer and products to generate a sales invoice.
+            </DialogDescription>
+          </DialogHeader>
+        </div>
+
+        <div className="p-6 space-y-6">
+          {/* Customer Selection */}
+          {showNewCustomer ? (
+            <NewCustomerForm
+              onSave={(c) => {
+                setCustomers((prev) => [c, ...prev]);
+                setSelectedCustomer(c);
+                setShowNewCustomer(false);
+                toast.success(`Customer "${c.name}" added`);
+              }}
+              onCancel={() => setShowNewCustomer(false)}
+            />
+          ) : (
+            <CustomerSelect
+              customers={customers}
+              selectedCustomerId={selectedCustomer?.id ?? null}
+              onSelect={setSelectedCustomer}
+              onCreateNew={() => setShowNewCustomer(true)}
+            />
+          )}
+
+          <Separator />
+
+          {/* Product Items */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-base font-semibold">Items</Label>
+              <Button type="button" variant="outline" size="sm" onClick={handleAddItem}>
+                <Plus className="size-3.5 mr-1" />
+                Add Item
+              </Button>
+            </div>
+
+            <div className="rounded-lg border overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="w-[50%]">Product</TableHead>
+                    <TableHead className="text-right w-[15%]">Price</TableHead>
+                    <TableHead className="w-[15%]">Qty</TableHead>
+                    <TableHead className="text-right w-[15%]">Total</TableHead>
+                    <TableHead className="w-[5%]" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {items.map((item, idx) => (
+                    <ItemRow
+                      key={idx}
+                      row={item}
+                      index={idx}
+                      products={products}
+                      onUpdate={handleItemUpdate}
+                      onRemove={handleItemRemove}
+                      canRemove={items.length > 1}
+                    />
+                  ))}
+                </TableBody>
+                {hasValidItems && (
+                  <TableFooter>
+                    <TableRow className="bg-muted/30">
+                      <TableCell colSpan={2} className="font-medium text-sm">
+                        Totals
+                      </TableCell>
+                      <TableCell className="text-sm">{totalQty} items</TableCell>
+                      <TableCell className="text-right font-mono font-semibold">
+                        {INR(subtotal)}
+                      </TableCell>
+                      <TableCell />
+                    </TableRow>
+                  </TableFooter>
+                )}
+              </Table>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Summary */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              {/* Discount */}
+              <div className="space-y-2">
+                <Label>Discount</Label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                    <Input
+                      type="number"
+                      min={0}
+                      value={discount}
+                      onChange={(e) => setDiscount(Math.max(0, parseFloat(e.target.value) || 0))}
+                      className="pl-9"
+                      placeholder="0"
+                    />
+                  </div>
+                  <Select
+                    value={discountType}
+                    onValueChange={(v) => setDiscountType(v as "percentage" | "flat")}
+                  >
+                    <SelectTrigger className="w-24">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="flat">Flat (₹)</SelectItem>
+                      <SelectItem value="percentage">Percentage (%)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Payment Mode */}
+              <div className="space-y-2">
+                <Label>Payment Mode</Label>
+                <RadioGroup
+                  value={paymentMode}
+                  onValueChange={(v) => setPaymentMode(v as typeof paymentMode)}
+                  className="flex flex-wrap gap-3"
+                >
+                  {(["Cash", "Card", "UPI", "Credit"] as const).map((mode) => (
+                    <div key={mode} className="flex items-center gap-2">
+                      <RadioGroupItem value={mode} id={`pm-${mode}`} />
+                      <Label htmlFor={`pm-${mode}`} className="font-normal cursor-pointer">
+                        {mode}
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </div>
+
+              {/* Notes */}
+              <div className="space-y-2">
+                <Label htmlFor="sale-notes">Notes</Label>
+                <Textarea
+                  id="sale-notes"
+                  placeholder="Add any notes for this invoice..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="min-h-16"
+                />
+              </div>
+            </div>
+
+            {/* Calculated Totals */}
+            <div className="rounded-lg border bg-muted/20 p-4 space-y-2.5 h-fit">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Subtotal</span>
+                <span className="font-mono">{INR(subtotal)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">
+                  Discount
+                  {discountType === "percentage" && discount > 0 ? ` (${discount}%)` : ""}
+                </span>
+                <span className="font-mono text-destructive">- {INR(discountAmount)}</span>
+              </div>
+              <Separator />
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Taxable Amount</span>
+                <span className="font-mono">{INR(taxable)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">CGST @9%</span>
+                <span className="font-mono">{INR(cgst)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">SGST @9%</span>
+                <span className="font-mono">{INR(sgst)}</span>
+              </div>
+              <Separator />
+              <div className="flex justify-between text-base font-semibold">
+                <span>Total Amount</span>
+                <span className="font-mono text-lg">{INR(total)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="border-t px-6 py-4 bg-muted/20 flex flex-col-reverse sm:flex-row items-center justify-between gap-2 sticky bottom-0">
+          <div className="text-xs text-muted-foreground">
+            Tax calculated on subtotal minus discount
+          </div>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                resetForm();
+                onOpenChange(false);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleCreate}
+              disabled={submitting || !selectedCustomer || !hasValidItems}
+            >
+              {submitting ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <FileText className="size-4" />
+              )}
+              Create Invoice
+            </Button>
+          </DialogFooter>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Component: Sale Detail Dialog
+// ---------------------------------------------------------------------------
+
+interface SaleDetailDialogProps {
+  sale: Sale | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onReturn: (sale: Sale) => void;
+  onToggleStatus: (sale: Sale) => void;
+}
+
+function SaleDetailDialog({ sale, open, onOpenChange, onReturn, onToggleStatus }: SaleDetailDialogProps) {
+  if (!sale) return null;
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0" showCloseButton={false}>
+        {/* Print-friendly header */}
+        <div className="p-6 pb-0 print:p-6 print:pb-4">
+          <DialogHeader className="print:hidden">
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="size-5" />
+              Invoice {sale.invoiceNo}
+            </DialogTitle>
+            <DialogDescription>Full invoice details</DialogDescription>
+          </DialogHeader>
+
+          {/* Print Header */}
+          <div className="hidden print:block mb-6">
+            <h1 className="text-2xl font-bold">TAX INVOICE</h1>
+            <div className="flex justify-between mt-4">
+              <div>
+                <p className="font-semibold text-lg">Your Store Name</p>
+                <p className="text-sm text-gray-600">Store Address, City - 560001</p>
+                <p className="text-sm text-gray-600">GSTIN: 29XXXXX1234X1ZX</p>
+                <p className="text-sm text-gray-600">Ph: +91 98765 43210</p>
+              </div>
+              <div className="text-right">
+                <p className="font-bold text-lg">{sale.invoiceNo}</p>
+                <p className="text-sm text-gray-600">
+                  Date: {new Date(sale.createdAt).toLocaleDateString("en-IN", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </p>
+                <StatusBadge status={sale.status} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="px-6 pb-6 space-y-6 print:px-6 print:pb-6">
+          {/* Invoice Header (screen only) */}
+          <div className="print:hidden flex items-start justify-between">
+            <div className="space-y-1">
+              <StatusBadge status={sale.status} />
+              <p className="text-sm text-muted-foreground">
+                {new Date(sale.createdAt).toLocaleDateString("en-IN", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })}
+              </p>
+              <p className="text-sm text-muted-foreground">Payment: {sale.paymentMode}</p>
+            </div>
+            <div className="text-right">
+              <h2 className="text-xl font-bold">{sale.invoiceNo}</h2>
+            </div>
+          </div>
+
+          {/* Customer Info */}
+          <div className="rounded-lg border p-4 print:border print:p-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+              Bill To
+            </p>
+            <p className="font-semibold">{sale.customerName}</p>
+            {sale.customerPhone && <p className="text-sm text-muted-foreground">{sale.customerPhone}</p>}
+            {sale.customerEmail && <p className="text-sm text-muted-foreground">{sale.customerEmail}</p>}
+            {sale.customerAddress && <p className="text-sm text-muted-foreground">{sale.customerAddress}</p>}
+          </div>
+
+          {/* Items Table */}
+          <div className="rounded-lg border overflow-hidden print:border">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead className="w-[10%]">#</TableHead>
+                  <TableHead>Product</TableHead>
+                  <TableHead className="text-right">Price</TableHead>
+                  <TableHead className="text-right">Qty</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sale.items.map((item, idx) => (
+                  <TableRow key={item.id}>
+                    <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
+                    <TableCell className="font-medium">{item.productName}</TableCell>
+                    <TableCell className="text-right font-mono text-sm">{INR(item.price)}</TableCell>
+                    <TableCell className="text-right text-sm">{item.qty}</TableCell>
+                    <TableCell className="text-right font-mono text-sm font-medium">
+                      {INR(item.lineTotal)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Totals */}
+          <div className="flex justify-end">
+            <div className="w-72 space-y-2 rounded-lg border p-4 print:border print:p-4">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Subtotal</span>
+                <span className="font-mono">{INR(sale.subtotal)}</span>
+              </div>
+              {sale.discount > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Discount</span>
+                  <span className="font-mono text-destructive">- {INR(sale.discount)}</span>
+                </div>
+              )}
+              <Separator />
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">CGST @9%</span>
+                <span className="font-mono">{INR(sale.cgst)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">SGST @9%</span>
+                <span className="font-mono">{INR(sale.sgst)}</span>
+              </div>
+              <Separator />
+              <div className="flex justify-between text-lg font-bold">
+                <span>Total</span>
+                <span className="font-mono">{INR(sale.total)}</span>
+              </div>
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Payment Mode</span>
+                <span>{sale.paymentMode}</span>
+              </div>
+            </div>
+          </div>
+
+          {sale.notes && (
+            <div className="rounded-lg border p-4 print:border print:p-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                Notes
+              </p>
+              <p className="text-sm">{sale.notes}</p>
+            </div>
+          )}
+
+          {/* Thank you (print only) */}
+          <div className="hidden print:block text-center pt-8">
+            <p className="text-lg font-semibold">Thank you for your purchase!</p>
+            <p className="text-sm text-gray-500 mt-1">This is a computer-generated invoice.</p>
+          </div>
+
+          {/* Actions (screen only) */}
+          <div className="print:hidden flex flex-wrap gap-2 pt-2">
+            <Button variant="outline" size="sm" onClick={handlePrint}>
+              <Printer className="size-3.5 mr-1.5" />
+              Print
+            </Button>
+            {sale.status === "Completed" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onToggleStatus(sale)}
+              >
+                <AlertCircle className="size-3.5 mr-1.5 text-amber-500" />
+                Mark as Pending
+              </Button>
+            )}
+            {sale.status === "Pending" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onToggleStatus(sale)}
+              >
+                <AlertCircle className="size-3.5 mr-1.5 text-emerald-500" />
+                Mark as Completed
+              </Button>
+            )}
+            {sale.status !== "Return" && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-950/50"
+                onClick={() => onReturn(sale)}
+              >
+                <RotateCcw className="size-3.5 mr-1.5" />
+                Process Return
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" className="ml-auto" onClick={() => onOpenChange(false)}>
+              Close
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Component: Return Dialog
+// ---------------------------------------------------------------------------
+
+interface ReturnDialogProps {
+  sale: Sale | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onProcessed: () => void;
+}
+
+function ReturnDialog({ sale, open, onOpenChange, onProcessed }: ReturnDialogProps) {
+  const [returnItems, setReturnItems] = React.useState<ReturnItem[]>([]);
+  const [reason, setReason] = React.useState("");
+  const [submitting, setSubmitting] = React.useState(false);
+
+  React.useEffect(() => {
+    if (sale && open) {
+      setReturnItems(
+        sale.items.map((item) => ({
+          saleItemId: item.id,
+          productName: item.productName,
+          originalQty: item.qty,
+          returnQty: 0,
+          price: item.price,
+        }))
+      );
+      setReason("");
+    }
+  }, [sale, open]);
+
+  if (!sale) return null;
+
+  const handleReturnQtyChange = (index: number, qty: number) => {
+    setReturnItems((prev) =>
+      prev.map((item, i) =>
+        i === index ? { ...item, returnQty: Math.min(Math.max(0, qty), item.originalQty) } : item
+      )
+    );
+  };
+
+  const toggleSelectAll = (checked: boolean) => {
+    setReturnItems((prev) =>
+      prev.map((item) => ({
+        ...item,
+        returnQty: checked ? item.originalQty : 0,
+      }))
+    );
+  };
+
+  const totalRefund = returnItems.reduce((sum, item) => sum + item.price * item.returnQty, 0);
+  const taxRefund = Math.round(totalRefund * (CGST_RATE + SGST_RATE) * 100) / 100;
+  const grandRefund = Math.round((totalRefund + taxRefund) * 100) / 100;
+  const hasItems = returnItems.some((item) => item.returnQty > 0);
+
+  const handleProcessReturn = async () => {
+    if (!hasItems) {
+      toast.error("Select at least one item to return");
+      return;
+    }
+    if (!reason.trim()) {
+      toast.error("Please provide a reason for the return");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/returns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          saleId: sale.id,
+          invoiceNo: sale.invoiceNo,
+          items: returnItems
+            .filter((item) => item.returnQty > 0)
+            .map((item) => ({
+              saleItemId: item.saleItemId,
+              productName: item.productName,
+              returnQty: item.returnQty,
+              price: item.price,
+            })),
+          reason: reason.trim(),
+          refundAmount: grandRefund,
+        }),
+      });
+
+      if (res.ok) {
+        toast.success(`Return processed for ${sale.invoiceNo}. Refund: ${INR(grandRefund)}`);
+        onOpenChange(false);
+        onProcessed();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Failed to process return");
+      }
+    } catch {
+      toast.error("Network error. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <RotateCcw className="size-5" />
+            Process Return
+          </DialogTitle>
+          <DialogDescription>
+            Invoice {sale.invoiceNo} — {sale.customerName}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {/* Items to return */}
+          <div className="rounded-lg border overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={returnItems.every((i) => i.returnQty > 0) && returnItems.length > 0}
+                      onCheckedChange={(checked) => toggleSelectAll(checked === true)}
+                    />
+                  </TableHead>
+                  <TableHead>Product</TableHead>
+                  <TableHead className="text-right">Sold</TableHead>
+                  <TableHead className="text-right">Return Qty</TableHead>
+                  <TableHead className="text-right">Refund</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {returnItems.map((item, idx) => (
+                  <TableRow key={item.saleItemId}>
+                    <TableCell>
+                      <Checkbox
+                        checked={item.returnQty > 0}
+                        onCheckedChange={(checked) =>
+                          handleReturnQtyChange(idx, checked ? item.originalQty : 0)
+                        }
+                      />
+                    </TableCell>
+                    <TableCell className="text-sm font-medium max-w-40 truncate">
+                      {item.productName}
+                    </TableCell>
+                    <TableCell className="text-right text-sm">{item.originalQty}</TableCell>
+                    <TableCell className="text-right">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={item.originalQty}
+                        value={item.returnQty || ""}
+                        onChange={(e) =>
+                          handleReturnQtyChange(idx, parseInt(e.target.value, 10) || 0)
+                        }
+                        className="h-8 w-16 text-right"
+                      />
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-sm">
+                      {INR(item.price * item.returnQty)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Refund Summary */}
+          <div className="rounded-lg border bg-muted/20 p-4 space-y-1.5">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Items Refund</span>
+              <span className="font-mono">{INR(totalRefund)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Tax Refund (CGST+SGST)</span>
+              <span className="font-mono">{INR(taxRefund)}</span>
+            </div>
+            <Separator />
+            <div className="flex justify-between font-semibold">
+              <span>Total Refund</span>
+              <span className="font-mono text-lg">{INR(grandRefund)}</span>
+            </div>
+          </div>
+
+          {/* Reason */}
+          <div className="space-y-2">
+            <Label htmlFor="return-reason">Reason for Return *</Label>
+            <Textarea
+              id="return-reason"
+              placeholder="Describe the reason for this return..."
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="min-h-20"
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={handleProcessReturn}
+            disabled={submitting || !hasItems || !reason.trim()}
+          >
+            {submitting ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <RotateCcw className="size-4" />
+            )}
+            Process Return
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Component: Pagination Controls
+// ---------------------------------------------------------------------------
+
+interface PaginationControlsProps {
+  page: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}
+
+function PaginationControls({ page, totalPages, onPageChange }: PaginationControlsProps) {
+  if (totalPages <= 1) return null;
+
+  const pages: (number | "ellipsis")[] = [];
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    if (page > 3) pages.push("ellipsis");
+    for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) {
+      pages.push(i);
+    }
+    if (page < totalPages - 2) pages.push("ellipsis");
+    pages.push(totalPages);
+  }
+
+  return (
+    <nav className="flex items-center justify-center gap-1" aria-label="Pagination">
+      <Button
+        variant="outline"
+        size="icon"
+        className="size-8"
+        disabled={page <= 1}
+        onClick={() => onPageChange(1)}
+        aria-label="First page"
+      >
+        <ChevronsLeft className="size-4" />
+      </Button>
+      <Button
+        variant="outline"
+        size="icon"
+        className="size-8"
+        disabled={page <= 1}
+        onClick={() => onPageChange(page - 1)}
+        aria-label="Previous page"
+      >
+        <ChevronLeft className="size-4" />
+      </Button>
+      {pages.map((p, idx) =>
+        p === "ellipsis" ? (
+          <span key={`el-${idx}`} className="px-2 text-muted-foreground">
+            ...
+          </span>
+        ) : (
+          <Button
+            key={p}
+            variant={p === page ? "default" : "outline"}
+            size="icon"
+            className="size-8"
+            onClick={() => onPageChange(p)}
+            aria-label={`Page ${p}`}
+            aria-current={p === page ? "page" : undefined}
+          >
+            {p}
+          </Button>
+        )
+      )}
+      <Button
+        variant="outline"
+        size="icon"
+        className="size-8"
+        disabled={page >= totalPages}
+        onClick={() => onPageChange(page + 1)}
+        aria-label="Next page"
+      >
+        <ChevronRight className="size-4" />
+      </Button>
+      <Button
+        variant="outline"
+        size="icon"
+        className="size-8"
+        disabled={page >= totalPages}
+        onClick={() => onPageChange(totalPages)}
+        aria-label="Last page"
+      >
+        <ChevronsRight className="size-4" />
+      </Button>
+    </nav>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Component: Sales Table Skeleton
+// ---------------------------------------------------------------------------
+
+function SalesTableSkeleton() {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-4 px-2">
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-4 w-12" />
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-6 w-20 rounded-full" />
+          <Skeleton className="size-8" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main Component: Sales
+// ---------------------------------------------------------------------------
+
+export default function Sales() {
+  // -- State --
+  const [sales, setSales] = React.useState<SaleListItem[]>([]);
+  const [total, setTotal] = React.useState(0);
+  const [page, setPage] = React.useState(1);
+  const [search, setSearch] = React.useState("");
+  const [fromDate, setFromDate] = React.useState("");
+  const [toDate, setToDate] = React.useState("");
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const [createOpen, setCreateOpen] = React.useState(false);
+  const [detailSale, setDetailSale] = React.useState<Sale | null>(null);
+  const [detailOpen, setDetailOpen] = React.useState(false);
+  const [returnSale, setReturnSale] = React.useState<Sale | null>(null);
+  const [returnOpen, setReturnOpen] = React.useState(false);
+
+  const [localSales, setLocalSales] = React.useState<SaleListItem[]>([]);
+  const [localDetails, setLocalDetails] = React.useState<Record<string, Sale>>({});
+  const [usingLocal, setUsingLocal] = React.useState(false);
+
+  const pageSize = 10;
+
+  // -- Fetch Sales --
+  const fetchSales = React.useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    const params = new URLSearchParams();
+    if (search) params.set("search", search);
+    if (page) params.set("page", page.toString());
+    if (fromDate) params.set("fromDate", fromDate);
+    if (toDate) params.set("toDate", toDate);
+
+    try {
+      const res = await fetch(`/api/sales?${params.toString()}`);
+      if (res.ok) {
+        const data: SalesResponse = await res.json();
+        setSales(data.sales);
+        setTotal(data.total);
+        setUsingLocal(false);
+      } else {
+        // API not available — use mock data
+        await loadMockData();
+      }
+    } catch {
+      // Network error — use mock data
+      await loadMockData();
+    } finally {
+      setLoading(false);
+    }
+  }, [search, page, fromDate, toDate]);
+
+  const loadMockData = React.useCallback(async () => {
+    // Simulate API delay
+    await new Promise((r) => setTimeout(r, 400));
+
+    let filtered = [...MOCK_SALES];
+
+    if (search) {
+      const q = search.toLowerCase();
+      filtered = filtered.filter(
+        (s) =>
+          s.invoiceNo.toLowerCase().includes(q) ||
+          s.customerName.toLowerCase().includes(q)
+      );
+    }
+    if (fromDate) {
+      filtered = filtered.filter((s) => s.createdAt >= fromDate);
+    }
+    if (toDate) {
+      filtered = filtered.filter((s) => s.createdAt <= toDate);
+    }
+
+    const totalRecords = filtered.length;
+    const start = (page - 1) * pageSize;
+    const paged = filtered.slice(start, start + pageSize);
+
+    setLocalSales(filtered);
+    setSales(paged);
+    setTotal(totalRecords);
+    setUsingLocal(true);
+  }, [search, page, fromDate, toDate]);
+
+  React.useEffect(() => {
+    fetchSales();
+  }, [fetchSales]);
+
+  // Reset to page 1 when filters change
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    setPage(1);
+  };
+  const handleFromDateChange = (val: string) => {
+    setFromDate(val);
+    setPage(1);
+  };
+  const handleToDateChange = (val: string) => {
+    setToDate(val);
+    setPage(1);
+  };
+
+  const totalPages = Math.ceil(total / pageSize);
+
+  // -- Detail --
+  const handleViewDetail = async (saleItem: SaleListItem) => {
+    if (usingLocal) {
+      const detail = localDetails[saleItem.id] || MOCK_SALE_DETAIL[saleItem.id];
+      if (detail) {
+        setDetailSale(detail);
+      } else {
+        // Generate a synthetic detail from the list item
+        const cust = MOCK_CUSTOMERS.find((c) => c.name === saleItem.customerName);
+        const mockItems: SaleItem[] = Array.from({ length: saleItem.itemsCount }, (_, j) => {
+          const p = MOCK_PRODUCTS[(j + parseInt(saleItem.id.split("-")[1] || "0")) % MOCK_PRODUCTS.length];
+          return {
+            id: `si-${saleItem.id}-${j}`,
+            productId: p.id,
+            productName: p.name,
+            price: p.price,
+            qty: Math.floor(Math.random() * 5) + 1,
+            lineTotal: 0,
+          };
+        });
+        mockItems.forEach((it) => {
+          it.lineTotal = it.price * it.qty;
+        });
+        setDetailSale({
+          ...saleItem,
+          customerId: cust?.id || "",
+          customerPhone: cust?.phone,
+          customerEmail: cust?.email,
+          customerAddress: cust?.address,
+          items: mockItems,
+          discountType: "flat",
+          notes: undefined,
+        });
+      }
+    } else {
+      try {
+        const res = await fetch(`/api/sales/${saleItem.id}`);
+        if (res.ok) {
+          const data: Sale = await res.json();
+          setDetailSale(data);
+        } else {
+          toast.error("Failed to load sale details");
+        }
+      } catch {
+        toast.error("Network error");
+      }
+    }
+    setDetailOpen(true);
+  };
+
+  // -- Status Toggle --
+  const handleToggleStatus = async (sale: Sale) => {
+    const newStatus = sale.status === "Completed" ? "Pending" : "Completed";
+
+    if (usingLocal) {
+      setLocalSales((prev) =>
+        prev.map((s) => (s.id === sale.id ? { ...s, status: newStatus as SaleListItem["status"] } : s))
+      );
+      setDetailSale((prev) => (prev ? { ...prev, status: newStatus as Sale["status"] } : null));
+      toast.success(`Invoice marked as ${newStatus}`);
+      fetchSales();
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/sales/${sale.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        setDetailSale((prev) => (prev ? { ...prev, status: newStatus as Sale["status"] } : null));
+        toast.success(`Invoice marked as ${newStatus}`);
+        fetchSales();
+      } else {
+        toast.error("Failed to update status");
+      }
+    } catch {
+      toast.error("Network error");
+    }
+  };
+
+  // -- Return --
+  const handleOpenReturn = (sale: Sale) => {
+    setReturnSale(sale);
+    setReturnOpen(true);
+  };
+
+  const handleReturnProcessed = () => {
+    setDetailOpen(false);
+    setDetailSale(null);
+    fetchSales();
+  };
+
+  // -- Stats for summary cards --
+  const totalRevenue = sales.reduce((sum, s) => sum + s.total, 0);
+  const completedCount = sales.filter((s) => s.status === "Completed").length;
+  const pendingCount = sales.filter((s) => s.status === "Pending").length;
+
+  // -- Render --
+  return (
+    <section className="min-h-screen bg-background">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+              <ShoppingCart className="size-6" />
+              Sales & Billing
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Manage invoices, track payments, and process returns.
+            </p>
+          </div>
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus className="size-4" />
+            New Invoice
+          </Button>
+        </div>
+
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="rounded-lg border bg-card p-4 shadow-sm">
+            <p className="text-sm font-medium text-muted-foreground">This Page Revenue</p>
+            <p className="text-2xl font-bold mt-1 font-mono">{INR(totalRevenue)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{sales.length} invoices shown</p>
+          </div>
+          <div className="rounded-lg border bg-card p-4 shadow-sm">
+            <p className="text-sm font-medium text-muted-foreground">Completed</p>
+            <p className="text-2xl font-bold mt-1 text-emerald-600">{completedCount}</p>
+            <p className="text-xs text-muted-foreground mt-1">Fully paid invoices</p>
+          </div>
+          <div className="rounded-lg border bg-card p-4 shadow-sm">
+            <p className="text-sm font-medium text-muted-foreground">Pending</p>
+            <p className="text-2xl font-bold mt-1 text-amber-600">{pendingCount}</p>
+            <p className="text-xs text-muted-foreground mt-1">Awaiting payment</p>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="rounded-lg border bg-card shadow-sm">
+          <div className="p-4">
+            <div className="flex flex-col lg:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by invoice # or customer name..."
+                  value={search}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">From Date</Label>
+                  <Input
+                    type="date"
+                    value={fromDate}
+                    onChange={(e) => handleFromDateChange(e.target.value)}
+                    className="w-full sm:w-44"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">To Date</Label>
+                  <Input
+                    type="date"
+                    value={toDate}
+                    onChange={(e) => handleToDateChange(e.target.value)}
+                    className="w-full sm:w-44"
+                  />
+                </div>
+                {(search || fromDate || toDate) && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground invisible">Action</Label>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSearch("");
+                        setFromDate("");
+                        setToDate("");
+                        setPage(1);
+                      }}
+                    >
+                      <X className="size-3.5 mr-1" />
+                      Clear
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="border-t">
+            {error && (
+              <Alert variant="destructive" className="mx-4 mt-4">
+                <AlertCircle className="size-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {loading ? (
+              <div className="p-4">
+                <SalesTableSkeleton />
+              </div>
+            ) : sales.length === 0 ? (
+              <div className="py-16 text-center">
+                <FileText className="size-12 mx-auto text-muted-foreground/40" />
+                <p className="mt-3 text-sm font-medium text-muted-foreground">No invoices found</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Try adjusting your search or filters
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-4"
+                  onClick={() => setCreateOpen(true)}
+                >
+                  <Plus className="size-3.5 mr-1" />
+                  Create First Invoice
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="min-w-[140px]">Invoice #</TableHead>
+                        <TableHead className="min-w-[150px]">Customer</TableHead>
+                        <TableHead className="text-right">Items</TableHead>
+                        <TableHead className="text-right">Subtotal</TableHead>
+                        <TableHead className="text-right">Discount</TableHead>
+                        <TableHead className="text-right">Tax</TableHead>
+                        <TableHead className="text-right font-semibold">Total</TableHead>
+                        <TableHead>Payment</TableHead>
+                        <TableHead className="min-w-[100px]">Date</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="w-[50px]">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {sales.map((sale) => (
+                        <TableRow
+                          key={sale.id}
+                          className="cursor-pointer hover:bg-muted/60"
+                          onClick={() => handleViewDetail(sale)}
+                        >
+                          <TableCell className="font-mono font-medium text-sm">
+                            {sale.invoiceNo}
+                          </TableCell>
+                          <TableCell className="font-medium">{sale.customerName}</TableCell>
+                          <TableCell className="text-right text-sm">{sale.itemsCount}</TableCell>
+                          <TableCell className="text-right font-mono text-sm">
+                            {INR(sale.subtotal)}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-sm text-destructive">
+                            {sale.discount > 0 ? `- ${INR(sale.discount)}` : "—"}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-xs text-muted-foreground">
+                            {INR(sale.cgst + sale.sgst)}
+                          </TableCell>
+                          <TableCell className="text-right font-mono font-semibold">
+                            {INR(sale.total)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs">
+                              {sale.paymentMode}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {new Date(sale.createdAt).toLocaleDateString("en-IN", {
+                              day: "2-digit",
+                              month: "short",
+                            })}
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge status={sale.status} />
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-8"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleViewDetail(sale);
+                              }}
+                              aria-label={`View invoice ${sale.invoiceNo}`}
+                            >
+                              <Eye className="size-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Pagination */}
+                <div className="border-t px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <p className="text-sm text-muted-foreground">
+                    Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} of{" "}
+                    {total} invoices
+                  </p>
+                  <PaginationControls
+                    page={page}
+                    totalPages={totalPages}
+                    onPageChange={setPage}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Dialogs */}
+      <CreateSaleDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={fetchSales}
+      />
+
+      <SaleDetailDialog
+        sale={detailSale}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        onReturn={handleOpenReturn}
+        onToggleStatus={handleToggleStatus}
+      />
+
+      <ReturnDialog
+        sale={returnSale}
+        open={returnOpen}
+        onOpenChange={setReturnOpen}
+        onProcessed={handleReturnProcessed}
+      />
+    </section>
+  );
+}

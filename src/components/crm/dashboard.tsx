@@ -1,0 +1,792 @@
+'use client';
+
+import { useEffect, useState, useCallback } from 'react';
+import {
+  Users,
+  IndianRupee,
+  TrendingUp,
+  AlertTriangle,
+  FlaskConical,
+  Wallet,
+  Clock,
+  Eye,
+  EyeOff,
+} from 'lucide-react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Separator } from '@/components/ui/separator';
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from '@/components/ui/chart';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { format, parseISO, isToday, startOfDay } from 'date-fns';
+
+// ───────────────────────────────────────────────
+// Types
+// ───────────────────────────────────────────────
+
+interface DashboardStats {
+  totalCustomers: number;
+  todaySales: number;
+  monthlyRevenue: number;
+  lowStockAlerts: number;
+  pendingLabOrders: number;
+  pendingDues: number;
+}
+
+interface SalesTrendPoint {
+  date: string;
+  revenue: number;
+}
+
+interface TopProduct {
+  name: string;
+  salesCount: number;
+}
+
+interface RecentSale {
+  invoiceNo: string;
+  customerName: string;
+  amount: number;
+  date: string;
+  paymentMode: string;
+}
+
+interface Appointment {
+  time: string;
+  customerName: string;
+  purpose: string;
+  status: 'confirmed' | 'pending' | 'cancelled' | 'completed';
+}
+
+interface LowStockProduct {
+  name: string;
+  stock: number;
+  minStock: number;
+}
+
+// ───────────────────────────────────────────────
+// Helpers
+// ───────────────────────────────────────────────
+
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+function formatCompact(num: number): string {
+  if (num >= 100000) return `₹${(num / 100000).toFixed(1)}L`;
+  if (num >= 1000) return `₹${(num / 1000).toFixed(1)}K`;
+  return `₹${num.toLocaleString('en-IN')}`;
+}
+
+// ───────────────────────────────────────────────
+// Stat Card Config
+// ───────────────────────────────────────────────
+
+interface StatCardConfig {
+  key: keyof DashboardStats;
+  label: string;
+  icon: React.ElementType;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+  iconColor: string;
+  format: (val: number) => string;
+}
+
+const statCards: StatCardConfig[] = [
+  {
+    key: 'totalCustomers',
+    label: 'Total Customers',
+    icon: Users,
+    color: 'text-emerald-700 dark:text-emerald-400',
+    bgColor: 'bg-emerald-50 dark:bg-emerald-950/40',
+    borderColor: 'border-emerald-200 dark:border-emerald-800/50',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
+    format: (v) => v.toLocaleString('en-IN'),
+  },
+  {
+    key: 'todaySales',
+    label: "Today's Sales",
+    icon: IndianRupee,
+    color: 'text-green-700 dark:text-green-400',
+    bgColor: 'bg-green-50 dark:bg-green-950/40',
+    borderColor: 'border-green-200 dark:border-green-800/50',
+    iconColor: 'text-green-600 dark:text-green-400',
+    format: (v) => formatCompact(v),
+  },
+  {
+    key: 'monthlyRevenue',
+    label: 'Monthly Revenue',
+    icon: TrendingUp,
+    color: 'text-sky-700 dark:text-sky-400',
+    bgColor: 'bg-sky-50 dark:bg-sky-950/40',
+    borderColor: 'border-sky-200 dark:border-sky-800/50',
+    iconColor: 'text-sky-600 dark:text-sky-400',
+    format: (v) => formatCompact(v),
+  },
+  {
+    key: 'lowStockAlerts',
+    label: 'Low Stock Alerts',
+    icon: AlertTriangle,
+    color: 'text-amber-700 dark:text-amber-400',
+    bgColor: 'bg-amber-50 dark:bg-amber-950/40',
+    borderColor: 'border-amber-200 dark:border-amber-800/50',
+    iconColor: 'text-amber-600 dark:text-amber-400',
+    format: (v) => v.toString(),
+  },
+  {
+    key: 'pendingLabOrders',
+    label: 'Pending Lab Orders',
+    icon: FlaskConical,
+    color: 'text-purple-700 dark:text-purple-400',
+    bgColor: 'bg-purple-50 dark:bg-purple-950/40',
+    borderColor: 'border-purple-200 dark:border-purple-800/50',
+    iconColor: 'text-purple-600 dark:text-purple-400',
+    format: (v) => v.toString(),
+  },
+  {
+    key: 'pendingDues',
+    label: 'Pending Dues',
+    icon: Wallet,
+    color: 'text-red-700 dark:text-red-400',
+    bgColor: 'bg-red-50 dark:bg-red-950/40',
+    borderColor: 'border-red-200 dark:border-red-800/50',
+    iconColor: 'text-red-600 dark:text-red-400',
+    format: (v) => formatCompact(v),
+  },
+];
+
+// ───────────────────────────────────────────────
+// Chart Configs
+// ───────────────────────────────────────────────
+
+const salesTrendConfig: ChartConfig = {
+  revenue: {
+    label: 'Revenue',
+    color: 'hsl(160, 84%, 39%)',
+  },
+};
+
+const topProductsConfig: ChartConfig = {
+  salesCount: {
+    label: 'Units Sold',
+    color: 'hsl(152, 76%, 36%)',
+  },
+};
+
+// ───────────────────────────────────────────────
+// Sub-Components
+// ───────────────────────────────────────────────
+
+function StatCardSkeleton() {
+  return (
+    <Card className="gap-0 py-0 overflow-hidden">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-9 w-9 rounded-lg" />
+        </div>
+        <Skeleton className="mt-2 h-7 w-20" />
+      </CardContent>
+    </Card>
+  );
+}
+
+function StatCard({ config, value }: { config: StatCardConfig; value: number }) {
+  const Icon = config.icon;
+  return (
+    <Card className={`gap-0 py-0 overflow-hidden ${config.borderColor}`}>
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium text-muted-foreground">{config.label}</p>
+          <div className={`rounded-lg p-2 ${config.bgColor}`}>
+            <Icon className={`h-5 w-5 ${config.iconColor}`} />
+          </div>
+        </div>
+        <p className={`mt-2 text-2xl font-bold tracking-tight ${config.color}`}>
+          {config.format(value)}
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SalesChartSkeleton() {
+  return (
+    <Card className="h-[320px]">
+      <CardHeader>
+        <Skeleton className="h-5 w-32" />
+        <Skeleton className="h-4 w-48" />
+      </CardHeader>
+      <CardContent className="flex-1">
+        <Skeleton className="h-full w-full rounded-lg" />
+      </CardContent>
+    </Card>
+  );
+}
+
+function TopProductsChartSkeleton() {
+  return (
+    <Card className="h-[320px]">
+      <CardHeader>
+        <Skeleton className="h-5 w-40" />
+        <Skeleton className="h-4 w-52" />
+      </CardHeader>
+      <CardContent className="flex-1">
+        <Skeleton className="h-full w-full rounded-lg" />
+      </CardContent>
+    </Card>
+  );
+}
+
+function RecentSalesSkeleton() {
+  return (
+    <Card className="h-full">
+      <CardHeader>
+        <Skeleton className="h-5 w-32" />
+        <Skeleton className="h-4 w-48" />
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex items-center justify-between">
+              <div className="space-y-1.5">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+              <Skeleton className="h-4 w-20" />
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AppointmentsSkeleton() {
+  return (
+    <Card className="h-full">
+      <CardHeader>
+        <Skeleton className="h-5 w-40" />
+        <Skeleton className="h-4 w-48" />
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex items-start gap-3">
+              <Skeleton className="h-5 w-14 rounded" />
+              <div className="flex-1 space-y-1.5">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-3 w-40" />
+              </div>
+              <Skeleton className="h-5 w-16 rounded-full" />
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function LowStockSkeleton() {
+  return (
+    <Card className="h-full">
+      <CardHeader>
+        <Skeleton className="h-5 w-36" />
+        <Skeleton className="h-4 w-52" />
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex items-center justify-between">
+              <Skeleton className="h-4 w-32" />
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-4 w-8" />
+                <Skeleton className="h-4 w-8" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+const appointmentStatusVariant: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+  confirmed: 'default',
+  completed: 'secondary',
+  pending: 'outline',
+  cancelled: 'destructive',
+};
+
+const appointmentStatusClass: Record<string, string> = {
+  confirmed: 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800',
+  completed: 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700',
+  pending: 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800',
+  cancelled: 'bg-red-100 text-red-800 border-red-200 dark:bg-red-950/60 dark:text-red-300 dark:border-red-800',
+};
+
+// ───────────────────────────────────────────────
+// Main Dashboard Component
+// ───────────────────────────────────────────────
+
+export default function Dashboard() {
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [salesTrend, setSalesTrend] = useState<SalesTrendPoint[]>([]);
+  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
+  const [recentSales, setRecentSales] = useState<RecentSale[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [lowStock, setLowStock] = useState<LowStockProduct[]>([]);
+  const [duesVisible, setDuesVisible] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [dashRes, trendRes, productsRes] = await Promise.allSettled([
+        fetch('/api/dashboard'),
+        fetch('/api/reports?type=sales-trend'),
+        fetch('/api/reports?type=top-products'),
+      ]);
+
+      // Dashboard stats
+      if (dashRes.status === 'fulfilled' && dashRes.value.ok) {
+        const dashData = await dashRes.value.json();
+        setStats(dashData.stats ?? dashData);
+        setRecentSales(dashData.recentSales ?? []);
+        setAppointments(dashData.appointments ?? []);
+        setLowStock(dashData.lowStock ?? []);
+      }
+
+      // Sales trend
+      if (trendRes.status === 'fulfilled' && trendRes.value.ok) {
+        const trendData = await trendRes.value.json();
+        setSalesTrend(trendData.data ?? trendData ?? []);
+      }
+
+      // Top products
+      if (productsRes.status === 'fulfilled' && productsRes.value.ok) {
+        const prodData = await productsRes.value.json();
+        setTopProducts(prodData.data ?? prodData ?? []);
+      }
+    } catch {
+      // Silently handle — UI shows empty state
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // ─── Derived chart data ───
+
+  const trendChartData = salesTrend.map((point) => ({
+    ...point,
+    date: format(parseISO(point.date), 'MMM dd'),
+  }));
+
+  const productsChartData = topProducts.map((p) => ({
+    name: p.name.length > 18 ? p.name.slice(0, 18) + '…' : p.name,
+    salesCount: p.salesCount,
+  }));
+
+  // ─── Render helpers ───
+
+  const renderStatsGrid = () => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      {loading
+        ? Array.from({ length: 6 }).map((_, i) => <StatCardSkeleton key={i} />)
+        : stats &&
+          statCards.map((cfg) => (
+            <StatCard key={cfg.key} config={cfg} value={stats[cfg.key]} />
+          ))}
+    </div>
+  );
+
+  const renderSalesTrendChart = () => {
+    if (loading) return <SalesChartSkeleton />;
+
+    return (
+      <Card className="h-[320px] flex flex-col">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Sales Trend</CardTitle>
+          <CardDescription>Revenue over the last 30 days</CardDescription>
+        </CardHeader>
+        <CardContent className="flex-1 min-h-0">
+          {trendChartData.length > 0 ? (
+            <ChartContainer config={salesTrendConfig} className="h-full w-full">
+              <LineChart data={trendChartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  fontSize={11}
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={4}
+                  fontSize={11}
+                  tickFormatter={(v: number) => `₹${(v / 1000).toFixed(0)}K`}
+                />
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      formatter={(value: number) => (
+                        <span className="font-mono font-medium">{formatCurrency(value)}</span>
+                      )}
+                    />
+                  }
+                />
+                <Line
+                  type="monotone"
+                  dataKey="revenue"
+                  stroke="var(--color-revenue)"
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4, strokeWidth: 0 }}
+                />
+              </LineChart>
+            </ChartContainer>
+          ) : (
+            <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
+              No sales trend data available
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderTopProductsChart = () => {
+    if (loading) return <TopProductsChartSkeleton />;
+
+    return (
+      <Card className="h-[320px] flex flex-col">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Top Selling Products</CardTitle>
+          <CardDescription>Top 5 products by sales count</CardDescription>
+        </CardHeader>
+        <CardContent className="flex-1 min-h-0">
+          {productsChartData.length > 0 ? (
+            <ChartContainer config={topProductsConfig} className="h-full w-full">
+              <BarChart data={productsChartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis
+                  dataKey="name"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  fontSize={11}
+                  interval={0}
+                  angle={-20}
+                  textAnchor="end"
+                  height={60}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={4}
+                  fontSize={11}
+                />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Bar
+                  dataKey="salesCount"
+                  fill="var(--color-salesCount)"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={48}
+                />
+              </BarChart>
+            </ChartContainer>
+          ) : (
+            <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
+              No product data available
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderRecentSales = () => {
+    if (loading) return <RecentSalesSkeleton />;
+
+    return (
+      <Card className="h-full">
+        <CardHeader>
+          <CardTitle className="text-base">Recent Sales</CardTitle>
+          <CardDescription>Last 5 completed transactions</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {recentSales.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Invoice #</TableHead>
+                  <TableHead>Customer</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="hidden sm:table-cell">Date</TableHead>
+                  <TableHead className="hidden md:table-cell">Mode</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recentSales.map((sale) => (
+                  <TableRow key={sale.invoiceNo}>
+                    <TableCell className="font-mono text-xs font-medium">
+                      {sale.invoiceNo}
+                    </TableCell>
+                    <TableCell className="font-medium max-w-[120px] truncate">
+                      {sale.customerName}
+                    </TableCell>
+                    <TableCell className="text-right font-mono font-medium text-emerald-700 dark:text-emerald-400">
+                      {formatCurrency(sale.amount)}
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell text-muted-foreground">
+                      {isToday(parseISO(sale.date))
+                        ? 'Today'
+                        : format(parseISO(sale.date), 'MMM dd')}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <Badge variant="outline" className="text-xs font-normal">
+                        {sale.paymentMode}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="flex h-32 items-center justify-center text-muted-foreground text-sm">
+              No recent sales
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderAppointments = () => {
+    if (loading) return <AppointmentsSkeleton />;
+
+    return (
+      <Card className="h-full">
+        <CardHeader>
+          <CardTitle className="text-base">Today&apos;s Appointments</CardTitle>
+          <CardDescription>
+            {appointments.length > 0
+              ? `${appointments.length} scheduled for today`
+              : 'No appointments scheduled'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {appointments.length > 0 ? (
+            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+              {appointments.map((appt, idx) => (
+                <div key={idx}>
+                  <div className="flex items-start gap-3 py-1">
+                    <div className="flex items-center gap-1.5 shrink-0 min-w-[64px]">
+                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-sm font-mono font-medium text-foreground">
+                        {appt.time}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{appt.customerName}</p>
+                      <p className="text-xs text-muted-foreground truncate">{appt.purpose}</p>
+                    </div>
+                    <Badge
+                      variant={appointmentStatusVariant[appt.status] ?? 'outline'}
+                      className={appointmentStatusClass[appt.status] ?? ''}
+                    >
+                      {appt.status.charAt(0).toUpperCase() + appt.status.slice(1)}
+                    </Badge>
+                  </div>
+                  {idx < appointments.length - 1 && <Separator />}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex h-32 items-center justify-center text-muted-foreground text-sm">
+              No appointments today
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderLowStock = () => {
+    if (loading) return <LowStockSkeleton />;
+
+    return (
+      <Card className="h-full">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            Low Stock Products
+          </CardTitle>
+          <CardDescription>
+            {lowStock.length > 0
+              ? `${lowStock.length} products below minimum stock level`
+              : 'All products are well-stocked'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {lowStock.length > 0 ? (
+            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+              {lowStock.map((product, idx) => (
+                <div key={idx}>
+                  <div className="flex items-center justify-between py-1">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{product.name}</p>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0 ml-4">
+                      <div className="text-right">
+                        <span
+                          className={`text-sm font-mono font-bold ${
+                            product.stock === 0
+                              ? 'text-red-600 dark:text-red-400'
+                              : 'text-amber-600 dark:text-amber-400'
+                          }`}
+                        >
+                          {product.stock}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {' / '}
+                          {product.minStock}
+                        </span>
+                      </div>
+                      <Badge
+                        variant={product.stock === 0 ? 'destructive' : 'outline'}
+                        className={`text-xs ${
+                          product.stock === 0
+                            ? ''
+                            : 'border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400'
+                        }`}
+                      >
+                        {product.stock === 0 ? 'Out of Stock' : 'Low'}
+                      </Badge>
+                    </div>
+                  </div>
+                  {idx < lowStock.length - 1 && <Separator />}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex h-32 items-center justify-center text-muted-foreground text-sm">
+              All products are above minimum stock levels
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // ─── Main Render ───
+
+  return (
+    <section className="space-y-6" aria-label="CRM Dashboard">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+          Dashboard
+        </h1>
+        <p className="text-muted-foreground mt-1">
+          {format(startOfDay(new Date()), 'EEEE, MMMM d, yyyy')} — Optical Shop CRM
+        </p>
+      </div>
+
+      {/* Stats Cards */}
+      {renderStatsGrid()}
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {renderSalesTrendChart()}
+        {renderTopProductsChart()}
+      </div>
+
+      {/* Pending Dues Card */}
+      {!loading && stats && stats.pendingDues > 0 && (
+        <Card className="border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg p-2 bg-red-100 dark:bg-red-950/60">
+                <Wallet className="h-5 w-5 text-red-600 dark:text-red-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-red-800 dark:text-red-300">
+                  Outstanding Dues
+                </p>
+                <p className="text-xs text-red-600/80 dark:text-red-400/80">
+                  Total pending payments from customers
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-bold text-red-700 dark:text-red-300 font-mono">
+                {duesVisible
+                  ? formatCurrency(stats.pendingDues)
+                  : '₹••••••'}
+              </span>
+              <button
+                onClick={() => setDuesVisible(!duesVisible)}
+                className="p-1.5 rounded-md hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+                aria-label={duesVisible ? 'Hide dues amount' : 'Show dues amount'}
+              >
+                {duesVisible ? (
+                  <EyeOff className="h-4 w-4 text-red-500" />
+                ) : (
+                  <Eye className="h-4 w-4 text-red-500" />
+                )}
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Recent Activity Section */}
+      <div>
+        <h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Recent Sales — wider on desktop */}
+          <div className="lg:col-span-1">{renderRecentSales()}</div>
+
+          {/* Today's Appointments */}
+          <div>{renderAppointments()}</div>
+
+          {/* Low Stock Products */}
+          <div>{renderLowStock()}</div>
+        </div>
+      </div>
+    </section>
+  );
+}
