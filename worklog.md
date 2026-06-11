@@ -985,3 +985,40 @@ Stage Summary:
 - SALES: +Payment mode filter dropdown (Cash/Card/UPI/Credit/Split)
 - Build: Clean, zero errors
 - Tunnel: https://drops-bases-casting-damaged.trycloudflare.com
+
+---
+Task ID: crm-cycle-b-1781148360
+Agent: CRM Build Bot - Cycle B (No-op Health Check)
+Task: Cycle B re-trigger - verify all features still present
+
+Work Log:
+- Server health check: HTTP 200 on port 3000
+- Verified all Cycle B features exist from previous runs
+- No new changes required - all features confirmed present
+- Features: WhatsApp button, CSV export (with date fix), duplicate detection, date/group/sort filters, invoice print, payment split, sale returns, summary cards, payment mode filter
+
+Stage Summary:
+- No-op: All Cycle B features already implemented and verified
+- Server healthy, build clean from previous cycle
+
+---
+Task ID: crm-cycle-c-1781149620
+Agent: CRM Build Bot - Cycle C (Enhancement Pass)
+Task: Inventory & Lab Orders — new features beyond existing baseline
+
+Work Log:
+- Verified all Cycle C baseline features already exist (stock alerts, CSV import, category filter, supplier column, last-restocked, low-stock report, status pipeline, timeline view, prescription auto-fill, expected delivery date, frame size tracking)
+- Added search bar to Lab Orders (search by order ID or customer name) with clear button
+- Added search support to /api/lab-orders API (q parameter with OR filter on order ID + customer name/phone)
+- Added Quick Stock Adjust dialog to Inventory (PackagePlus button per row, +/- stepper, "Set to 0" and "Set to Min" shortcuts, auto-updates lastRestocked on stock increase, warns if below minStock)
+- Added frame size display (W×B×T mm) inline under product name for Frames category items
+- Added PackagePlus icon import to inventory
+- Added X icon import to lab-orders for search clear button
+- Rebuilt: npx next build — zero errors, zero warnings
+- Verified: All 5 endpoints return 200, lab-orders search works (q=Murugan returns results, q=nonexistent123 returns empty)
+
+Stage Summary:
+- LAB ORDERS: +Search bar (by order ID/customer name), +API search support
+- INVENTORY: +Quick Stock Adjust dialog with +/- stepper, +Frame size display in table (W×B×T mm under product name)
+- Build: Clean, zero errors
+- Tunnel: https://queries-bunch-continue-hoped.trycloudflare.com

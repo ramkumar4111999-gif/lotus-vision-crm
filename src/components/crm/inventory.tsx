@@ -20,6 +20,7 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  PackagePlus,
 } from 'lucide-react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -271,6 +272,11 @@ export default function Inventory() {
   const [reportDialogOpen, setReportDialogOpen] = useState(false)
   const [reportLoading, setReportLoading] = useState(false)
   const [reportData, setReportData] = useState<LowStockReport | null>(null)
+
+  // Quick Stock Adjust dialog state
+  const [adjustProduct, setAdjustProduct] = useState<Product | null>(null)
+  const [adjustQty, setAdjustQty] = useState(0)
+  const [adjusting, setAdjusting] = useState(false)
 
   // ─── Sorted products ─────────────────────────────────────────────────────
 
@@ -572,6 +578,36 @@ export default function Inventory() {
       // handled silently
     } finally {
       setReportLoading(false)
+    }
+  }
+
+  // ─── Quick Stock Adjust handler ─────────────────────────────────────────
+
+  const openAdjustDialog = (product: Product) => {
+    setAdjustProduct(product)
+    setAdjustQty(0)
+  }
+
+  const handleStockAdjust = async () => {
+    if (!adjustProduct || adjustQty === 0) return
+    setAdjusting(true)
+    try {
+      const newStock = Math.max(0, adjustProduct.stock + adjustQty)
+      const updatePayload: Record<string, unknown> = { stock: newStock }
+      if (adjustQty > 0) updatePayload.lastRestocked = new Date().toISOString()
+      const res = await fetch(`/api/products/${adjustProduct.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatePayload),
+      })
+      if (!res.ok) throw new Error('Failed to update stock')
+      toast.success(`${adjustProduct.name}: stock ${adjustProduct.stock} → ${newStock}`)
+      setAdjustProduct(null)
+      fetchProducts()
+    } catch {
+      toast.error('Failed to adjust stock')
+    } finally {
+      setAdjusting(false)
     }
   }
 
@@ -931,8 +967,13 @@ export default function Inventory() {
                       <TableCell className="font-mono text-xs text-muted-foreground">
                         {product.sku}
                       </TableCell>
-                      <TableCell className="font-medium max-w-[200px] truncate">
+                      <TableCell className="font-medium max-w-[200px]">
                         {product.name}
+                        {product.category === 'Frames' && (product.frameWidth || product.bridge || product.temple) && (
+                          <span className="block text-[10px] font-normal text-muted-foreground">
+                            {product.frameWidth}×{product.bridge}×{product.temple} mm
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-muted-foreground">
                         {product.brand || '—'}
@@ -976,6 +1017,16 @@ export default function Inventory() {
                       <TableCell>{getStatusBadge(product)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/50"
+                            onClick={() => openAdjustDialog(product)}
+                            aria-label={`Adjust stock for ${product.name}`}
+                            title="Quick Stock Adjust"
+                          >
+                            <PackagePlus className="h-3.5 w-3.5" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -1632,6 +1683,60 @@ export default function Inventory() {
               }}
             >
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Quick Stock Adjust Dialog ────────────────────────────────── */}
+      <Dialog open={!!adjustProduct} onOpenChange={(open) => { if (!open) setAdjustProduct(null) }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Quick Stock Adjust</DialogTitle>
+            <DialogDescription>
+              {adjustProduct && (
+                <span className="font-medium">{adjustProduct.name}</span>
+              )}
+              {' '}— Current stock: <span className="font-mono font-semibold">{adjustProduct?.stock ?? 0}</span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="flex items-center gap-3">
+              <Button variant="outline" size="icon" className="h-10 w-10 text-lg" onClick={() => setAdjustQty(q => q - 1)} disabled={adjustQty <= -99}>
+                −
+              </Button>
+              <Input
+                type="number"
+                value={adjustQty}
+                onChange={(e) => setAdjustQty(parseInt(e.target.value) || 0)}
+                className="text-center text-xl font-mono h-10"
+              />
+              <Button variant="outline" size="icon" className="h-10 w-10 text-lg" onClick={() => setAdjustQty(q => q + 1)} disabled={adjustQty >= 999}>
+                +
+              </Button>
+            </div>
+            {adjustProduct && adjustQty !== 0 && (
+              <p className="text-sm text-center">
+                New stock: <span className="font-mono font-bold text-lg">{Math.max(0, (adjustProduct.stock ?? 0) + adjustQty)}</span>
+                {adjustProduct.minStock > 0 && Math.max(0, (adjustProduct.stock ?? 0) + adjustQty) < adjustProduct.minStock && (
+                  <span className="ml-2 text-red-600 dark:text-red-400">(below min: {adjustProduct.minStock})</span>
+                )}
+              </p>
+            )}
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setAdjustQty(Math.max(0, -(adjustProduct?.stock ?? 0)))} className="flex-1">
+                Set to 0
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => { if (adjustProduct) setAdjustQty(adjustProduct.minStock - (adjustProduct.stock ?? 0)) }} className="flex-1">
+                Set to Min ({adjustProduct?.minStock ?? 0})
+              </Button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAdjustProduct(null)}>Cancel</Button>
+            <Button onClick={handleStockAdjust} disabled={adjusting || !adjustProduct || adjustQty === 0} className="gap-2">
+              {adjusting && <Loader2 className="h-4 w-4 animate-spin" />}
+              Apply
             </Button>
           </DialogFooter>
         </DialogContent>

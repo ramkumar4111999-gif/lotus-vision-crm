@@ -82,10 +82,20 @@ export async function GET(request: NextRequest) {
     // ── List lab orders ──
     const status = searchParams.get('status')
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
+    const searchQ = searchParams.get('q')?.trim() || ''
 
     const where: Record<string, unknown> = {}
     if (status && status !== 'all') {
       where.status = status
+    }
+    if (searchQ) {
+      where.OR = [
+        { id: { contains: searchQ } },
+        { customerId: { in: (await db.customer.findMany({
+            where: { OR: [{ name: { contains: searchQ } }, { phone: { contains: searchQ } }] },
+            select: { id: true },
+          })).map(c => c.id) } },
+      ]
     }
 
     const [orders, total] = await Promise.all([

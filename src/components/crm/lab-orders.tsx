@@ -24,6 +24,7 @@ import {
   Copy,
   Ruler,
   History,
+  X,
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -207,6 +208,7 @@ export default function LabOrders() {
   const [totalPages, setTotalPages] = useState(1)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'table' | 'timeline'>('table')
+  const [searchQuery, setSearchQuery] = useState('')
 
   // Dialog
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -249,6 +251,7 @@ export default function LabOrders() {
     try {
       const params = new URLSearchParams()
       if (activeStatus !== 'all') params.set('status', activeStatus)
+      if (searchQuery.trim()) params.set('q', searchQuery.trim())
       params.set('page', String(page))
       const res = await fetch(`/api/lab-orders?${params}`)
       if (!res.ok) throw new Error('Failed to fetch lab orders')
@@ -261,10 +264,11 @@ export default function LabOrders() {
     } finally {
       setLoading(false)
     }
-  }, [activeStatus, page])
+  }, [activeStatus, page, searchQuery])
 
   useEffect(() => { fetchOrders() }, [fetchOrders])
   useEffect(() => { setPage(1) }, [activeStatus])
+  useEffect(() => { setPage(1) }, [searchQuery])
 
   // Customer search
   const searchCustomers = useCallback(async (query: string) => {
@@ -790,6 +794,25 @@ export default function LabOrders() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Search Bar */}
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Search orders by ID or customer name..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
 
       {/* Status Tabs */}
