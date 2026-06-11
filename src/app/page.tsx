@@ -193,11 +193,11 @@ function Sidebar({ onNav }: { onNav?: () => void }) {
       {/* Brand */}
       <div className="flex items-center gap-3 px-5 py-5">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white font-bold text-sm shadow-lg shadow-emerald-200 dark:shadow-emerald-900/40">
-          SKO
+          LVO
         </div>
         <div className="flex flex-col">
           <span className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight">
-            Sankaran Kovil
+            Lotus Vision
           </span>
           <span className="text-xs text-slate-500 dark:text-slate-400 leading-tight">
             Opticals CRM
@@ -259,22 +259,21 @@ function Sidebar({ onNav }: { onNav?: () => void }) {
             const Icon = item.icon;
             const isActive = activeSection === item.key;
             return (
-              <Tooltip key={item.key}>
-                <TooltipTrigger asChild>
-                  <button
+              <button
+                    key={item.key}
                     onClick={() => {
                       setActiveSection(item.key);
                       onNav?.();
                     }}
                     className={`
-                      flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150
+                      w-full text-left flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-all duration-150 min-h-[44px] touch-manipulation
                       ${isActive
                         ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200 dark:shadow-emerald-900/40'
-                        : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
+                        : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700'
                       }
                     `}
                   >
-                    <Icon className="h-4.5 w-4.5 shrink-0" />
+                    <Icon className="h-5 w-5 shrink-0" />
                     <span>{item.label}</span>
                     {item.key === 'lab-orders' && (
                       <Badge variant="secondary" className="ml-auto bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400 text-[10px] px-1.5">
@@ -282,11 +281,6 @@ function Sidebar({ onNav }: { onNav?: () => void }) {
                       </Badge>
                     )}
                   </button>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="lg:hidden">
-                  {item.label}
-                </TooltipContent>
-              </Tooltip>
             );
           })}
         </nav>
@@ -316,13 +310,13 @@ function Sidebar({ onNav }: { onNav?: () => void }) {
 
         <button
           onClick={toggleDarkMode}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 transition-colors min-h-[44px] touch-manipulation"
         >
-          {darkMode ? <Sun className="h-4.5 w-4.5" /> : <Moon className="h-4.5 w-4.5" />}
+          {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           {darkMode ? 'Light Mode' : 'Dark Mode'}
         </button>
-        <div className="flex items-center gap-3 px-3 py-2">
-          <Avatar className="h-8 w-8">
+        <div className="flex items-center gap-3 px-3 py-2.5 min-h-[44px]">
+          <Avatar className="h-9 w-9">
             <AvatarFallback className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 text-xs font-semibold">
               RK
             </AvatarFallback>
@@ -331,8 +325,8 @@ function Sidebar({ onNav }: { onNav?: () => void }) {
             <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">Ram Kumar</p>
             <p className="text-xs text-slate-500 dark:text-slate-400 truncate">Owner</p>
           </div>
-          <button className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
-            <LogOut className="h-4 w-4" />
+          <button className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors h-10 w-10 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 touch-manipulation" aria-label="Log out">
+            <LogOut className="h-4.5 w-4.5" />
           </button>
         </div>
       </div>
@@ -456,7 +450,11 @@ function GlobalSearch() {
       }
     }
     document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    document.addEventListener('touchstart', handleClick, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('touchstart', handleClick);
+    };
   }, []);
 
   // Close on Escape
@@ -558,7 +556,7 @@ function GlobalSearch() {
 
       {/* Dropdown */}
       {open && hasResults && (
-        <div className="absolute right-0 sm:right-auto sm:left-0 top-full mt-1.5 w-[340px] sm:w-80 z-50 rounded-lg border bg-popover shadow-lg max-h-80 overflow-y-auto">
+        <div className="absolute right-0 sm:right-auto sm:left-0 top-full mt-1.5 w-[calc(100vw-1.5rem)] sm:w-80 z-50 rounded-lg border bg-popover shadow-lg max-h-80 overflow-y-auto">
           {/* Customers group */}
           {customers.length > 0 && (
             <div>
@@ -568,7 +566,7 @@ function GlobalSearch() {
               {customers.map((r) => (
                 <button
                   key={`cust-${r.id}`}
-                  className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center gap-2.5 transition-colors"
+                  className="w-full px-3 py-2.5 text-left text-sm hover:bg-accent active:bg-accent/80 flex items-center gap-2.5 transition-colors min-h-[44px] touch-manipulation"
                   onClick={() => handleSelect(r)}
                 >
                   <div className="rounded-full bg-emerald-100 dark:bg-emerald-900/40 p-1.5 shrink-0">
@@ -593,7 +591,7 @@ function GlobalSearch() {
               {products.map((r) => (
                 <button
                   key={`prod-${r.id}`}
-                  className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center gap-2.5 transition-colors"
+                  className="w-full px-3 py-2.5 text-left text-sm hover:bg-accent active:bg-accent/80 flex items-center gap-2.5 transition-colors min-h-[44px] touch-manipulation"
                   onClick={() => handleSelect(r)}
                 >
                   <div className="rounded-full bg-sky-100 dark:bg-sky-900/40 p-1.5 shrink-0">
@@ -620,7 +618,7 @@ function GlobalSearch() {
               {sales.map((r) => (
                 <button
                   key={`sale-${r.id}`}
-                  className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center gap-2.5 transition-colors"
+                  className="w-full px-3 py-2.5 text-left text-sm hover:bg-accent active:bg-accent/80 flex items-center gap-2.5 transition-colors min-h-[44px] touch-manipulation"
                   onClick={() => handleSelect(r)}
                 >
                   <div className="rounded-full bg-amber-100 dark:bg-amber-900/40 p-1.5 shrink-0">
@@ -884,13 +882,14 @@ function TopBar() {
   const currentLabel = NAV_ITEMS.find((n) => n.key === activeSection)?.label ?? 'Dashboard';
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md px-4 md:px-6">
+    <header className="sticky top-0 z-30 flex h-14 sm:h-16 items-center gap-2 sm:gap-4 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md px-3 sm:px-4 md:px-6">
       {/* Mobile menu button */}
       <Button
         variant="ghost"
         size="icon"
-        className="lg:hidden shrink-0"
+        className="lg:hidden shrink-0 h-11 w-11 touch-manipulation"
         onClick={() => setSidebarOpen(true)}
+        aria-label="Open menu"
       >
         <Menu className="h-5 w-5" />
       </Button>
@@ -905,40 +904,30 @@ function TopBar() {
       <GlobalSearch />
 
       {/* Settings */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="shrink-0"
-            onClick={() => setSettingsOpen(true)}
-          >
-            <Settings className="h-4.5 w-4.5 text-slate-600 dark:text-slate-400" />
-            <span className="sr-only">Settings</span>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Settings</TooltipContent>
-      </Tooltip>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="shrink-0 h-10 w-10 sm:h-9 sm:w-9 touch-manipulation"
+        onClick={() => setSettingsOpen(true)}
+        aria-label="Settings"
+      >
+        <Settings className="h-4.5 w-4.5 text-slate-600 dark:text-slate-400" />
+      </Button>
 
       {/* Dark Mode Toggle */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="shrink-0"
-            onClick={toggleDarkMode}
-          >
-            {darkMode ? (
-              <Sun className="h-4.5 w-4.5 text-amber-500" />
-            ) : (
-              <Moon className="h-4.5 w-4.5 text-slate-600 dark:text-slate-400" />
-            )}
-            <span className="sr-only">Toggle dark mode</span>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{darkMode ? 'Light mode' : 'Dark mode'}</TooltipContent>
-      </Tooltip>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="shrink-0 h-10 w-10 sm:h-9 sm:w-9 touch-manipulation"
+        onClick={toggleDarkMode}
+        aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+      >
+        {darkMode ? (
+          <Sun className="h-4.5 w-4.5 text-amber-500" />
+        ) : (
+          <Moon className="h-4.5 w-4.5 text-slate-600 dark:text-slate-400" />
+        )}
+      </Button>
 
       {/* Notifications */}
       <Notifications />
@@ -976,9 +965,9 @@ function MobileSidebar() {
       >
         <button
           onClick={handleClose}
-          className="absolute top-3 right-3 z-20 rounded-md bg-white/80 dark:bg-slate-800/80 p-1.5 shadow-sm transition-colors hover:bg-white dark:hover:bg-slate-800"
+          className="absolute top-3 right-3 z-20 rounded-md bg-white/80 dark:bg-slate-800/80 p-2.5 shadow-sm transition-colors hover:bg-white dark:hover:bg-slate-800 min-h-[44px] min-w-[44px] flex items-center justify-center touch-manipulation"
         >
-          <X className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+          <X className="h-5 w-5 text-slate-600 dark:text-slate-400" />
         </button>
         <Sidebar onNav={handleClose} />
       </div>

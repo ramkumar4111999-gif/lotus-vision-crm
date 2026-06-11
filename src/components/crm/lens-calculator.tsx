@@ -48,7 +48,7 @@ interface FrameResult {
 }
 
 // ───────────────────────────────────────────────
-// Price Data (Sankaran Kovil Opticals pricing)
+// Price Data (Lotus Vision Opticals pricing)
 // ───────────────────────────────────────────────
 
 const LENS_PRICES: Record<string, Record<string, number>> = {

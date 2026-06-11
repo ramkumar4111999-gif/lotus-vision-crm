@@ -1,0 +1,504 @@
+  1001→  1001→  1001→  // ─── Skeleton ─────────────────────────────────────────────────────────────
+  1002→  1002→  1002→
+  1003→  1003→  1003→  const TableSkeleton = ({ rows = 5, cols = 6 }: { rows?: number; cols?: number }) => (
+  1004→  1004→  1004→    <div className="space-y-2 p-4">
+  1005→  1005→  1005→      {Array.from({ length: rows }).map((_, i) => (
+  1006→  1006→  1006→        <div key={i} className="flex gap-4">
+  1007→  1007→  1007→          {Array.from({ length: cols }).map((_, j) => (
+  1008→  1008→  1008→            <div key={j} className="h-8 bg-muted rounded animate-pulse flex-1" />
+  1009→  1009→  1009→          ))}
+  1010→  1010→  1010→        </div>
+  1011→  1011→  1011→      ))}
+  1012→  1012→  1012→    </div>
+  1013→  1013→  1013→  );
+  1014→  1014→  1014→
+  1015→  1015→  1015→  // ─── Render ──────────────────────────────────────────────────────────────
+  1016→  1016→  1016→
+  1017→  1017→  1017→  return (
+  1018→  1018→  1018→    <div className="space-y-6 p-4 md:p-6">
+  1019→  1019→  1019→      {/* Page Header */}
+  1020→  1020→  1020→      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  1021→  1021→  1021→        <div>
+  1022→  1022→  1022→          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+  1023→  1023→  1023→            <IndianRupee className="h-6 w-6" />
+  1024→  1024→  1024→            Accounting & Finance
+  1025→  1025→  1025→          </h1>
+  1026→  1026→  1026→          <p className="text-muted-foreground text-sm mt-1">
+  1027→  1027→  1027→            Track income, expenses, and pending dues
+  1028→  1028→  1028→          </p>
+  1029→  1029→  1029→        </div>
+  1030→  1030→  1030→        <Button onClick={openAddExpense} size="sm" className="gap-1.5 w-fit">
+  1031→  1031→  1031→          <Plus className="h-4 w-4" />
+  1032→  1032→  1032→          Add Expense
+  1033→  1033→  1033→        </Button>
+  1034→  1034→  1034→      </div>
+  1035→  1035→  1035→
+  1036→  1036→  1036→      {/* ─── Profit & Loss Card ─────────────────────────────────────────── */}
+  1037→  1037→  1037→      <Collapsible open={plOpen} onOpenChange={setPlOpen}>
+  1038→  1038→  1038→        <Card>
+  1039→  1039→  1039→          <CollapsibleTrigger className="w-full">
+  1040→  1040→  1040→            <CardHeader className="pb-2 cursor-pointer">
+  1041→  1041→  1041→              <div className="flex items-center justify-between">
+  1042→  1042→  1042→                <div className="flex items-center gap-2">
+  1043→  1043→  1043→                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-950">
+  1044→  1044→  1044→                    <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+  1045→  1045→  1045→                  </div>
+  1046→  1046→  1046→                  <div>
+  1047→  1047→  1047→                    <CardTitle className="text-base">Profit &amp; Loss Summary</CardTitle>
+  1048→  1048→  1048→                    <CardDescription className="text-xs">
+  1049→  1049→  1049→                      {format(new Date(), 'MMMM yyyy')} &bull; Net: <span className={netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-red-600 dark:text-red-400 font-semibold'}>{formatINR(netProfit)}</span>
+  1050→  1050→  1050→                    </CardDescription>
+  1051→  1051→  1051→                  </div>
+  1052→  1052→  1052→                </div>
+  1053→  1053→  1053→                <div className="flex items-center gap-3">
+  1054→  1054→  1054→                  {lastMonthIncome > 0 && (
+  1055→  1055→  1055→                    <div className={`flex items-center gap-0.5 text-xs font-medium ${momChangePercent >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+  1056→  1056→  1056→                      {momChangePercent >= 0 ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
+  1057→  1057→  1057→                      {Math.abs(momChangePercent)}% vs last month
+  1058→  1058→  1058→                    </div>
+  1059→  1059→  1059→                  )}
+  1060→  1060→  1060→                  {plOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+  1061→  1061→  1061→                </div>
+  1062→  1062→  1062→              </div>
+  1063→  1063→  1063→            </CardHeader>
+  1064→  1064→  1064→          </CollapsibleTrigger>
+  1065→  1065→  1065→          <CollapsibleContent>
+  1066→  1066→  1066→            <CardContent className="pt-0 space-y-4">
+  1067→  1067→  1067→              {/* P&L Header Row */}
+  1068→  1068→  1068→              <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+  1069→  1069→  1069→                <div className="rounded-lg border p-3">
+  1070→  1070→  1070→                  <p className="text-xs text-muted-foreground">Revenue</p>
+  1071→  1071→  1071→                  <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">{formatINR(monthlyIncome)}</p>
+  1072→  1072→  1072→                  <p className="text-[10px] text-muted-foreground mt-0.5">Monthly collections</p>
+  1073→  1073→  1073→                </div>
+  1074→  1074→  1074→                <div className="rounded-lg border p-3">
+  1075→  1075→  1075→                  <p className="text-xs text-muted-foreground">Cost of Goods</p>
+  1076→  1076→  1076→                  <p className="text-sm font-bold text-muted-foreground font-mono">Not tracked</p>
+  1077→  1077→  1077→                  <p className="text-[10px] text-muted-foreground mt-0.5">Enable product costing</p>
+  1078→  1078→  1078→                </div>
+  1079→  1079→  1079→                <div className="rounded-lg border p-3">
+  1080→  1080→  1080→                  <p className="text-xs text-muted-foreground">Gross Profit</p>
+  1081→  1081→  1081→                  <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">{formatINR(monthlyIncome)}</p>
+  1082→  1082→  1082→                  <p className="text-[10px] text-muted-foreground mt-0.5">Revenue (COGS not tracked)</p>
+  1083→  1083→  1083→                </div>
+  1084→  1084→  1084→                <div className="rounded-lg border p-3">
+  1085→  1085→  1085→                  <p className="text-xs text-muted-foreground">Total Expenses</p>
+  1086→  1086→  1086→                  <p className="text-sm font-bold text-red-600 dark:text-red-400 font-mono">{formatINR(monthlyExpensesTotal)}</p>
+  1087→  1087→  1087→                  <p className="text-[10px] text-muted-foreground mt-0.5">This month</p>
+  1088→  1088→  1088→                </div>
+  1089→  1089→  1089→                <div className={`rounded-lg border p-3 ${netProfit >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-red-50 dark:bg-red-950/30'}`}>
+  1090→  1090→  1090→                  <p className="text-xs text-muted-foreground">Net Profit</p>
+  1091→  1091→  1091→                  <p className={`text-sm font-bold font-mono ${netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{formatINR(netProfit)}</p>
+  1092→  1092→  1092→                  <p className="text-[10px] text-muted-foreground mt-0.5">Revenue - Expenses</p>
+  1093→  1093→  1093→                </div>
+  1094→  1094→  1094→              </div>
+  1095→  1095→  1095→
+  1096→  1096→  1096→              {/* P&L Detail: Expense Category Breakdown */}
+  1097→  1097→  1097→              <Separator />
+  1098→  1098→  1098→              <div>
+  1099→  1099→  1099→                <h3 className="text-sm font-semibold mb-3">Expense Breakdown by Category</h3>
+  1100→  1100→  1100→                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+  1101→  1101→  1101→                  {EXPENSE_CATEGORIES.map((cat) => {
+  1102→  1102→  1102→                    const catTotal = expenses
+  1103→  1103→  1103→                      .filter((e) => {
+  1104→  1104→  1104→                        if (e.category !== cat) return false;
+  1105→  1105→  1105→                        try { return new Date(e.date) >= startOfMonth(new Date()); } catch { return false; }
+  1106→  1106→  1106→                      })
+  1107→  1107→  1107→                      .reduce((s, e) => s + (e.amount || 0), 0);
+  1108→  1108→  1108→                    if (catTotal === 0) return null;
+  1109→  1109→  1109→                    const pct = monthlyExpensesTotal > 0 ? ((catTotal / monthlyExpensesTotal) * 100).toFixed(1) : '0.0';
+  1110→  1110→  1110→                    return (
+  1111→  1111→  1111→                      <div key={cat} className="rounded-lg border p-3">
+  1112→  1112→  1112→                        <div className="flex items-center justify-between mb-1">
+  1113→  1113→  1113→                          <p className="text-xs font-medium text-muted-foreground">{cat}</p>
+  1114→  1114→  1114→                          <span className="text-[10px] text-muted-foreground">{pct}%</span>
+  1115→  1115→  1115→                        </div>
+  1116→  1116→  1116→                        <p className="text-sm font-bold text-red-600 dark:text-red-400 font-mono">{formatINR(catTotal)}</p>
+  1117→  1117→  1117→                        <Progress value={parseFloat(pct)} className="mt-1.5 h-1" />
+  1118→  1118→  1118→                      </div>
+  1119→  1119→  1119→                    );
+  1120→  1120→  1120→                  })}
+  1121→  1121→  1121→                </div>
+  1122→  1122→  1122→              </div>
+  1123→  1123→  1123→
+  1124→  1124→  1124→              {/* P&L Bar Chart: Income vs Expenses by category */}
+  1125→  1125→  1125→              {categorySummary.length > 0 && (
+  1126→  1126→  1126→                <div>
+  1127→  1127→  1127→                  <h3 className="text-sm font-semibold mb-3">Income vs Expenses (This Month)</h3>
+  1128→  1128→  1128→                  <div className="h-[220px]">
+  1129→  1129→  1129→                    <ChartContainer config={BAR_CHART_CONFIG} className="h-full w-full">
+  1130→  1130→  1130→                      <BarChart data={categorySummary} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+  1131→  1131→  1131→                        <CartesianGrid vertical={false} strokeDasharray="3 3" />
+  1132→  1132→  1132→                        <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+  1133→  1133→  1133→                        <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+  1134→  1134→  1134→                        <ChartTooltip content={<ChartTooltipContent />} />
+  1135→  1135→  1135→                        <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={28} fill="hsl(var(--chart-1))" />
+  1136→  1136→  1136→                      </BarChart>
+  1137→  1137→  1137→                    </ChartContainer>
+  1138→  1138→  1138→                  </div>
+  1139→  1139→  1139→                </div>
+  1140→  1140→  1140→              )}
+  1141→  1141→  1141→            </CardContent>
+  1142→  1142→  1142→          </CollapsibleContent>
+  1143→  1143→  1143→        </Card>
+  1144→  1144→  1144→      </Collapsible>
+  1145→  1145→  1145→
+  1146→  1146→  1146→      {/* Summary Cards */}
+  1147→  1147→  1147→      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+  1148→  1148→  1148→        <Card className="py-4">
+  1149→  1149→  1149→          <CardContent className="px-4">
+  1150→  1150→  1150→            <div className="flex items-center gap-3">
+  1151→  1151→  1151→              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-950">
+  1152→  1152→  1152→                <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+  1153→  1153→  1153→              </div>
+  1154→  1154→  1154→              <div className="min-w-0">
+  1155→  1155→  1155→                <p className="text-xs text-muted-foreground font-medium">Today&apos;s Collections</p>
+  1156→  1156→  1156→                <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 truncate">{formatINR(todayIncome)}</p>
+  1157→  1157→  1157→              </div>
+  1158→  1158→  1158→            </div>
+  1159→  1159→  1159→          </CardContent>
+  1160→  1160→  1160→        </Card>
+  1161→  1161→  1161→
+  1162→  1162→  1162→        <Card className="py-4">
+  1163→  1163→  1163→          <CardContent className="px-4">
+  1164→  1164→  1164→            <div className="flex items-center gap-3">
+  1165→  1165→  1165→              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-100 dark:bg-teal-950">
+  1166→  1166→  1166→                <Wallet className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+  1167→  1167→  1167→              </div>
+  1168→  1168→  1168→              <div className="min-w-0">
+  1169→  1169→  1169→                <p className="text-xs text-muted-foreground font-medium">Monthly Collections</p>
+  1170→  1170→  1170→                <p className="text-lg font-bold text-teal-600 dark:text-teal-400 truncate">{formatINR(monthlyIncome)}</p>
+  1171→  1171→  1171→              </div>
+  1172→  1172→  1172→            </div>
+  1173→  1173→  1173→          </CardContent>
+  1174→  1174→  1174→        </Card>
+  1175→  1175→  1175→
+  1176→  1176→  1176→        <Card className="py-4">
+  1177→  1177→  1177→          <CardContent className="px-4">
+  1178→  1178→  1178→            <div className="flex items-center gap-3">
+  1179→  1179→  1179→              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-950">
+  1180→  1180→  1180→                <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+  1181→  1181→  1181→              </div>
+  1182→  1182→  1182→              <div className="min-w-0">
+  1183→  1183→  1183→                <p className="text-xs text-muted-foreground font-medium">Outstanding Dues</p>
+  1184→  1184→  1184→                <p className="text-lg font-bold text-amber-600 dark:text-amber-400 truncate">{formatINR(totalPendingDues)}</p>
+  1185→  1185→  1185→              </div>
+  1186→  1186→  1186→            </div>
+  1187→  1187→  1187→          </CardContent>
+  1188→  1188→  1188→        </Card>
+  1189→  1189→  1189→
+  1190→  1190→  1190→        <Card className="py-4">
+  1191→  1191→  1191→          <CardContent className="px-4">
+  1192→  1192→  1192→            <div className="flex items-center gap-3">
+  1193→  1193→  1193→              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-100 dark:bg-red-950">
+  1194→  1194→  1194→                <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
+  1195→  1195→  1195→              </div>
+  1196→  1196→  1196→              <div className="min-w-0">
+  1197→  1197→  1197→                <p className="text-xs text-muted-foreground font-medium">Total Expenses</p>
+  1198→  1198→  1198→                <p className="text-lg font-bold text-red-600 dark:text-red-400 truncate">{formatINR(totalExpenses)}</p>
+  1199→  1199→  1199→              </div>
+  1200→  1200→  1200→            </div>
+  1201→  1201→  1201→          </CardContent>
+  1202→  1202→  1202→        </Card>
+  1203→  1203→  1203→      </div>
+  1204→  1204→  1204→
+  1205→  1205→  1205→      {/* Tabs */}
+  1206→  1206→  1206→      <Tabs defaultValue="cashflow" className="space-y-4">
+  1207→  1207→  1207→        <TabsList className="flex-wrap">
+  1208→  1208→  1208→          <TabsTrigger value="cashflow" className="gap-1.5"><Banknote className="h-4 w-4" /><span className="hidden sm:inline">Cash Flow</span></TabsTrigger>
+  1209→  1209→  1209→          <TabsTrigger value="expenses" className="gap-1.5"><Receipt className="h-4 w-4" /><span className="hidden sm:inline">Expenses</span></TabsTrigger>
+  1210→  1210→  1210→          <TabsTrigger value="gst" className="gap-1.5"><Target className="h-4 w-4" /><span className="hidden sm:inline">GST</span></TabsTrigger>
+  1211→  1211→  1211→          <TabsTrigger value="reconciliation" className="gap-1.5"><CheckCircle2 className="h-4 w-4" /><span className="hidden sm:inline">Reconciliation</span></TabsTrigger>
+  1212→  1212→  1212→          <TabsTrigger value="dues" className="gap-1.5"><CreditCard className="h-4 w-4" /><span className="hidden sm:inline">Dues</span></TabsTrigger>
+  1213→  1213→  1213→          <TabsTrigger value="returns" className="gap-1.5"><RotateCcw className="h-4 w-4" /><span className="hidden sm:inline">Returns</span></TabsTrigger>
+  1214→  1214→  1214→          <TabsTrigger value="invoice-gst" className="gap-1.5"><FileText className="h-4 w-4" /><span className="hidden sm:inline">Invoice GST</span></TabsTrigger>
+  1215→  1215→  1215→        </TabsList>
+  1216→  1216→  1216→
+  1217→  1217→  1217→        {/* ─── Cash Flow Tab ────────────────────────────────────────────── */}
+  1218→  1218→  1218→        <TabsContent value="cashflow">
+  1219→  1219→  1219→          <Card>
+  1220→  1220→  1220→            <CardHeader>
+  1221→  1221→  1221→              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  1222→  1222→  1222→                <div>
+  1223→  1223→  1223→                  <CardTitle className="text-lg">Cash Flow Statement</CardTitle>
+  1224→  1224→  1224→                  <CardDescription>Track all income and expense transactions</CardDescription>
+  1225→  1225→  1225→                </div>
+  1226→  1226→  1226→                <div className="flex items-center gap-2 flex-wrap">
+  1227→  1227→  1227→                  <div className="flex items-center gap-1.5">
+  1228→  1228→  1228→                    <Label htmlFor="cf-from" className="text-xs whitespace-nowrap"><CalendarDays className="h-3.5 w-3.5 inline mr-1" />From</Label>
+  1229→  1229→  1229→                    <Input id="cf-from" type="date" value={cashFlowFrom} onChange={(e) => setCashFlowFrom(e.target.value)} className="h-8 w-[140px] text-xs" />
+  1230→  1230→  1230→                  </div>
+  1231→  1231→  1231→                  <div className="flex items-center gap-1.5">
+  1232→  1232→  1232→                    <Label htmlFor="cf-to" className="text-xs whitespace-nowrap">To</Label>
+  1233→  1233→  1233→                    <Input id="cf-to" type="date" value={cashFlowTo} onChange={(e) => setCashFlowTo(e.target.value)} className="h-8 w-[140px] text-xs" />
+  1234→  1234→  1234→                  </div>
+  1235→  1235→  1235→                </div>
+  1236→  1236→  1236→              </div>
+  1237→  1237→  1237→            </CardHeader>
+  1238→  1238→  1238→            <CardContent>
+  1239→  1239→  1239→              {loadingSales || loadingExpenses ? (
+  1240→  1240→  1240→                <TableSkeleton rows={6} cols={5} />
+  1241→  1241→  1241→              ) : cashFlowData.length === 0 ? (
+  1242→  1242→  1242→                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+  1243→  1243→  1243→                  <Wallet className="h-10 w-10 mb-2 opacity-40" />
+  1244→  1244→  1244→                  <p className="text-sm">No transactions found in this period</p>
+  1245→  1245→  1245→                </div>
+  1246→  1246→  1246→              ) : (
+  1247→  1247→  1247→                <>
+  1248→  1248→  1248→                  <div className="max-h-[420px] overflow-y-auto rounded-md border">
+  1249→  1249→  1249→                    <Table>
+  1250→  1250→  1250→                      <TableHeader>
+  1251→  1251→  1251→                        <TableRow>
+  1252→  1252→  1252→                          <TableHead className="text-xs">Date</TableHead>
+  1253→  1253→  1253→                          <TableHead className="text-xs">Description</TableHead>
+  1254→  1254→  1254→                          <TableHead className="text-xs">Type</TableHead>
+  1255→  1255→  1255→                          <TableHead className="text-xs text-right">Amount</TableHead>
+  1256→  1256→  1256→                          <TableHead className="text-xs text-right">Balance</TableHead>
+  1257→  1257→  1257→                        </TableRow>
+  1258→  1258→  1258→                      </TableHeader>
+  1259→  1259→  1259→                      <TableBody>
+  1260→  1260→  1260→                        {cashFlowData.map((entry, i) => (
+  1261→  1261→  1261→                          <TableRow key={`cf-${i}`}>
+  1262→  1262→  1262→                            <TableCell className="text-xs">{formatDate(entry.date)}</TableCell>
+  1263→  1263→  1263→                            <TableCell className="text-xs max-w-[200px] truncate">{entry.description}</TableCell>
+  1264→  1264→  1264→                            <TableCell>
+  1265→  1265→  1265→                              {entry.type === 'Income' ? (
+  1266→  1266→  1266→                                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800">Income</Badge>
+  1267→  1267→  1267→                              ) : (
+  1268→  1268→  1268→                                <Badge className="bg-red-100 text-red-700 border-red-200 text-xs dark:bg-red-950 dark:text-red-300 dark:border-red-800">Expense</Badge>
+  1269→  1269→  1269→                              )}
+  1270→  1270→  1270→                            </TableCell>
+  1271→  1271→  1271→                            <TableCell className={`text-xs text-right font-mono font-medium ${entry.type === 'Income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+  1272→  1272→  1272→                              {entry.type === 'Income' ? '+' : '-'}{formatINR(entry.amount)}
+  1273→  1273→  1273→                            </TableCell>
+  1274→  1274→  1274→                            <TableCell className={`text-xs text-right font-mono font-medium ${entry.balance >= 0 ? 'text-foreground' : 'text-red-600 dark:text-red-400'}`}>
+  1275→  1275→  1275→                              {formatINR(entry.balance)}
+  1276→  1276→  1276→                            </TableCell>
+  1277→  1277→  1277→                          </TableRow>
+  1278→  1278→  1278→                        ))}
+  1279→  1279→  1279→                      </TableBody>
+  1280→  1280→  1280→                      <TableFooter>
+  1281→  1281→  1281→                        <TableRow>
+  1282→  1282→  1282→                          <TableCell colSpan={3} className="text-xs font-semibold">Summary</TableCell>
+  1283→  1283→  1283→                          <TableCell className="text-xs text-right">
+  1284→  1284→  1284→                            <div className="space-y-0.5">
+  1285→  1285→  1285→                              <span className="block text-emerald-600 dark:text-emerald-400 font-mono">+{formatINR(cashFlowSummary.totalIncome)}</span>
+  1286→  1286→  1286→                              <span className="block text-red-600 dark:text-red-400 font-mono">-{formatINR(cashFlowSummary.totalExpense)}</span>
+  1287→  1287→  1287→                            </div>
+  1288→  1288→  1288→                          </TableCell>
+  1289→  1289→  1289→                          <TableCell className={`text-xs text-right font-mono font-bold ${cashFlowSummary.net >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+  1290→  1290→  1290→                            {cashFlowSummary.net >= 0 ? '+' : ''}{formatINR(cashFlowSummary.net)}
+  1291→  1291→  1291→                          </TableCell>
+  1292→  1292→  1292→                        </TableRow>
+  1293→  1293→  1293→                      </TableFooter>
+  1294→  1294→  1294→                    </Table>
+  1295→  1295→  1295→                  </div>
+  1296→  1296→  1296→                  <div className="grid grid-cols-3 gap-3 mt-4">
+  1297→  1297→  1297→                    <div className="rounded-lg border bg-emerald-50 dark:bg-emerald-950/30 p-3 text-center">
+  1298→  1298→  1298→                      <p className="text-xs text-muted-foreground">Total Income</p>
+  1299→  1299→  1299→                      <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">{formatINR(cashFlowSummary.totalIncome)}</p>
+  1300→  1300→  1300→                    </div>
+  1301→  1301→  1301→                    <div className="rounded-lg border bg-red-50 dark:bg-red-950/30 p-3 text-center">
+  1302→  1302→  1302→                      <p className="text-xs text-muted-foreground">Total Expense</p>
+  1303→  1303→  1303→                      <p className="text-sm font-bold text-red-600 dark:text-red-400 font-mono">{formatINR(cashFlowSummary.totalExpense)}</p>
+  1304→  1304→  1304→                    </div>
+  1305→  1305→  1305→                    <div className={`rounded-lg border p-3 text-center ${cashFlowSummary.net >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-red-50 dark:bg-red-950/30'}`}>
+  1306→  1306→  1306→                      <p className="text-xs text-muted-foreground">Net</p>
+  1307→  1307→  1307→                      <p className={`text-sm font-bold font-mono ${cashFlowSummary.net >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+  1308→  1308→  1308→                        {cashFlowSummary.net >= 0 ? '+' : ''}{formatINR(cashFlowSummary.net)}
+  1309→  1309→  1309→                      </p>
+  1310→  1310→  1310→                    </div>
+  1311→  1311→  1311→                  </div>
+  1312→  1312→  1312→                </>
+  1313→  1313→  1313→              )}
+  1314→  1314→  1314→            </CardContent>
+  1315→  1315→  1315→          </Card>
+  1316→  1316→  1316→        </TabsContent>
+  1317→  1317→  1317→
+  1318→  1318→  1318→        {/* ─── Expenses Tab ─────────────────────────────────────────────── */}
+  1319→  1319→  1319→        <TabsContent value="expenses">
+  1320→  1320→  1320→          <Card>
+  1321→  1321→  1321→            <CardHeader>
+  1322→  1322→  1322→              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  1323→  1323→  1323→                <div>
+  1324→  1324→  1324→                  <CardTitle className="text-lg flex items-center gap-2"><Receipt className="h-5 w-5" />Expense Management</CardTitle>
+  1325→  1325→  1325→                  <CardDescription>{expenses.length} expense{expenses.length !== 1 ? 's' : ''} totaling {formatINR(totalExpenses)}</CardDescription>
+  1326→  1326→  1326→                </div>
+  1327→  1327→  1327→                <div className="flex items-center gap-2">
+  1328→  1328→  1328→                  <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { setBudgetInput(monthlyBudget > 0 ? String(monthlyBudget) : ''); setBudgetDialogOpen(true); }}>
+  1329→  1329→  1329→                    <Target className="h-3.5 w-3.5" />Set Budget
+  1330→  1330→  1330→                  </Button>
+  1331→  1331→  1331→                  <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExportCSV} disabled={expenses.length === 0}>
+  1332→  1332→  1332→                    <Download className="h-3.5 w-3.5" />CSV
+  1333→  1333→  1333→                  </Button>
+  1334→  1334→  1334→                  <Button onClick={openAddExpense} size="sm" className="gap-1.5"><Plus className="h-4 w-4" />Add Expense</Button>
+  1335→  1335→  1335→                </div>
+  1336→  1336→  1336→              </div>
+  1337→  1337→  1337→            </CardHeader>
+  1338→  1338→  1338→            <CardContent>
+  1339→  1339→  1339→              {/* Monthly Budget Tracking */}
+  1340→  1340→  1340→              {monthlyBudget > 0 && (
+  1341→  1341→  1341→                <div className="mb-4 rounded-lg border p-4">
+  1342→  1342→  1342→                  <div className="flex items-center justify-between mb-2">
+  1343→  1343→  1343→                    <div className="flex items-center gap-2">
+  1344→  1344→  1344→                      <Target className="h-4 w-4 text-muted-foreground" />
+  1345→  1345→  1345→                      <span className="text-xs font-medium">Monthly Budget: {formatINR(monthlyBudget)}</span>
+  1346→  1346→  1346→                    </div>
+  1347→  1347→  1347→                    <span className={`text-xs font-semibold ${budgetRemaining >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+  1348→  1348→  1348→                      {budgetRemaining >= 0 ? `${formatINR(budgetRemaining)} remaining` : `${formatINR(Math.abs(budgetRemaining))} over budget`}
+  1349→  1349→  1349→                    </span>
+  1350→  1350→  1350→                  </div>
+  1351→  1351→  1351→                  <div className="relative">
+  1352→  1352→  1352→                    <Progress
+  1353→  1353→  1353→                      value={budgetPercent}
+  1354→  1354→  1354→                      className={`h-3 ${budgetPercent < 75 ? '[&>div]:bg-emerald-500' : budgetPercent < 100 ? '[&>div]:bg-amber-500' : '[&>div]:bg-red-500'}`}
+  1355→  1355→  1355→                    />
+  1356→  1356→  1356→                  </div>
+  1357→  1357→  1357→                  <div className="flex items-center justify-between mt-1.5">
+  1358→  1358→  1358→                    <span className="text-[11px] text-muted-foreground">{formatINR(monthlyExpensesTotal)} spent this month</span>
+  1359→  1359→  1359→                    <span className="text-[11px] text-muted-foreground">{Math.round(budgetPercent)}% used</span>
+  1360→  1360→  1360→                  </div>
+  1361→  1361→  1361→                </div>
+  1362→  1362→  1362→              )}
+  1363→  1363→  1363→
+  1364→  1364→  1364→              {loadingExpenses ? (
+  1365→  1365→  1365→                <TableSkeleton rows={6} cols={6} />
+  1366→  1366→  1366→              ) : expenses.length === 0 ? (
+  1367→  1367→  1367→                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+  1368→  1368→  1368→                  <Receipt className="h-10 w-10 mb-2 opacity-40" />
+  1369→  1369→  1369→                  <p className="text-sm">No expenses recorded yet</p>
+  1370→  1370→  1370→                  <Button variant="outline" size="sm" className="mt-3 gap-1.5" onClick={openAddExpense}><Plus className="h-3.5 w-3.5" />Add your first expense</Button>
+  1371→  1371→  1371→                </div>
+  1372→  1372→  1372→              ) : (
+  1373→  1373→  1373→                <>
+  1374→  1374→  1374→                  <div className="max-h-[360px] overflow-y-auto rounded-md border">
+  1375→  1375→  1375→                    <Table>
+  1376→  1376→  1376→                      <TableHeader>
+  1377→  1377→  1377→                        <TableRow>
+  1378→  1378→  1378→                          <TableHead className="text-xs">Date</TableHead>
+  1379→  1379→  1379→                          <TableHead className="text-xs">Category</TableHead>
+  1380→  1380→  1380→                          <TableHead className="text-xs">Description</TableHead>
+  1381→  1381→  1381→                          <TableHead className="text-xs text-right">Amount</TableHead>
+  1382→  1382→  1382→                          <TableHead className="text-xs hidden sm:table-cell">Vendor</TableHead>
+  1383→  1383→  1383→                          <TableHead className="text-xs text-right">Actions</TableHead>
+  1384→  1384→  1384→                        </TableRow>
+  1385→  1385→  1385→                      </TableHeader>
+  1386→  1386→  1386→                      <TableBody>
+  1387→  1387→  1387→                        {expenses.map((exp) => (
+  1388→  1388→  1388→                          <TableRow key={exp.id}>
+  1389→  1389→  1389→                            <TableCell className="text-xs">{formatDate(exp.date)}</TableCell>
+  1390→  1390→  1390→                            <TableCell><Badge variant="outline" className="text-xs">{exp.category}</Badge></TableCell>
+  1391→  1391→  1391→                            <TableCell className="text-xs max-w-[180px] truncate">{exp.description}</TableCell>
+  1392→  1392→  1392→                            <TableCell className="text-xs text-right font-mono font-medium text-red-600 dark:text-red-400">{formatINR(exp.amount)}</TableCell>
+  1393→  1393→  1393→                            <TableCell className="text-xs hidden sm:table-cell max-w-[120px] truncate">{exp.vendor || '—'}</TableCell>
+  1394→  1394→  1394→                            <TableCell className="text-right">
+  1395→  1395→  1395→                              <div className="flex items-center justify-end gap-1">
+  1396→  1396→  1396→                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openEditExpense(exp)}><Pencil className="h-3.5 w-3.5" /><span className="sr-only">Edit</span></Button>
+  1397→  1397→  1397→                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950" onClick={() => handleDeleteExpense(exp.id)} disabled={deletingExpenseId === exp.id}>
+  1398→  1398→  1398→                                  {deletingExpenseId === exp.id ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <Trash2 className="h-3.5 w-3.5" />}
+  1399→  1399→  1399→                                  <span className="sr-only">Delete</span>
+  1400→  1400→  1400→                                </Button>
+  1401→  1401→  1401→                              </div>
+  1402→  1402→  1402→                            </TableCell>
+  1403→  1403→  1403→                          </TableRow>
+  1404→  1404→  1404→                        ))}
+  1405→  1405→  1405→                      </TableBody>
+  1406→  1406→  1406→                    </Table>
+  1407→  1407→  1407→                  </div>
+  1408→  1408→  1408→
+  1409→  1409→  1409→                  {categorySummary.length > 0 && (
+  1410→  1410→  1410→                    <div className="mt-6">
+  1411→  1411→  1411→                      <Separator className="mb-4" />
+  1412→  1412→  1412→                      <h3 className="text-sm font-semibold mb-4 flex items-center gap-2"><PieChartIcon className="h-4 w-4" />Expense Distribution by Category</h3>
+  1413→  1413→  1413→                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  1414→  1414→  1414→                        <div className="flex items-center justify-center">
+  1415→  1415→  1415→                          <ChartContainer config={PIE_CHART_CONFIG} className="h-[250px] w-full max-w-[250px]">
+  1416→  1416→  1416→                            <PieChart>
+  1417→  1417→  1417→                              <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+  1418→  1418→  1418→                              <Pie data={categorySummary} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2} strokeWidth={2}>
+  1419→  1419→  1419→                                {categorySummary.map((_, index) => <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+  1420→  1420→  1420→                              </Pie>
+  1421→  1421→  1421→                            </PieChart>
+  1422→  1422→  1422→                          </ChartContainer>
+  1423→  1423→  1423→                        </div>
+  1424→  1424→  1424→                        <div className="space-y-3">
+  1425→  1425→  1425→                          <ChartContainer config={BAR_CHART_CONFIG} className="h-[200px] w-full">
+  1426→  1426→  1426→                            <BarChart data={categorySummary} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 60 }}>
+  1427→  1427→  1427→                              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+  1428→  1428→  1428→                              <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
+  1429→  1429→  1429→                              <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} width={65} />
+  1430→  1430→  1430→                              <ChartTooltip content={<ChartTooltipContent />} />
+  1431→  1431→  1431→                              <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+  1432→  1432→  1432→                                {categorySummary.map((_, index) => <Cell key={`bar-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+  1433→  1433→  1433→                              </Bar>
+  1434→  1434→  1434→                            </BarChart>
+  1435→  1435→  1435→                          </ChartContainer>
+  1436→  1436→  1436→                        </div>
+  1437→  1437→  1437→                      </div>
+  1438→  1438→  1438→                    </div>
+  1439→  1439→  1439→                  )}
+  1440→  1440→  1440→                </>
+  1441→  1441→  1441→              )}
+  1442→  1442→  1442→            </CardContent>
+  1443→  1443→  1443→          </Card>
+  1444→  1444→  1444→        </TabsContent>
+  1445→  1445→  1445→
+  1446→  1446→  1446→        {/* ─── GST Collection Tab ────────────────────────────────────────── */}
+  1447→  1447→  1447→        <TabsContent value="gst">
+  1448→  1448→  1448→          <div className="space-y-4">
+  1449→  1449→  1449→            <Card>
+  1450→  1450→  1450→              <CardHeader>
+  1451→  1451→  1451→                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  1452→  1452→  1452→                  <div>
+  1453→  1453→  1453→                    <CardTitle className="text-lg flex items-center gap-2">
+  1454→  1454→  1454→                      <Target className="h-5 w-5" />
+  1455→  1455→  1455→                      GST Collection Summary
+  1456→  1456→  1456→                    </CardTitle>
+  1457→  1457→  1457→                    <CardDescription>Current month GST collected on sales</CardDescription>
+  1458→  1458→  1458→                  </div>
+  1459→  1459→  1459→                  <Badge variant="outline" className="text-xs">
+  1460→  1460→  1460→                    {format(new Date(), 'MMMM yyyy')}
+  1461→  1461→  1461→                  </Badge>
+  1462→  1462→  1462→                </div>
+  1463→  1463→  1463→              </CardHeader>
+  1464→  1464→  1464→              <CardContent>
+  1465→  1465→  1465→                {gstLoading ? (
+  1466→  1466→  1466→                  <TableSkeleton rows={3} cols={4} />
+  1467→  1467→  1467→                ) : (
+  1468→  1468→  1468→                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+  1469→  1469→  1469→                    <div className="rounded-lg border p-4">
+  1470→  1470→  1470→                      <p className="text-xs text-muted-foreground font-medium">CGST Collected</p>
+  1471→  1471→  1471→                      <p className="text-xl font-bold text-blue-600 dark:text-blue-400 font-mono mt-1">{formatINR(gstData?.cgst || 0)}</p>
+  1472→  1472→  1472→                      <p className="text-[10px] text-muted-foreground mt-1">Central Goods & Services Tax</p>
+  1473→  1473→  1473→                    </div>
+  1474→  1474→  1474→                    <div className="rounded-lg border p-4">
+  1475→  1475→  1475→                      <p className="text-xs text-muted-foreground font-medium">SGST Collected</p>
+  1476→  1476→  1476→                      <p className="text-xl font-bold text-violet-600 dark:text-violet-400 font-mono mt-1">{formatINR(gstData?.sgst || 0)}</p>
+  1477→  1477→  1477→                      <p className="text-[10px] text-muted-foreground mt-1">State Goods & Services Tax</p>
+  1478→  1478→  1478→                    </div>
+  1479→  1479→  1479→                    <div className="rounded-lg border p-4">
+  1480→  1480→  1480→                      <p className="text-xs text-muted-foreground font-medium">IGST Collected</p>
+  1481→  1481→  1481→                      <p className="text-xl font-bold text-amber-600 dark:text-amber-400 font-mono mt-1">{formatINR(gstData?.igst || 0)}</p>
+  1482→  1482→  1482→                      <p className="text-[10px] text-muted-foreground mt-1">Integrated Goods & Services Tax</p>
+  1483→  1483→  1483→                    </div>
+  1484→  1484→  1484→                    <div className="rounded-lg border p-4 bg-emerald-50 dark:bg-emerald-950/30">
+  1485→  1485→  1485→                      <p className="text-xs text-muted-foreground font-medium">Total GST Payable</p>
+  1486→  1486→  1486→                      <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400 font-mono mt-1">{formatINR(gstData?.total || 0)}</p>
+  1487→  1487→  1487→                      <p className="text-[10px] text-muted-foreground mt-1">CGST + SGST + IGST</p>
+  1488→  1488→  1488→                    </div>
+  1489→  1489→  1489→                  </div>
+  1490→  1490→  1490→                )}
+  1491→  1491→  1491→              </CardContent>
+  1492→  1492→  1492→            </Card>
+  1493→  1493→  1493→
+  1494→  1494→  1494→            {/* GST Pie Chart */}
+  1495→  1495→  1495→            {gstData && gstData.total > 0 && (
+  1496→  1496→  1496→              <Card>
+  1497→  1497→  1497→                <CardHeader>
+  1498→  1498→  1498→                  <CardTitle className="text-base">GST Distribution</CardTitle>
+  1499→  1499→  1499→                  <CardDescription>Breakdown of GST components</CardDescription>
+  1500→  1500→  1500→                </CardHeader>
+  1501→  1501→  1501→                <CardContent>
+  1502→  1502→  1502→                  <div className="h-[250px]">
+
+[showing lines 1001-1502 of 2002; use offset=1503 with limit to continue reading]

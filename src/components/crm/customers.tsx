@@ -360,7 +360,7 @@ export default function Customers() {
   // ─── WhatsApp helper ──────────────────────────────────────────────────
   const openWhatsApp = (phone: string, name: string) => {
     const cleanPhone = phone.replace(/\D/g, '');
-    const url = `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(`Hi ${name}, this is Sankaran Kovil Opticals. We value your visit!`)}`;
+    const url = `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(`Hi ${name}, this is Lotus Vision Opticals. We value your visit!`)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 

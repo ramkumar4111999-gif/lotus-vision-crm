@@ -1,0 +1,502 @@
+  1350→                  </div>
+  1351→                  <div className="relative">
+  1352→                    <Progress
+  1353→                      value={budgetPercent}
+  1354→                      className={`h-3 ${budgetPercent < 75 ? '[&>div]:bg-emerald-500' : budgetPercent < 100 ? '[&>div]:bg-amber-500' : '[&>div]:bg-red-500'}`}
+  1355→                    />
+  1356→                  </div>
+  1357→                  <div className="flex items-center justify-between mt-1.5">
+  1358→                    <span className="text-[11px] text-muted-foreground">{formatINR(monthlyExpensesTotal)} spent this month</span>
+  1359→                    <span className="text-[11px] text-muted-foreground">{Math.round(budgetPercent)}% used</span>
+  1360→                  </div>
+  1361→                </div>
+  1362→              )}
+  1363→
+  1364→              {loadingExpenses ? (
+  1365→                <TableSkeleton rows={6} cols={6} />
+  1366→              ) : expenses.length === 0 ? (
+  1367→                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+  1368→                  <Receipt className="h-10 w-10 mb-2 opacity-40" />
+  1369→                  <p className="text-sm">No expenses recorded yet</p>
+  1370→                  <Button variant="outline" size="sm" className="mt-3 gap-1.5" onClick={openAddExpense}><Plus className="h-3.5 w-3.5" />Add your first expense</Button>
+  1371→                </div>
+  1372→              ) : (
+  1373→                <>
+  1374→                  <div className="max-h-[360px] overflow-y-auto rounded-md border">
+  1375→                    <Table>
+  1376→                      <TableHeader>
+  1377→                        <TableRow>
+  1378→                          <TableHead className="text-xs">Date</TableHead>
+  1379→                          <TableHead className="text-xs">Category</TableHead>
+  1380→                          <TableHead className="text-xs">Description</TableHead>
+  1381→                          <TableHead className="text-xs text-right">Amount</TableHead>
+  1382→                          <TableHead className="text-xs hidden sm:table-cell">Vendor</TableHead>
+  1383→                          <TableHead className="text-xs text-right">Actions</TableHead>
+  1384→                        </TableRow>
+  1385→                      </TableHeader>
+  1386→                      <TableBody>
+  1387→                        {expenses.map((exp) => (
+  1388→                          <TableRow key={exp.id}>
+  1389→                            <TableCell className="text-xs">{formatDate(exp.date)}</TableCell>
+  1390→                            <TableCell><Badge variant="outline" className="text-xs">{exp.category}</Badge></TableCell>
+  1391→                            <TableCell className="text-xs max-w-[180px] truncate">{exp.description}</TableCell>
+  1392→                            <TableCell className="text-xs text-right font-mono font-medium text-red-600 dark:text-red-400">{formatINR(exp.amount)}</TableCell>
+  1393→                            <TableCell className="text-xs hidden sm:table-cell max-w-[120px] truncate">{exp.vendor || '—'}</TableCell>
+  1394→                            <TableCell className="text-right">
+  1395→                              <div className="flex items-center justify-end gap-1">
+  1396→                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openEditExpense(exp)}><Pencil className="h-3.5 w-3.5" /><span className="sr-only">Edit</span></Button>
+  1397→                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950" onClick={() => handleDeleteExpense(exp.id)} disabled={deletingExpenseId === exp.id}>
+  1398→                                  {deletingExpenseId === exp.id ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <Trash2 className="h-3.5 w-3.5" />}
+  1399→                                  <span className="sr-only">Delete</span>
+  1400→                                </Button>
+  1401→                              </div>
+  1402→                            </TableCell>
+  1403→                          </TableRow>
+  1404→                        ))}
+  1405→                      </TableBody>
+  1406→                    </Table>
+  1407→                  </div>
+  1408→
+  1409→                  {categorySummary.length > 0 && (
+  1410→                    <div className="mt-6">
+  1411→                      <Separator className="mb-4" />
+  1412→                      <h3 className="text-sm font-semibold mb-4 flex items-center gap-2"><PieChartIcon className="h-4 w-4" />Expense Distribution by Category</h3>
+  1413→                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  1414→                        <div className="flex items-center justify-center">
+  1415→                          <ChartContainer config={PIE_CHART_CONFIG} className="h-[250px] w-full max-w-[250px]">
+  1416→                            <PieChart>
+  1417→                              <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+  1418→                              <Pie data={categorySummary} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2} strokeWidth={2}>
+  1419→                                {categorySummary.map((_, index) => <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+  1420→                              </Pie>
+  1421→                            </PieChart>
+  1422→                          </ChartContainer>
+  1423→                        </div>
+  1424→                        <div className="space-y-3">
+  1425→                          <ChartContainer config={BAR_CHART_CONFIG} className="h-[200px] w-full">
+  1426→                            <BarChart data={categorySummary} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 60 }}>
+  1427→                              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+  1428→                              <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
+  1429→                              <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} width={65} />
+  1430→                              <ChartTooltip content={<ChartTooltipContent />} />
+  1431→                              <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+  1432→                                {categorySummary.map((_, index) => <Cell key={`bar-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+  1433→                              </Bar>
+  1434→                            </BarChart>
+  1435→                          </ChartContainer>
+  1436→                        </div>
+  1437→                      </div>
+  1438→                    </div>
+  1439→                  )}
+  1440→                </>
+  1441→              )}
+  1442→            </CardContent>
+  1443→          </Card>
+  1444→        </TabsContent>
+  1445→
+  1446→        {/* ─── GST Collection Tab ────────────────────────────────────────── */}
+  1447→        <TabsContent value="gst">
+  1448→          <div className="space-y-4">
+  1449→            <Card>
+  1450→              <CardHeader>
+  1451→                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  1452→                  <div>
+  1453→                    <CardTitle className="text-lg flex items-center gap-2">
+  1454→                      <Target className="h-5 w-5" />
+  1455→                      GST Collection Summary
+  1456→                    </CardTitle>
+  1457→                    <CardDescription>Current month GST collected on sales</CardDescription>
+  1458→                  </div>
+  1459→                  <Badge variant="outline" className="text-xs">
+  1460→                    {format(new Date(), 'MMMM yyyy')}
+  1461→                  </Badge>
+  1462→                </div>
+  1463→              </CardHeader>
+  1464→              <CardContent>
+  1465→                {gstLoading ? (
+  1466→                  <TableSkeleton rows={3} cols={4} />
+  1467→                ) : (
+  1468→                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+  1469→                    <div className="rounded-lg border p-4">
+  1470→                      <p className="text-xs text-muted-foreground font-medium">CGST Collected</p>
+  1471→                      <p className="text-xl font-bold text-blue-600 dark:text-blue-400 font-mono mt-1">{formatINR(gstData?.cgst || 0)}</p>
+  1472→                      <p className="text-[10px] text-muted-foreground mt-1">Central Goods & Services Tax</p>
+  1473→                    </div>
+  1474→                    <div className="rounded-lg border p-4">
+  1475→                      <p className="text-xs text-muted-foreground font-medium">SGST Collected</p>
+  1476→                      <p className="text-xl font-bold text-violet-600 dark:text-violet-400 font-mono mt-1">{formatINR(gstData?.sgst || 0)}</p>
+  1477→                      <p className="text-[10px] text-muted-foreground mt-1">State Goods & Services Tax</p>
+  1478→                    </div>
+  1479→                    <div className="rounded-lg border p-4">
+  1480→                      <p className="text-xs text-muted-foreground font-medium">IGST Collected</p>
+  1481→                      <p className="text-xl font-bold text-amber-600 dark:text-amber-400 font-mono mt-1">{formatINR(gstData?.igst || 0)}</p>
+  1482→                      <p className="text-[10px] text-muted-foreground mt-1">Integrated Goods & Services Tax</p>
+  1483→                    </div>
+  1484→                    <div className="rounded-lg border p-4 bg-emerald-50 dark:bg-emerald-950/30">
+  1485→                      <p className="text-xs text-muted-foreground font-medium">Total GST Payable</p>
+  1486→                      <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400 font-mono mt-1">{formatINR(gstData?.total || 0)}</p>
+  1487→                      <p className="text-[10px] text-muted-foreground mt-1">CGST + SGST + IGST</p>
+  1488→                    </div>
+  1489→                  </div>
+  1490→                )}
+  1491→              </CardContent>
+  1492→            </Card>
+  1493→
+  1494→            {/* GST Pie Chart */}
+  1495→            {gstData && gstData.total > 0 && (
+  1496→              <Card>
+  1497→                <CardHeader>
+  1498→                  <CardTitle className="text-base">GST Distribution</CardTitle>
+  1499→                  <CardDescription>Breakdown of GST components</CardDescription>
+  1500→                </CardHeader>
+  1501→                <CardContent>
+  1502→                  <div className="h-[250px]">
+  1503→                    <ChartContainer config={PIE_CHART_CONFIG} className="h-full w-full">
+  1504→                      <PieChart>
+  1505→                        <ChartTooltip content={<ChartTooltipContent />} />
+  1506→                        <Pie
+  1507→                          data={[
+  1508→                            { name: 'CGST', value: gstData.cgst },
+  1509→                            { name: 'SGST', value: gstData.sgst },
+  1510→                            ...(gstData.igst > 0 ? [{ name: 'IGST', value: gstData.igst }] : []),
+  1511→                          ]}
+  1512→                          cx="50%"
+  1513→                          cy="50%"
+  1514→                          outerRadius={90}
+  1515→                          innerRadius={45}
+  1516→                          dataKey="value"
+  1517→                          nameKey="name"
+  1518→                        >
+  1519→                          <Cell fill="hsl(var(--chart-1))" />
+  1520→                          <Cell fill="hsl(var(--chart-2))" />
+  1521→                          {gstData.igst > 0 && <Cell fill="hsl(var(--chart-3))" />}
+  1522→                        </Pie>
+  1523→                      </PieChart>
+  1524→                    </ChartContainer>
+  1525→                  </div>
+  1526→                </CardContent>
+  1527→              </Card>
+  1528→            )}
+  1529→          </div>
+  1530→        </TabsContent>
+  1531→
+  1532→        {/* ─── Daily Cash Reconciliation Tab ─────────────────────────────── */}
+  1533→        <TabsContent value="reconciliation">
+  1534→          <div className="space-y-4">
+  1535→            <Card>
+  1536→              <CardHeader>
+  1537→                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  1538→                  <div>
+  1539→                    <CardTitle className="text-lg flex items-center gap-2">
+  1540→                      <CheckCircle2 className="h-5 w-5" />
+  1541→                      Daily Cash Reconciliation
+  1542→                    </CardTitle>
+  1543→                    <CardDescription>Verify daily cash balance against sales and expenses</CardDescription>
+  1544→                  </div>
+  1545→                  <div className="flex items-center gap-2">
+  1546→                    <Label htmlFor="recon-date" className="text-xs whitespace-nowrap">Date:</Label>
+  1547→                    <Input id="recon-date" type="date" value={reconDate} onChange={(e) => setReconDate(e.target.value)} className="h-8 w-[150px] text-xs" />
+  1548→                    <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => setReconDate(getTodayStr())}>Today</Button>
+  1549→                  </div>
+  1550→                </div>
+  1551→              </CardHeader>
+  1552→              <CardContent>
+  1553→                {loadingSales || loadingExpenses ? (
+  1554→                  <TableSkeleton rows={4} cols={3} />
+  1555→                ) : (
+  1556→                  <div className="space-y-4">
+  1557→                    {/* Reconciliation Summary Cards */}
+  1558→                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+  1559→                      <div className="rounded-lg border p-3">
+  1560→                        <p className="text-[10px] text-muted-foreground">Total Sales</p>
+  1561→                        <p className="text-sm font-bold font-mono">{formatINR(dailyReconciliation.totalIncome)}</p>
+  1562→                        <p className="text-[10px] text-muted-foreground">{dailyReconciliation.totalTransactions} transactions</p>
+  1563→                      </div>
+  1564→                      <div className="rounded-lg border p-3">
+  1565→                        <p className="text-[10px] text-muted-foreground">Cash Sales</p>
+  1566→                        <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">{formatINR(dailyReconciliation.cashSales)}</p>
+  1567→                      </div>
+  1568→                      <div className="rounded-lg border p-3">
+  1569→                        <p className="text-[10px] text-muted-foreground">UPI Sales</p>
+  1570→                        <p className="text-sm font-bold text-violet-600 dark:text-violet-400 font-mono">{formatINR(dailyReconciliation.upiSales)}</p>
+  1571→                      </div>
+  1572→                      <div className="rounded-lg border p-3">
+  1573→                        <p className="text-[10px] text-muted-foreground">Card Sales</p>
+  1574→                        <p className="text-sm font-bold text-blue-600 dark:text-blue-400 font-mono">{formatINR(dailyReconciliation.cardSales)}</p>
+  1575→                      </div>
+  1576→                      <div className="rounded-lg border p-3">
+  1577→                        <p className="text-[10px] text-muted-foreground">Credit Sales</p>
+  1578→                        <p className="text-sm font-bold text-amber-600 dark:text-amber-400 font-mono">{formatINR(dailyReconciliation.creditSales)}</p>
+  1579→                      </div>
+  1580→                    </div>
+  1581→
+  1582→                    {/* Reconciliation Detail Table */}
+  1583→                    <div className="rounded-lg border overflow-hidden">
+  1584→                      <Table>
+  1585→                        <TableHeader>
+  1586→                          <TableRow>
+  1587→                            <TableHead className="text-xs">Item</TableHead>
+  1588→                            <TableHead className="text-xs text-right">Amount</TableHead>
+  1589→                            <TableHead className="text-xs text-right hidden sm:table-cell">Notes</TableHead>
+  1590→                          </TableRow>
+  1591→                        </TableHeader>
+  1592→                        <TableBody>
+  1593→                          <TableRow>
+  1594→                            <TableCell className="text-sm font-medium">Total Income (All Modes)</TableCell>
+  1595→                            <TableCell className="text-sm font-mono text-emerald-600 dark:text-emerald-400 text-right">{formatINR(dailyReconciliation.totalIncome)}</TableCell>
+  1596→                            <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">{dailyReconciliation.totalTransactions} sales</TableCell>
+  1597→                          </TableRow>
+  1598→                          <TableRow>
+  1599→                            <TableCell className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Cash Received</TableCell>
+  1600→                            <TableCell className="text-sm font-mono text-emerald-600 dark:text-emerald-400 text-right">+{formatINR(dailyReconciliation.cashSales)}</TableCell>
+  1601→                            <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">Cash payments</TableCell>
+  1602→                          </TableRow>
+  1603→                          <TableRow>
+  1604→                            <TableCell className="text-sm font-medium text-violet-600 dark:text-violet-400">UPI Received</TableCell>
+  1605→                            <TableCell className="text-sm font-mono text-violet-600 dark:text-violet-400 text-right">+{formatINR(dailyReconciliation.upiSales)}</TableCell>
+  1606→                            <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">GPay/PhonePe/Paytm</TableCell>
+  1607→                          </TableRow>
+  1608→                          <TableRow>
+  1609→                            <TableCell className="text-sm font-medium text-blue-600 dark:text-blue-400">Card Received</TableCell>
+  1610→                            <TableCell className="text-sm font-mono text-blue-600 dark:text-blue-400 text-right">+{formatINR(dailyReconciliation.cardSales)}</TableCell>
+  1611→                            <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">Debit/Credit card</TableCell>
+  1612→                          </TableRow>
+  1613→                          <TableRow>
+  1614→                            <TableCell className="text-sm font-medium text-amber-600 dark:text-amber-400">Credit Given</TableCell>
+  1615→                            <TableCell className="text-sm font-mono text-amber-600 dark:text-amber-400 text-right">{formatINR(dailyReconciliation.creditSales)}</TableCell>
+  1616→                            <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">Outstanding dues</TableCell>
+  1617→                          </TableRow>
+  1618→                          {dailyReconciliation.otherSales > 0 && (
+  1619→                            <TableRow>
+  1620→                              <TableCell className="text-sm font-medium">Other Modes</TableCell>
+  1621→                              <TableCell className="text-sm font-mono text-right">{formatINR(dailyReconciliation.otherSales)}</TableCell>
+  1622→                              <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">Mixed/Split</TableCell>
+  1623→                            </TableRow>
+  1624→                          )}
+  1625→                          <TableRow>
+  1626→                            <TableCell className="text-sm font-medium text-red-600 dark:text-red-400">Less: Expenses Paid (Cash)</TableCell>
+  1627→                            <TableCell className="text-sm font-mono text-red-600 dark:text-red-400 text-right">-{formatINR(dailyReconciliation.totalExpenses)}</TableCell>
+  1628→                            <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">{dailyReconciliation.expenses.length} expenses</TableCell>
+  1629→                          </TableRow>
+  1630→                        </TableBody>
+  1631→                        <TableFooter>
+  1632→                          <TableRow className="bg-muted/50 font-bold">
+  1633→                            <TableCell className="text-sm">Expected Cash in Hand</TableCell>
+  1634→                            <TableCell className={`text-sm font-mono text-right ${dailyReconciliation.expectedCash >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+  1635→                              {formatINR(dailyReconciliation.expectedCash)}
+  1636→                            </TableCell>
+  1637→                            <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">Cash In - Expenses</TableCell>
+  1638→                          </TableRow>
+  1639→                        </TableFooter>
+  1640→                      </Table>
+  1641→                    </div>
+  1642→
+  1643→                    {/* Day GST */}
+  1644→                    {dailyReconciliation.totalGST > 0 && (
+  1645→                      <div className="rounded-lg border p-3">
+  1646→                        <p className="text-xs font-medium text-muted-foreground mb-2">GST Collected on {formatDate(reconDate)}</p>
+  1647→                        <div className="grid grid-cols-3 gap-3">
+  1648→                          <div>
+  1649→                            <p className="text-[10px] text-muted-foreground">CGST</p>
+  1650→                            <p className="text-sm font-mono font-semibold">{formatINR(dailyReconciliation.dayCGST)}</p>
+  1651→                          </div>
+  1652→                          <div>
+  1653→                            <p className="text-[10px] text-muted-foreground">SGST</p>
+  1654→                            <p className="text-sm font-mono font-semibold">{formatINR(dailyReconciliation.daySGST)}</p>
+  1655→                          </div>
+  1656→                          <div>
+  1657→                            <p className="text-[10px] text-muted-foreground">IGST</p>
+  1658→                            <p className="text-sm font-mono font-semibold">{formatINR(dailyReconciliation.dayIGST)}</p>
+  1659→                          </div>
+  1660→                        </div>
+  1661→                      </div>
+  1662→                    )}
+  1663→
+  1664→                    {/* Transaction list for that day */}
+  1665→                    {dailyReconciliation.sales.length > 0 && (
+  1666→                      <div>
+  1667→                        <h3 className="text-sm font-semibold mb-2">Sales Transactions ({formatDate(reconDate)})</h3>
+  1668→                        <div className="max-h-60 overflow-y-auto rounded-md border">
+  1669→                          <Table>
+  1670→                            <TableHeader>
+  1671→                              <TableRow>
+  1672→                                <TableHead className="text-xs">Invoice</TableHead>
+  1673→                                <TableHead className="text-xs">Customer</TableHead>
+  1674→                                <TableHead className="text-xs">Mode</TableHead>
+  1675→                                <TableHead className="text-xs text-right">Amount</TableHead>
+  1676→                              </TableRow>
+  1677→                            </TableHeader>
+  1678→                            <TableBody>
+  1679→                              {dailyReconciliation.sales.map((s) => (
+  1680→                                <TableRow key={s.id}>
+  1681→                                  <TableCell className="text-xs font-mono">{s.invoiceNo || '—'}</TableCell>
+  1682→                                  <TableCell className="text-xs">{s.customer?.name || s.customerName || 'Walk-in'}</TableCell>
+  1683→                                  <TableCell className="text-xs">
+  1684→                                    <Badge variant="outline" className="text-[10px]">{s.paymentMode || 'Cash'}</Badge>
+  1685→                                  </TableCell>
+  1686→                                  <TableCell className="text-xs font-mono text-right font-semibold">{formatINR(s.total)}</TableCell>
+  1687→                                </TableRow>
+  1688→                              ))}
+  1689→                            </TableBody>
+  1690→                          </Table>
+  1691→                        </div>
+  1692→                      </div>
+  1693→                    )}
+  1694→                  </div>
+  1695→                )}
+  1696→              </CardContent>
+  1697→            </Card>
+  1698→          </div>
+  1699→        </TabsContent>
+  1700→
+  1701→        {/* ─── Dues Tab ─────────────────────────────────────────────────── */}
+  1702→        <TabsContent value="dues">
+  1703→          <Card>
+  1704→            <CardHeader>
+  1705→              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  1706→                <div>
+  1707→                  <CardTitle className="text-lg flex items-center gap-2"><CreditCard className="h-5 w-5" />Customer Dues</CardTitle>
+  1708→                  <CardDescription>
+  1709→                    {filteredDues.length} due{filteredDues.length !== 1 ? 's' : ''} &bull; Pending total: {formatINR(totalPendingDues)}
+  1710→                  </CardDescription>
+  1711→                </div>
+  1712→                <div className="flex items-center gap-2">
+  1713→                  <Filter className="h-4 w-4 text-muted-foreground" />
+  1714→                  <Select value={dueFilter} onValueChange={setDueFilter}>
+  1715→                    <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue /></SelectTrigger>
+  1716→                    <SelectContent>
+  1717→                      <SelectItem value="All">All Status</SelectItem>
+  1718→                      <SelectItem value="Pending">Pending</SelectItem>
+  1719→                      <SelectItem value="Partial">Partial</SelectItem>
+  1720→                      <SelectItem value="Paid">Paid</SelectItem>
+  1721→                      <SelectItem value="Overdue">Overdue</SelectItem>
+  1722→                    </SelectContent>
+  1723→                  </Select>
+  1724→                </div>
+  1725→              </div>
+  1726→            </CardHeader>
+  1727→            <CardContent>
+  1728→              {loadingDues ? (
+  1729→                <TableSkeleton rows={5} cols={6} />
+  1730→              ) : filteredDues.length === 0 ? (
+  1731→                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+  1732→                  <CreditCard className="h-10 w-10 mb-2 opacity-40" />
+  1733→                  <p className="text-sm">No dues found</p>
+  1734→                </div>
+  1735→              ) : (
+  1736→                <div className="max-h-[420px] overflow-y-auto rounded-md border">
+  1737→                  <Table>
+  1738→                    <TableHeader>
+  1739→                      <TableRow>
+  1740→                        <TableHead className="text-xs">Customer</TableHead>
+  1741→                        <TableHead className="text-xs">Phone</TableHead>
+  1742→                        <TableHead className="text-xs text-right">Total</TableHead>
+  1743→                        <TableHead className="text-xs text-right">Paid</TableHead>
+  1744→                        <TableHead className="text-xs text-right">Balance</TableHead>
+  1745→                        <TableHead className="text-xs">Status</TableHead>
+  1746→                        <TableHead className="text-xs">Due Date</TableHead>
+  1747→                        <TableHead className="text-xs text-right">Action</TableHead>
+  1748→                      </TableRow>
+  1749→                    </TableHeader>
+  1750→                    <TableBody>
+  1751→                      {filteredDues.map((due) => {
+  1752→                        const balance = (due.amount || 0) - (due.paid || 0);
+  1753→                        const overdue = isDueOverdue(due);
+  1754→                        const expanded = expandedDueId === due.id;
+  1755→                        const partialPayments = due.paid > 0 && due.paid < due.amount ? 1 : 0;
+  1756→                        return (
+  1757→                          <React.Fragment key={due.id}>
+  1758→                            <TableRow
+  1759→                              className="cursor-pointer"
+  1760→                              onClick={() => setExpandedDueId(expanded ? null : due.id)}
+  1761→                            >
+  1762→                              <TableCell className="text-xs font-medium">
+  1763→                                <div className="flex items-center gap-1.5">
+  1764→                                  {overdue && (
+  1765→                                    <span className="inline-block h-2 w-2 rounded-full bg-red-500 shrink-0" />
+  1766→                                  )}
+  1767→                                  {due.customer?.name || 'Unknown'}
+  1768→                                </div>
+  1769→                              </TableCell>
+  1770→                              <TableCell className="text-xs text-muted-foreground">{due.customer?.phone || '—'}</TableCell>
+  1771→                              <TableCell className="text-xs text-right font-mono">{formatINR(due.amount || 0)}</TableCell>
+  1772→                              <TableCell className="text-xs text-right font-mono text-emerald-600 dark:text-emerald-400">{formatINR(due.paid || 0)}</TableCell>
+  1773→                              <TableCell className="text-xs text-right font-mono font-semibold text-red-600 dark:text-red-400">{formatINR(balance)}</TableCell>
+  1774→                              <TableCell>
+  1775→                                <div className="flex items-center gap-1.5">
+  1776→                                  <DueStatusBadge status={due.status} />
+  1777→                                  {overdue && (
+  1778→                                    <Badge className="bg-red-100 text-red-700 border-red-200 text-[10px] px-1.5 py-0 dark:bg-red-950 dark:text-red-300 dark:border-red-800">OVERDUE</Badge>
+  1779→                                  )}
+  1780→                                </div>
+  1781→                              </TableCell>
+  1782→                              <TableCell className="text-xs">{due.dueDate ? formatDate(due.dueDate) : '—'}</TableCell>
+  1783→                              <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+  1784→                                {due.status !== 'Paid' ? (
+  1785→                                  <div className="flex items-center justify-end gap-1">
+  1786→                                    <Tooltip>
+  1787→                                      <TooltipTrigger asChild>
+  1788→                                        <a
+  1789→                                          href={`https://wa.me/91${due.customer?.phone || ''}?text=${encodeURIComponent(
+  1790→                                            `Dear ${due.customer?.name || 'Customer'},\n\nThis is a friendly reminder from Lotus Vision Opticals regarding your pending payment of ${formatINR(balance)}.\n${due.dueDate ? `Due date: ${formatDate(due.dueDate)}\n` : ''}Please clear the balance at your earliest convenience.\n\nThank you!`
+  1791→                                          )}`}
+  1792→                                          target="_blank"
+  1793→                                          rel="noopener noreferrer"
+  1794→                                        >
+  1795→                                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950">
+  1796→                                            <MessageCircle className="h-3.5 w-3.5" />
+  1797→                                            <span className="sr-only">WhatsApp Reminder</span>
+  1798→                                          </Button>
+  1799→                                        </a>
+  1800→                                      </TooltipTrigger>
+  1801→                                      <TooltipContent>Send WhatsApp Reminder</TooltipContent>
+  1802→                                    </Tooltip>
+  1803→                                    <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => openPaymentDialog(due)}>
+  1804→                                      <IndianRupee className="h-3 w-3" /> Pay
+  1805→                                    </Button>
+  1806→                                    <Button variant="ghost" size="sm" className="h-7 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950 gap-1" onClick={() => handleMarkPaid(due)} disabled={markPaidLoading}>
+  1807→                                      <CheckCircle2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">Mark Paid</span>
+  1808→                                    </Button>
+  1809→                                  </div>
+  1810→                                ) : (
+  1811→                                  <Check className="h-4 w-4 text-emerald-500 mx-auto" />
+  1812→                                )}
+  1813→                              </TableCell>
+  1814→                            </TableRow>
+  1815→                            {/* Payment History Expansion Row */}
+  1816→                            {expanded && (
+  1817→                              <TableRow>
+  1818→                                <TableCell colSpan={8} className="bg-muted/30 px-6 py-3">
+  1819→                                  <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
+  1820→                                    <span>Created: <strong className="text-foreground">{formatDate(due.createdAt)}</strong></span>
+  1821→                                    {due.updatedAt && due.paid > 0 && (
+  1822→                                      <span>Last payment: <strong className="text-foreground">{formatDate(due.updatedAt)}</strong></span>
+  1823→                                    )}
+  1824→                                    <span>Total paid: <strong className="text-emerald-600 dark:text-emerald-400">{formatINR(due.paid)}</strong> of {formatINR(due.amount)}</span>
+  1825→                                    {due.paid > 0 && due.paid < due.amount && (
+  1826→                                      <span>Partial payments made: <strong className="text-foreground">{partialPayments}+</strong> (amount tracked)</span>
+  1827→                                    )}
+  1828→                                    {due.notes && <span>Notes: {due.notes}</span>}
+  1829→                                  </div>
+  1830→                                </TableCell>
+  1831→                              </TableRow>
+  1832→                            )}
+  1833→                          </React.Fragment>
+  1834→                        );
+  1835→                      })}
+  1836→                    </TableBody>
+  1837→                  </Table>
+  1838→                </div>
+  1839→              )}
+  1840→            </CardContent>
+  1841→          </Card>
+  1842→        </TabsContent>
+  1843→
+  1844→        {/* ─── Returns Tab ──────────────────────────────────────────────── */}
+  1845→        <TabsContent value="returns">
+  1846→          <Card>
+  1847→            <CardHeader>
+  1848→              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  1849→                <div>
+
+[showing lines 1350-1849 of 2132; use offset=1850 with limit to continue reading]

@@ -5,10 +5,12 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type");
+    const fromDate = searchParams.get("from") || undefined;
+    const toDate = searchParams.get("to") || undefined;
 
     switch (type) {
       case "sales-trend":
-        return getSalesTrend();
+        return getSalesTrend(fromDate, toDate);
       case "top-products":
         return getTopProducts();
       case "top-customers":
@@ -39,13 +41,16 @@ export async function GET(request: NextRequest) {
 /**
  * Daily sales for the last 30 days, grouped by date.
  */
-async function getSalesTrend() {
+async function getSalesTrend(fromDate?: string, toDate?: string) {
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   thirtyDaysAgo.setHours(0, 0, 0, 0);
 
+  const start = fromDate ? new Date(fromDate) : thirtyDaysAgo;
+  const end = toDate ? new Date(toDate + "T23:59:59") : new Date();
+
   const sales = await db.sale.findMany({
-    where: { createdAt: { gte: thirtyDaysAgo } },
+    where: { createdAt: { gte: start, lte: end } },
     select: {
       createdAt: true,
       totalAmount: true,
@@ -57,11 +62,11 @@ async function getSalesTrend() {
   // Group sales by date (YYYY-MM-DD)
   const grouped = new Map<string, { date: string; total: number; count: number }>();
 
-  // Pre-fill all 30 days so days with no sales still appear
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    d.setHours(0, 0, 0, 0);
+  // Pre-fill all days in range so days with no sales still appear
+  const dayMs = 86400000;
+  const rangeDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / dayMs) + 1);
+  for (let i = 0; i < rangeDays; i++) {
+    const d = new Date(start.getTime() + i * dayMs);
     const key = d.toISOString().split("T")[0];
     grouped.set(key, { date: key, total: 0, count: 0 });
   }
@@ -77,7 +82,7 @@ async function getSalesTrend() {
 
   return NextResponse.json({
     report: "sales-trend",
-    period: "last-30-days",
+    period: fromDate ? `${fromDate} to ${toDate}` : "last-30-days",
     data: Array.from(grouped.values()),
   });
 }

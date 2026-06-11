@@ -1136,7 +1136,7 @@ export default function Appointments() {
     const formattedDate = formatDate(appointment.date)
     const formattedTime = formatTime(appointment.time)
     const message = encodeURIComponent(
-      `Hi ${appointment.customerName}, reminder from Sankaran Kovil Opticals:\nYour appointment is on ${formattedDate}${appointment.time ? ` at ${formattedTime}` : ''}${appointment.purpose ? ` for ${appointment.purpose}` : ''}.\nPlease visit us on time. Thank you!`
+      `Hi ${appointment.customerName}, reminder from Lotus Vision Opticals:\nYour appointment is on ${formattedDate}${appointment.time ? ` at ${formattedTime}` : ''}${appointment.purpose ? ` for ${appointment.purpose}` : ''}.\nPlease visit us on time. Thank you!`
     )
     window.open(`https://wa.me/91${cleanPhone}?text=${message}`, '_blank')
     toast.success('WhatsApp reminder opened', { description: 'Send the message in the opened window' })

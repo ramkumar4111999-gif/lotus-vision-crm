@@ -29,6 +29,10 @@ import {
   ArrowDownRight,
   Search,
   FileText,
+  BarChart3,
+  CircleDollarSign,
+  Scale,
+  Calculator,
 } from 'lucide-react';
 import {
   Card,
@@ -148,11 +152,11 @@ interface ReturnItem {
 const EXPENSE_CATEGORIES = [
   'Rent',
   'Salary',
-  'Electricity',
   'Supplies',
   'Marketing',
-  'Transport',
+  'Utilities',
   'Maintenance',
+  'Transport',
   'Other',
 ] as const;
 
@@ -183,9 +187,9 @@ const PIE_CHART_CONFIG: ChartConfig = {
   value: { label: 'Amount' },
   Rent: { label: 'Rent', color: 'hsl(var(--chart-1))' },
   Salary: { label: 'Salary', color: 'hsl(var(--chart-2))' },
-  Electricity: { label: 'Electricity', color: 'hsl(var(--chart-3))' },
-  Supplies: { label: 'Supplies', color: 'hsl(var(--chart-4))' },
-  Marketing: { label: 'Marketing', color: 'hsl(var(--chart-5))' },
+  Supplies: { label: 'Supplies', color: 'hsl(var(--chart-3))' },
+  Marketing: { label: 'Marketing', color: 'hsl(var(--chart-4))' },
+  Utilities: { label: 'Utilities', color: 'hsl(var(--chart-5))' },
   Transport: { label: 'Transport', color: 'hsl(var(--chart-6))' },
   Maintenance: { label: 'Maintenance', color: 'hsl(var(--chart-1) / 0.6)' },
   Other: { label: 'Other', color: 'hsl(40, 80%, 55%)' },
@@ -279,6 +283,33 @@ function InvoiceGSTReport() {
         <p className="text-sm text-muted-foreground text-center py-8">No GST invoices for this month.</p>
       ) : (
         <>
+          {/* GST Collection Summary Cards (ABOVE table) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Card className="py-3">
+              <CardContent className="px-4">
+                <p className="text-xs text-muted-foreground font-medium">Total CGST Collected</p>
+                <p className="text-lg font-bold text-blue-600 dark:text-blue-400 font-mono mt-1">{formatINR(totals.cgst)}</p>
+              </CardContent>
+            </Card>
+            <Card className="py-3">
+              <CardContent className="px-4">
+                <p className="text-xs text-muted-foreground font-medium">Total SGST Collected</p>
+                <p className="text-lg font-bold text-violet-600 dark:text-violet-400 font-mono mt-1">{formatINR(totals.sgst)}</p>
+              </CardContent>
+            </Card>
+            <Card className="py-3">
+              <CardContent className="px-4">
+                <p className="text-xs text-muted-foreground font-medium">Total IGST Collected</p>
+                <p className="text-lg font-bold text-amber-600 dark:text-amber-400 font-mono mt-1">{formatINR(totals.igst)}</p>
+              </CardContent>
+            </Card>
+            <Card className="py-3 bg-emerald-50 dark:bg-emerald-950/30">
+              <CardContent className="px-4">
+                <p className="text-xs text-muted-foreground font-medium">Total GST Collected</p>
+                <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 font-mono mt-1">{formatINR(totals.cgst + totals.sgst + totals.igst)}</p>
+              </CardContent>
+            </Card>
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -296,39 +327,39 @@ function InvoiceGSTReport() {
                 <TableRow key={s.id}>
                   <TableCell className="font-mono text-xs">{s.invoiceNo as string}</TableCell>
                   <TableCell className="text-sm">{(s.customerName as string) || 'Walk-in'}</TableCell>
-                  <TableCell className="text-right font-mono text-sm">{formatCurrency((s.subtotal as number) || 0)}</TableCell>
-                  <TableCell className="text-right font-mono text-sm text-blue-600 dark:text-blue-400">{formatCurrency((s.cgst as number) || 0)}</TableCell>
-                  <TableCell className="text-right font-mono text-sm text-blue-600 dark:text-blue-400">{formatCurrency((s.sgst as number) || 0)}</TableCell>
-                  <TableCell className="text-right font-mono text-sm text-purple-600 dark:text-purple-400">{formatCurrency((s.igst as number) || 0)}</TableCell>
-                  <TableCell className="text-right font-mono text-sm font-semibold">{formatCurrency((s.totalAmount as number) || 0)}</TableCell>
+                  <TableCell className="text-right font-mono text-sm">{formatINR((s.subtotal as number) || 0)}</TableCell>
+                  <TableCell className="text-right font-mono text-sm text-blue-600 dark:text-blue-400">{formatINR((s.cgst as number) || 0)}</TableCell>
+                  <TableCell className="text-right font-mono text-sm text-blue-600 dark:text-blue-400">{formatINR((s.sgst as number) || 0)}</TableCell>
+                  <TableCell className="text-right font-mono text-sm text-purple-600 dark:text-purple-400">{formatINR((s.igst as number) || 0)}</TableCell>
+                  <TableCell className="text-right font-mono text-sm font-semibold">{formatINR((s.totalAmount as number) || 0)}</TableCell>
                 </TableRow>
               ))}
               <TableRow className="bg-muted/50 font-semibold">
                 <TableCell colSpan={2}>Total</TableCell>
-                <TableCell className="text-right font-mono text-sm">{formatCurrency(totals.subtotal)}</TableCell>
-                <TableCell className="text-right font-mono text-sm">{formatCurrency(totals.cgst)}</TableCell>
-                <TableCell className="text-right font-mono text-sm">{formatCurrency(totals.sgst)}</TableCell>
-                <TableCell className="text-right font-mono text-sm">{formatCurrency(totals.igst)}</TableCell>
-                <TableCell className="text-right font-mono text-sm">{formatCurrency(totals.total)}</TableCell>
+                <TableCell className="text-right font-mono text-sm">{formatINR(totals.subtotal)}</TableCell>
+                <TableCell className="text-right font-mono text-sm">{formatINR(totals.cgst)}</TableCell>
+                <TableCell className="text-right font-mono text-sm">{formatINR(totals.sgst)}</TableCell>
+                <TableCell className="text-right font-mono text-sm">{formatINR(totals.igst)}</TableCell>
+                <TableCell className="text-right font-mono text-sm">{formatINR(totals.total)}</TableCell>
               </TableRow>
             </TableBody>
           </Table>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="rounded-lg border p-3 text-center">
               <p className="text-xs text-muted-foreground">CGST</p>
-              <p className="font-mono font-semibold">{formatCurrency(totals.cgst)}</p>
+              <p className="font-mono font-semibold">{formatINR(totals.cgst)}</p>
             </div>
             <div className="rounded-lg border p-3 text-center">
               <p className="text-xs text-muted-foreground">SGST</p>
-              <p className="font-mono font-semibold">{formatCurrency(totals.sgst)}</p>
+              <p className="font-mono font-semibold">{formatINR(totals.sgst)}</p>
             </div>
             <div className="rounded-lg border p-3 text-center">
               <p className="text-xs text-muted-foreground">IGST</p>
-              <p className="font-mono font-semibold">{formatCurrency(totals.igst)}</p>
+              <p className="font-mono font-semibold">{formatINR(totals.igst)}</p>
             </div>
             <div className="rounded-lg border p-3 text-center bg-emerald-50 dark:bg-emerald-900/20">
               <p className="text-xs text-muted-foreground">Total GST</p>
-              <p className="font-mono font-semibold text-emerald-700 dark:text-emerald-400">{formatCurrency(totals.cgst + totals.sgst + totals.igst)}</p>
+              <p className="font-mono font-semibold text-emerald-700 dark:text-emerald-400">{formatINR(totals.cgst + totals.sgst + totals.igst)}</p>
             </div>
           </div>
         </>
@@ -409,6 +440,15 @@ export default function Accounting() {
 
   // Daily reconciliation state
   const [reconDate, setReconDate] = useState(getTodayStr());
+
+  // P&L Statement state
+  const [plFromDate, setPlFromDate] = useState(() => format(startOfMonth(new Date()), 'yyyy-MM-dd'));
+  const [plToDate, setPlToDate] = useState(getTodayStr());
+  const [plRevenue, setPlRevenue] = useState(0);
+  const [plLoading, setPlLoading] = useState(false);
+
+  // Cash Reconcile state
+  const [actualCashInHand, setActualCashInHand] = useState('');
 
   // ─── Fetch Data ──────────────────────────────────────────────────────────
 
@@ -553,6 +593,89 @@ export default function Accounting() {
     };
   }, [sales, expenses, reconDate]);
 
+  // ─── P&L Revenue Fetch ─────────────────────────────────────────────────
+
+  const fetchPLRevenue = useCallback(async () => {
+    setPlLoading(true);
+    try {
+      const res = await fetch(`/api/reports?type=revenue&fromDate=${plFromDate}&toDate=${plToDate}`);
+      if (res.ok) {
+        const json = await res.json();
+        const total = json.total ?? json.revenue ?? json.data?.total ?? json.data?.revenue ?? 0;
+        setPlRevenue(typeof total === 'number' ? total : 0);
+      }
+    } catch { /* ignore */ }
+    finally { setPlLoading(false); }
+  }, [plFromDate, plToDate]);
+
+  // ─── P&L Expense Grouping ──────────────────────────────────────────────
+
+  const plExpensesByCategory = useMemo(() => {
+    const from = startOfDay(parseISO(plFromDate));
+    const to = new Date(plToDate + 'T23:59:59');
+    const filtered = expenses.filter((e) => {
+      try {
+        const d = new Date(e.date);
+        return d >= from && d <= to;
+      } catch { return false; }
+    });
+    const map: Record<string, number> = {};
+    filtered.forEach((e) => {
+      const cat = e.category || 'Other';
+      map[cat] = (map[cat] || 0) + (e.amount || 0);
+    });
+    return EXPENSE_CATEGORIES.map((cat) => ({
+      category: cat,
+      total: map[cat] || 0,
+    })).filter((c) => c.total > 0);
+  }, [expenses, plFromDate, plToDate]);
+
+  const plTotalExpenses = useMemo(() => {
+    return plExpensesByCategory.reduce((s, c) => s + c.total, 0);
+  }, [plExpensesByCategory]);
+
+  const plNetProfit = plRevenue - plTotalExpenses;
+
+  // ─── Today's Cash Data (for Cash Reconcile) ────────────────────────────
+
+  const todayCashData = useMemo(() => {
+    const targetDate = startOfDay(new Date());
+    const nextDay = new Date(targetDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+
+    const todaySales = sales.filter((s) => {
+      try {
+        const d = new Date(s.createdAt);
+        return d >= targetDate && d < nextDay;
+      } catch { return false; }
+    });
+
+    const todayExpenses = expenses.filter((e) => {
+      try {
+        const d = new Date(e.date);
+        return d >= targetDate && d < nextDay;
+      } catch { return false; }
+    });
+
+    const cashSales = todaySales
+      .filter((s) => (s.paymentMode || '').toLowerCase() === 'cash')
+      .reduce((s, x) => s + (x.total || 0), 0);
+
+    const cashExpenses = todayExpenses.reduce((s, x) => s + (x.amount || 0), 0);
+
+    return {
+      cashSales,
+      cashExpenses,
+      expectedCash: cashSales - cashExpenses,
+    };
+  }, [sales, expenses]);
+
+  const cashVariance = useMemo(() => {
+    const actual = parseFloat(actualCashInHand);
+    if (isNaN(actual)) return null;
+    return actual - todayCashData.expectedCash;
+  }, [actualCashInHand, todayCashData.expectedCash]);
+
   // Load budget from localStorage
   useEffect(() => {
     try {
@@ -568,6 +691,27 @@ export default function Accounting() {
     fetchReturns();
     fetchGST();
   }, [fetchExpenses, fetchDues, fetchSales, fetchReturns, fetchGST]);
+
+  // Fetch P&L revenue on mount and date change
+  useEffect(() => {
+    fetchPLRevenue();
+  }, [fetchPLRevenue]);
+
+  // Cash variance toast (debounced via ref key)
+  const cashVarianceToastKey = useRef<string | null>(null);
+  useEffect(() => {
+    if (cashVariance !== null && Math.abs(cashVariance) > 500) {
+      const key = actualCashInHand;
+      if (cashVarianceToastKey.current !== key) {
+        cashVarianceToastKey.current = key;
+        toast.warning(`Cash variance of ${formatINR(Math.abs(cashVariance))} detected!`, {
+          description: `Expected: ${formatINR(todayCashData.expectedCash)}, Actual: ${formatINR(parseFloat(actualCashInHand))}`,
+        });
+      }
+    } else {
+      cashVarianceToastKey.current = null;
+    }
+  }, [cashVariance, todayCashData.expectedCash, actualCashInHand]);
 
   // ─── Summary Calculations ────────────────────────────────────────────────
 
@@ -1027,7 +1171,7 @@ export default function Accounting() {
             Track income, expenses, and pending dues
           </p>
         </div>
-        <Button onClick={openAddExpense} size="sm" className="gap-1.5 w-fit">
+        <Button onClick={openAddExpense} size="sm" className="gap-1.5 w-fit touch-manipulation min-h-[44px] active:scale-95 transition-transform">
           <Plus className="h-4 w-4" />
           Add Expense
         </Button>
@@ -1205,13 +1349,15 @@ export default function Accounting() {
       {/* Tabs */}
       <Tabs defaultValue="cashflow" className="space-y-4">
         <TabsList className="flex-wrap">
-          <TabsTrigger value="cashflow" className="gap-1.5"><Banknote className="h-4 w-4" /><span className="hidden sm:inline">Cash Flow</span></TabsTrigger>
-          <TabsTrigger value="expenses" className="gap-1.5"><Receipt className="h-4 w-4" /><span className="hidden sm:inline">Expenses</span></TabsTrigger>
-          <TabsTrigger value="gst" className="gap-1.5"><Target className="h-4 w-4" /><span className="hidden sm:inline">GST</span></TabsTrigger>
-          <TabsTrigger value="reconciliation" className="gap-1.5"><CheckCircle2 className="h-4 w-4" /><span className="hidden sm:inline">Reconciliation</span></TabsTrigger>
-          <TabsTrigger value="dues" className="gap-1.5"><CreditCard className="h-4 w-4" /><span className="hidden sm:inline">Dues</span></TabsTrigger>
-          <TabsTrigger value="returns" className="gap-1.5"><RotateCcw className="h-4 w-4" /><span className="hidden sm:inline">Returns</span></TabsTrigger>
-          <TabsTrigger value="invoice-gst" className="gap-1.5"><FileText className="h-4 w-4" /><span className="hidden sm:inline">Invoice GST</span></TabsTrigger>
+          <TabsTrigger value="cashflow" className="gap-1.5 touch-manipulation min-h-[44px]"><Banknote className="h-4 w-4" /><span className="hidden sm:inline">Cash Flow</span></TabsTrigger>
+          <TabsTrigger value="expenses" className="gap-1.5 touch-manipulation min-h-[44px]"><Receipt className="h-4 w-4" /><span className="hidden sm:inline">Expenses</span></TabsTrigger>
+          <TabsTrigger value="gst" className="gap-1.5 touch-manipulation min-h-[44px]"><Target className="h-4 w-4" /><span className="hidden sm:inline">GST</span></TabsTrigger>
+          <TabsTrigger value="pl-statement" className="gap-1.5 touch-manipulation min-h-[44px]"><BarChart3 className="h-4 w-4" /><span className="hidden sm:inline">P&L Statement</span></TabsTrigger>
+          <TabsTrigger value="reconciliation" className="gap-1.5 touch-manipulation min-h-[44px]"><CheckCircle2 className="h-4 w-4" /><span className="hidden sm:inline">Cash Recon</span></TabsTrigger>
+          <TabsTrigger value="cash-reconcile" className="gap-1.5 touch-manipulation min-h-[44px]"><Calculator className="h-4 w-4" /><span className="hidden sm:inline">Reconcile</span></TabsTrigger>
+          <TabsTrigger value="dues" className="gap-1.5 touch-manipulation min-h-[44px]"><CreditCard className="h-4 w-4" /><span className="hidden sm:inline">Dues</span></TabsTrigger>
+          <TabsTrigger value="returns" className="gap-1.5 touch-manipulation min-h-[44px]"><RotateCcw className="h-4 w-4" /><span className="hidden sm:inline">Returns</span></TabsTrigger>
+          <TabsTrigger value="invoice-gst" className="gap-1.5 touch-manipulation min-h-[44px]"><FileText className="h-4 w-4" /><span className="hidden sm:inline">Invoice GST</span></TabsTrigger>
         </TabsList>
 
         {/* ─── Cash Flow Tab ────────────────────────────────────────────── */}
@@ -1325,13 +1471,13 @@ export default function Accounting() {
                   <CardDescription>{expenses.length} expense{expenses.length !== 1 ? 's' : ''} totaling {formatINR(totalExpenses)}</CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { setBudgetInput(monthlyBudget > 0 ? String(monthlyBudget) : ''); setBudgetDialogOpen(true); }}>
+                  <Button variant="outline" size="sm" className="gap-1.5 touch-manipulation min-h-[44px] active:scale-95 transition-transform" onClick={() => { setBudgetInput(monthlyBudget > 0 ? String(monthlyBudget) : ''); setBudgetDialogOpen(true); }}>
                     <Target className="h-3.5 w-3.5" />Set Budget
                   </Button>
-                  <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExportCSV} disabled={expenses.length === 0}>
+                  <Button variant="outline" size="sm" className="gap-1.5 touch-manipulation min-h-[44px] active:scale-95 transition-transform" onClick={handleExportCSV} disabled={expenses.length === 0}>
                     <Download className="h-3.5 w-3.5" />CSV
                   </Button>
-                  <Button onClick={openAddExpense} size="sm" className="gap-1.5"><Plus className="h-4 w-4" />Add Expense</Button>
+                  <Button onClick={openAddExpense} size="sm" className="gap-1.5 touch-manipulation min-h-[44px] active:scale-95 transition-transform"><Plus className="h-4 w-4" />Add Expense</Button>
                 </div>
               </div>
             </CardHeader>
@@ -1367,7 +1513,7 @@ export default function Accounting() {
                 <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                   <Receipt className="h-10 w-10 mb-2 opacity-40" />
                   <p className="text-sm">No expenses recorded yet</p>
-                  <Button variant="outline" size="sm" className="mt-3 gap-1.5" onClick={openAddExpense}><Plus className="h-3.5 w-3.5" />Add your first expense</Button>
+                  <Button variant="outline" size="sm" className="mt-3 gap-1.5 touch-manipulation min-h-[44px] active:scale-95 transition-transform" onClick={openAddExpense}><Plus className="h-3.5 w-3.5" />Add your first expense</Button>
                 </div>
               ) : (
                 <>
@@ -1393,8 +1539,8 @@ export default function Accounting() {
                             <TableCell className="text-xs hidden sm:table-cell max-w-[120px] truncate">{exp.vendor || '—'}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-1">
-                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openEditExpense(exp)}><Pencil className="h-3.5 w-3.5" /><span className="sr-only">Edit</span></Button>
-                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950" onClick={() => handleDeleteExpense(exp.id)} disabled={deletingExpenseId === exp.id}>
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 touch-manipulation active:scale-95 transition-transform" onClick={() => openEditExpense(exp)}><Pencil className="h-3.5 w-3.5" /><span className="sr-only">Edit</span></Button>
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950 touch-manipulation active:scale-95 transition-transform" onClick={() => handleDeleteExpense(exp.id)} disabled={deletingExpenseId === exp.id}>
                                   {deletingExpenseId === exp.id ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <Trash2 className="h-3.5 w-3.5" />}
                                   <span className="sr-only">Delete</span>
                                 </Button>
@@ -1527,6 +1673,176 @@ export default function Accounting() {
               </Card>
             )}
           </div>
+        </TabsContent>
+
+        {/* ─── P&L Statement Tab ─────────────────────────────────────────── */}
+        <TabsContent value="pl-statement">
+          <Card>
+            <CardHeader>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Scale className="h-5 w-5" />
+                    P&amp;L Statement
+                  </CardTitle>
+                  <CardDescription>Profit &amp; Loss for the selected period</CardDescription>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <Label className="text-xs whitespace-nowrap"><CalendarDays className="h-3.5 w-3.5 inline mr-1" />From</Label>
+                    <Input type="date" value={plFromDate} onChange={(e) => setPlFromDate(e.target.value)} className="h-8 w-[140px] text-xs" />
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Label className="text-xs whitespace-nowrap">To</Label>
+                    <Input type="date" value={plToDate} onChange={(e) => setPlToDate(e.target.value)} className="h-8 w-[140px] text-xs" />
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {plLoading ? (
+                <TableSkeleton rows={6} cols={3} />
+              ) : (
+                <div className="space-y-6">
+                  {/* Summary Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <Card className="py-4">
+                      <CardContent className="px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-950">
+                            <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground font-medium">Total Revenue</p>
+                            <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 font-mono">{formatINR(plRevenue)}</p>
+                            <p className="text-[10px] text-muted-foreground">Sales revenue for the period</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card className="py-4">
+                      <CardContent className="px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-100 dark:bg-red-950">
+                            <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground font-medium">Total Expenses</p>
+                            <p className="text-lg font-bold text-red-600 dark:text-red-400 font-mono">{formatINR(plTotalExpenses)}</p>
+                            <p className="text-[10px] text-muted-foreground">{plExpensesByCategory.length} categor{plExpensesByCategory.length !== 1 ? 'ies' : 'y'}</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card className={`py-4 ${plNetProfit >= 0 ? 'bg-emerald-50/50 dark:bg-emerald-950/20' : 'bg-red-50/50 dark:bg-red-950/20'}`}>
+                      <CardContent className="px-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${plNetProfit >= 0 ? 'bg-emerald-100 dark:bg-emerald-950' : 'bg-red-100 dark:bg-red-950'}`}>
+                            {plNetProfit >= 0
+                              ? <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                              : <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
+                            }
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground font-medium">Net Profit</p>
+                            <p className={`text-lg font-bold font-mono ${plNetProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{formatINR(plNetProfit)}</p>
+                            <p className="text-[10px] text-muted-foreground">Revenue - Total Expenses</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Revenue Section */}
+                  <div>
+                    <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-950">
+                        <TrendingUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                      </div>
+                      Revenue
+                    </h3>
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableBody>
+                          <TableRow>
+                            <TableCell className="text-sm font-medium">Total Sales Revenue</TableCell>
+                            <TableCell className="text-xs text-muted-foreground">Fetched from reports API</TableCell>
+                            <TableCell className="text-sm font-mono font-semibold text-emerald-600 dark:text-emerald-400 text-right">{formatINR(plRevenue)}</TableCell>
+                          </TableRow>
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+
+                  {/* Expense Breakdown by Category */}
+                  <div>
+                    <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-red-100 dark:bg-red-950">
+                        <TrendingDown className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+                      </div>
+                      Expenses (by Category)
+                    </h3>
+                    {plExpensesByCategory.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                        <Receipt className="h-8 w-8 mb-2 opacity-40" />
+                        <p className="text-sm">No expenses recorded for this period.</p>
+                      </div>
+                    ) : (
+                      <div className="max-h-96 overflow-y-auto rounded-md border">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="text-xs">Category</TableHead>
+                              <TableHead className="text-xs text-right">Amount</TableHead>
+                              <TableHead className="text-xs text-right hidden sm:table-cell">% of Total</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {plExpensesByCategory.map((cat) => {
+                              const pct = plTotalExpenses > 0 ? ((cat.total / plTotalExpenses) * 100).toFixed(1) : '0.0';
+                              return (
+                                <TableRow key={cat.category}>
+                                  <TableCell className="text-sm font-medium">{cat.category}</TableCell>
+                                  <TableCell className="text-sm font-mono text-red-600 dark:text-red-400 text-right">{formatINR(cat.total)}</TableCell>
+                                  <TableCell className="text-xs text-muted-foreground text-right font-mono hidden sm:table-cell">{pct}%</TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                          <TableFooter>
+                            <TableRow className="bg-muted/50 font-semibold">
+                              <TableCell className="text-sm">Total Expenses</TableCell>
+                              <TableCell className="text-sm font-mono text-red-600 dark:text-red-400 text-right">{formatINR(plTotalExpenses)}</TableCell>
+                              <TableCell className="text-xs text-right font-mono hidden sm:table-cell">100%</TableCell>
+                            </TableRow>
+                          </TableFooter>
+                        </Table>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Net Profit Card */}
+                  <div className={`rounded-lg border p-4 ${plNetProfit >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800' : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'}`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CircleDollarSign className={`h-5 w-5 ${plNetProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`} />
+                        <span className="text-sm font-semibold">Net Profit</span>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <p className="text-xs text-muted-foreground">Revenue: {formatINR(plRevenue)}</p>
+                          <p className="text-xs text-muted-foreground">Expenses: -{formatINR(plTotalExpenses)}</p>
+                        </div>
+                        <p className={`text-xl font-bold font-mono ${plNetProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                          {formatINR(plNetProfit)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* ─── Daily Cash Reconciliation Tab ─────────────────────────────── */}
@@ -1698,6 +2014,151 @@ export default function Accounting() {
           </div>
         </TabsContent>
 
+        {/* ─── Cash Reconcile Tab ─────────────────────────────────────── */}
+        <TabsContent value="cash-reconcile">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Calculator className="h-5 w-5" />
+                Cash Reconcile
+              </CardTitle>
+              <CardDescription>Compare expected cash with actual cash in hand for today</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingSales || loadingExpenses ? (
+                <TableSkeleton rows={4} cols={2} />
+              ) : (
+                <div className="space-y-4">
+                  {/* Summary Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <Card className="py-4">
+                      <CardContent className="px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-950">
+                            <Banknote className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground font-medium">Today&apos;s Cash Sales</p>
+                            <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 font-mono">{formatINR(todayCashData.cashSales)}</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card className="py-4">
+                      <CardContent className="px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-100 dark:bg-red-950">
+                            <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground font-medium">Today&apos;s Cash Expenses</p>
+                            <p className="text-lg font-bold text-red-600 dark:text-red-400 font-mono">{formatINR(todayCashData.cashExpenses)}</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card className="py-4">
+                      <CardContent className="px-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${todayCashData.expectedCash >= 0 ? 'bg-emerald-100 dark:bg-emerald-950' : 'bg-red-100 dark:bg-red-950'}`}>
+                            <Wallet className={`h-5 w-5 ${todayCashData.expectedCash >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`} />
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground font-medium">Expected Cash in Hand</p>
+                            <p className={`text-lg font-bold font-mono ${todayCashData.expectedCash >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{formatINR(todayCashData.expectedCash)}</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Actual Cash Input and Variance */}
+                  <div className="rounded-lg border p-4 space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="actual-cash" className="text-sm font-medium">Actual Cash in Hand (₹)</Label>
+                        <Input
+                          id="actual-cash"
+                          type="number"
+                          placeholder="Enter actual cash count..."
+                          value={actualCashInHand}
+                          onChange={(e) => setActualCashInHand(e.target.value)}
+                          className="text-lg font-mono"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label className="text-sm font-medium">Variance</Label>
+                        <div className={`rounded-lg border p-3 h-[42px] flex items-center justify-center ${cashVariance === null ? 'bg-muted/50' : Math.abs(cashVariance) > 500 ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800' : 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800'}`}>
+                          {cashVariance === null ? (
+                            <span className="text-sm text-muted-foreground">Enter actual cash to calculate</span>
+                          ) : (
+                            <span className={`text-lg font-bold font-mono ${cashVariance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                              {cashVariance >= 0 ? '+' : ''}{formatINR(cashVariance)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {cashVariance !== null && Math.abs(cashVariance) > 500 && (
+                      <div className="flex items-start gap-2 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 p-3">
+                        <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+                        <div className="text-xs text-red-700 dark:text-red-300">
+                          <p className="font-semibold">Significant variance detected!</p>
+                          <p className="mt-0.5">The difference of {formatINR(Math.abs(cashVariance))} exceeds ₹500. Please verify cash transactions.</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Calculation Breakdown Table */}
+                  <div className="rounded-lg border overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-xs">Item</TableHead>
+                          <TableHead className="text-xs text-right">Amount</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        <TableRow>
+                          <TableCell className="text-sm font-medium">Today&apos;s Cash Sales</TableCell>
+                          <TableCell className="text-sm font-mono text-emerald-600 dark:text-emerald-400 text-right">+{formatINR(todayCashData.cashSales)}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="text-sm font-medium text-red-600 dark:text-red-400">Less: Today&apos;s Expenses (Cash)</TableCell>
+                          <TableCell className="text-sm font-mono text-red-600 dark:text-red-400 text-right">-{formatINR(todayCashData.cashExpenses)}</TableCell>
+                        </TableRow>
+                        {cashVariance !== null && (
+                          <>
+                            <TableRow>
+                              <TableCell className="text-sm font-medium">Expected Cash in Hand</TableCell>
+                              <TableCell className="text-sm font-mono text-right font-semibold">{formatINR(todayCashData.expectedCash)}</TableCell>
+                            </TableRow>
+                            <TableRow>
+                              <TableCell className="text-sm font-medium">Actual Cash in Hand</TableCell>
+                              <TableCell className="text-sm font-mono text-right font-semibold">{formatINR(parseFloat(actualCashInHand))}</TableCell>
+                            </TableRow>
+                          </>
+                        )}
+                      </TableBody>
+                      <TableFooter>
+                        <TableRow className="font-bold">
+                          <TableCell className="text-sm">
+                            {cashVariance !== null ? 'Variance (Actual \u2212 Expected)' : 'Expected Cash in Hand'}
+                          </TableCell>
+                          <TableCell className={`text-sm font-mono text-right ${cashVariance === null ? '' : cashVariance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                            {cashVariance === null ? formatINR(todayCashData.expectedCash) : `${cashVariance >= 0 ? '+' : ''}${formatINR(cashVariance)}`}
+                          </TableCell>
+                        </TableRow>
+                      </TableFooter>
+                    </Table>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* ─── Dues Tab ─────────────────────────────────────────────────── */}
         <TabsContent value="dues">
           <Card>
@@ -1787,7 +2248,7 @@ export default function Accounting() {
                                       <TooltipTrigger asChild>
                                         <a
                                           href={`https://wa.me/91${due.customer?.phone || ''}?text=${encodeURIComponent(
-                                            `Dear ${due.customer?.name || 'Customer'},\n\nThis is a friendly reminder from Sankaran Kovil Opticals regarding your pending payment of ${formatINR(balance)}.\n${due.dueDate ? `Due date: ${formatDate(due.dueDate)}\n` : ''}Please clear the balance at your earliest convenience.\n\nThank you!`
+                                            `Dear ${due.customer?.name || 'Customer'},\n\nThis is a friendly reminder from Lotus Vision Opticals regarding your pending payment of ${formatINR(balance)}.\n${due.dueDate ? `Due date: ${formatDate(due.dueDate)}\n` : ''}Please clear the balance at your earliest convenience.\n\nThank you!`
                                           )}`}
                                           target="_blank"
                                           rel="noopener noreferrer"
@@ -1800,10 +2261,10 @@ export default function Accounting() {
                                       </TooltipTrigger>
                                       <TooltipContent>Send WhatsApp Reminder</TooltipContent>
                                     </Tooltip>
-                                    <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => openPaymentDialog(due)}>
+                                    <Button variant="outline" size="sm" className="h-7 text-xs gap-1 touch-manipulation active:scale-95 transition-transform" onClick={() => openPaymentDialog(due)}>
                                       <IndianRupee className="h-3 w-3" /> Pay
                                     </Button>
-                                    <Button variant="ghost" size="sm" className="h-7 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950 gap-1" onClick={() => handleMarkPaid(due)} disabled={markPaidLoading}>
+                                    <Button variant="ghost" size="sm" className="h-7 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950 gap-1 touch-manipulation active:scale-95 transition-transform" onClick={() => handleMarkPaid(due)} disabled={markPaidLoading}>
                                       <CheckCircle2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">Mark Paid</span>
                                     </Button>
                                   </div>
@@ -1850,7 +2311,7 @@ export default function Accounting() {
                   <CardTitle className="text-lg flex items-center gap-2"><RotateCcw className="h-5 w-5" />Returns Management</CardTitle>
                   <CardDescription>Track product returns and refunds</CardDescription>
                 </div>
-                <Button onClick={openCreateReturn} size="sm" className="gap-1.5"><Plus className="h-4 w-4" />Create Return</Button>
+                <Button onClick={openCreateReturn} size="sm" className="gap-1.5 touch-manipulation min-h-[44px] active:scale-95 transition-transform"><Plus className="h-4 w-4" />Create Return</Button>
               </div>
             </CardHeader>
             <CardContent>
@@ -1876,7 +2337,7 @@ export default function Accounting() {
                 <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                   <RotateCcw className="h-10 w-10 mb-2 opacity-40" />
                   <p className="text-sm">No returns recorded yet</p>
-                  <Button variant="outline" size="sm" className="mt-3 gap-1.5" onClick={openCreateReturn}><Plus className="h-3.5 w-3.5" />Create your first return</Button>
+                  <Button variant="outline" size="sm" className="mt-3 gap-1.5 touch-manipulation min-h-[44px] active:scale-95 transition-transform" onClick={openCreateReturn}><Plus className="h-3.5 w-3.5" />Create your first return</Button>
                 </div>
               ) : (
                 <div className="max-h-[420px] overflow-y-auto rounded-md border">
@@ -1963,8 +2424,8 @@ export default function Accounting() {
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setExpenseDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveExpense}>{editingExpense ? 'Update Expense' : 'Add Expense'}</Button>
+            <Button variant="outline" onClick={() => setExpenseDialogOpen(false)} className="touch-manipulation min-h-[44px] active:scale-95 transition-transform">Cancel</Button>
+            <Button onClick={handleSaveExpense} className="touch-manipulation min-h-[44px] active:scale-95 transition-transform">{editingExpense ? 'Update Expense' : 'Add Expense'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1997,14 +2458,14 @@ export default function Accounting() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setPaymentAmount(String((payingDue?.amount || 0) - (payingDue?.paid || 0)))}>
+              <Button variant="outline" size="sm" onClick={() => setPaymentAmount(String((payingDue?.amount || 0) - (payingDue?.paid || 0)))} className="touch-manipulation min-h-[44px] active:scale-95 transition-transform">
                 Set Full Amount
               </Button>
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleRecordPayment} disabled={markPaidLoading}>
+            <Button variant="outline" onClick={() => setPaymentDialogOpen(false)} className="touch-manipulation min-h-[44px] active:scale-95 transition-transform">Cancel</Button>
+            <Button onClick={handleRecordPayment} disabled={markPaidLoading} className="touch-manipulation min-h-[44px] active:scale-95 transition-transform">
               {markPaidLoading ? 'Recording...' : 'Record Payment'}
             </Button>
           </DialogFooter>
@@ -2088,8 +2549,8 @@ export default function Accounting() {
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setReturnDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreateReturn} disabled={creatingReturn}>
+            <Button variant="outline" onClick={() => setReturnDialogOpen(false)} className="touch-manipulation min-h-[44px] active:scale-95 transition-transform">Cancel</Button>
+            <Button onClick={handleCreateReturn} disabled={creatingReturn} className="touch-manipulation min-h-[44px] active:scale-95 transition-transform">
               {creatingReturn ? 'Creating...' : 'Create Return'}
             </Button>
           </DialogFooter>
@@ -2121,9 +2582,9 @@ export default function Accounting() {
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
             {monthlyBudget > 0 && (
-              <Button variant="outline" onClick={() => { setMonthlyBudget(0); localStorage.removeItem(getBudgetKey()); setBudgetDialogOpen(false); toast.success('Budget cleared'); }}>Clear Budget</Button>
+              <Button variant="outline" onClick={() => { setMonthlyBudget(0); localStorage.removeItem(getBudgetKey()); setBudgetDialogOpen(false); toast.success('Budget cleared'); }} className="touch-manipulation min-h-[44px] active:scale-95 transition-transform">Clear Budget</Button>
             )}
-            <Button onClick={handleSetBudget}>Save Budget</Button>
+            <Button onClick={handleSetBudget} className="touch-manipulation min-h-[44px] active:scale-95 transition-transform">Save Budget</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

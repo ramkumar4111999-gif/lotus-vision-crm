@@ -15,9 +15,11 @@ import {
   XAxis,
   YAxis,
   Tooltip,
+  Tooltip as RechartsTooltip,
   Legend,
   ResponsiveContainer,
   ComposedChart,
+  CartesianGrid,
 } from "recharts";
 import {
   TrendingUp,
@@ -33,6 +35,12 @@ import {
   Loader2,
   FileText,
   Printer,
+  Package,
+  AlertTriangle,
+  UserPlus,
+  Trophy,
+  Crown,
+  Hash,
 } from "lucide-react";
 import { format, subDays, parseISO, isWithinInterval, startOfMonth, endOfMonth, subMonths } from "date-fns";
 
@@ -179,6 +187,37 @@ interface ProductPerformanceItem {
   profitMargin: number;
 }
 
+interface CustomerAcquisitionResponse {
+  report: string;
+  period: string;
+  totalNew: number;
+  thisWeekNew: number;
+  data: Array<{ date: string; newCustomers: number }>;
+}
+
+interface DashboardComparisonData {
+  comparison?: {
+    revenueChange: number;
+    customerChange: number;
+  };
+}
+
+interface InventoryTurnoverItem {
+  productId: string;
+  name: string;
+  sku: string;
+  category: string;
+  brand: string;
+  price: number;
+  costPrice: number;
+  currentStock: number;
+  minStock: number;
+  totalQtySold: number;
+  isActive: boolean;
+  isLowStock: boolean;
+  turnoverRatio: number;
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function formatCurrency(value: number): string {
@@ -303,20 +342,30 @@ function StatCard({ title, value, change, icon, iconBg }: StatCardProps) {
 
 // ─── Data Hooks ───────────────────────────────────────────────────────────────
 
-function useReportsData<T>(type: string, fallbackData: T) {
+function useReportsData<T>(type: string, fallbackData: T, dateFrom?: string, dateTo?: string) {
   return useQuery<T>({
-    queryKey: ["reports", type],
-    queryFn: () => fetch(`/api/reports?type=${type}`).then((r) => r.json()),
+    queryKey: ["reports", type, dateFrom, dateTo],
+    queryFn: () => {
+      const params = new URLSearchParams({ type });
+      if (dateFrom) params.set("from", dateFrom);
+      if (dateTo) params.set("to", dateTo);
+      return fetch(`/api/reports?${params}`).then((r) => r.json());
+    },
     placeholderData: fallbackData,
-    staleTime: 60_000,
+    staleTime: 30_000,
   });
 }
 
-function useSalesData() {
+function useSalesData(dateFrom?: string, dateTo?: string) {
   return useQuery<{ sales?: SaleRecord[]; data?: SaleRecord[] }>({
-    queryKey: ["sales-all"],
-    queryFn: () => fetch("/api/sales?limit=1000").then((r) => r.json()),
-    staleTime: 60_000,
+    queryKey: ["sales-all", dateFrom, dateTo],
+    queryFn: () => {
+      const params = new URLSearchParams({ limit: "1000" });
+      if (dateFrom) params.set("fromDate", dateFrom);
+      if (dateTo) params.set("toDate", dateTo);
+      return fetch(`/api/sales?${params}`).then((r) => r.json());
+    },
+    staleTime: 30_000,
   });
 }
 
@@ -357,6 +406,35 @@ function useProductPerformance() {
   }>({
     queryKey: ["product-performance"],
     queryFn: () => fetch("/api/reports?type=product-performance").then((r) => r.json()),
+    staleTime: 60_000,
+  });
+}
+
+function useCustomerAcquisitionReport() {
+  return useQuery<CustomerAcquisitionResponse>({
+    queryKey: ["customer-acquisition-report"],
+    queryFn: () => fetch("/api/reports?type=customer-acquisition").then((r) => r.json()),
+    staleTime: 60_000,
+  });
+}
+
+function useDashboardComparison() {
+  return useQuery<DashboardComparisonData>({
+    queryKey: ["dashboard-comparison"],
+    queryFn: () => fetch("/api/dashboard").then((r) => r.json()),
+    staleTime: 60_000,
+  });
+}
+
+// ─── New Feature Hooks ────────────────────────────────────────────────────
+
+function useAllCustomersForReport() {
+  return useQuery<Array<Record<string, unknown>>>({ 
+    queryKey: ["all-customers-report"],
+    queryFn: () =>
+      fetch("/api/customers?limit=999")
+        .then((r) => r.json())
+        .then((d) => d.data || d.customers || (Array.isArray(d) ? d : [])),
     staleTime: 60_000,
   });
 }
@@ -405,7 +483,7 @@ function usePDFExport() {
         <!DOCTYPE html>
         <html>
         <head>
-          <title>${title} - Sankaran Kovil Opticals</title>
+          <title>${title} - Lotus Vision Opticals</title>
           <style>
             ${styles}
             body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 20px; color: #111; background: #fff; }
@@ -424,7 +502,7 @@ function usePDFExport() {
         </head>
         <body>
           <div class="print-header">
-            <h1>Sankaran Kovil Opticals</h1>
+            <h1>Lotus Vision Opticals</h1>
             <p>${title} | Generated: ${new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</p>
           </div>
           ${element.innerHTML}
@@ -449,22 +527,33 @@ function usePDFExport() {
 
 export default function Reports() {
   const today = new Date();
-  const defaultFrom = format(subDays(today, 30), "yyyy-MM-dd");
+  const defaultFrom = format(startOfMonth(today), "yyyy-MM-dd");
   const defaultTo = format(today, "yyyy-MM-dd");
 
+  const [dateFromInput, setDateFromInput] = useState(defaultFrom);
+  const [dateToInput, setDateToInput] = useState(defaultTo);
   const [dateFrom, setDateFrom] = useState(defaultFrom);
   const [dateTo, setDateTo] = useState(defaultTo);
+
+  const handleApplyDateRange = useCallback(() => {
+    setDateFrom(dateFromInput);
+    setDateTo(dateToInput);
+  }, [dateFromInput, dateToInput]);
 
   const { exporting: csvExporting, exportPDF } = usePDFExport();
 
   // Fetch data
-  const salesTrendQuery = useReportsData<{ data: SalesTrendPoint[] }>("sales-trend", { data: FALLBACK_SALES_TREND });
-  const topProductsQuery = useReportsData<{ data: ProductSale[] }>("top-products", { data: FALLBACK_PRODUCTS });
+  const salesTrendQuery = useReportsData<{ data: SalesTrendPoint[] }>("sales-trend", { data: FALLBACK_SALES_TREND }, dateFrom, dateTo);
+  const topProductsQuery = useReportsData<{ data: ProductSale[] }>("top-products", { data: FALLBACK_PRODUCTS }, dateFrom, dateTo);
   const topCustomersQuery = useTopCustomers();
-  const salesQuery = useSalesData();
+  const salesQuery = useSalesData(dateFrom, dateTo);
   const productsQuery = useProductsData();
   const revenueCompQuery = useRevenueComparison();
   const productPerfQuery = useProductPerformance();
+  const inventoryTurnoverQuery = useReportsData<{ report: string; totalProducts: number; data: InventoryTurnoverItem[] }>("inventory-turnover", { report: "inventory-turnover", totalProducts: 0, data: [] });
+  const customerAcqQuery = useCustomerAcquisitionReport();
+  const dashboardQuery = useDashboardComparison();
+  const allCustomersQuery = useAllCustomersForReport();
 
   // Parse raw data with fallbacks
   const salesTrendData = useMemo(() => {
@@ -517,6 +606,54 @@ export default function Reports() {
     if (!raw) return null;
     return raw as { categoryData: ProductPerformanceCategory[]; productData: ProductPerformanceItem[]; totalProducts: number; totalRevenue: number };
   }, [productPerfQuery.data]);
+
+  // Customer acquisition report data
+  const customerAcqReport = useMemo(() => {
+    const raw = customerAcqQuery.data;
+    if (!raw || !raw.data) return null;
+    return raw;
+  }, [customerAcqQuery.data]);
+
+  // Dashboard comparison data
+  const dashboardComp = useMemo(() => {
+    const raw = dashboardQuery.data;
+    if (!raw || !raw.comparison) return null;
+    return raw.comparison;
+  }, [dashboardQuery.data]);
+
+  // Customer acquisition: this month vs last month from API data
+  const customerAcqComparison = useMemo(() => {
+    if (!customerAcqReport) return null;
+    const now = new Date();
+    const thisMonthStart = startOfMonth(now);
+    const lastMonthStart = startOfMonth(subMonths(now, 1));
+    const lastMonthEnd = endOfMonth(subMonths(now, 1));
+
+    let thisMonthNew = 0;
+    let lastMonthNew = 0;
+
+    for (const d of customerAcqReport.data) {
+      const date = parseISO(d.date);
+      if (date >= thisMonthStart) {
+        thisMonthNew += d.newCustomers;
+      } else if (date >= lastMonthStart && date <= lastMonthEnd) {
+        lastMonthNew += d.newCustomers;
+      }
+    }
+
+    const changePercent = lastMonthNew > 0
+      ? Math.round(((thisMonthNew - lastMonthNew) / lastMonthNew) * 100)
+      : thisMonthNew > 0 ? 100 : 0;
+
+    return { thisMonthNew, lastMonthNew, changePercent, totalNew: customerAcqReport.totalNew, thisWeekNew: customerAcqReport.thisWeekNew };
+  }, [customerAcqReport]);
+
+  // Inventory turnover data
+  const inventoryTurnover = useMemo(() => {
+    const raw = inventoryTurnoverQuery.data;
+    if (!raw || !Array.isArray(raw.data)) return [];
+    return raw.data;
+  }, [inventoryTurnoverQuery.data]);
 
   // ─── Revenue Summary from all sales ────────────────────────────────────
 
@@ -605,6 +742,66 @@ export default function Reports() {
       }));
   }, [allSales, dateFrom, dateTo]);
 
+  // ─── Monthly Customer Acquisition (last 6 months) from /api/customers ──
+  const allCustomersList = useMemo(() => {
+    const raw = allCustomersQuery.data;
+    if (!Array.isArray(raw)) return [];
+    return raw;
+  }, [allCustomersQuery.data]);
+
+  const monthlyCustomerAcq = useMemo(() => {
+    const now = new Date();
+    const months: { month: string; newCustomers: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const mDate = subMonths(now, i);
+      const mStart = startOfMonth(mDate);
+      const mEnd = endOfMonth(mDate);
+      const mLabel = format(mDate, "MMM yyyy");
+      const count = allCustomersList.filter((c) => {
+        const createdAt = c.createdAt as string | undefined;
+        if (!createdAt) return false;
+        try {
+          const d = new Date(createdAt);
+          return d >= mStart && d <= mEnd;
+        } catch {
+          return false;
+        }
+      }).length;
+      months.push({ month: mLabel, newCustomers: count });
+    }
+    return months;
+  }, [allCustomersList]);
+
+  const thisMonthNewCustomers = monthlyCustomerAcq[monthlyCustomerAcq.length - 1]?.newCustomers || 0;
+  const lastMonthNewCustomers = monthlyCustomerAcq[monthlyCustomerAcq.length - 2]?.newCustomers || 0;
+  const customerGrowthPercent = lastMonthNewCustomers > 0
+    ? Math.round(((thisMonthNewCustomers - lastMonthNewCustomers) / lastMonthNewCustomers) * 100)
+    : thisMonthNewCustomers > 0 ? 100 : 0;
+
+  // ─── Top 10 Products by Inventory Value (price * stock) ────────────────
+  const top10InventoryValue = useMemo(() => {
+    return [...allProducts]
+      .map((p) => ({
+        name: p.name,
+        category: p.category,
+        price: p.price,
+        stock: p.stock,
+        minStock: p.minStock,
+        inventoryValue: p.price * p.stock,
+        status: p.stock <= p.minStock ? ("Low Stock" as const) : p.stock > p.minStock * 3 ? ("Overstocked" as const) : ("In Stock" as const),
+      }))
+      .sort((a, b) => b.inventoryValue - a.inventoryValue)
+      .slice(0, 10);
+  }, [allProducts]);
+
+  // ─── Top 5 Customers by Spend (from /api/customers) ───────────────────
+  const top5CustomersBySpend = useMemo(() => {
+    if (!Array.isArray(allCustomersList) || allCustomersList.length === 0) return [];
+    return [...allCustomersList]
+      .sort((a, b) => ((b.totalSpent as number) || 0) - ((a.totalSpent as number) || 0))
+      .slice(0, 5);
+  }, [allCustomersList]);
+
   // ─── Top products by revenue (from real API data) ─────────────────────
 
   const topProductsByRevenue = useMemo(() => {
@@ -661,6 +858,36 @@ export default function Reports() {
     }
     return data;
   }, [revenueComp]);
+
+  // ─── Customer Acquisition Chart Data (this month vs last month daily) ──
+
+  const customerAcqChartData = useMemo(() => {
+    if (!customerAcqReport) return [];
+    const now = new Date();
+    const thisMonthStart = startOfMonth(now);
+    const lastMonthStart = startOfMonth(subMonths(now, 1));
+    const lastMonthEnd = endOfMonth(subMonths(now, 1));
+    const daysInThisMonth = endOfMonth(now).getDate();
+    const daysInLastMonth = lastMonthEnd.getDate();
+    const maxDays = Math.max(daysInThisMonth, daysInLastMonth);
+
+    const data: { day: number; thisMonth: number; lastMonth: number }[] = [];
+    for (let d = 1; d <= maxDays; d++) {
+      // Find this month data
+      const thisMonthDate = format(new Date(now.getFullYear(), now.getMonth(), d), "yyyy-MM-dd");
+      const thisMonthEntry = customerAcqReport.data.find((x) => x.date === thisMonthDate);
+      // Find last month data
+      const lastMonthDate = format(new Date(now.getFullYear(), now.getMonth() - 1, d), "yyyy-MM-dd");
+      const lastMonthEntry = customerAcqReport.data.find((x) => x.date === lastMonthDate);
+
+      data.push({
+        day: d,
+        thisMonth: thisMonthEntry?.newCustomers || 0,
+        lastMonth: lastMonthEntry?.newCustomers || 0,
+      });
+    }
+    return data;
+  }, [customerAcqReport]);
 
   // ─── CSV Export ──────────────────────────────────────────────────────
   const [exporting, setExporting] = useState(false);
@@ -807,14 +1034,14 @@ export default function Reports() {
             Reports &amp; Analytics
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Business insights for Sankaran Kovil Opticals
+            Business insights for Lotus Vision Opticals
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Button
             variant="outline"
             size="sm"
-            className="gap-2"
+            className="gap-2 min-h-[44px] touch-manipulation"
             onClick={() => exportPDF("Reports & Analytics", "reports-content")}
             disabled={csvExporting}
           >
@@ -828,7 +1055,7 @@ export default function Reports() {
           <Button
             variant="outline"
             size="sm"
-            className="gap-2"
+            className="gap-2 min-h-[44px] touch-manipulation"
             onClick={handleDownloadCSV}
             disabled={exporting}
           >
@@ -853,24 +1080,36 @@ export default function Reports() {
             <div className="flex items-center gap-2 flex-wrap">
               <div className="flex items-center gap-1.5">
                 <Label htmlFor="rpt-from" className="text-xs">From</Label>
-                <Input id="rpt-from" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-8 w-[150px] text-xs" />
+                <Input id="rpt-from" type="date" value={dateFromInput} onChange={(e) => setDateFromInput(e.target.value)} className="h-9 w-[150px] text-xs" />
               </div>
               <div className="flex items-center gap-1.5">
                 <Label htmlFor="rpt-to" className="text-xs">To</Label>
-                <Input id="rpt-to" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-8 w-[150px] text-xs" />
+                <Input id="rpt-to" type="date" value={dateToInput} onChange={(e) => setDateToInput(e.target.value)} className="h-9 w-[150px] text-xs" />
               </div>
-              <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => { setDateFrom(defaultFrom); setDateTo(defaultTo); }}>
-                Last 30 Days
+              <Button variant="default" size="sm" className="text-xs min-h-[44px] touch-manipulation gap-1.5" onClick={handleApplyDateRange}>
+                Apply
               </Button>
-              <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => { setDateFrom(format(subDays(today, 7), "yyyy-MM-dd")); setDateTo(defaultTo); }}>
-                Last 7 Days
-              </Button>
-              <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => {
-                const mStart = format(startOfMonth(today), "yyyy-MM-dd");
-                const mEnd = format(endOfMonth(today), "yyyy-MM-dd");
-                setDateFrom(mStart); setDateTo(mEnd);
+              <Separator orientation="vertical" className="h-6 hidden sm:block" />
+              <Button variant="outline" size="sm" className="text-xs min-h-[44px] touch-manipulation" onClick={() => {
+                const from = format(startOfMonth(today), "yyyy-MM-dd");
+                setDateFromInput(from); setDateToInput(defaultTo);
+                setDateFrom(from); setDateTo(defaultTo);
               }}>
                 This Month
+              </Button>
+              <Button variant="outline" size="sm" className="text-xs min-h-[44px] touch-manipulation" onClick={() => {
+                const from = format(subDays(today, 30), "yyyy-MM-dd");
+                setDateFromInput(from); setDateToInput(defaultTo);
+                setDateFrom(from); setDateTo(defaultTo);
+              }}>
+                Last 30 Days
+              </Button>
+              <Button variant="outline" size="sm" className="text-xs min-h-[44px] touch-manipulation" onClick={() => {
+                const from = format(subDays(today, 7), "yyyy-MM-dd");
+                setDateFromInput(from); setDateToInput(defaultTo);
+                setDateFrom(from); setDateTo(defaultTo);
+              }}>
+                Last 7 Days
               </Button>
             </div>
           </div>
@@ -896,7 +1135,7 @@ export default function Reports() {
                 </CardTitle>
                 <CardDescription>This month vs last month</CardDescription>
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 flex-wrap">
                 <div className="text-right">
                   <p className="text-xs text-muted-foreground">This Month</p>
                   <p className="text-lg font-bold font-mono text-emerald-600 dark:text-emerald-400">{formatCurrency(revenueComp.summary.thisMonth.total)}</p>
@@ -956,6 +1195,23 @@ export default function Reports() {
                     </p>
                   </div>
                 </div>
+
+                {/* Customer Change from Dashboard */}
+                {dashboardComp && (
+                  <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/30 p-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Users className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                      <span className="text-sm font-semibold">Customer Growth</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Customer acquisitions changed by{" "}
+                      <span className={`font-semibold ${dashboardComp.customerChange >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {dashboardComp.customerChange >= 0 ? '+' : ''}{dashboardComp.customerChange}%
+                      </span>{" "}
+                      compared to last month
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
@@ -964,10 +1220,16 @@ export default function Reports() {
 
       <div id="reports-content">
         <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList className="flex-wrap">
-            <TabsTrigger value="overview" className="gap-1.5"><TrendingUp className="h-4 w-4" /><span className="hidden sm:inline">Overview</span></TabsTrigger>
-            <TabsTrigger value="products" className="gap-1.5"><ShoppingCart className="h-4 w-4" /><span className="hidden sm:inline">Products</span></TabsTrigger>
-            <TabsTrigger value="customers" className="gap-1.5"><Users className="h-4 w-4" /><span className="hidden sm:inline">Customers</span></TabsTrigger>
+          <TabsList className="flex-wrap h-auto gap-1">
+            <TabsTrigger value="overview" className="gap-1.5 min-h-[44px] touch-manipulation"><TrendingUp className="h-4 w-4" /><span className="hidden sm:inline">Overview</span></TabsTrigger>
+            <TabsTrigger value="products" className="gap-1.5 min-h-[44px] touch-manipulation"><ShoppingCart className="h-4 w-4" /><span className="hidden sm:inline">Products</span></TabsTrigger>
+            <TabsTrigger value="customers" className="gap-1.5 min-h-[44px] touch-manipulation"><Users className="h-4 w-4" /><span className="hidden sm:inline">Customers</span></TabsTrigger>
+            <TabsTrigger value="inventory" className="gap-1.5 min-h-[44px] touch-manipulation"><Package className="h-4 w-4" /><span className="hidden sm:inline">Inventory</span></TabsTrigger>
+            <TabsTrigger value="acquisition" className="gap-1.5 min-h-[44px] touch-manipulation"><UserPlus className="h-4 w-4" /><span className="hidden sm:inline">Acquisition</span></TabsTrigger>
+            <TabsTrigger value="product-perf" className="gap-1.5 min-h-[44px] touch-manipulation"><Trophy className="h-4 w-4" /><span className="hidden sm:inline">Performance</span></TabsTrigger>
+            <TabsTrigger value="top-spenders" className="gap-1.5 min-h-[44px] touch-manipulation"><Crown className="h-4 w-4" /><span className="hidden sm:inline">Top Spenders</span></TabsTrigger>
+            <TabsTrigger value="monthly-acq" className="gap-1.5 min-h-[44px] touch-manipulation"><CalendarDays className="h-4 w-4" /><span className="hidden sm:inline">Monthly Acq.</span></TabsTrigger>
+            <TabsTrigger value="inventory-value" className="gap-1.5 min-h-[44px] touch-manipulation"><BarChart3 className="h-4 w-4" /><span className="hidden sm:inline">Inventory Val.</span></TabsTrigger>
           </TabsList>
 
           {/* ─── Overview Tab ──────────────────────────────────────────── */}
@@ -1320,6 +1582,775 @@ export default function Reports() {
                       </Table>
                     </div>
                   )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* ─── Inventory Tab ────────────────────────────────────────── */}
+          <TabsContent value="inventory">
+            <div className="space-y-6">
+              {inventoryTurnover.length === 0 ? (
+                <Card>
+                  <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                    <Package className="h-10 w-10 mb-2 opacity-40" />
+                    <p className="text-sm">No inventory data available</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <>
+                  {/* Low Stock Alerts */}
+                  {inventoryTurnover.filter((p) => p.isLowStock).length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4 text-amber-500" />
+                          Low Stock Alerts
+                        </CardTitle>
+                        <CardDescription>Products below minimum stock level</CardDescription>
+                      </CardHeader>
+                      <CardContent className="p-0">
+                        <div className="max-h-96 overflow-y-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Product</TableHead>
+                                <TableHead className="hidden sm:table-cell">SKU</TableHead>
+                                <TableHead className="hidden md:table-cell">Category</TableHead>
+                                <TableHead className="text-right">Current Stock</TableHead>
+                                <TableHead className="text-right">Min Stock</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {inventoryTurnover.filter((p) => p.isLowStock).slice(0, 20).map((p) => (
+                                <TableRow key={p.productId}>
+                                  <TableCell className="font-medium text-sm">{p.name}</TableCell>
+                                  <TableCell className="hidden sm:table-cell text-xs text-muted-foreground font-mono">{p.sku}</TableCell>
+                                  <TableCell className="hidden md:table-cell"><Badge variant="secondary" className="text-xs">{p.category}</Badge></TableCell>
+                                  <TableCell className="text-right font-mono text-sm text-red-600 dark:text-red-400 font-semibold">{p.currentStock}</TableCell>
+                                  <TableCell className="text-right font-mono text-sm text-muted-foreground">{p.minStock}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Inventory Turnover Table */}
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="text-base">Inventory Turnover</CardTitle>
+                          <CardDescription>Products ranked by quantity sold</CardDescription>
+                        </div>
+                        <Badge variant="outline" className="text-xs">
+                          {inventoryTurnover.length} products
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <div className="max-h-[500px] overflow-y-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>#</TableHead>
+                              <TableHead>Product Name</TableHead>
+                              <TableHead className="hidden sm:table-cell">SKU</TableHead>
+                              <TableHead className="hidden md:table-cell">Category</TableHead>
+                              <TableHead className="text-right">Qty Sold</TableHead>
+                              <TableHead className="text-right">In Stock</TableHead>
+                              <TableHead className="hidden lg:table-cell text-right">Turnover</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {inventoryTurnover.slice(0, 50).map((p, i) => (
+                              <TableRow key={p.productId}>
+                                <TableCell className="text-muted-foreground font-mono text-xs">{i + 1}</TableCell>
+                                <TableCell className="font-medium text-sm">{p.name}</TableCell>
+                                <TableCell className="hidden sm:table-cell text-xs text-muted-foreground font-mono">{p.sku}</TableCell>
+                                <TableCell className="hidden md:table-cell"><Badge variant="secondary" className="text-xs">{p.category}</Badge></TableCell>
+                                <TableCell className="text-right font-mono text-sm">{formatNumber(p.totalQtySold)}</TableCell>
+                                <TableCell className="text-right font-mono text-sm">
+                                  <span className={p.isLowStock ? 'text-red-600 dark:text-red-400 font-semibold' : ''}>{p.currentStock}</span>
+                                </TableCell>
+                                <TableCell className="hidden lg:table-cell text-right font-mono text-sm">
+                                  {p.turnoverRatio === Infinity ? '∞' : p.turnoverRatio.toFixed(1)}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* ─── Customer Acquisition Tab ─────────────────────────────── */}
+          <TabsContent value="acquisition">
+            <div className="space-y-6">
+              {/* Summary Cards: This Month vs Last Month */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <StatCard
+                  title="New Customers (This Month)"
+                  value={formatNumber(customerAcqComparison?.thisMonthNew ?? 0)}
+                  change={customerAcqComparison?.changePercent}
+                  icon={<UserPlus className="size-5 text-white" />}
+                  iconBg="bg-emerald-600"
+                />
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">New (Last Month)</span>
+                    </div>
+                    <p className="text-2xl font-bold tracking-tight">{formatNumber(customerAcqComparison?.lastMonthNew ?? 0)}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Previous month</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">This Week</span>
+                    </div>
+                    <p className="text-2xl font-bold tracking-tight">{formatNumber(customerAcqReport?.thisWeekNew ?? 0)}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">New this week</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Hash className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">30-Day Total</span>
+                    </div>
+                    <p className="text-2xl font-bold tracking-tight">{formatNumber(customerAcqReport?.totalNew ?? 0)}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Last 30 days</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Comparison Display */}
+              {customerAcqComparison && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <UserPlus className="h-4 w-4" />
+                      Month-over-Month Comparison
+                    </CardTitle>
+                    <CardDescription>This month vs last month new customer acquisition</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-center">
+                      {/* Last Month */}
+                      <div className="text-center p-4 rounded-lg border bg-muted/30">
+                        <p className="text-xs text-muted-foreground mb-1">Last Month</p>
+                        <p className="text-3xl font-bold font-mono text-muted-foreground">{customerAcqComparison.lastMonthNew}</p>
+                        <p className="text-xs text-muted-foreground mt-1">new customers</p>
+                      </div>
+                      {/* Change Arrow */}
+                      <div className="flex flex-col items-center gap-1">
+                        <div className={`flex items-center gap-1 rounded-full px-4 py-2 text-sm font-bold ${
+                          customerAcqComparison.changePercent >= 0
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                            : 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'
+                        }`}>
+                          {customerAcqComparison.changePercent >= 0
+                            ? <ArrowUpRight className="h-5 w-5" />
+                            : <ArrowDownRight className="h-5 w-5" />
+                          }
+                          {Math.abs(customerAcqComparison.changePercent)}%
+                        </div>
+                        <p className="text-xs text-muted-foreground">change</p>
+                      </div>
+                      {/* This Month */}
+                      <div className="text-center p-4 rounded-lg border bg-emerald-50/50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800">
+                        <p className="text-xs text-muted-foreground mb-1">This Month</p>
+                        <p className="text-3xl font-bold font-mono text-emerald-600 dark:text-emerald-400">{customerAcqComparison.thisMonthNew}</p>
+                        <p className="text-xs text-muted-foreground mt-1">new customers</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* BarChart: This Month vs Last Month Daily Acquisition */}
+              {customerAcqChartData.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Daily Customer Acquisition Comparison</CardTitle>
+                    <CardDescription>This month vs last month — daily new customers</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={customerAcqChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                        <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                        <XAxis dataKey="day" tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                        <RechartsTooltip
+                          content={({ active, payload, label }) => {
+                            if (!active || !payload?.length) return null;
+                            return (
+                              <div className="rounded-lg border bg-background px-3 py-2 shadow-md">
+                                <p className="mb-1 text-sm font-medium text-foreground">Day {label}</p>
+                                {payload.map((entry, i) => (
+                                  <div key={i} className="flex items-center gap-2 text-sm">
+                                    <span className="inline-block size-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
+                                    <span className="text-muted-foreground">{entry.name}:</span>
+                                    <span className="font-medium text-foreground">{entry.value}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          }}
+                        />
+                        <Legend formatter={(v: string) => <span className="text-xs">{v === "thisMonth" ? "This Month" : "Last Month"}</span>} />
+                        <Bar dataKey="lastMonth" fill={LAST_MONTH_COLOR} radius={[2, 2, 0, 0]} barSize={14} name="Last Month" opacity={0.7} />
+                        <Bar dataKey="thisMonth" fill={THIS_MONTH_COLOR} radius={[2, 2, 0, 0]} barSize={14} name="This Month" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Daily Trend from API */}
+              {customerAcqReport && customerAcqReport.data.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Customer Acquisition Trend (Last 30 Days)</CardTitle>
+                    <CardDescription>Daily new customer registrations</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={280}>
+                      <LineChart
+                        data={customerAcqReport.data.map((d) => ({
+                          date: format(parseISO(d.date), "MMM dd"),
+                          newCustomers: d.newCustomers,
+                        }))}
+                        margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                      >
+                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                        <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                        <Tooltip content={<ChartTooltip />} formatter={(value: number) => [formatNumber(value), "New Customers"]} />
+                        <Line type="monotone" dataKey="newCustomers" stroke="#059669" strokeWidth={2.5} dot={{ fill: "#059669", r: 3 }} activeDot={{ r: 6, fill: "#059669" }} name="New Customers" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* ─── Product Performance Tab ─────────────────────────────── */}
+          <TabsContent value="product-perf">
+            <div className="space-y-6">
+              {/* Summary Stats */}
+              {productPerf && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Package className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">Products with Sales</span>
+                      </div>
+                      <p className="text-2xl font-bold tracking-tight">{formatNumber(productPerf.totalProducts)}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">of {formatNumber(allProducts.length)} total products</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">Total Revenue</span>
+                      </div>
+                      <p className="text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">{formatCurrency(productPerf.totalRevenue)}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">from product sales</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Trophy className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">Categories</span>
+                      </div>
+                      <p className="text-2xl font-bold tracking-tight">{formatNumber(productPerf.categoryData.length)}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">active categories</p>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* Top Selling Products Table */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Trophy className="h-4 w-4" />
+                        Top Selling Products by Revenue
+                      </CardTitle>
+                      <CardDescription>Product Name, Units Sold, and Revenue</CardDescription>
+                    </div>
+                    <Badge variant="outline" className="text-xs">Top 10</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {productPerf && productPerf.productData.length > 0 ? (
+                    <div className="max-h-[500px] overflow-y-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-10">#</TableHead>
+                            <TableHead>Product Name</TableHead>
+                            <TableHead className="hidden sm:table-cell">Category</TableHead>
+                            <TableHead className="hidden md:table-cell">Brand</TableHead>
+                            <TableHead className="text-right">Units Sold</TableHead>
+                            <TableHead className="text-right">Revenue</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {productPerf.productData.slice(0, 10).map((p, i) => (
+                            <TableRow key={p.productId}>
+                              <TableCell className="text-muted-foreground font-mono text-xs">
+                                {i === 0 ? <Crown className="h-4 w-4 text-amber-500" /> : i + 1}
+                              </TableCell>
+                              <TableCell className="font-medium text-sm">{p.name}</TableCell>
+                              <TableCell className="hidden sm:table-cell"><Badge variant="secondary" className="text-xs">{p.category || "—"}</Badge></TableCell>
+                              <TableCell className="hidden md:table-cell text-xs text-muted-foreground">{p.brand || "—"}</TableCell>
+                              <TableCell className="text-right font-mono text-sm">{formatNumber(p.totalQtySold)}</TableCell>
+                              <TableCell className="text-right font-mono text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(p.totalRevenue)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  ) : topProductsByRevenue.length > 0 ? (
+                    <div className="max-h-[500px] overflow-y-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-10">#</TableHead>
+                            <TableHead>Product Name</TableHead>
+                            <TableHead className="hidden sm:table-cell">Category</TableHead>
+                            <TableHead className="text-right">Units Sold</TableHead>
+                            <TableHead className="text-right">Revenue</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {topProductsByRevenue.map((p, i) => (
+                            <TableRow key={i}>
+                              <TableCell className="text-muted-foreground font-mono text-xs">
+                                {i === 0 ? <Crown className="h-4 w-4 text-amber-500" /> : i + 1}
+                              </TableCell>
+                              <TableCell className="font-medium text-sm">{p.name}</TableCell>
+                              <TableCell className="hidden sm:table-cell"><Badge variant="secondary" className="text-xs">{p.category}</Badge></TableCell>
+                              <TableCell className="text-right font-mono text-sm">{formatNumber(p.quantity)}</TableCell>
+                              <TableCell className="text-right font-mono text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(p.revenue)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                      <Package className="h-10 w-10 mb-2 opacity-40" />
+                      <p className="text-sm">No product performance data available</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Revenue by Category Horizontal Bar Chart */}
+              {productPerf && productPerf.categoryData.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Revenue by Category</CardTitle>
+                    <CardDescription>Horizontal bar chart of category revenue</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={Math.max(280, productPerf.categoryData.length * 40 + 20)}>
+                      <BarChart data={productPerf.categoryData} layout="vertical" margin={{ top: 5, right: 30, left: 100, bottom: 5 }}>
+                        <XAxis type="number" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+                        <YAxis type="category" dataKey="category" tick={{ fontSize: 11, fill: "#374151" }} axisLine={false} tickLine={false} width={95} />
+                        <Tooltip
+                          content={<ChartTooltip valuePrefix="₹" />}
+                          formatter={(value: number, name: string) => {
+                            if (name === "revenue") return [formatCurrency(value), "Revenue"];
+                            return [formatNumber(value), "Qty"];
+                          }}
+                        />
+                        <Legend />
+                        <Bar dataKey="revenue" radius={[0, 4, 4, 0]} barSize={18} name="Revenue">
+                          {productPerf.categoryData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* ─── Top Spenders Tab ─────────────────────────────────────── */}
+          <TabsContent value="top-spenders">
+            <div className="space-y-6">
+              {/* Summary */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Crown className="h-4 w-4 text-amber-500" />
+                      <span className="text-sm text-muted-foreground">#1 Customer</span>
+                    </div>
+                    {topCustomers.length > 0 ? (
+                      <>
+                        <p className="text-lg font-bold tracking-tight truncate">{topCustomers[0].name}</p>
+                        <p className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-1">{formatCurrency(topCustomers[0].totalSpent || 0)}</p>
+                      </>
+                    ) : (
+                      <p className="text-2xl font-bold text-muted-foreground">—</p>
+                    )}
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Total Top 10 Spend</span>
+                    </div>
+                    <p className="text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">
+                      {formatCurrency(topCustomers.slice(0, 10).reduce((s, c) => s + (c.totalSpent || 0), 0))}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">combined from top 10</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Avg Spend (Top 10)</span>
+                    </div>
+                    <p className="text-2xl font-bold tracking-tight">
+                      {topCustomers.length > 0
+                        ? formatCurrency(Math.round(topCustomers.slice(0, 10).reduce((s, c) => s + (c.totalSpent || 0), 0) / Math.min(10, topCustomers.length)))
+                        : "—"
+                      }
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">per customer average</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Top 5 Customers by Spend — Ranked List with Medals */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Crown className="h-4 w-4 text-amber-500" />
+                    Top 5 Customers by Spend
+                  </CardTitle>
+                  <CardDescription>Highest spending customers ranked</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {top5CustomersBySpend.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
+                      <Users className="h-8 w-8 mb-2 opacity-40" />
+                      <p className="text-sm">No customer data available</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {top5CustomersBySpend.map((c, i) => {
+                        const medals = ["🥇", "🥈", "🥉"];
+                        const rankDisplay = i < 3 ? medals[i] : `#${i + 1}`;
+                        return (
+                          <div
+                            key={c.id as string || i}
+                            className={`flex items-center gap-4 rounded-lg border p-4 ${
+                              i === 0
+                                ? "bg-amber-50/60 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800"
+                                : i === 1
+                                ? "bg-gray-50/60 dark:bg-gray-900/30 border-gray-200 dark:border-gray-700"
+                                : i === 2
+                                ? "bg-orange-50/40 dark:bg-orange-950/15 border-orange-200 dark:border-orange-800"
+                                : "bg-muted/20"
+                            }`}
+                          >
+                            <span className="text-2xl w-10 text-center flex-shrink-0">{rankDisplay}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-sm truncate">{c.name as string}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {c.phone ? `${c.phone as string}` : "No phone"}
+                                {c.group ? ` • ${c.group as string}` : ""}
+                              </p>
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              <p className="font-bold text-sm font-mono text-emerald-600 dark:text-emerald-400">
+                                {formatCurrency((c.totalSpent as number) || 0)}
+                              </p>
+                              <Badge variant="secondary" className="text-[10px] mt-0.5">
+                                {(c.group as string) || "New"}
+                              </Badge>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Top 10 Customers Table */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Crown className="h-4 w-4 text-amber-500" />
+                        Top 10 Customers by Total Spent
+                      </CardTitle>
+                      <CardDescription>Highest lifetime spend customers</CardDescription>
+                    </div>
+                    <Badge variant="outline" className="text-xs">Lifetime</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {topCustomers.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                      <Users className="h-10 w-10 mb-2 opacity-40" />
+                      <p className="text-sm">No customer data available</p>
+                    </div>
+                  ) : (
+                    <div className="max-h-[500px] overflow-y-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-10">#</TableHead>
+                            <TableHead>Customer Name</TableHead>
+                            <TableHead className="hidden sm:table-cell">Phone</TableHead>
+                            <TableHead className="hidden md:table-cell">Group</TableHead>
+                            <TableHead className="text-right">Orders</TableHead>
+                            <TableHead className="text-right">Total Spent</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {topCustomers.slice(0, 10).map((c, i) => (
+                            <TableRow key={c.id} className={i === 0 ? 'bg-amber-50/50 dark:bg-amber-950/20' : ''}>
+                              <TableCell className="text-muted-foreground font-mono text-xs">
+                                {i === 0 ? <Crown className="h-4 w-4 text-amber-500" /> : i === 1 ? <Crown className="h-4 w-4 text-gray-400" /> : i === 2 ? <Crown className="h-4 w-4 text-amber-700" /> : i + 1}
+                              </TableCell>
+                              <TableCell className="font-medium text-sm">{c.name}</TableCell>
+                              <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{c.phone || "—"}</TableCell>
+                              <TableCell className="hidden md:table-cell">
+                                <Badge variant="secondary" className="text-xs">{c.group || "New"}</Badge>
+                              </TableCell>
+                              <TableCell className="text-right font-mono text-sm">{c._count?.sales ?? 0}</TableCell>
+                              <TableCell className="text-right font-mono text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(c.totalSpent || 0)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Horizontal Bar Chart: Top 10 by Spend */}
+              {topCustomers.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Customer Spend Distribution</CardTitle>
+                    <CardDescription>Top 10 customers visualized by total spent</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={Math.max(300, topCustomers.slice(0, 10).length * 40 + 20)}>
+                      <BarChart
+                        data={topCustomers.slice(0, 10).map((c, i) => ({ name: c.name, spent: c.totalSpent || 0, rank: i + 1 }))}
+                        layout="vertical"
+                        margin={{ top: 5, right: 30, left: 120, bottom: 5 }}
+                      >
+                        <XAxis type="number" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+                        <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#374151" }} axisLine={false} tickLine={false} width={115} />
+                        <Tooltip
+                          content={<ChartTooltip valuePrefix="₹" />}
+                          formatter={(value: number) => [formatCurrency(value), "Total Spent"]}
+                        />
+                        <Bar dataKey="spent" radius={[0, 4, 4, 0]} barSize={18} name="Total Spent">
+                          {topCustomers.slice(0, 10).map((_, i) => (
+                            <Cell key={i} fill={i === 0 ? '#d97706' : i === 1 ? '#6b7280' : i === 2 ? '#92400e' : COLORS[i % COLORS.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* ─── Monthly Acquisition Tab ────────────────────────────── */}
+          <TabsContent value="monthly-acq">
+            <div className="space-y-6">
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <StatCard
+                  title="New Customers This Month"
+                  value={formatNumber(thisMonthNewCustomers)}
+                  change={customerGrowthPercent}
+                  icon={<UserPlus className="size-5 text-white" />}
+                  iconBg="bg-emerald-600"
+                />
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Last Month New</span>
+                    </div>
+                    <p className="text-2xl font-bold tracking-tight">{formatNumber(lastMonthNewCustomers)}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">for comparison</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* 6-Month Bar Chart */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4" />
+                    New Customers Per Month (Last 6 Months)
+                  </CardTitle>
+                  <CardDescription>Monthly new customer registrations from CRM</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {monthlyCustomerAcq.length === 0 ? (
+                    <ChartSkeleton height={250} />
+                  ) : (
+                    <ResponsiveContainer width="100%" height={250}>
+                      <BarChart data={monthlyCustomerAcq} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                        <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                        <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                        <Tooltip content={<ChartTooltip />} formatter={(value: number) => [formatNumber(value), "New Customers"]} />
+                        <Bar dataKey="newCustomers" radius={[4, 4, 0, 0]} barSize={32} name="New Customers">
+                          {monthlyCustomerAcq.map((_, i) => (
+                            <Cell key={i} fill={i === monthlyCustomerAcq.length - 1 ? THIS_MONTH_COLOR : LAST_MONTH_COLOR} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* ─── Inventory Value Tab ────────────────────────────────── */}
+          <TabsContent value="inventory-value">
+            <div className="space-y-6">
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Package className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Total Products</span>
+                    </div>
+                    <p className="text-2xl font-bold tracking-tight">{formatNumber(allProducts.length)}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">in catalogue</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Total Inventory Value</span>
+                    </div>
+                    <p className="text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">
+                      {formatCurrency(allProducts.reduce((s, p) => s + p.price * p.stock, 0))}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">price × stock</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertTriangle className="h-4 w-4 text-amber-500" />
+                      <span className="text-sm text-muted-foreground">Low Stock Items</span>
+                    </div>
+                    <p className="text-2xl font-bold tracking-tight text-amber-600 dark:text-amber-400">
+                      {formatNumber(allProducts.filter((p) => p.stock <= p.minStock).length)}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">need reordering</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Horizontal Bar Chart: Top 10 by Inventory Value */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Top 10 Products by Inventory Value</CardTitle>
+                  <CardDescription>Products with highest price × stock value</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {top10InventoryValue.length === 0 ? (
+                    <ChartSkeleton height={250} />
+                  ) : (
+                    <ResponsiveContainer width="100%" height={Math.max(250, top10InventoryValue.length * 35 + 20)}>
+                      <BarChart data={top10InventoryValue} layout="vertical" margin={{ top: 5, right: 30, left: 120, bottom: 5 }}>
+                        <XAxis type="number" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `₹${(v / 1000).toFixed(0)}k`} />
+                        <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#374151" }} axisLine={false} tickLine={false} width={115} />
+                        <Tooltip content={<ChartTooltip valuePrefix="₹" />} formatter={(value: number) => [formatCurrency(value), "Inventory Value"]} />
+                        <Bar dataKey="inventoryValue" radius={[0, 4, 4, 0]} barSize={18} name="Inventory Value">
+                          {top10InventoryValue.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Product Inventory Value Table */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Inventory Value Details</CardTitle>
+                  <CardDescription>Product Name, Category, Price, Stock, Inventory Value, Status</CardDescription>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="max-h-96 overflow-y-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>#</TableHead>
+                          <TableHead>Product Name</TableHead>
+                          <TableHead className="hidden sm:table-cell">Category</TableHead>
+                          <TableHead className="text-right">Price</TableHead>
+                          <TableHead className="text-right">Stock</TableHead>
+                          <TableHead className="text-right">Inventory Value</TableHead>
+                          <TableHead className="hidden md:table-cell">Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {top10InventoryValue.map((p, i) => (
+                          <TableRow key={i}>
+                            <TableCell className="text-muted-foreground font-mono text-xs">{i + 1}</TableCell>
+                            <TableCell className="font-medium text-sm">{p.name}</TableCell>
+                            <TableCell className="hidden sm:table-cell"><Badge variant="secondary" className="text-xs">{p.category}</Badge></TableCell>
+                            <TableCell className="text-right font-mono text-sm">{formatCurrency(p.price)}</TableCell>
+                            <TableCell className="text-right font-mono text-sm">{formatNumber(p.stock)}</TableCell>
+                            <TableCell className="text-right font-mono text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(p.inventoryValue)}</TableCell>
+                            <TableCell className="hidden md:table-cell">
+                              <Badge variant={p.status === "Low Stock" ? "destructive" : p.status === "Overstocked" ? "secondary" : "outline"} className="text-xs">
+                                {p.status}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </CardContent>
               </Card>
             </div>

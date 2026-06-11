@@ -1232,7 +1232,7 @@ function SaleDetailDialog({ sale, open, onOpenChange, onReturn, onToggleStatus }
   try {
     settings = getSettings();
   } catch {
-    settings = { shopName: 'Sankaran Kovil Opticals', gstin: '33BPKPS1234F1Z5', phone: '+91 94432 12345', address: 'Main Road, Sankarankovil - 627751' };
+    settings = { shopName: 'Lotus Vision Opticals', gstin: '33BPKPS1234F1Z5', phone: '+91 94432 12345', address: 'Main Road, Sankarankovil - 627751' };
   }
 
   const handlePrint = () => {
@@ -1384,7 +1384,7 @@ function SaleDetailDialog({ sale, open, onOpenChange, onReturn, onToggleStatus }
 
           {/* Thank you (print only) */}
           <div className="hidden print:block text-center pt-6 mt-4 border-t border-gray-200">
-            <p className="text-base font-semibold text-gray-800">Thank you for shopping with Sankaran Kovil Opticals!</p>
+            <p className="text-base font-semibold text-gray-800">Thank you for shopping with Lotus Vision Opticals!</p>
             <p className="text-xs text-gray-500 mt-1">This is a computer-generated invoice.</p>
             <p className="text-xs text-gray-500">Ph: {settings.phone} · GSTIN: {settings.gstin}</p>
           </div>

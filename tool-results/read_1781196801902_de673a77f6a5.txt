@@ -1,0 +1,446 @@
+   900→      {/* Revenue Comparison: This Month vs Last Month */}
+   901→      {revenueComp && (
+   902→        <Card>
+   903→          <CardHeader>
+   904→            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+   905→              <div>
+   906→                <CardTitle className="text-base flex items-center gap-2">
+   907→                  <TrendingUp className="h-4 w-4" />
+   908→                  Revenue Comparison
+   909→                </CardTitle>
+   910→                <CardDescription>This month vs last month</CardDescription>
+   911→              </div>
+   912→              <div className="flex items-center gap-4">
+   913→                <div className="text-right">
+   914→                  <p className="text-xs text-muted-foreground">This Month</p>
+   915→                  <p className="text-lg font-bold font-mono text-emerald-600 dark:text-emerald-400">{formatCurrency(revenueComp.summary.thisMonth.total)}</p>
+   916→                </div>
+   917→                <div className="text-right">
+   918→                  <p className="text-xs text-muted-foreground">Last Month</p>
+   919→                  <p className="text-lg font-bold font-mono text-muted-foreground">{formatCurrency(revenueComp.summary.lastMonth.total)}</p>
+   920→                </div>
+   921→                <Badge className={`text-xs ${revenueComp.summary.changePercent >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'}`}>
+   922→                  {revenueComp.summary.changePercent >= 0 ? <ArrowUpRight className="h-3 w-3 inline mr-0.5" /> : <ArrowDownRight className="h-3 w-3 inline mr-0.5" />}
+   923→                  {Math.abs(revenueComp.summary.changePercent)}%
+   924→                </Badge>
+   925→              </div>
+   926→            </div>
+   927→          </CardHeader>
+   928→          <CardContent>
+   929→            {comparisonChartData.length === 0 ? (
+   930→              <ChartSkeleton height={300} />
+   931→            ) : (
+   932→              <div className="space-y-4">
+   933→                {/* Dual-bar chart comparing this month vs last month */}
+   934→                <ResponsiveContainer width="100%" height={300}>
+   935→                  <BarChart data={comparisonChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+   936→                    <CartesianGrid vertical={false} strokeDasharray="3 3" />
+   937→                    <XAxis dataKey="day" tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+   938→                    <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+   939→                    <Tooltip
+   940→                      content={<ChartTooltip valuePrefix="₹" />}
+   941→                      formatter={(value: number, name: string) => [formatCurrency(value), name === "thisMonth" ? "This Month" : "Last Month"]}
+   942→                    />
+   943→                    <Legend formatter={(v: string) => <span className="text-xs">{v === "thisMonth" ? "This Month" : "Last Month"}</span>} />
+   944→                    <Bar dataKey="lastMonth" fill={LAST_MONTH_COLOR} radius={[2, 2, 0, 0]} barSize={14} name="Last Month" opacity={0.7} />
+   945→                    <Bar dataKey="thisMonth" fill={THIS_MONTH_COLOR} radius={[2, 2, 0, 0]} barSize={14} name="This Month" />
+   946→                  </BarChart>
+   947→                </ResponsiveContainer>
+   948→
+   949→                {/* Comparison details */}
+   950→                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+   951→                  <div className="rounded-lg border p-3">
+   952→                    <p className="text-[10px] text-muted-foreground">This Month Orders</p>
+   953→                    <p className="text-sm font-bold font-mono">{revenueComp.summary.thisMonth.orders}</p>
+   954→                  </div>
+   955→                  <div className="rounded-lg border p-3">
+   956→                    <p className="text-[10px] text-muted-foreground">Last Month Orders</p>
+   957→                    <p className="text-sm font-bold font-mono text-muted-foreground">{revenueComp.summary.lastMonth.orders}</p>
+   958→                  </div>
+   959→                  <div className="rounded-lg border p-3">
+   960→                    <p className="text-[10px] text-muted-foreground">Avg Order Value (This)</p>
+   961→                    <p className="text-sm font-bold font-mono">
+   962→                      {revenueComp.summary.thisMonth.orders > 0 ? formatCurrency(Math.round(revenueComp.summary.thisMonth.total / revenueComp.summary.thisMonth.orders)) : "—"}
+   963→                    </p>
+   964→                  </div>
+   965→                  <div className="rounded-lg border p-3">
+   966→                    <p className="text-[10px] text-muted-foreground">Avg Order Value (Last)</p>
+   967→                    <p className="text-sm font-bold font-mono text-muted-foreground">
+   968→                      {revenueComp.summary.lastMonth.orders > 0 ? formatCurrency(Math.round(revenueComp.summary.lastMonth.total / revenueComp.summary.lastMonth.orders)) : "—"}
+   969→                    </p>
+   970→                  </div>
+   971→                </div>
+   972→              </div>
+   973→            )}
+   974→          </CardContent>
+   975→        </Card>
+   976→      )}
+   977→
+   978→      <div id="reports-content">
+   979→        <Tabs defaultValue="overview" className="space-y-4">
+   980→          <TabsList className="flex-wrap">
+   981→            <TabsTrigger value="overview" className="gap-1.5"><TrendingUp className="h-4 w-4" /><span className="hidden sm:inline">Overview</span></TabsTrigger>
+   982→            <TabsTrigger value="products" className="gap-1.5"><ShoppingCart className="h-4 w-4" /><span className="hidden sm:inline">Products</span></TabsTrigger>
+   983→            <TabsTrigger value="customers" className="gap-1.5"><Users className="h-4 w-4" /><span className="hidden sm:inline">Customers</span></TabsTrigger>
+   984→            <TabsTrigger value="inventory" className="gap-1.5"><Package className="h-4 w-4" /><span className="hidden sm:inline">Inventory</span></TabsTrigger>
+   985→          </TabsList>
+   986→
+   987→          {/* ─── Overview Tab ──────────────────────────────────────────── */}
+   988→          <TabsContent value="overview">
+   989→            <div className="space-y-6">
+   990→              {/* Revenue Trend + Payment Modes */}
+   991→              <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+   992→                <Card className="lg:col-span-2">
+   993→                  <CardHeader>
+   994→                    <CardTitle className="text-base">Monthly Revenue Trend</CardTitle>
+   995→                    <CardDescription>Revenue over the past 12 months</CardDescription>
+   996→                  </CardHeader>
+   997→                  <CardContent>
+   998→                    {monthlyRevenue.length === 0 ? (
+   999→                      <ChartSkeleton height={320} />
+  1000→                    ) : (
+  1001→                      <ResponsiveContainer width="100%" height={320}>
+  1002→                        <AreaChart data={monthlyRevenue} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+  1003→                          <defs>
+  1004→                            <linearGradient id={CHART_GRADIENT_ID} x1="0" y1="0" x2="0" y2="1">
+  1005→                              <stop offset="5%" stopColor="#059669" stopOpacity={0.3} />
+  1006→                              <stop offset="95%" stopColor="#059669" stopOpacity={0.02} />
+  1007→                            </linearGradient>
+  1008→                          </defs>
+  1009→                          <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+  1010→                          <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+  1011→                          <Tooltip content={<ChartTooltip valuePrefix="₹" />} formatter={(value: number) => [formatCurrency(value), "Revenue"]} />
+  1012→                          <Area type="monotone" dataKey="revenue" stroke="#059669" strokeWidth={2} fill={`url(#${CHART_GRADIENT_ID})`} name="Revenue" />
+  1013→                        </AreaChart>
+  1014→                      </ResponsiveContainer>
+  1015→                    )}
+  1016→                  </CardContent>
+  1017→                </Card>
+  1018→
+  1019→                {/* Payment Mode Pie Chart */}
+  1020→                <Card>
+  1021→                  <CardHeader>
+  1022→                    <CardTitle className="text-base">Sales by Payment Mode</CardTitle>
+  1023→                    <CardDescription>UPI, Cash, Card distribution</CardDescription>
+  1024→                  </CardHeader>
+  1025→                  <CardContent>
+  1026→                    {paymentModes.length === 0 ? (
+  1027→                      <div className="flex items-center justify-center h-[320px] text-muted-foreground text-sm">No sales data in selected period</div>
+  1028→                    ) : (
+  1029→                      <ResponsiveContainer width="100%" height={320}>
+  1030→                        <PieChart>
+  1031→                          <Pie
+  1032→                            data={paymentModes}
+  1033→                            cx="50%"
+  1034→                            cy="45%"
+  1035→                            outerRadius={85}
+  1036→                            innerRadius={40}
+  1037→                            dataKey="amount"
+  1038→                            nameKey="mode"
+  1039→                            labelLine={false}
+  1040→                            label={renderCustomLabel}
+  1041→                          >
+  1042→                            {paymentModes.map((entry) => (
+  1043→                              <Cell key={entry.mode} fill={PAYMENT_COLORS[entry.mode] || COLORS[paymentModes.indexOf(entry) % COLORS.length]} />
+  1044→                            ))}
+  1045→                          </Pie>
+  1046→                          <Tooltip
+  1047→                            content={<ChartTooltip valuePrefix="₹" />}
+  1048→                            formatter={(value: number, name: string) => [formatCurrency(value), name]}
+  1049→                          />
+  1050→                          <Legend verticalAlign="bottom" iconType="circle" iconSize={8} formatter={(v: string) => <span className="text-xs text-foreground">{v}</span>} />
+  1051→                        </PieChart>
+  1052→                      </ResponsiveContainer>
+  1053→                    )}
+  1054→                  </CardContent>
+  1055→                </Card>
+  1056→              </div>
+  1057→
+  1058→              {/* Payment Mode Bar Chart */}
+  1059→              {paymentModes.length > 0 && (
+  1060→                <Card>
+  1061→                  <CardHeader>
+  1062→                    <CardTitle className="text-base">Payment Mode Breakdown</CardTitle>
+  1063→                    <CardDescription>Transaction count and revenue by payment method</CardDescription>
+  1064→                  </CardHeader>
+  1065→                  <CardContent>
+  1066→                    <ResponsiveContainer width="100%" height={280}>
+  1067→                      <BarChart data={paymentModes} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+  1068→                        <XAxis dataKey="mode" tick={{ fontSize: 12, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+  1069→                        <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+  1070→                        <Tooltip
+  1071→                          content={<ChartTooltip valuePrefix="₹" />}
+  1072→                          formatter={(value: number, name: string) => {
+  1073→                            if (name === "amount") return [formatCurrency(value), "Revenue"];
+  1074→                            return [formatNumber(value), "Count"];
+  1075→                          }}
+  1076→                        />
+  1077→                        <Legend />
+  1078→                        <Bar dataKey="amount" radius={[4, 4, 0, 0]} barSize={40} name="Revenue (₹)">
+  1079→                          {paymentModes.map((entry) => (
+  1080→                            <Cell key={entry.mode} fill={PAYMENT_COLORS[entry.mode] || COLORS[0]} />
+  1081→                          ))}
+  1082→                        </Bar>
+  1083→                      </BarChart>
+  1084→                    </ResponsiveContainer>
+  1085→                  </CardContent>
+  1086→                </Card>
+  1087→              )}
+  1088→
+  1089→              {/* Daily Revenue Line Chart */}
+  1090→              <Card>
+  1091→                <CardHeader>
+  1092→                  <CardTitle className="text-base">Daily Revenue ({format(parseISO(dateFrom), "dd MMM")} - {format(parseISO(dateTo), "dd MMM yyyy")})</CardTitle>
+  1093→                  <CardDescription>Daily revenue and transaction count</CardDescription>
+  1094→                </CardHeader>
+  1095→                <CardContent>
+  1096→                  {dailyRevenue.length === 0 ? (
+  1097→                    <div className="flex items-center justify-center h-[300px] text-muted-foreground text-sm">No sales data in selected period</div>
+  1098→                  ) : (
+  1099→                    <ResponsiveContainer width="100%" height={300}>
+  1100→                      <LineChart data={dailyRevenue} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+  1101→                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+  1102→                        <YAxis yAxisId="left" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+  1103→                        <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+  1104→                        <Tooltip
+  1105→                          content={<ChartTooltip valuePrefix="₹" />}
+  1106→                          formatter={(value: number, name: string) => {
+  1107→                            if (name === "revenue") return [formatCurrency(value), "Revenue"];
+  1108→                            return [formatNumber(value), "Orders"];
+  1109→                          }}
+  1110→                        />
+  1111→                        <Legend />
+  1112→                        <Line yAxisId="left" type="monotone" dataKey="revenue" stroke="#059669" strokeWidth={2} dot={false} activeDot={{ r: 5, fill: "#059669" }} name="Revenue" />
+  1113→                        <Line yAxisId="right" type="monotone" dataKey="orders" stroke="#34d399" strokeWidth={2} strokeDasharray="5 5" dot={false} activeDot={{ r: 5, fill: "#34d399" }} name="Orders" />
+  1114→                      </LineChart>
+  1115→                    </ResponsiveContainer>
+  1116→                  )}
+  1117→                </CardContent>
+  1118→              </Card>
+  1119→            </div>
+  1120→          </TabsContent>
+  1121→
+  1122→          {/* ─── Products Tab ──────────────────────────────────────────── */}
+  1123→          <TabsContent value="products">
+  1124→            <div className="space-y-6">
+  1125→              {/* Product Performance by Category */}
+  1126→              {productPerf && productPerf.categoryData.length > 0 && (
+  1127→                <Card>
+  1128→                  <CardHeader>
+  1129→                    <div className="flex items-center justify-between">
+  1130→                      <div>
+  1131→                        <CardTitle className="text-base">Revenue by Category</CardTitle>
+  1132→                        <CardDescription>Total revenue and quantity by product category</CardDescription>
+  1133→                      </div>
+  1134→                      <Badge variant="outline" className="text-xs">
+  1135→                        {formatCurrency(productPerf.totalRevenue)} total
+  1136→                      </Badge>
+  1137→                    </div>
+  1138→                  </CardHeader>
+  1139→                  <CardContent>
+  1140→                    <ResponsiveContainer width="100%" height={Math.max(280, productPerf.categoryData.length * 40 + 20)}>
+  1141→                      <BarChart data={productPerf.categoryData} layout="vertical" margin={{ top: 5, right: 30, left: 100, bottom: 5 }}>
+  1142→                        <XAxis type="number" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+  1143→                        <YAxis type="category" dataKey="category" tick={{ fontSize: 11, fill: "#374151" }} axisLine={false} tickLine={false} width={95} />
+  1144→                        <Tooltip
+  1145→                          content={<ChartTooltip valuePrefix="₹" />}
+  1146→                          formatter={(value: number, name: string) => {
+  1147→                            if (name === "revenue") return [formatCurrency(value), "Revenue"];
+  1148→                            return [formatNumber(value), "Products"];
+  1149→                          }}
+  1150→                        />
+  1151→                        <Legend />
+  1152→                        <Bar dataKey="revenue" radius={[0, 4, 4, 0]} barSize={18} name="Revenue">
+  1153→                          {productPerf.categoryData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+  1154→                        </Bar>
+  1155→                      </BarChart>
+  1156→                    </ResponsiveContainer>
+  1157→                  </CardContent>
+  1158→                </Card>
+  1159→              )}
+  1160→
+  1161→              <Card>
+  1162→                <CardHeader>
+  1163→                  <CardTitle className="text-base">Top 10 Products by Revenue</CardTitle>
+  1164→                  <CardDescription>Highest revenue-generating products</CardDescription>
+  1165→                </CardHeader>
+  1166→                <CardContent>
+  1167→                  {topProductsByRevenue.length === 0 ? (
+  1168→                    <div className="flex items-center justify-center h-[400px] text-muted-foreground text-sm">No product sales data available</div>
+  1169→                  ) : (
+  1170→                    <ResponsiveContainer width="100%" height={Math.max(350, topProductsByRevenue.length * 38 + 20)}>
+  1171→                      <BarChart data={topProductsByRevenue} layout="vertical" margin={{ top: 5, right: 30, left: 120, bottom: 5 }}>
+  1172→                        <XAxis type="number" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+  1173→                        <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#374151" }} axisLine={false} tickLine={false} width={115} />
+  1174→                        <Tooltip
+  1175→                          content={<ChartTooltip valuePrefix="₹" />}
+  1176→                          formatter={(value: number, name: string) => {
+  1177→                            if (name === "revenue") return [formatCurrency(value), "Revenue"];
+  1178→                            return [formatNumber(value), "Qty Sold"];
+  1179→                          }}
+  1180→                        />
+  1181→                        <Legend />
+  1182→                        <Bar dataKey="revenue" fill="#059669" radius={[0, 4, 4, 0]} barSize={18} name="Revenue (₹)">
+  1183→                          {topProductsByRevenue.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+  1184→                        </Bar>
+  1185→                      </BarChart>
+  1186→                    </ResponsiveContainer>
+  1187→                  )}
+  1188→                </CardContent>
+  1189→              </Card>
+  1190→
+  1191→              {/* Full Product Performance Table */}
+  1192→              {productPerf && productPerf.productData.length > 0 && (
+  1193→                <Card>
+  1194→                  <CardHeader>
+  1195→                    <CardTitle className="text-base">Product Performance Details</CardTitle>
+  1196→                    <CardDescription>All products ranked by revenue with margin analysis</CardDescription>
+  1197→                  </CardHeader>
+  1198→                  <CardContent className="p-0">
+  1199→                    <div className="max-h-[500px] overflow-y-auto">
+  1200→                      <Table>
+  1201→                        <TableHeader>
+  1202→                          <TableRow>
+  1203→                            <TableHead>#</TableHead>
+  1204→                            <TableHead>Product Name</TableHead>
+  1205→                            <TableHead className="hidden sm:table-cell">Category</TableHead>
+  1206→                            <TableHead className="text-right">Qty Sold</TableHead>
+  1207→                            <TableHead className="text-right">Revenue</TableHead>
+  1208→                            <TableHead className="hidden md:table-cell text-right">Margin</TableHead>
+  1209→                          </TableRow>
+  1210→                        </TableHeader>
+  1211→                        <TableBody>
+  1212→                          {productPerf.productData.slice(0, 30).map((p, i) => (
+  1213→                            <TableRow key={p.productId}>
+  1214→                              <TableCell className="text-muted-foreground font-mono text-xs">{i + 1}</TableCell>
+  1215→                              <TableCell className="font-medium text-sm">{p.name}</TableCell>
+  1216→                              <TableCell className="hidden sm:table-cell"><Badge variant="secondary" className="text-xs">{p.category}</Badge></TableCell>
+  1217→                              <TableCell className="text-right font-mono text-sm">{formatNumber(p.totalQtySold)}</TableCell>
+  1218→                              <TableCell className="text-right font-mono text-sm font-semibold">{formatCurrency(p.totalRevenue)}</TableCell>
+  1219→                              <TableCell className="hidden md:table-cell text-right">
+  1220→                                <Badge variant="outline" className={`text-xs ${p.profitMargin > 40 ? 'text-emerald-600' : p.profitMargin > 20 ? 'text-amber-600' : 'text-red-600'}`}>
+  1221→                                  {p.profitMargin}%
+  1222→                                </Badge>
+  1223→                              </TableCell>
+  1224→                            </TableRow>
+  1225→                          ))}
+  1226→                        </TableBody>
+  1227→                      </Table>
+  1228→                    </div>
+  1229→                  </CardContent>
+  1230→                </Card>
+  1231→              )}
+  1232→
+  1233→              {/* Product table */}
+  1234→              {topProductsByRevenue.length > 0 && !productPerf && (
+  1235→                <Card>
+  1236→                  <CardHeader>
+  1237→                    <CardTitle className="text-base">Product Revenue Details</CardTitle>
+  1238→                  </CardHeader>
+  1239→                  <CardContent className="p-0">
+  1240→                    <div className="max-h-96 overflow-y-auto">
+  1241→                      <Table>
+  1242→                        <TableHeader>
+  1243→                          <TableRow>
+  1244→                            <TableHead>#</TableHead>
+  1245→                            <TableHead>Product Name</TableHead>
+  1246→                            <TableHead>Category</TableHead>
+  1247→                            <TableHead className="text-right">Qty Sold</TableHead>
+  1248→                            <TableHead className="text-right">Revenue</TableHead>
+  1249→                          </TableRow>
+  1250→                        </TableHeader>
+  1251→                        <TableBody>
+  1252→                          {topProductsByRevenue.map((p, i) => (
+  1253→                            <TableRow key={i}>
+  1254→                              <TableCell className="text-muted-foreground font-mono text-xs">{i + 1}</TableCell>
+  1255→                              <TableCell className="font-medium text-sm">{p.name}</TableCell>
+  1256→                              <TableCell><Badge variant="secondary" className="text-xs">{p.category}</Badge></TableCell>
+  1257→                              <TableCell className="text-right font-mono text-sm">{formatNumber(p.quantity)}</TableCell>
+  1258→                              <TableCell className="text-right font-mono text-sm font-semibold">{formatCurrency(p.revenue)}</TableCell>
+  1259→                            </TableRow>
+  1260→                          ))}
+  1261→                        </TableBody>
+  1262→                      </Table>
+  1263→                    </div>
+  1264→                  </CardContent>
+  1265→                </Card>
+  1266→              )}
+  1267→            </div>
+  1268→          </TabsContent>
+  1269→
+  1270→          {/* ─── Customers Tab ────────────────────────────────────────── */}
+  1271→          <TabsContent value="customers">
+  1272→            <div className="space-y-6">
+  1273→              {/* Customer Acquisition Chart */}
+  1274→              <Card>
+  1275→                <CardHeader>
+  1276→                  <CardTitle className="text-base">Customer Acquisition</CardTitle>
+  1277→                  <CardDescription>New customers per day in the selected period</CardDescription>
+  1278→                </CardHeader>
+  1279→                <CardContent>
+  1280→                  {customerAcquisition.length === 0 ? (
+  1281→                    <div className="flex items-center justify-center h-[280px] text-muted-foreground text-sm">No customer acquisition data in selected period</div>
+  1282→                  ) : (
+  1283→                    <ResponsiveContainer width="100%" height={280}>
+  1284→                      <LineChart data={customerAcquisition} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+  1285→                        <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+  1286→                        <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+  1287→                        <Tooltip content={<ChartTooltip />} formatter={(value: number) => [formatNumber(value), "New Customers"]} />
+  1288→                        <Line type="monotone" dataKey="newCustomers" stroke="#059669" strokeWidth={2.5} dot={{ fill: "#059669", r: 4 }} activeDot={{ r: 6, fill: "#059669" }} name="New Customers" />
+  1289→                      </LineChart>
+  1290→                    </ResponsiveContainer>
+  1291→                  )}
+  1292→                </CardContent>
+  1293→              </Card>
+  1294→
+  1295→              {/* Top Customers Table */}
+  1296→              <Card>
+  1297→                <CardHeader>
+  1298→                  <CardTitle className="text-base">Top Customers by Total Spend</CardTitle>
+  1299→                  <CardDescription>Highest spending customers in the selected period</CardDescription>
+  1300→                </CardHeader>
+  1301→                <CardContent className="p-0">
+  1302→                  {topCustomers.length === 0 ? (
+  1303→                    <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+  1304→                      <Users className="h-10 w-10 mb-2 opacity-40" />
+  1305→                      <p className="text-sm">No customer data available</p>
+  1306→                    </div>
+  1307→                  ) : (
+  1308→                    <div className="max-h-[480px] overflow-y-auto">
+  1309→                      <Table>
+  1310→                        <TableHeader>
+  1311→                          <TableRow>
+  1312→                            <TableHead>#</TableHead>
+  1313→                            <TableHead>Customer Name</TableHead>
+  1314→                            <TableHead className="hidden sm:table-cell">Phone</TableHead>
+  1315→                            <TableHead className="hidden md:table-cell">Group</TableHead>
+  1316→                            <TableHead className="text-right">Orders</TableHead>
+  1317→                            <TableHead className="text-right">Total Spent</TableHead>
+  1318→                          </TableRow>
+  1319→                        </TableHeader>
+  1320→                        <TableBody>
+  1321→                          {topCustomers.map((c, i) => (
+  1322→                            <TableRow key={c.id}>
+  1323→                              <TableCell className="text-muted-foreground font-mono text-xs">{i + 1}</TableCell>
+  1324→                              <TableCell className="font-medium text-sm">{c.name}</TableCell>
+  1325→                              <TableCell className="hidden sm:table-cell text-xs text-muted-foreground">{c.phone || "—"}</TableCell>
+  1326→                              <TableCell className="hidden md:table-cell">
+  1327→                                <Badge variant="secondary" className="text-xs">{c.group || "New"}</Badge>
+  1328→                              </TableCell>
+  1329→                              <TableCell className="text-right font-mono text-sm">{c._count?.sales ?? 0}</TableCell>
+  1330→                              <TableCell className="text-right font-mono text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(c.totalSpent || 0)}</TableCell>
+  1331→                            </TableRow>
+  1332→                          ))}
+  1333→                        </TableBody>
+  1334→                      </Table>
+  1335→                    </div>
+  1336→                  )}
+  1337→                </CardContent>
+  1338→              </Card>
+  1339→            </div>
+  1340→          </TabsContent>
+  1341→        </Tabs>
+  1342→      </div>
+  1343→    </div>
+  1344→  );
+  1345→}

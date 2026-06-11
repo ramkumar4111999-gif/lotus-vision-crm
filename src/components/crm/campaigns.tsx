@@ -119,22 +119,22 @@ const whatsAppTemplates = [
   {
     label: 'Promotional Offer',
     emoji: '🎯',
-    message: '🎯 {customer_name}! Get {offer}% off on {product_category} at Sankaran Kovil Opticals! Limited time offer!',
+    message: '🎯 {customer_name}! Get {offer}% off on {product_category} at Lotus Vision Opticals! Limited time offer!',
   },
   {
     label: 'Collection Ready',
     emoji: '✅',
-    message: '✅ Dear {customer_name}, your eyewear from Sankaran Kovil Opticals is READY! Visit us at Sankarankovil to collect.',
+    message: '✅ Dear {customer_name}, your eyewear from Lotus Vision Opticals is READY! Visit us at Sankarankovil to collect.',
   },
   {
     label: 'Payment Reminder',
     emoji: '💰',
-    message: '💰 Dear {customer_name}, your payment of ₹{amount} is due at Sankaran Kovil Opticals. Please clear it at the earliest.',
+    message: '💰 Dear {customer_name}, your payment of ₹{amount} is due at Lotus Vision Opticals. Please clear it at the earliest.',
   },
   {
     label: 'New Arrival',
     emoji: '👋',
-    message: '👋 Welcome to Sankaran Kovil Opticals, {customer_name}! We\'re glad you visited us.',
+    message: '👋 Welcome to Lotus Vision Opticals, {customer_name}! We\'re glad you visited us.',
   },
 ]
 
@@ -941,7 +941,7 @@ export default function Campaigns() {
                   resetCreateForm()
                   setFormType('WhatsApp')
                   setFormTargetGroup('All')
-                  setFormMessage('🎉 Happy Birthday, {customer_name}! 🎂\n\nWishing you a wonderful day filled with joy! Visit us at Sankaran Kovil Opticals for special birthday discounts on eyewear.\n\n- Sankaran Kovil Opticals, Sankarankovil')
+                  setFormMessage('🎉 Happy Birthday, {customer_name}! 🎂\n\nWishing you a wonderful day filled with joy! Visit us at Lotus Vision Opticals for special birthday discounts on eyewear.\n\n- Lotus Vision Opticals, Sankarankovil')
                   setCreateDialogOpen(true)
                 }}
               >
@@ -1003,7 +1003,7 @@ export default function Campaigns() {
                   setFormType('SMS')
                   setFormTargetGroup('All')
                   setFormName('Due Payment Reminder')
-                  setFormMessage('Dear {customer_name},\n\nThis is a reminder that you have a pending dues at Sankaran Kovil Opticals, Sankarankovil.\n\nKindly clear the dues at your earliest convenience.\n\nThank you!\n- Sankaran Kovil Opticals')
+                  setFormMessage('Dear {customer_name},\n\nThis is a reminder that you have a pending dues at Lotus Vision Opticals, Sankarankovil.\n\nKindly clear the dues at your earliest convenience.\n\nThank you!\n- Lotus Vision Opticals')
                   setCreateDialogOpen(true)
                 }}
               >
@@ -1061,7 +1061,7 @@ export default function Campaigns() {
                   setFormType('WhatsApp')
                   setFormTargetGroup('All')
                   setFormName('Collection Ready Notification')
-                  setFormMessage('Dear {customer_name},\n\n✅ Your eyewear order is READY for collection!\n\nPlease visit us at Sankaran Kovil Opticals, Sankarankovil at your earliest convenience.\n\nThank you for choosing us!\n- Sankaran Kovil Opticals')
+                  setFormMessage('Dear {customer_name},\n\n✅ Your eyewear order is READY for collection!\n\nPlease visit us at Lotus Vision Opticals, Sankarankovil at your earliest convenience.\n\nThank you for choosing us!\n- Lotus Vision Opticals')
                   setCreateDialogOpen(true)
                 }}
               >

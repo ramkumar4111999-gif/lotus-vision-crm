@@ -11,7 +11,7 @@ export interface CrmSettings {
 const SETTINGS_KEY = 'sko-crm-settings';
 
 const DEFAULT_SETTINGS: CrmSettings = {
-  shopName: 'Sankaran Kovil Opticals',
+  shopName: 'Lotus Vision Opticals',
   dailyRevenueGoal: 25000,
   gstin: '33BPKPS1234F1Z5',
   phone: '+91 94432 12345',

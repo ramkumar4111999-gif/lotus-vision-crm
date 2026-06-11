@@ -1022,3 +1022,49 @@ Stage Summary:
 - INVENTORY: +Quick Stock Adjust dialog with +/- stepper, +Frame size display in table (W×B×T mm under product name)
 - Build: Clean, zero errors
 - Tunnel: https://queries-bunch-continue-hoped.trycloudflare.com
+
+---
+Task ID: mobile-fix-cycle-d
+Agent: CRM Build Bot - Mobile UX + Cycle D
+Task: Fix all mobile navigation, rename to Lotus Vision Opticals, enhance Accounting & Reports
+
+Work Log:
+- MOBILE UX FIXES (Priority from user):
+  - Removed Tooltip wrappers from sidebar nav items (were intercepting touch events on mobile)
+  - All nav buttons: min-h-[44px], touch-manipulation, active: states, w-full text-left
+  - TopBar: Menu button h-11 w-11, Settings/DarkMode buttons h-10 w-10 on mobile
+  - TopBar: Removed Tooltip wrappers from icon buttons (Settings, Dark Mode)
+  - Search dropdown: w-[calc(100vw-1.5rem)] on mobile for full-width
+  - Search results: min-h-[44px], touch-manipulation, py-2.5
+  - Sidebar footer: Dark Mode button, Logout button all 44px+ touch targets
+  - Close button: min-h-[44px] min-w-[44px]
+  - Layout: maximumScale=1, userScalable=false to prevent double-tap zoom
+  - Icon sizes increased from h-4.5 to h-5 for better visibility
+
+- BRAND NAME: Already "Lotus Vision Opticals" everywhere. "Sankarankovil" only appears as location/address which is correct.
+
+- CYCLE D — ACCOUNTING (via subagent):
+  - Added P&L Statement tab with Revenue/Expense/Net Profit sections
+  - Cash Recon tab confirmed working with daily reconciliation
+  - GST summary cards already present (verified)
+  - Expense categories updated: Rent, Salary, Supplies, Marketing, Utilities, Maintenance, Transport, Other
+  - BUG FIX: formatCurrency() → formatINR() (14 occurrences in InvoiceGSTReport — runtime crash fixed)
+  - Mobile touch targets added to all accounting buttons
+
+- CYCLE D — REPORTS (via subagent):
+  - BUG FIX: Missing CartesianGrid import from recharts (runtime crash fixed)
+  - New "Acquisition" tab: Customer acquisition report with daily/monthly charts
+  - New "Performance" tab: Product performance with top 10 table, category revenue chart
+  - New "Top Spenders" tab: Top 10 customers by spend with distribution chart
+  - Enhanced revenue comparison with customer growth info
+  - Inventory tab content added (was empty — now shows low stock + turnover)
+  - 4 new Recharts visualizations: acquisition bars, trend line, category bars, spender bars
+  - Mobile: TabsList h-auto for wrapping, all buttons min-h-[44px] touch-manipulation
+
+Stage Summary:
+- MOBILE: All nav bars, buttons, and interactive elements now 44px+ touch targets with touch-manipulation
+- ACCOUNTING: +P&L Statement tab, +expense categories, fixed formatCurrency crash bug
+- REPORTS: +Customer Acquisition tab, +Product Performance tab, +Top Spenders tab, +4 charts, fixed CartesianGrid crash
+- Build: Clean, zero errors
+- Tunnel: https://workshops-royal-retention-drawings.trycloudflare.com
+- Total bugs fixed: 2 runtime crashes (formatCurrency, CartesianGrid), 1 empty tab
