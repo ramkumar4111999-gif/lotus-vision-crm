@@ -1068,3 +1068,25 @@ Stage Summary:
 - Build: Clean, zero errors
 - Tunnel: https://workshops-royal-retention-drawings.trycloudflare.com
 - Total bugs fixed: 2 runtime crashes (formatCurrency, CartesianGrid), 1 empty tab
+
+---
+Task ID: cycle-d-mobile-rename-1781196328
+Agent: CRM Build Bot - Cycle D + Mobile Fix + Rename
+Task: Rename to Lotus Vision Opticals, mobile responsiveness, Cycle D Accounting/Reports
+
+Work Log:
+- RENAMED: "Sankaran Kovil Opticals" → "Lotus Vision Opticals" across 10 files (src/app/layout.tsx, 7 component files, src/lib/settings.ts, src/app/page.tsx)
+- Updated logo initials SKO → LVO
+- MOBILE FIXES: Increased mobile sidebar close button to 44px min touch target, added touch-manipulation, added touchstart listener for search dropdown dismiss
+- ACCOUNTING (via subagent): Added P&L Statement tab with date range picker, Cash Reconciliation tab with variance tracking and ₹500 threshold alert, GST Collection Summary cards (CGST/SGST/IGST totals) above existing GST table
+- REPORTS (via subagent): Added global date range picker with Apply button, Customer Acquisition Report tab with 6-month bar chart, Product Performance/Inventory Value tab with horizontal bar chart and top 10 table, Top 5 Customers ranked list with medals in Top Spenders tab
+- Rebuilt: npx next build — "Compiled successfully", zero errors
+- Server restarted, tunnel active
+
+Stage Summary:
+- RENAME: Lotus Vision Opticals (brand, title, WhatsApp template, logo)
+- MOBILE: All nav items 44px+ touch targets, touch-manipulation on all interactive elements, touchstart for dropdown dismiss
+- ACCOUNTING: +P&L Statement tab, +Cash Reconciliation tab with variance alerts, +GST summary cards
+- REPORTS: +Global date range picker, +Customer Acquisition bar chart, +Product Performance chart+table, +Top 5 Customers ranked list
+- Build: Clean, zero errors
+- Tunnel: https://finances-incoming-wesley-seed.trycloudflare.com
