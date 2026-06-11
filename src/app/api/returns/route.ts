@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { createNotification } from "@/lib/notifications";
 
 export async function GET(request: NextRequest) {
   try {
@@ -119,6 +120,14 @@ export async function POST(request: NextRequest) {
       }
 
       return ret;
+    });
+
+    // Fire notification (fire-and-forget)
+    createNotification({
+      title: `Return request #${returnRecord.sale.invoiceNo}`,
+      message: `Refund ₹${finalAmount} — ${returnRecord.sale.customer?.name ?? 'Walk-in'}`,
+      type: "warning",
+      link: "sales",
     });
 
     return NextResponse.json(returnRecord, { status: 201 });

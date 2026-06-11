@@ -18,6 +18,10 @@ import {
   Target,
   CheckCircle2,
   TrendingUp as TrendingUpIcon,
+  ArrowUpRight,
+  ArrowDownRight,
+  ChevronRight,
+  Loader2,
 } from 'lucide-react';
 import { getSettings } from '@/lib/settings';
 import {
@@ -47,7 +51,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
 import { format, parseISO, isToday, startOfDay } from 'date-fns';
 import { useCrmStore } from '@/components/crm/store';
 
@@ -63,6 +67,29 @@ interface DashboardStats {
   pendingLabOrders: number;
   pendingDues: number;
   overdueAppointments?: number;
+}
+
+interface CustomerAcquisition {
+  thisMonth: number;
+  lastMonth: number;
+  byGroup: { New: number; Regular: number; Wholesale: number; Premium: number };
+}
+
+interface DayRevenue {
+  day: string;
+  revenue: number;
+}
+
+interface Comparison {
+  revenueChange: number;
+  customerChange: number;
+}
+
+interface PendingTasks {
+  labOrdersPending: number;
+  duesOverdue: number;
+  appointmentsToday: number;
+  lowStockItems: number;
 }
 
 interface SalesTrendPoint {
@@ -211,6 +238,15 @@ const topProductsConfig: ChartConfig = {
   },
 };
 
+const pieChartConfig: ChartConfig = {
+  New: { label: 'New', color: 'hsl(200, 84%, 50%)' },
+  Regular: { label: 'Regular', color: 'hsl(152, 76%, 36%)' },
+  Wholesale: { label: 'Wholesale', color: 'hsl(38, 92%, 50%)' },
+  Premium: { label: 'Premium', color: 'hsl(330, 80%, 55%)' },
+};
+
+const PIE_COLORS = ['hsl(200, 84%, 50%)', 'hsl(152, 76%, 36%)', 'hsl(38, 92%, 50%)', 'hsl(330, 80%, 55%)'];
+
 // ───────────────────────────────────────────────
 // Sub-Components
 // ───────────────────────────────────────────────
@@ -229,7 +265,7 @@ function StatCardSkeleton() {
   );
 }
 
-function StatCard({ config, value }: { config: StatCardConfig; value: number }) {
+function StatCard({ config, value, comparisonBadge }: { config: StatCardConfig; value: number; comparisonBadge?: { value: number; label: string } }) {
   const Icon = config.icon;
   return (
     <Card className={`gap-0 py-0 overflow-hidden ${config.borderColor}`}>
@@ -243,6 +279,20 @@ function StatCard({ config, value }: { config: StatCardConfig; value: number }) 
         <p className={`mt-2 text-2xl font-bold tracking-tight ${config.color}`}>
           {config.format(value)}
         </p>
+        {comparisonBadge && (
+          <div className={`mt-1 flex items-center gap-1 text-xs font-medium ${
+            comparisonBadge.value >= 0
+              ? 'text-emerald-600 dark:text-emerald-400'
+              : 'text-red-600 dark:text-red-400'
+          }`}>
+            {comparisonBadge.value >= 0 ? (
+              <ArrowUpRight className="h-3 w-3" />
+            ) : (
+              <ArrowDownRight className="h-3 w-3" />
+            )}
+            <span>{Math.abs(comparisonBadge.value)}% vs last month</span>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -383,7 +433,12 @@ export default function Dashboard() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [lowStock, setLowStock] = useState<LowStockProduct[]>([]);
   const [duesVisible, setDuesVisible] = useState(false);
+  const [customerAcquisition, setCustomerAcquisition] = useState<CustomerAcquisition | null>(null);
+  const [revenueByDayOfWeek, setRevenueByDayOfWeek] = useState<DayRevenue[]>([]);
+  const [comparison, setComparison] = useState<Comparison | null>(null);
+  const [pendingTasks, setPendingTasks] = useState<PendingTasks | null>(null);
   const { setActiveSection } = useCrmStore();
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -401,6 +456,10 @@ export default function Dashboard() {
         setRecentSales(dashData.recentSales ?? []);
         setAppointments(dashData.appointments ?? []);
         setLowStock(dashData.lowStock ?? []);
+        setCustomerAcquisition(dashData.customerAcquisition ?? null);
+        setRevenueByDayOfWeek(dashData.revenueByDayOfWeek ?? []);
+        setComparison(dashData.comparison ?? null);
+        setPendingTasks(dashData.pendingTasks ?? null);
       }
 
       // Sales trend
@@ -418,11 +477,15 @@ export default function Dashboard() {
       // Silently handle — UI shows empty state
     } finally {
       setLoading(false);
+      setLastRefresh(new Date());
     }
   }, []);
 
   useEffect(() => {
     fetchData();
+    // Auto-refresh every 60 seconds
+    const interval = setInterval(fetchData, 60000);
+    return () => clearInterval(interval);
   }, [fetchData]);
 
   // ─── Derived chart data ───
@@ -450,9 +513,14 @@ export default function Dashboard() {
       {loading
         ? Array.from({ length: 6 }).map((_, i) => <StatCardSkeleton key={i} />)
         : stats &&
-          statCards.map((cfg) => (
-            <StatCard key={cfg.key} config={cfg} value={stats[cfg.key]} />
-          ))}
+          statCards.map((cfg) => {
+            let badge: { value: number; label: string } | undefined;
+            if (comparison) {
+              if (cfg.key === 'monthlyRevenue') badge = { value: comparison.revenueChange, label: 'Revenue' };
+              if (cfg.key === 'totalCustomers') badge = { value: comparison.customerChange, label: 'Customers' };
+            }
+            return <StatCard key={cfg.key} config={cfg} value={stats[cfg.key]} comparisonBadge={badge} />;
+          })}
     </div>
   );
 
@@ -765,6 +833,212 @@ export default function Dashboard() {
     );
   };
 
+  // ─── Customer Acquisition Funnel ───
+  const renderCustomerAcquisition = () => {
+    if (loading) {
+      return (
+        <Card className="h-[320px]">
+          <CardHeader><Skeleton className="h-5 w-40" /><Skeleton className="h-4 w-52" /></CardHeader>
+          <CardContent><Skeleton className="h-full w-full rounded-lg" /></CardContent>
+        </Card>
+      );
+    }
+
+    const pieData = customerAcquisition
+      ? Object.entries(customerAcquisition.byGroup)
+          .filter(([, v]) => v > 0)
+          .map(([name, value]) => ({ name, value }))
+      : [];
+
+    const totalGroups = pieData.reduce((s, d) => s + d.value, 0);
+
+    return (
+      <Card className="h-[320px] flex flex-col">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Customer Acquisition</CardTitle>
+          <CardDescription>
+            {customerAcquisition
+              ? `${customerAcquisition.thisMonth} this month vs ${customerAcquisition.lastMonth} last month`
+              : 'No customer data'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex-1 min-h-0 flex items-center gap-4">
+          {pieData.length > 0 ? (
+            <>
+              <ChartContainer config={pieChartConfig} className="h-full w-1/2">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={40}
+                    outerRadius={70}
+                    strokeWidth={2}
+                  >
+                    {pieData.map((_, i) => (
+                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                </PieChart>
+              </ChartContainer>
+              <div className="flex-1 space-y-2">
+                {pieData.map((d, i) => (
+                  <div key={d.name} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="h-3 w-3 rounded-full" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                      <span className="text-muted-foreground">{d.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{d.value}</span>
+                      <span className="text-xs text-muted-foreground">
+                        ({totalGroups > 0 ? Math.round((d.value / totalGroups) * 100) : 0}%)
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-muted-foreground text-sm">
+              No customer group data
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // ─── Revenue Heatmap ───
+  const renderRevenueHeatmap = () => {
+    if (loading) {
+      return (
+        <Card className="h-[320px]">
+          <CardHeader><Skeleton className="h-5 w-40" /><Skeleton className="h-4 w-52" /></CardHeader>
+          <CardContent><Skeleton className="h-full w-full rounded-lg" /></CardContent>
+        </Card>
+      );
+    }
+
+    const maxRev = Math.max(...revenueByDayOfWeek.map((d) => d.revenue), 1);
+
+    return (
+      <Card className="h-[320px] flex flex-col">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Revenue by Day of Week</CardTitle>
+          <CardDescription>Average performance — last 3 months</CardDescription>
+        </CardHeader>
+        <CardContent className="flex-1 min-h-0">
+          {revenueByDayOfWeek.length > 0 ? (
+            <div className="grid grid-cols-7 gap-2 h-full items-end pb-1">
+              {revenueByDayOfWeek.map((d) => {
+                const intensity = d.revenue / maxRev;
+                const isHighest = d.revenue === maxRev && maxRev > 0;
+                return (
+                  <div key={d.day} className="flex flex-col items-center gap-1.5">
+                    <span className="text-[10px] font-mono text-muted-foreground leading-tight">
+                      {d.revenue > 0 ? `₹${(d.revenue / 1000).toFixed(0)}K` : '—'}
+                    </span>
+                    <div
+                      className={`w-full rounded-t-md transition-all ${
+                        isHighest
+                          ? 'ring-2 ring-emerald-500 ring-offset-1 dark:ring-offset-slate-900'
+                          : ''
+                      }`}
+                      style={{
+                        height: `${Math.max(8, intensity * 100)}%`,
+                        backgroundColor: intensity > 0
+                          ? `hsl(152, 76%, ${30 + (1 - intensity) * 50}%)`
+                          : 'hsl(0, 0%, 90%)',
+                      }}
+                    />
+                    <span className="text-[10px] font-medium text-muted-foreground truncate w-full text-center">
+                      {d.day.slice(0, 3)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
+              No sales data for heatmap
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // ─── Pending Tasks Widget ───
+  const renderPendingTasks = () => {
+    if (loading) return null;
+
+    if (!pendingTasks) return null;
+
+    const tasks = [
+      {
+        label: 'Lab Orders Pending',
+        count: pendingTasks.labOrdersPending,
+        section: 'lab-orders' as const,
+        color: 'text-purple-600 dark:text-purple-400',
+        bg: 'bg-purple-50 dark:bg-purple-900/30',
+      },
+      {
+        label: 'Dues Overdue',
+        count: pendingTasks.duesOverdue,
+        section: 'accounting' as const,
+        color: 'text-red-600 dark:text-red-400',
+        bg: 'bg-red-50 dark:bg-red-900/30',
+      },
+      {
+        label: "Appointments Today",
+        count: pendingTasks.appointmentsToday,
+        section: 'appointments' as const,
+        color: 'text-sky-600 dark:text-sky-400',
+        bg: 'bg-sky-50 dark:bg-sky-900/30',
+      },
+      {
+        label: 'Low Stock Items',
+        count: pendingTasks.lowStockItems,
+        section: 'inventory' as const,
+        color: 'text-amber-600 dark:text-amber-400',
+        bg: 'bg-amber-50 dark:bg-amber-900/30',
+      },
+    ];
+
+    const totalPending = tasks.reduce((s, t) => s + t.count, 0);
+    if (totalPending === 0) return null;
+
+    return (
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            Pending Tasks
+          </CardTitle>
+          <CardDescription>{totalPending} items need your attention</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {tasks.map((t) => (
+              <button
+                key={t.section}
+                onClick={() => setActiveSection(t.section)}
+                className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all hover:shadow-md ${t.bg} border-transparent hover:border-border cursor-pointer text-left`}
+              >
+                <span className={`text-2xl font-bold ${t.color}`}>{t.count}</span>
+                <span className="text-xs text-muted-foreground text-center leading-tight">{t.label}</span>
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60" />
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   // ─── Quick Action Buttons ───
   const renderQuickActions = () => {
     const actions = [
@@ -860,12 +1134,23 @@ export default function Dashboard() {
     <section className="space-y-6" aria-label="CRM Dashboard">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          Dashboard
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          {format(startOfDay(new Date()), 'EEEE, MMMM d, yyyy')} — Optical Shop CRM
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+              Dashboard
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              {format(startOfDay(new Date()), 'EEEE, MMMM d, yyyy')} — Optical Shop CRM
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Clock className="h-3.5 w-3.5" />
+            <span>Updated {format(lastRefresh, 'hh:mm a')}</span>
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={fetchData} disabled={loading}>
+              {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Eye className="h-3 w-3" />}
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -879,6 +1164,15 @@ export default function Dashboard() {
         {renderSalesTrendChart()}
         {renderTopProductsChart()}
       </div>
+
+      {/* Advanced Analytics Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {renderCustomerAcquisition()}
+        {renderRevenueHeatmap()}
+      </div>
+
+      {/* Pending Tasks Widget */}
+      {renderPendingTasks()}
 
       {/* Today's Revenue Goal */}
       {renderRevenueGoal()}

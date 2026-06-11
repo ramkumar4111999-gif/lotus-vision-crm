@@ -4,7 +4,6 @@ const { parse } = require('url');
 const PORT = 3000;
 let nextApp = null;
 let nextHandler = null;
-let isRestarting = false;
 
 async function initNext() {
   try {
@@ -20,23 +19,49 @@ async function initNext() {
         await nextHandler(req, res, parsedUrl);
       } catch (err) {
         console.error('Request error:', err.message);
-        res.writeHead(502);
-        res.end('Bad Gateway');
+        if (!res.headersSent) {
+          res.writeHead(502);
+          res.end('Bad Gateway');
+        }
       }
     });
 
     await prepare;
-    await new Promise((resolve) => server.listen(PORT, '0.0.0.0', resolve));
-    console.log(`Custom Next.js server running on http://0.0.0.0:${PORT}`);
-    
-    server.on('error', (err) => {
-      console.error('Server error:', err.message);
-      process.exit(1);
+    await new Promise((resolve, reject) => {
+      server.on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+          console.error(`Port ${PORT} in use, retrying in 3s...`);
+          setTimeout(() => {
+            server.close();
+            initNext();
+          }, 3000);
+        } else {
+          console.error('Server error:', err.message);
+          reject(err);
+        }
+      });
+      server.listen(PORT, '0.0.0.0', resolve);
     });
+    console.log(`Custom Next.js server running on http://0.0.0.0:${PORT}`);
+
+    // Keep-alive ping every 30s
+    setInterval(() => {
+      try {
+        const req = require('http').get(`http://127.0.0.1:${PORT}/api/dashboard`, (res) => {
+          res.resume();
+        });
+        req.on('error', () => {});
+      } catch (e) {}
+    }, 30000);
+
   } catch (err) {
     console.error('Init error:', err.message);
-    process.exit(1);
+    console.log('Restarting in 5s...');
+    setTimeout(initNext, 5000);
   }
 }
 
-initNext().catch(console.error);
+initNext().catch((err) => {
+  console.error('Fatal:', err.message);
+  setTimeout(initNext, 5000);
+});

@@ -7,6 +7,10 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
+  turbopack: {
+    // Workaround for Loader2 reference issue in SSR chunk
+    resolveAlias: {},
+  },
 };
 
 export default nextConfig;

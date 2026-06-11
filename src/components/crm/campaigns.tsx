@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   Megaphone,
   Plus,
@@ -15,7 +15,6 @@ import {
   MessageSquare,
   CheckCircle2,
   XCircle,
-  Loader2,
   Eye,
   Gift,
   IndianRupee,
@@ -211,6 +210,9 @@ export default function Campaigns() {
   const [labReady, setLabReady] = useState<LabOrderReady[]>([])
   const [highValueCustomers, setHighValueCustomers] = useState<HighValueCustomer[]>([])
 
+  // Analytics state
+  const [analyticsData, setAnalyticsData] = useState<Campaign[]>([])
+
   // UI state
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -247,7 +249,9 @@ export default function Campaigns() {
       const res = await fetch('/api/campaigns')
       if (res.ok) {
         const json = await res.json()
-        setCampaigns(json.data ?? json.campaigns ?? [])
+        const data = json.data ?? json.campaigns ?? []
+        setCampaigns(data)
+        setAnalyticsData(data)
       }
     } catch {
       // silently fail
@@ -489,13 +493,24 @@ export default function Campaigns() {
   const smsCharCount = formMessage.length
   const smsExceedsLimit = smsCharCount > 160
 
-  // ─────────────────────────────────────────────────────────
-  // Loading state
+  // ── Derived analytics ──────────────────────────────────────
+  const totalCampaigns = analyticsData.length
+  const totalSent = analyticsData.reduce((sum, c) => sum + c.sentCount, 0)
+  const totalReach = analyticsData.reduce((sum, c) => sum + c.reach, 0)
+  const avgROI = totalCampaigns > 0
+    ? analyticsData.reduce((sum, c) => {
+        const revenue = c.sentCount * AVERAGE_ORDER_VALUE * 0.05
+        const roi = c.budget > 0 ? ((revenue - c.budget) / c.budget) * 100 : 0
+        return sum + roi
+      }, 0) / totalCampaigns
+    : 0
+  const maxSent = Math.max(...analyticsData.map((c) => c.sentCount), 1)
+
   // ─────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="size-8 animate-spin text-muted-foreground" />
+        <span className="size-8 animate-spin inline-block border-2 border-current border-t-transparent rounded-full text-muted-foreground" />
       </div>
     )
   }
@@ -759,7 +774,7 @@ export default function Campaigns() {
                 className="gap-2"
               >
                 {submitting ? (
-                  <Loader2 className="size-4 animate-spin" />
+                  <span className="size-4 animate-spin inline-block border-2 border-current border-t-transparent rounded-full" />
                 ) : (
                   <Send className="size-4" />
                 )}
@@ -1081,6 +1096,10 @@ export default function Campaigns() {
             <XCircle className="size-4" />
             Cancelled
           </TabsTrigger>
+          <TabsTrigger value="analytics" className="gap-2">
+            <BarChart3 className="size-4" />
+            Analytics
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="campaigns">
@@ -1122,6 +1141,125 @@ export default function Campaigns() {
             onDelete={handleDeleteCampaign}
             emptyMessage="No cancelled campaigns."
           />
+        </TabsContent>
+        <TabsContent value="analytics">
+          <div className="space-y-6">
+            {/* ── Summary Cards ──────────────────────────────────── */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardDescription>Total Campaigns</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold">{totalCampaigns}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardDescription>Total Sent</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold">{totalSent.toLocaleString()}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardDescription>Total Reach</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold">{totalReach.toLocaleString()}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardDescription>Avg ROI</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold">{avgROI.toFixed(1)}%</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* ── Performance Table ──────────────────────────────── */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Campaign Performance</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Campaign Name</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Sent Count</TableHead>
+                      <TableHead>Reach</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Created Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {analyticsData.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                          No campaign data available.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      analyticsData.map((campaign) => {
+                        const status = statusConfig[campaign.status]
+                        return (
+                          <TableRow key={campaign.id}>
+                            <TableCell className="font-medium">{campaign.name}</TableCell>
+                            <TableCell>{campaign.type}</TableCell>
+                            <TableCell>{campaign.sentCount.toLocaleString()}</TableCell>
+                            <TableCell>{campaign.reach.toLocaleString()}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className={status?.className ?? ''}>
+                                {status?.label ?? campaign.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{new Date(campaign.createdAt).toLocaleDateString()}</TableCell>
+                          </TableRow>
+                        )
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            {/* ── Bar Visualization ──────────────────────────────── */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Sent Count per Campaign</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {analyticsData.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">No data to visualize.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {analyticsData.map((campaign) => (
+                      <div key={campaign.id} className="flex items-center gap-3">
+                        <span className="text-sm text-muted-foreground w-36 truncate shrink-0" title={campaign.name}>
+                          {campaign.name}
+                        </span>
+                        <div className="flex-1 bg-muted rounded-full h-6 overflow-hidden">
+                          <div
+                            className="h-full bg-primary rounded-full flex items-center justify-end px-2 transition-all"
+                            style={{ width: `${Math.max((campaign.sentCount / maxSent) * 100, 4)}%` }}
+                          >
+                            <span className="text-xs font-medium text-primary-foreground">
+                              {campaign.sentCount.toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
 
@@ -1197,7 +1335,7 @@ export default function Campaigns() {
               Cancel
             </Button>
             <Button onClick={handleEditSubmit} disabled={!editName.trim() || !editMessage.trim() || submitting}>
-              {submitting && <Loader2 className="size-4 animate-spin mr-2" />}
+              {submitting && <span className="size-4 animate-spin inline-block border-2 border-current border-t-transparent rounded-full mr-2" />}
               <Pencil className="size-4 mr-2" />
               Save Changes
             </Button>

@@ -1,0 +1,2002 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+     4→import { format, parseISO, startOfDay, isToday, isWithinInterval, startOfMonth, endOfMonth, subMonths, isBefore } from 'date-fns';
+     5→import {
+     6→  TrendingUp,
+     7→  TrendingDown,
+     8→  Wallet,
+     9→  AlertTriangle,
+    10→  Plus,
+    11→  Pencil,
+    12→  Trash2,
+    13→  IndianRupee,
+    14→  CalendarDays,
+    15→  Filter,
+    16→  Receipt,
+    17→  CreditCard,
+    18→  PieChart as PieChartIcon,
+    19→  Banknote,
+    20→  CheckCircle2,
+    21→  Check,
+    22→  RotateCcw,
+    23→  MessageCircle,
+    24→  ChevronDown,
+    25→  ChevronUp,
+    26→  Download,
+    27→  Target,
+    28→  ArrowUpRight,
+    29→  ArrowDownRight,
+    30→  Search,
+    31→} from 'lucide-react';
+    32→import {
+    33→  Card,
+    34→  CardContent,
+    35→  CardDescription,
+    36→  CardHeader,
+    37→  CardTitle,
+    38→} from '@/components/ui/card';
+    39→import { Button } from '@/components/ui/button';
+    40→import { Badge } from '@/components/ui/badge';
+    41→import {
+    42→  Table,
+    43→  TableBody,
+    44→  TableCell,
+    45→  TableFooter,
+    46→  TableHead,
+    47→  TableHeader,
+    48→  TableRow,
+    49→} from '@/components/ui/table';
+    50→import { Input } from '@/components/ui/input';
+    51→import { Label } from '@/components/ui/label';
+    52→import {
+    53→  Select,
+    54→  SelectContent,
+    55→  SelectItem,
+    56→  SelectTrigger,
+    57→  SelectValue,
+    58→} from '@/components/ui/select';
+    59→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+    60→import { Separator } from '@/components/ui/separator';
+    61→import {
+    62→  Dialog,
+    63→  DialogContent,
+    64→  DialogDescription,
+    65→  DialogFooter,
+    66→  DialogHeader,
+    67→  DialogTitle,
+    68→} from '@/components/ui/dialog';
+    69→import {
+    70→  ChartContainer,
+    71→  ChartTooltip,
+    72→  ChartTooltipContent,
+    73→  type ChartConfig,
+    74→} from '@/components/ui/chart';
+    75→import { Progress } from '@/components/ui/progress';
+    76→import {
+    77→  Collapsible,
+    78→  CollapsibleTrigger,
+    79→  CollapsibleContent,
+    80→} from '@/components/ui/collapsible';
+    81→import {
+    82→  Tooltip,
+    83→  TooltipTrigger,
+    84→  TooltipContent,
+    85→} from '@/components/ui/tooltip';
+    86→import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+    87→import { toast } from 'sonner';
+    88→
+    89→// ─── Types ───────────────────────────────────────────────────────────────────
+    90→
+    91→interface Expense {
+    92→  id: string;
+    93→  category: string;
+    94→  description: string;
+    95→  amount: number;
+    96→  date: string;
+    97→  vendor: string | null;
+    98→  createdAt: string;
+    99→}
+   100→
+   101→interface Due {
+   102→  id: string;
+   103→  customer: { name: string; phone: string } | null;
+   104→  amount: number;
+   105→  paid: number;
+   106→  status: string;
+   107→  dueDate: string | null;
+   108→  notes: string | null;
+   109→  createdAt: string;
+   110→  updatedAt?: string;
+   111→}
+   112→
+   113→interface Sale {
+   114→  id: string;
+   115→  invoiceNo: string;
+   116→  customerName: string;
+   117→  customer?: { name: string; phone: string } | null;
+   118→  total: number;
+   119→  paymentMode: string;
+   120→  createdAt: string;
+   121→}
+   122→
+   123→interface CashFlowEntry {
+   124→  date: string;
+   125→  description: string;
+   126→  type: 'Income' | 'Expense';
+   127→  amount: number;
+   128→  balance: number;
+   129→}
+   130→
+   131→interface ReturnItem {
+   132→  id: string;
+   133→  saleId: string;
+   134→  reason: string;
+   135→  amount: number;
+   136→  status: string;
+   137→  createdAt: string;
+   138→  sale?: {
+   139→    id: string;
+   140→    invoiceNo: string;
+   141→    customer?: { id: string; name: string; phone: string } | null;
+   142→  };
+   143→}
+   144→
+   145→// ─── Constants ───────────────────────────────────────────────────────────────
+   146→
+   147→const EXPENSE_CATEGORIES = [
+   148→  'Rent',
+   149→  'Salary',
+   150→  'Electricity',
+   151→  'Supplies',
+   152→  'Marketing',
+   153→  'Transport',
+   154→  'Maintenance',
+   155→  'Other',
+   156→] as const;
+   157→
+   158→const RETURN_REASONS = [
+   159→  'Defective',
+   160→  'Wrong Product',
+   161→  'Customer Changed Mind',
+   162→  'Warranty',
+   163→  'Other',
+   164→] as const;
+   165→
+   166→const PIE_COLORS = [
+   167→  'hsl(var(--chart-1))',
+   168→  'hsl(var(--chart-2))',
+   169→  'hsl(var(--chart-3))',
+   170→  'hsl(var(--chart-4))',
+   171→  'hsl(var(--chart-5))',
+   172→  'hsl(var(--chart-6))',
+   173→  'hsl(var(--chart-1) / 0.6)',
+   174→  'hsl(var(--chart-2) / 0.6)',
+   175→];
+   176→
+   177→const BAR_CHART_CONFIG: ChartConfig = {
+   178→  amount: { label: 'Amount', color: 'hsl(var(--chart-1))' },
+   179→};
+   180→
+   181→const PIE_CHART_CONFIG: ChartConfig = {
+   182→  value: { label: 'Amount' },
+   183→  Rent: { label: 'Rent', color: 'hsl(var(--chart-1))' },
+   184→  Salary: { label: 'Salary', color: 'hsl(var(--chart-2))' },
+   185→  Electricity: { label: 'Electricity', color: 'hsl(var(--chart-3))' },
+   186→  Supplies: { label: 'Supplies', color: 'hsl(var(--chart-4))' },
+   187→  Marketing: { label: 'Marketing', color: 'hsl(var(--chart-5))' },
+   188→  Transport: { label: 'Transport', color: 'hsl(var(--chart-6))' },
+   189→  Maintenance: { label: 'Maintenance', color: 'hsl(var(--chart-1) / 0.6)' },
+   190→  Other: { label: 'Other', color: 'hsl(40, 80%, 55%)' },
+   191→};
+   192→
+   193→// ─── Helpers ─────────────────────────────────────────────────────────────────
+   194→
+   195→function formatINR(amount: number): string {
+   196→  return new Intl.NumberFormat('en-IN', {
+   197→    style: 'currency',
+   198→    currency: 'INR',
+   199→    minimumFractionDigits: 0,
+   200→    maximumFractionDigits: 0,
+   201→  }).format(amount);
+   202→}
+   203→
+   204→function formatDate(dateStr: string | Date): string {
+   205→  try {
+   206→    const d = typeof dateStr === 'string' ? parseISO(dateStr) : dateStr;
+   207→    return format(d, 'dd MMM yyyy');
+   208→  } catch {
+   209→    return String(dateStr);
+   210→  }
+   211→}
+   212→
+   213→function toDateString(dateStr: string | Date): string {
+   214→  try {
+   215→    const d = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
+   216→    return format(d, 'yyyy-MM-dd');
+   217→  } catch {
+   218→    return String(dateStr);
+   219→  }
+   220→}
+   221→
+   222→function getTodayStr(): string {
+   223→  return format(new Date(), 'yyyy-MM-dd');
+   224→}
+   225→
+   226→function getBudgetKey(): string {
+   227→  const now = new Date();
+   228→  return `accounting_budget_${now.getFullYear()}_${now.getMonth() + 1}`;
+   229→}
+   230→
+   231→// ─── Component ───────────────────────────────────────────────────────────────
+   232→
+   233→export default function Accounting() {
+   234→  // Data state
+   235→  const [expenses, setExpenses] = useState<Expense[]>([]);
+   236→  const [dues, setDues] = useState<Due[]>([]);
+   237→  const [sales, setSales] = useState<Sale[]>([]);
+   238→  const [returns, setReturns] = useState<ReturnItem[]>([]);
+   239→
+   240→  // Loading states
+   241→  const [loadingExpenses, setLoadingExpenses] = useState(true);
+   242→  const [loadingDues, setLoadingDues] = useState(true);
+   243→  const [loadingSales, setLoadingSales] = useState(true);
+   244→  const [loadingReturns, setLoadingReturns] = useState(true);
+   245→
+   246→  // Dialog states
+   247→  const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
+   248→  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+   249→  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+   250→  const [payingDue, setPayingDue] = useState<Due | null>(null);
+   251→  const [markPaidLoading, setMarkPaidLoading] = useState(false);
+   252→  const [returnDialogOpen, setReturnDialogOpen] = useState(false);
+   253→  const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
+   254→
+   255→  // Expense form state
+   256→  const [expForm, setExpForm] = useState({
+   257→    category: '',
+   258→    description: '',
+   259→    amount: '',
+   260→    date: getTodayStr(),
+   261→    vendor: '',
+   262→  });
+   263→
+   264→  // Payment form state
+   265→  const [paymentAmount, setPaymentAmount] = useState('');
+   266→
+   267→  // Return form state
+   268→  const [returnForm, setReturnForm] = useState({
+   269→    saleSearch: '',
+   270→    saleId: '',
+   271→    refundAmount: '',
+   272→    reason: '',
+   273→  });
+   274→  const [saleSearchResults, setSaleSearchResults] = useState<Sale[]>([]);
+   275→  const [selectedReturnSale, setSelectedReturnSale] = useState<Sale | null>(null);
+   276→  const [creatingReturn, setCreatingReturn] = useState(false);
+   277→  const saleSearchTimeout = useRef<NodeJS.Timeout | null>(null);
+   278→
+   279→  // Budget state
+   280→  const [monthlyBudget, setMonthlyBudget] = useState<number>(0);
+   281→  const [budgetInput, setBudgetInput] = useState('');
+   282→
+   283→  // Expanded due row (payment history)
+   284→  const [expandedDueId, setExpandedDueId] = useState<string | null>(null);
+   285→
+   286→  // P&L collapsible
+   287→  const [plOpen, setPlOpen] = useState(false);
+   288→
+   289→  // Filter states
+   290→  const [cashFlowFrom, setCashFlowFrom] = useState(
+   291→    format(startOfMonth(new Date()), 'yyyy-MM-dd')
+   292→  );
+   293→  const [cashFlowTo, setCashFlowTo] = useState(getTodayStr());
+   294→  const [dueFilter, setDueFilter] = useState<string>('All');
+   295→
+   296→  // Deleting state
+   297→  const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
+   298→
+   299→  // GST state
+   300→  const [gstData, setGstData] = useState<{ cgst: number; sgst: number; igst: number; total: number } | null>(null);
+   301→  const [gstLoading, setGstLoading] = useState(false);
+   302→
+   303→  // Daily reconciliation state
+   304→  const [reconDate, setReconDate] = useState(getTodayStr());
+   305→
+   306→  // ─── Fetch Data ──────────────────────────────────────────────────────────
+   307→
+   308→  const fetchExpenses = useCallback(async () => {
+   309→    try {
+   310→      setLoadingExpenses(true);
+   311→      const res = await fetch('/api/expenses?limit=200');
+   312→      if (res.ok) {
+   313→        const json = await res.json();
+   314→        setExpenses(Array.isArray(json.data) ? json.data : Array.isArray(json) ? json : []);
+   315→      }
+   316→    } catch {
+   317→      toast.error('Failed to fetch expenses');
+   318→    } finally {
+   319→      setLoadingExpenses(false);
+   320→    }
+   321→  }, []);
+   322→
+   323→  const fetchDues = useCallback(async () => {
+   324→    try {
+   325→      setLoadingDues(true);
+   326→      const res = await fetch('/api/dues?limit=200');
+   327→      if (res.ok) {
+   328→        const json = await res.json();
+   329→        setDues(Array.isArray(json.data) ? json.data : Array.isArray(json) ? json : []);
+   330→      }
+   331→    } catch {
+   332→      toast.error('Failed to fetch dues');
+   333→    } finally {
+   334→      setLoadingDues(false);
+   335→    }
+   336→  }, []);
+   337→
+   338→  const fetchSales = useCallback(async () => {
+   339→    try {
+   340→      setLoadingSales(true);
+   341→      const res = await fetch('/api/sales?limit=500');
+   342→      if (res.ok) {
+   343→        const json = await res.json();
+   344→        const arr = Array.isArray(json.sales) ? json.sales : Array.isArray(json.data) ? json.data : [];
+   345→        setSales(arr);
+   346→      }
+   347→    } catch {
+   348→      toast.error('Failed to fetch sales');
+   349→    } finally {
+   350→      setLoadingSales(false);
+   351→    }
+   352→  }, []);
+   353→
+   354→  const fetchReturns = useCallback(async () => {
+   355→    try {
+   356→      setLoadingReturns(true);
+   357→      const res = await fetch('/api/returns?limit=50');
+   358→      if (res.ok) {
+   359→        const json = await res.json();
+   360→        setReturns(Array.isArray(json.returns) ? json.returns : Array.isArray(json.data) ? json.data : []);
+   361→      }
+   362→    } catch {
+   363→      toast.error('Failed to fetch returns');
+   364→    } finally {
+   365→      setLoadingReturns(false);
+   366→    }
+   367→  }, []);
+   368→
+   369→  // ─── GST Fetch ──────────────────────────────────────────────────────────
+   370→
+   371→  const fetchGST = useCallback(async () => {
+   372→    setGstLoading(true);
+   373→    try {
+   374→      const res = await fetch('/api/reports?type=revenue-comparison');
+   375→      if (res.ok) {
+   376→        const json = await res.json();
+   377→        const summary = json.summary?.thisMonth;
+   378→        if (summary) {
+   379→          setGstData({
+   380→            cgst: summary.cgst || 0,
+   381→            sgst: summary.sgst || 0,
+   382→            igst: summary.igst || 0,
+   383→            total: (summary.cgst || 0) + (summary.sgst || 0) + (summary.igst || 0),
+   384→          });
+   385→        }
+   386→      }
+   387→    } catch { /* ignore */ }
+   388→    finally { setGstLoading(false); }
+   389→  }, []);
+   390→
+   391→  // ─── Daily Cash Reconciliation ──────────────────────────────────────────
+   392→
+   393→  const dailyReconciliation = useMemo(() => {
+   394→    const targetDate = startOfDay(parseISO(reconDate));
+   395→    const nextDay = new Date(targetDate);
+   396→    nextDay.setDate(nextDay.getDate() + 1);
+   397→
+   398→    const daySales = sales.filter((s) => {
+   399→      try {
+   400→        const d = new Date(s.createdAt);
+   401→        return d >= targetDate && d < nextDay;
+   402→      } catch { return false; }
+   403→    });
+   404→
+   405→    const dayExpenses = expenses.filter((e) => {
+   406→      try {
+   407→        const d = new Date(e.date);
+   408→        return d >= targetDate && d < nextDay;
+   409→      } catch { return false; }
+   410→    });
+   411→
+   412→    const cashSales = daySales.filter((s) => (s.paymentMode || '').toLowerCase() === 'cash').reduce((s, x) => s + (x.total || 0), 0);
+   413→    const upiSales = daySales.filter((s) => (s.paymentMode || '').toLowerCase() === 'upi').reduce((s, x) => s + (x.total || 0), 0);
+   414→    const cardSales = daySales.filter((s) => (s.paymentMode || '').toLowerCase() === 'card').reduce((s, x) => s + (x.total || 0), 0);
+   415→    const creditSales = daySales.filter((s) => (s.paymentMode || '').toLowerCase() === 'credit').reduce((s, x) => s + (x.total || 0), 0);
+   416→    const otherSales = daySales.filter((s) => {
+   417→      const m = (s.paymentMode || '').toLowerCase();
+   418→      return !['cash', 'upi', 'card', 'credit'].includes(m);
+   419→    }).reduce((s, x) => s + (x.total || 0), 0);
+   420→
+   421→    const totalDayIncome = daySales.reduce((s, x) => s + (x.total || 0), 0);
+   422→    const totalDayExpenses = dayExpenses.reduce((s, x) => s + (x.amount || 0), 0);
+   423→    const expectedCash = cashSales - totalDayExpenses;
+   424→
+   425→    const dayCGST = daySales.reduce((s, x) => s + ((x as Record<string, unknown>).cgst as number || 0), 0);
+   426→    const daySGST = daySales.reduce((s, x) => s + ((x as Record<string, unknown>).sgst as number || 0), 0);
+   427→    const dayIGST = daySales.reduce((s, x) => s + ((x as Record<string, unknown>).igst as number || 0), 0);
+   428→
+   429→    return {
+   430→      date: reconDate,
+   431→      totalTransactions: daySales.length,
+   432→      totalIncome: totalDayIncome,
+   433→      totalExpenses: totalDayExpenses,
+   434→      cashSales,
+   435→      upiSales,
+   436→      cardSales,
+   437→      creditSales,
+   438→      otherSales,
+   439→      expectedCash,
+   440→      dayCGST,
+   441→      daySGST,
+   442→      dayIGST,
+   443→      totalGST: dayCGST + daySGST + dayIGST,
+   444→      sales: daySales,
+   445→      expenses: dayExpenses,
+   446→    };
+   447→  }, [sales, expenses, reconDate]);
+   448→
+   449→  // Load budget from localStorage
+   450→  useEffect(() => {
+   451→    try {
+   452→      const stored = localStorage.getItem(getBudgetKey());
+   453→      if (stored) setMonthlyBudget(parseFloat(stored) || 0);
+   454→    } catch { /* ignore */ }
+   455→  }, []);
+   456→
+   457→  useEffect(() => {
+   458→    fetchExpenses();
+   459→    fetchDues();
+   460→    fetchSales();
+   461→    fetchReturns();
+   462→    fetchGST();
+   463→  }, [fetchExpenses, fetchDues, fetchSales, fetchReturns, fetchGST]);
+   464→
+   465→  // ─── Summary Calculations ────────────────────────────────────────────────
+   466→
+   467→  const todayIncome = useMemo(() => {
+   468→    return sales
+   469→      .filter((s) => {
+   470→        try { return isToday(new Date(s.createdAt)); } catch { return false; }
+   471→      })
+   472→      .reduce((sum, s) => sum + (s.total || 0), 0);
+   473→  }, [sales]);
+   474→
+   475→  const monthlyIncome = useMemo(() => {
+   476→    const mStart = startOfMonth(new Date());
+   477→    return sales
+   478→      .filter((s) => {
+   479→        try { return new Date(s.createdAt) >= mStart; } catch { return false; }
+   480→      })
+   481→      .reduce((sum, s) => sum + (s.total || 0), 0);
+   482→  }, [sales]);
+   483→
+   484→  const lastMonthIncome = useMemo(() => {
+   485→    const lastMStart = startOfMonth(subMonths(new Date(), 1));
+   486→    const lastMEnd = endOfMonth(subMonths(new Date(), 1));
+   487→    return sales
+   488→      .filter((s) => {
+   489→        try {
+   490→          const d = new Date(s.createdAt);
+   491→          return d >= lastMStart && d <= lastMEnd;
+   492→        } catch { return false; }
+   493→      })
+   494→      .reduce((sum, s) => sum + (s.total || 0), 0);
+   495→  }, [sales]);
+   496→
+   497→  const monthlyExpensesTotal = useMemo(() => {
+   498→    const mStart = startOfMonth(new Date());
+   499→    return expenses
+   500→      .filter((e) => {
+   501→        try { return new Date(e.date) >= mStart; } catch { return false; }
+   502→      })
+   503→      .reduce((sum, e) => sum + (e.amount || 0), 0);
+   504→  }, [expenses]);
+   505→
+   506→  const totalExpenses = useMemo(() => {
+   507→    return expenses.reduce((s, e) => s + (e.amount || 0), 0);
+   508→  }, [expenses]);
+   509→
+   510→  const todayExpenses = useMemo(() => {
+   511→    return expenses
+   512→      .filter((e) => {
+   513→        try { return isToday(new Date(e.date)); } catch { return false; }
+   514→      })
+   515→      .reduce((sum, e) => sum + (e.amount || 0), 0);
+   516→  }, [expenses]);
+   517→
+   518→  const totalPendingDues = useMemo(() => {
+   519→    return dues
+   520→      .filter((d) => d.status !== 'Paid')
+   521→      .reduce((sum, d) => sum + ((d.amount || 0) - (d.paid || 0)), 0);
+   522→  }, [dues]);
+   523→
+   524→  // ─── Returns Summary ────────────────────────────────────────────────────
+   525→
+   526→  const totalReturnRefund = useMemo(() => {
+   527→    return returns.reduce((s, r) => s + (r.amount || 0), 0);
+   528→  }, [returns]);
+   529→
+   530→  const thisMonthReturns = useMemo(() => {
+   531→    const mStart = startOfMonth(new Date());
+   532→    return returns.filter((r) => {
+   533→      try { return new Date(r.createdAt) >= mStart; } catch { return false; }
+   534→    });
+   535→  }, [returns]);
+   536→
+   537→  const thisMonthReturnAmount = useMemo(() => {
+   538→    return thisMonthReturns.reduce((s, r) => s + (r.amount || 0), 0);
+   539→  }, [thisMonthReturns]);
+   540→
+   541→  // ─── P&L Calculations ───────────────────────────────────────────────────
+   542→
+   543→  const netProfit = useMemo(() => {
+   544→    return monthlyIncome - monthlyExpensesTotal;
+   545→  }, [monthlyIncome, monthlyExpensesTotal]);
+   546→
+   547→  const momChangePercent = useMemo(() => {
+   548→    if (lastMonthIncome === 0) return monthlyIncome > 0 ? 100 : 0;
+   549→    return Math.round(((monthlyIncome - lastMonthIncome) / lastMonthIncome) * 100);
+   550→  }, [monthlyIncome, lastMonthIncome]);
+   551→
+   552→  // ─── Cash Flow Calculations ──────────────────────────────────────────────
+   553→
+   554→  const cashFlowData = useMemo((): CashFlowEntry[] => {
+   555→    const fromDate = startOfDay(parseISO(cashFlowFrom));
+   556→    const toDate = startOfDay(parseISO(cashFlowTo));
+   557→
+   558→    const incomeEntries: CashFlowEntry[] = sales
+   559→      .filter((s) => {
+   560→        try {
+   561→          const d = new Date(s.createdAt);
+   562→          return isWithinInterval(d, { start: fromDate, end: new Date(cashFlowTo + 'T23:59:59') });
+   563→        } catch { return false; }
+   564→      })
+   565→      .map((s) => ({
+   566→        date: toDateString(s.createdAt),
+   567→        description: `Sale - ${s.customer?.name || s.customerName || 'Customer'} (${s.invoiceNo || ''})`,
+   568→        type: 'Income' as const,
+   569→        amount: s.total || 0,
+   570→        balance: 0,
+   571→      }));
+   572→
+   573→    const expenseEntries: CashFlowEntry[] = expenses
+   574→      .filter((e) => {
+   575→        try {
+   576→          const d = new Date(e.date);
+   577→          return isWithinInterval(d, { start: fromDate, end: new Date(cashFlowTo + 'T23:59:59') });
+   578→        } catch { return false; }
+   579→      })
+   580→      .map((e) => ({
+   581→        date: toDateString(e.date),
+   582→        description: `${e.category} - ${e.description || e.vendor || 'Expense'}`,
+   583→        type: 'Expense' as const,
+   584→        amount: e.amount,
+   585→        balance: 0,
+   586→      }));
+   587→
+   588→    const allEntries = [...incomeEntries, ...expenseEntries].sort((a, b) => {
+   589→      const dc = a.date.localeCompare(b.date);
+   590→      if (dc !== 0) return dc;
+   591→      return a.type === 'Income' ? -1 : 1;
+   592→    });
+   593→
+   594→    let runningBalance = 0;
+   595→    return allEntries.map((entry) => {
+   596→      if (entry.type === 'Income') runningBalance += entry.amount;
+   597→      else runningBalance -= entry.amount;
+   598→      return { ...entry, balance: runningBalance };
+   599→    });
+   600→  }, [sales, expenses, cashFlowFrom, cashFlowTo]);
+   601→
+   602→  const cashFlowSummary = useMemo(() => {
+   603→    const totalIncome = cashFlowData.filter((e) => e.type === 'Income').reduce((s, e) => s + e.amount, 0);
+   604→    const totalExpense = cashFlowData.filter((e) => e.type === 'Expense').reduce((s, e) => s + e.amount, 0);
+   605→    return { totalIncome, totalExpense, net: totalIncome - totalExpense };
+   606→  }, [cashFlowData]);
+   607→
+   608→  // ─── Expense Category Summary ────────────────────────────────────────────
+   609→
+   610→  const categorySummary = useMemo(() => {
+   611→    const map: Record<string, number> = {};
+   612→    expenses.forEach((e) => {
+   613→      const cat = e.category || 'Other';
+   614→      map[cat] = (map[cat] || 0) + (e.amount || 0);
+   615→    });
+   616→    return EXPENSE_CATEGORIES.map((cat) => ({
+   617→      name: cat,
+   618→      value: map[cat] || 0,
+   619→    })).filter((c) => c.value > 0);
+   620→  }, [expenses]);
+   621→
+   622→  // ─── Filtered Dues (with overdue detection) ──────────────────────────────
+   623→
+   624→  const filteredDues = useMemo(() => {
+   625→    let filtered = dues;
+   626→    if (dueFilter === 'All') {
+   627→      // no filter
+   628→    } else if (dueFilter === 'Overdue') {
+   629→      const todayStr = getTodayStr();
+   630→      filtered = dues.filter((d) => {
+   631→        if (d.status === 'Paid') return false;
+   632→        if (!d.dueDate) return false;
+   633→        try {
+   634→          return isBefore(parseISO(toDateString(d.dueDate)), parseISO(todayStr));
+   635→        } catch { return false; }
+   636→      });
+   637→    } else {
+   638→      filtered = dues.filter((d) => d.status === dueFilter);
+   639→    }
+   640→    return filtered;
+   641→  }, [dues, dueFilter]);
+   642→
+   643→  // ─── Overdue check helper ────────────────────────────────────────────────
+   644→
+   645→  const isDueOverdue = useCallback((due: Due): boolean => {
+   646→    if (due.status === 'Paid') return false;
+   647→    if (!due.dueDate) return false;
+   648→    try {
+   649→      return isBefore(parseISO(toDateString(due.dueDate)), parseISO(getTodayStr()));
+   650→    } catch { return false; }
+   651→  }, []);
+   652→
+   653→  // ─── Expense Form Handlers ───────────────────────────────────────────────
+   654→
+   655→  const resetExpForm = () => {
+   656→    setExpForm({ category: '', description: '', amount: '', date: getTodayStr(), vendor: '' });
+   657→    setEditingExpense(null);
+   658→  };
+   659→
+   660→  const openAddExpense = () => { resetExpForm(); setExpenseDialogOpen(true); };
+   661→
+   662→  const openEditExpense = (expense: Expense) => {
+   663→    setEditingExpense(expense);
+   664→    setExpForm({
+   665→      category: expense.category || '',
+   666→      description: expense.description || '',
+   667→      amount: String(expense.amount || ''),
+   668→      date: toDateString(expense.date),
+   669→      vendor: expense.vendor || '',
+   670→    });
+   671→    setExpenseDialogOpen(true);
+   672→  };
+   673→
+   674→  const handleSaveExpense = async () => {
+   675→    const amount = parseFloat(expForm.amount);
+   676→    if (!expForm.category || !expForm.description || isNaN(amount) || amount <= 0 || !expForm.date) {
+   677→      toast.error('Please fill in all required fields with valid data');
+   678→      return;
+   679→    }
+   680→    try {
+   681→      const isEdit = !!editingExpense;
+   682→      const url = editingExpense ? `/api/expenses?id=${editingExpense.id}` : '/api/expenses';
+   683→      const res = await fetch(url, {
+   684→        method: isEdit ? 'PUT' : 'POST',
+   685→        headers: { 'Content-Type': 'application/json' },
+   686→        body: JSON.stringify({
+   687→          category: expForm.category,
+   688→          description: expForm.description,
+   689→          amount,
+   690→          date: expForm.date,
+   691→          vendor: expForm.vendor || null,
+   692→        }),
+   693→      });
+   694→      if (res.ok) {
+   695→        toast.success(isEdit ? 'Expense updated' : 'Expense added');
+   696→        setExpenseDialogOpen(false);
+   697→        resetExpForm();
+   698→        fetchExpenses();
+   699→      } else {
+   700→        const err = await res.json().catch(() => ({}));
+   701→        toast.error(err.error || 'Failed to save expense');
+   702→      }
+   703→    } catch { toast.error('Network error'); }
+   704→  };
+   705→
+   706→  const handleDeleteExpense = async (id: string) => {
+   707→    setDeletingExpenseId(id);
+   708→    try {
+   709→      const res = await fetch(`/api/expenses?id=${id}`, { method: 'DELETE' });
+   710→      if (res.ok) { toast.success('Expense deleted'); fetchExpenses(); }
+   711→      else toast.error('Failed to delete expense');
+   712→    } catch { toast.error('Network error'); }
+   713→    finally { setDeletingExpenseId(null); }
+   714→  };
+   715→
+   716→  // ─── Payment Handlers ────────────────────────────────────────────────────
+   717→
+   718→  const openPaymentDialog = (due: Due) => {
+   719→    setPayingDue(due);
+   720→    setPaymentAmount('');
+   721→    setPaymentDialogOpen(true);
+   722→  };
+   723→
+   724→  const handleRecordPayment = async () => {
+   725→    if (!payingDue) return;
+   726→    const amount = parseFloat(paymentAmount);
+   727→    const balance = (payingDue.amount || 0) - (payingDue.paid || 0);
+   728→    if (isNaN(amount) || amount <= 0) { toast.error('Please enter a valid amount'); return; }
+   729→    if (amount > balance) { toast.error('Amount exceeds pending balance'); return; }
+   730→
+   731→    setMarkPaidLoading(true);
+   732→    try {
+   733→      const res = await fetch(`/api/dues?id=${payingDue.id}`, {
+   734→        method: 'PUT',
+   735→        headers: { 'Content-Type': 'application/json' },
+   736→        body: JSON.stringify({ paidAmount: amount }),
+   737→      });
+   738→      if (res.ok) {
+   739→        toast.success(`Payment of ${formatINR(amount)} recorded`);
+   740→        setPaymentDialogOpen(false);
+   741→        setPayingDue(null);
+   742→        fetchDues();
+   743→      } else toast.error('Failed to record payment');
+   744→    } catch { toast.error('Network error'); }
+   745→    finally { setMarkPaidLoading(false); }
+   746→  };
+   747→
+   748→  const handleMarkPaid = async (due: Due) => {
+   749→    setMarkPaidLoading(true);
+   750→    try {
+   751→      const res = await fetch(`/api/dues?id=${due.id}`, {
+   752→        method: 'PUT',
+   753→        headers: { 'Content-Type': 'application/json' },
+   754→        body: JSON.stringify({ status: 'Paid' }),
+   755→      });
+   756→      if (res.ok) { toast.success(`${due.customer?.name || 'Customer'} marked as paid`); fetchDues(); }
+   757→      else toast.error('Failed to update');
+   758→    } catch { toast.error('Network error'); }
+   759→    finally { setMarkPaidLoading(false); }
+   760→  };
+   761→
+   762→  // ─── Return Handlers ─────────────────────────────────────────────────────
+   763→
+   764→  const openCreateReturn = () => {
+   765→    setReturnForm({ saleSearch: '', saleId: '', refundAmount: '', reason: '' });
+   766→    setSaleSearchResults([]);
+   767→    setSelectedReturnSale(null);
+   768→    setReturnDialogOpen(true);
+   769→  };
+   770→
+   771→  const handleSaleSearch = (query: string) => {
+   772→    setReturnForm((f) => ({ ...f, saleSearch: query }));
+   773→    if (saleSearchTimeout.current) clearTimeout(saleSearchTimeout.current);
+   774→    if (!query.trim()) { setSaleSearchResults([]); return; }
+   775→    saleSearchTimeout.current = setTimeout(async () => {
+   776→      try {
+   777→        const res = await fetch(`/api/sales?search=${encodeURIComponent(query)}&limit=10`);
+   778→        if (res.ok) {
+   779→          const json = await res.json();
+   780→          const arr = Array.isArray(json.sales) ? json.sales : Array.isArray(json.data) ? json.data : [];
+   781→          setSaleSearchResults(arr);
+   782→        }
+   783→      } catch { /* ignore */ }
+   784→    }, 300);
+   785→  };
+   786→
+   787→  const selectReturnSale = (sale: Sale) => {
+   788→    setSelectedReturnSale(sale);
+   789→    setReturnForm((f) => ({ ...f, saleId: sale.id, refundAmount: String(sale.total || 0) }));
+   790→    setSaleSearchResults([]);
+   791→  };
+   792→
+   793→  const handleCreateReturn = async () => {
+   794→    if (!returnForm.saleId || !returnForm.reason) {
+   795→      toast.error('Please select a sale and a reason');
+   796→      return;
+   797→    }
+   798→    const amount = parseFloat(returnForm.refundAmount);
+   799→    if (isNaN(amount) || amount <= 0) {
+   800→      toast.error('Please enter a valid refund amount');
+   801→      return;
+   802→    }
+   803→    setCreatingReturn(true);
+   804→    try {
+   805→      const res = await fetch('/api/returns', {
+   806→        method: 'POST',
+   807→        headers: { 'Content-Type': 'application/json' },
+   808→        body: JSON.stringify({
+   809→          saleId: returnForm.saleId,
+   810→          reason: returnForm.reason,
+   811→          refundAmount: amount,
+   812→        }),
+   813→      });
+   814→      if (res.ok) {
+   815→        toast.success('Return created successfully');
+   816→        setReturnDialogOpen(false);
+   817→        fetchReturns();
+   818→      } else {
+   819→        const err = await res.json().catch(() => ({}));
+   820→        toast.error(err.error || 'Failed to create return');
+   821→      }
+   822→    } catch { toast.error('Network error'); }
+   823→    finally { setCreatingReturn(false); }
+   824→  };
+   825→
+   826→  // ─── CSV Export ──────────────────────────────────────────────────────────
+   827→
+   828→  const handleExportCSV = () => {
+   829→    const rows = expenses.map((e) => [
+   830→      formatDate(e.date),
+   831→      e.category,
+   832→      `"${(e.description || '').replace(/"/g, '""')}"`,
+   833→      e.amount,
+   834→      `"${(e.vendor || '').replace(/"/g, '""')}"`,
+   835→    ]);
+   836→    const csv = ['Date,Category,Description,Amount,Vendor', ...rows.map((r) => r.join(','))].join('\n');
+   837→    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+   838→    const url = URL.createObjectURL(blob);
+   839→    const a = document.createElement('a');
+   840→    a.href = url;
+   841→    a.download = `expenses_${getTodayStr()}.csv`;
+   842→    a.click();
+   843→    URL.revokeObjectURL(url);
+   844→    toast.success('CSV exported successfully');
+   845→  };
+   846→
+   847→  // ─── Budget Handlers ─────────────────────────────────────────────────────
+   848→
+   849→  const handleSetBudget = () => {
+   850→    const val = parseFloat(budgetInput);
+   851→    if (isNaN(val) || val <= 0) {
+   852→      toast.error('Please enter a valid budget amount');
+   853→      return;
+   854→    }
+   855→    setMonthlyBudget(val);
+   856→    localStorage.setItem(getBudgetKey(), String(val));
+   857→    setBudgetDialogOpen(false);
+   858→    setBudgetInput('');
+   859→    toast.success('Monthly budget set to ' + formatINR(val));
+   860→  };
+   861→
+   862→  const budgetPercent = monthlyBudget > 0 ? Math.min((monthlyExpensesTotal / monthlyBudget) * 100, 100) : 0;
+   863→  const budgetRemaining = monthlyBudget - monthlyExpensesTotal;
+   864→
+   865→  // ─── Status Badges ───────────────────────────────────────────────────────
+   866→
+   867→  const DueStatusBadge = ({ status }: { status: string }) => {
+   868→    const styles: Record<string, string> = {
+   869→      Pending: 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800',
+   870→      Partial: 'bg-sky-100 text-sky-800 border-sky-200 hover:bg-sky-100 dark:bg-sky-950 dark:text-sky-300 dark:border-sky-800',
+   871→      Paid: 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800',
+   872→      Overdue: 'bg-red-100 text-red-800 border-red-200 hover:bg-red-100 dark:bg-red-950 dark:text-red-300 dark:border-red-800',
+   873→    };
+   874→    return (
+   875→      <Badge className={styles[status] || 'border'}>
+   876→        {status}
+   877→      </Badge>
+   878→    );
+   879→  };
+   880→
+   881→  const ReturnStatusBadge = ({ status }: { status: string }) => {
+   882→    const styles: Record<string, string> = {
+   883→      Completed: 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800',
+   884→      Pending: 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800',
+   885→      Rejected: 'bg-red-100 text-red-800 border-red-200 hover:bg-red-100 dark:bg-red-950 dark:text-red-300 dark:border-red-800',
+   886→    };
+   887→    return (
+   888→      <Badge className={styles[status] || 'border'}>
+   889→        {status}
+   890→      </Badge>
+   891→    );
+   892→  };
+   893→
+   894→  // ─── Skeleton ─────────────────────────────────────────────────────────────
+   895→
+   896→  const TableSkeleton = ({ rows = 5, cols = 6 }: { rows?: number; cols?: number }) => (
+   897→    <div className="space-y-2 p-4">
+   898→      {Array.from({ length: rows }).map((_, i) => (
+   899→        <div key={i} className="flex gap-4">
+   900→          {Array.from({ length: cols }).map((_, j) => (
+   901→            <div key={j} className="h-8 bg-muted rounded animate-pulse flex-1" />
+   902→          ))}
+   903→        </div>
+   904→      ))}
+   905→    </div>
+   906→  );
+   907→
+   908→  // ─── Render ──────────────────────────────────────────────────────────────
+   909→
+   910→  return (
+   911→    <div className="space-y-6 p-4 md:p-6">
+   912→      {/* Page Header */}
+   913→      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+   914→        <div>
+   915→          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+   916→            <IndianRupee className="h-6 w-6" />
+   917→            Accounting & Finance
+   918→          </h1>
+   919→          <p className="text-muted-foreground text-sm mt-1">
+   920→            Track income, expenses, and pending dues
+   921→          </p>
+   922→        </div>
+   923→        <Button onClick={openAddExpense} size="sm" className="gap-1.5 w-fit">
+   924→          <Plus className="h-4 w-4" />
+   925→          Add Expense
+   926→        </Button>
+   927→      </div>
+   928→
+   929→      {/* ─── Profit & Loss Card ─────────────────────────────────────────── */}
+   930→      <Collapsible open={plOpen} onOpenChange={setPlOpen}>
+   931→        <Card>
+   932→          <CollapsibleTrigger className="w-full">
+   933→            <CardHeader className="pb-2 cursor-pointer">
+   934→              <div className="flex items-center justify-between">
+   935→                <div className="flex items-center gap-2">
+   936→                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-950">
+   937→                    <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+   938→                  </div>
+   939→                  <div>
+   940→                    <CardTitle className="text-base">Profit &amp; Loss Summary</CardTitle>
+   941→                    <CardDescription className="text-xs">
+   942→                      {format(new Date(), 'MMMM yyyy')} &bull; Net: <span className={netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-red-600 dark:text-red-400 font-semibold'}>{formatINR(netProfit)}</span>
+   943→                    </CardDescription>
+   944→                  </div>
+   945→                </div>
+   946→                <div className="flex items-center gap-3">
+   947→                  {lastMonthIncome > 0 && (
+   948→                    <div className={`flex items-center gap-0.5 text-xs font-medium ${momChangePercent >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+   949→                      {momChangePercent >= 0 ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
+   950→                      {Math.abs(momChangePercent)}% vs last month
+   951→                    </div>
+   952→                  )}
+   953→                  {plOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+   954→                </div>
+   955→              </div>
+   956→            </CardHeader>
+   957→          </CollapsibleTrigger>
+   958→          <CollapsibleContent>
+   959→            <CardContent className="pt-0 space-y-4">
+   960→              {/* P&L Header Row */}
+   961→              <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+   962→                <div className="rounded-lg border p-3">
+   963→                  <p className="text-xs text-muted-foreground">Revenue</p>
+   964→                  <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">{formatINR(monthlyIncome)}</p>
+   965→                  <p className="text-[10px] text-muted-foreground mt-0.5">Monthly collections</p>
+   966→                </div>
+   967→                <div className="rounded-lg border p-3">
+   968→                  <p className="text-xs text-muted-foreground">Cost of Goods</p>
+   969→                  <p className="text-sm font-bold text-muted-foreground font-mono">Not tracked</p>
+   970→                  <p className="text-[10px] text-muted-foreground mt-0.5">Enable product costing</p>
+   971→                </div>
+   972→                <div className="rounded-lg border p-3">
+   973→                  <p className="text-xs text-muted-foreground">Gross Profit</p>
+   974→                  <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">{formatINR(monthlyIncome)}</p>
+   975→                  <p className="text-[10px] text-muted-foreground mt-0.5">Revenue (COGS not tracked)</p>
+   976→                </div>
+   977→                <div className="rounded-lg border p-3">
+   978→                  <p className="text-xs text-muted-foreground">Total Expenses</p>
+   979→                  <p className="text-sm font-bold text-red-600 dark:text-red-400 font-mono">{formatINR(monthlyExpensesTotal)}</p>
+   980→                  <p className="text-[10px] text-muted-foreground mt-0.5">This month</p>
+   981→                </div>
+   982→                <div className={`rounded-lg border p-3 ${netProfit >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-red-50 dark:bg-red-950/30'}`}>
+   983→                  <p className="text-xs text-muted-foreground">Net Profit</p>
+   984→                  <p className={`text-sm font-bold font-mono ${netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{formatINR(netProfit)}</p>
+   985→                  <p className="text-[10px] text-muted-foreground mt-0.5">Revenue - Expenses</p>
+   986→                </div>
+   987→              </div>
+   988→
+   989→              {/* P&L Detail: Expense Category Breakdown */}
+   990→              <Separator />
+   991→              <div>
+   992→                <h3 className="text-sm font-semibold mb-3">Expense Breakdown by Category</h3>
+   993→                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+   994→                  {EXPENSE_CATEGORIES.map((cat) => {
+   995→                    const catTotal = expenses
+   996→                      .filter((e) => {
+   997→                        if (e.category !== cat) return false;
+   998→                        try { return new Date(e.date) >= startOfMonth(new Date()); } catch { return false; }
+   999→                      })
+  1000→                      .reduce((s, e) => s + (e.amount || 0), 0);
+  1001→                    if (catTotal === 0) return null;
+  1002→                    const pct = monthlyExpensesTotal > 0 ? ((catTotal / monthlyExpensesTotal) * 100).toFixed(1) : '0.0';
+  1003→                    return (
+  1004→                      <div key={cat} className="rounded-lg border p-3">
+  1005→                        <div className="flex items-center justify-between mb-1">
+  1006→                          <p className="text-xs font-medium text-muted-foreground">{cat}</p>
+  1007→                          <span className="text-[10px] text-muted-foreground">{pct}%</span>
+  1008→                        </div>
+  1009→                        <p className="text-sm font-bold text-red-600 dark:text-red-400 font-mono">{formatINR(catTotal)}</p>
+  1010→                        <Progress value={parseFloat(pct)} className="mt-1.5 h-1" />
+  1011→                      </div>
+  1012→                    );
+  1013→                  })}
+  1014→                </div>
+  1015→              </div>
+  1016→
+  1017→              {/* P&L Bar Chart: Income vs Expenses by category */}
+  1018→              {categorySummary.length > 0 && (
+  1019→                <div>
+  1020→                  <h3 className="text-sm font-semibold mb-3">Income vs Expenses (This Month)</h3>
+  1021→                  <div className="h-[220px]">
+  1022→                    <ChartContainer config={BAR_CHART_CONFIG} className="h-full w-full">
+  1023→                      <BarChart data={categorySummary} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+  1024→                        <CartesianGrid vertical={false} strokeDasharray="3 3" />
+  1025→                        <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+  1026→                        <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+  1027→                        <ChartTooltip content={<ChartTooltipContent />} />
+  1028→                        <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={28} fill="hsl(var(--chart-1))" />
+  1029→                      </BarChart>
+  1030→                    </ChartContainer>
+  1031→                  </div>
+  1032→                </div>
+  1033→              )}
+  1034→            </CardContent>
+  1035→          </CollapsibleContent>
+  1036→        </Card>
+  1037→      </Collapsible>
+  1038→
+  1039→      {/* Summary Cards */}
+  1040→      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+  1041→        <Card className="py-4">
+  1042→          <CardContent className="px-4">
+  1043→            <div className="flex items-center gap-3">
+  1044→              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-950">
+  1045→                <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+  1046→              </div>
+  1047→              <div className="min-w-0">
+  1048→                <p className="text-xs text-muted-foreground font-medium">Today&apos;s Collections</p>
+  1049→                <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 truncate">{formatINR(todayIncome)}</p>
+  1050→              </div>
+  1051→            </div>
+  1052→          </CardContent>
+  1053→        </Card>
+  1054→
+  1055→        <Card className="py-4">
+  1056→          <CardContent className="px-4">
+  1057→            <div className="flex items-center gap-3">
+  1058→              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-100 dark:bg-teal-950">
+  1059→                <Wallet className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+  1060→              </div>
+  1061→              <div className="min-w-0">
+  1062→                <p className="text-xs text-muted-foreground font-medium">Monthly Collections</p>
+  1063→                <p className="text-lg font-bold text-teal-600 dark:text-teal-400 truncate">{formatINR(monthlyIncome)}</p>
+  1064→              </div>
+  1065→            </div>
+  1066→          </CardContent>
+  1067→        </Card>
+  1068→
+  1069→        <Card className="py-4">
+  1070→          <CardContent className="px-4">
+  1071→            <div className="flex items-center gap-3">
+  1072→              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-950">
+  1073→                <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+  1074→              </div>
+  1075→              <div className="min-w-0">
+  1076→                <p className="text-xs text-muted-foreground font-medium">Outstanding Dues</p>
+  1077→                <p className="text-lg font-bold text-amber-600 dark:text-amber-400 truncate">{formatINR(totalPendingDues)}</p>
+  1078→              </div>
+  1079→            </div>
+  1080→          </CardContent>
+  1081→        </Card>
+  1082→
+  1083→        <Card className="py-4">
+  1084→          <CardContent className="px-4">
+  1085→            <div className="flex items-center gap-3">
+  1086→              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-100 dark:bg-red-950">
+  1087→                <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
+  1088→              </div>
+  1089→              <div className="min-w-0">
+  1090→                <p className="text-xs text-muted-foreground font-medium">Total Expenses</p>
+  1091→                <p className="text-lg font-bold text-red-600 dark:text-red-400 truncate">{formatINR(totalExpenses)}</p>
+  1092→              </div>
+  1093→            </div>
+  1094→          </CardContent>
+  1095→        </Card>
+  1096→      </div>
+  1097→
+  1098→      {/* Tabs */}
+  1099→      <Tabs defaultValue="cashflow" className="space-y-4">
+  1100→        <TabsList className="flex-wrap">
+  1101→          <TabsTrigger value="cashflow" className="gap-1.5"><Banknote className="h-4 w-4" /><span className="hidden sm:inline">Cash Flow</span></TabsTrigger>
+  1102→          <TabsTrigger value="expenses" className="gap-1.5"><Receipt className="h-4 w-4" /><span className="hidden sm:inline">Expenses</span></TabsTrigger>
+  1103→          <TabsTrigger value="gst" className="gap-1.5"><Target className="h-4 w-4" /><span className="hidden sm:inline">GST</span></TabsTrigger>
+  1104→          <TabsTrigger value="reconciliation" className="gap-1.5"><CheckCircle2 className="h-4 w-4" /><span className="hidden sm:inline">Reconciliation</span></TabsTrigger>
+  1105→          <TabsTrigger value="dues" className="gap-1.5"><CreditCard className="h-4 w-4" /><span className="hidden sm:inline">Dues</span></TabsTrigger>
+  1106→          <TabsTrigger value="returns" className="gap-1.5"><RotateCcw className="h-4 w-4" /><span className="hidden sm:inline">Returns</span></TabsTrigger>
+  1107→        </TabsList>
+  1108→
+  1109→        {/* ─── Cash Flow Tab ────────────────────────────────────────────── */}
+  1110→        <TabsContent value="cashflow">
+  1111→          <Card>
+  1112→            <CardHeader>
+  1113→              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  1114→                <div>
+  1115→                  <CardTitle className="text-lg">Cash Flow Statement</CardTitle>
+  1116→                  <CardDescription>Track all income and expense transactions</CardDescription>
+  1117→                </div>
+  1118→                <div className="flex items-center gap-2 flex-wrap">
+  1119→                  <div className="flex items-center gap-1.5">
+  1120→                    <Label htmlFor="cf-from" className="text-xs whitespace-nowrap"><CalendarDays className="h-3.5 w-3.5 inline mr-1" />From</Label>
+  1121→                    <Input id="cf-from" type="date" value={cashFlowFrom} onChange={(e) => setCashFlowFrom(e.target.value)} className="h-8 w-[140px] text-xs" />
+  1122→                  </div>
+  1123→                  <div className="flex items-center gap-1.5">
+  1124→                    <Label htmlFor="cf-to" className="text-xs whitespace-nowrap">To</Label>
+  1125→                    <Input id="cf-to" type="date" value={cashFlowTo} onChange={(e) => setCashFlowTo(e.target.value)} className="h-8 w-[140px] text-xs" />
+  1126→                  </div>
+  1127→                </div>
+  1128→              </div>
+  1129→            </CardHeader>
+  1130→            <CardContent>
+  1131→              {loadingSales || loadingExpenses ? (
+  1132→                <TableSkeleton rows={6} cols={5} />
+  1133→              ) : cashFlowData.length === 0 ? (
+  1134→                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+  1135→                  <Wallet className="h-10 w-10 mb-2 opacity-40" />
+  1136→                  <p className="text-sm">No transactions found in this period</p>
+  1137→                </div>
+  1138→              ) : (
+  1139→                <>
+  1140→                  <div className="max-h-[420px] overflow-y-auto rounded-md border">
+  1141→                    <Table>
+  1142→                      <TableHeader>
+  1143→                        <TableRow>
+  1144→                          <TableHead className="text-xs">Date</TableHead>
+  1145→                          <TableHead className="text-xs">Description</TableHead>
+  1146→                          <TableHead className="text-xs">Type</TableHead>
+  1147→                          <TableHead className="text-xs text-right">Amount</TableHead>
+  1148→                          <TableHead className="text-xs text-right">Balance</TableHead>
+  1149→                        </TableRow>
+  1150→                      </TableHeader>
+  1151→                      <TableBody>
+  1152→                        {cashFlowData.map((entry, i) => (
+  1153→                          <TableRow key={`cf-${i}`}>
+  1154→                            <TableCell className="text-xs">{formatDate(entry.date)}</TableCell>
+  1155→                            <TableCell className="text-xs max-w-[200px] truncate">{entry.description}</TableCell>
+  1156→                            <TableCell>
+  1157→                              {entry.type === 'Income' ? (
+  1158→                                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800">Income</Badge>
+  1159→                              ) : (
+  1160→                                <Badge className="bg-red-100 text-red-700 border-red-200 text-xs dark:bg-red-950 dark:text-red-300 dark:border-red-800">Expense</Badge>
+  1161→                              )}
+  1162→                            </TableCell>
+  1163→                            <TableCell className={`text-xs text-right font-mono font-medium ${entry.type === 'Income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+  1164→                              {entry.type === 'Income' ? '+' : '-'}{formatINR(entry.amount)}
+  1165→                            </TableCell>
+  1166→                            <TableCell className={`text-xs text-right font-mono font-medium ${entry.balance >= 0 ? 'text-foreground' : 'text-red-600 dark:text-red-400'}`}>
+  1167→                              {formatINR(entry.balance)}
+  1168→                            </TableCell>
+  1169→                          </TableRow>
+  1170→                        ))}
+  1171→                      </TableBody>
+  1172→                      <TableFooter>
+  1173→                        <TableRow>
+  1174→                          <TableCell colSpan={3} className="text-xs font-semibold">Summary</TableCell>
+  1175→                          <TableCell className="text-xs text-right">
+  1176→                            <div className="space-y-0.5">
+  1177→                              <span className="block text-emerald-600 dark:text-emerald-400 font-mono">+{formatINR(cashFlowSummary.totalIncome)}</span>
+  1178→                              <span className="block text-red-600 dark:text-red-400 font-mono">-{formatINR(cashFlowSummary.totalExpense)}</span>
+  1179→                            </div>
+  1180→                          </TableCell>
+  1181→                          <TableCell className={`text-xs text-right font-mono font-bold ${cashFlowSummary.net >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+  1182→                            {cashFlowSummary.net >= 0 ? '+' : ''}{formatINR(cashFlowSummary.net)}
+  1183→                          </TableCell>
+  1184→                        </TableRow>
+  1185→                      </TableFooter>
+  1186→                    </Table>
+  1187→                  </div>
+  1188→                  <div className="grid grid-cols-3 gap-3 mt-4">
+  1189→                    <div className="rounded-lg border bg-emerald-50 dark:bg-emerald-950/30 p-3 text-center">
+  1190→                      <p className="text-xs text-muted-foreground">Total Income</p>
+  1191→                      <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">{formatINR(cashFlowSummary.totalIncome)}</p>
+  1192→                    </div>
+  1193→                    <div className="rounded-lg border bg-red-50 dark:bg-red-950/30 p-3 text-center">
+  1194→                      <p className="text-xs text-muted-foreground">Total Expense</p>
+  1195→                      <p className="text-sm font-bold text-red-600 dark:text-red-400 font-mono">{formatINR(cashFlowSummary.totalExpense)}</p>
+  1196→                    </div>
+  1197→                    <div className={`rounded-lg border p-3 text-center ${cashFlowSummary.net >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-red-50 dark:bg-red-950/30'}`}>
+  1198→                      <p className="text-xs text-muted-foreground">Net</p>
+  1199→                      <p className={`text-sm font-bold font-mono ${cashFlowSummary.net >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+  1200→                        {cashFlowSummary.net >= 0 ? '+' : ''}{formatINR(cashFlowSummary.net)}
+  1201→                      </p>
+  1202→                    </div>
+  1203→                  </div>
+  1204→                </>
+  1205→              )}
+  1206→            </CardContent>
+  1207→          </Card>
+  1208→        </TabsContent>
+  1209→
+  1210→        {/* ─── Expenses Tab ─────────────────────────────────────────────── */}
+  1211→        <TabsContent value="expenses">
+  1212→          <Card>
+  1213→            <CardHeader>
+  1214→              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  1215→                <div>
+  1216→                  <CardTitle className="text-lg flex items-center gap-2"><Receipt className="h-5 w-5" />Expense Management</CardTitle>
+  1217→                  <CardDescription>{expenses.length} expense{expenses.length !== 1 ? 's' : ''} totaling {formatINR(totalExpenses)}</CardDescription>
+  1218→                </div>
+  1219→                <div className="flex items-center gap-2">
+  1220→                  <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { setBudgetInput(monthlyBudget > 0 ? String(monthlyBudget) : ''); setBudgetDialogOpen(true); }}>
+  1221→                    <Target className="h-3.5 w-3.5" />Set Budget
+  1222→                  </Button>
+  1223→                  <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExportCSV} disabled={expenses.length === 0}>
+  1224→                    <Download className="h-3.5 w-3.5" />CSV
+  1225→                  </Button>
+  1226→                  <Button onClick={openAddExpense} size="sm" className="gap-1.5"><Plus className="h-4 w-4" />Add Expense</Button>
+  1227→                </div>
+  1228→              </div>
+  1229→            </CardHeader>
+  1230→            <CardContent>
+  1231→              {/* Monthly Budget Tracking */}
+  1232→              {monthlyBudget > 0 && (
+  1233→                <div className="mb-4 rounded-lg border p-4">
+  1234→                  <div className="flex items-center justify-between mb-2">
+  1235→                    <div className="flex items-center gap-2">
+  1236→                      <Target className="h-4 w-4 text-muted-foreground" />
+  1237→                      <span className="text-xs font-medium">Monthly Budget: {formatINR(monthlyBudget)}</span>
+  1238→                    </div>
+  1239→                    <span className={`text-xs font-semibold ${budgetRemaining >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+  1240→                      {budgetRemaining >= 0 ? `${formatINR(budgetRemaining)} remaining` : `${formatINR(Math.abs(budgetRemaining))} over budget`}
+  1241→                    </span>
+  1242→                  </div>
+  1243→                  <div className="relative">
+  1244→                    <Progress
+  1245→                      value={budgetPercent}
+  1246→                      className={`h-3 ${budgetPercent < 75 ? '[&>div]:bg-emerald-500' : budgetPercent < 100 ? '[&>div]:bg-amber-500' : '[&>div]:bg-red-500'}`}
+  1247→                    />
+  1248→                  </div>
+  1249→                  <div className="flex items-center justify-between mt-1.5">
+  1250→                    <span className="text-[11px] text-muted-foreground">{formatINR(monthlyExpensesTotal)} spent this month</span>
+  1251→                    <span className="text-[11px] text-muted-foreground">{Math.round(budgetPercent)}% used</span>
+  1252→                  </div>
+  1253→                </div>
+  1254→              )}
+  1255→
+  1256→              {loadingExpenses ? (
+  1257→                <TableSkeleton rows={6} cols={6} />
+  1258→              ) : expenses.length === 0 ? (
+  1259→                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+  1260→                  <Receipt className="h-10 w-10 mb-2 opacity-40" />
+  1261→                  <p className="text-sm">No expenses recorded yet</p>
+  1262→                  <Button variant="outline" size="sm" className="mt-3 gap-1.5" onClick={openAddExpense}><Plus className="h-3.5 w-3.5" />Add your first expense</Button>
+  1263→                </div>
+  1264→              ) : (
+  1265→                <>
+  1266→                  <div className="max-h-[360px] overflow-y-auto rounded-md border">
+  1267→                    <Table>
+  1268→                      <TableHeader>
+  1269→                        <TableRow>
+  1270→                          <TableHead className="text-xs">Date</TableHead>
+  1271→                          <TableHead className="text-xs">Category</TableHead>
+  1272→                          <TableHead className="text-xs">Description</TableHead>
+  1273→                          <TableHead className="text-xs text-right">Amount</TableHead>
+  1274→                          <TableHead className="text-xs hidden sm:table-cell">Vendor</TableHead>
+  1275→                          <TableHead className="text-xs text-right">Actions</TableHead>
+  1276→                        </TableRow>
+  1277→                      </TableHeader>
+  1278→                      <TableBody>
+  1279→                        {expenses.map((exp) => (
+  1280→                          <TableRow key={exp.id}>
+  1281→                            <TableCell className="text-xs">{formatDate(exp.date)}</TableCell>
+  1282→                            <TableCell><Badge variant="outline" className="text-xs">{exp.category}</Badge></TableCell>
+  1283→                            <TableCell className="text-xs max-w-[180px] truncate">{exp.description}</TableCell>
+  1284→                            <TableCell className="text-xs text-right font-mono font-medium text-red-600 dark:text-red-400">{formatINR(exp.amount)}</TableCell>
+  1285→                            <TableCell className="text-xs hidden sm:table-cell max-w-[120px] truncate">{exp.vendor || '—'}</TableCell>
+  1286→                            <TableCell className="text-right">
+  1287→                              <div className="flex items-center justify-end gap-1">
+  1288→                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openEditExpense(exp)}><Pencil className="h-3.5 w-3.5" /><span className="sr-only">Edit</span></Button>
+  1289→                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950" onClick={() => handleDeleteExpense(exp.id)} disabled={deletingExpenseId === exp.id}>
+  1290→                                  {deletingExpenseId === exp.id ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <Trash2 className="h-3.5 w-3.5" />}
+  1291→                                  <span className="sr-only">Delete</span>
+  1292→                                </Button>
+  1293→                              </div>
+  1294→                            </TableCell>
+  1295→                          </TableRow>
+  1296→                        ))}
+  1297→                      </TableBody>
+  1298→                    </Table>
+  1299→                  </div>
+  1300→
+  1301→                  {categorySummary.length > 0 && (
+  1302→                    <div className="mt-6">
+  1303→                      <Separator className="mb-4" />
+  1304→                      <h3 className="text-sm font-semibold mb-4 flex items-center gap-2"><PieChartIcon className="h-4 w-4" />Expense Distribution by Category</h3>
+  1305→                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  1306→                        <div className="flex items-center justify-center">
+  1307→                          <ChartContainer config={PIE_CHART_CONFIG} className="h-[250px] w-full max-w-[250px]">
+  1308→                            <PieChart>
+  1309→                              <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+  1310→                              <Pie data={categorySummary} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2} strokeWidth={2}>
+  1311→                                {categorySummary.map((_, index) => <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+  1312→                              </Pie>
+  1313→                            </PieChart>
+  1314→                          </ChartContainer>
+  1315→                        </div>
+  1316→                        <div className="space-y-3">
+  1317→                          <ChartContainer config={BAR_CHART_CONFIG} className="h-[200px] w-full">
+  1318→                            <BarChart data={categorySummary} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 60 }}>
+  1319→                              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+  1320→                              <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
+  1321→                              <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} width={65} />
+  1322→                              <ChartTooltip content={<ChartTooltipContent />} />
+  1323→                              <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+  1324→                                {categorySummary.map((_, index) => <Cell key={`bar-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+  1325→                              </Bar>
+  1326→                            </BarChart>
+  1327→                          </ChartContainer>
+  1328→                        </div>
+  1329→                      </div>
+  1330→                    </div>
+  1331→                  )}
+  1332→                </>
+  1333→              )}
+  1334→            </CardContent>
+  1335→          </Card>
+  1336→        </TabsContent>
+  1337→
+  1338→        {/* ─── GST Collection Tab ────────────────────────────────────────── */}
+  1339→        <TabsContent value="gst">
+  1340→          <div className="space-y-4">
+  1341→            <Card>
+  1342→              <CardHeader>
+  1343→                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  1344→                  <div>
+  1345→                    <CardTitle className="text-lg flex items-center gap-2">
+  1346→                      <Target className="h-5 w-5" />
+  1347→                      GST Collection Summary
+  1348→                    </CardTitle>
+  1349→                    <CardDescription>Current month GST collected on sales</CardDescription>
+  1350→                  </div>
+  1351→                  <Badge variant="outline" className="text-xs">
+  1352→                    {format(new Date(), 'MMMM yyyy')}
+  1353→                  </Badge>
+  1354→                </div>
+  1355→              </CardHeader>
+  1356→              <CardContent>
+  1357→                {gstLoading ? (
+  1358→                  <TableSkeleton rows={3} cols={4} />
+  1359→                ) : (
+  1360→                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+  1361→                    <div className="rounded-lg border p-4">
+  1362→                      <p className="text-xs text-muted-foreground font-medium">CGST Collected</p>
+  1363→                      <p className="text-xl font-bold text-blue-600 dark:text-blue-400 font-mono mt-1">{formatINR(gstData?.cgst || 0)}</p>
+  1364→                      <p className="text-[10px] text-muted-foreground mt-1">Central Goods & Services Tax</p>
+  1365→                    </div>
+  1366→                    <div className="rounded-lg border p-4">
+  1367→                      <p className="text-xs text-muted-foreground font-medium">SGST Collected</p>
+  1368→                      <p className="text-xl font-bold text-violet-600 dark:text-violet-400 font-mono mt-1">{formatINR(gstData?.sgst || 0)}</p>
+  1369→                      <p className="text-[10px] text-muted-foreground mt-1">State Goods & Services Tax</p>
+  1370→                    </div>
+  1371→                    <div className="rounded-lg border p-4">
+  1372→                      <p className="text-xs text-muted-foreground font-medium">IGST Collected</p>
+  1373→                      <p className="text-xl font-bold text-amber-600 dark:text-amber-400 font-mono mt-1">{formatINR(gstData?.igst || 0)}</p>
+  1374→                      <p className="text-[10px] text-muted-foreground mt-1">Integrated Goods & Services Tax</p>
+  1375→                    </div>
+  1376→                    <div className="rounded-lg border p-4 bg-emerald-50 dark:bg-emerald-950/30">
+  1377→                      <p className="text-xs text-muted-foreground font-medium">Total GST Payable</p>
+  1378→                      <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400 font-mono mt-1">{formatINR(gstData?.total || 0)}</p>
+  1379→                      <p className="text-[10px] text-muted-foreground mt-1">CGST + SGST + IGST</p>
+  1380→                    </div>
+  1381→                  </div>
+  1382→                )}
+  1383→              </CardContent>
+  1384→            </Card>
+  1385→
+  1386→            {/* GST Pie Chart */}
+  1387→            {gstData && gstData.total > 0 && (
+  1388→              <Card>
+  1389→                <CardHeader>
+  1390→                  <CardTitle className="text-base">GST Distribution</CardTitle>
+  1391→                  <CardDescription>Breakdown of GST components</CardDescription>
+  1392→                </CardHeader>
+  1393→                <CardContent>
+  1394→                  <div className="h-[250px]">
+  1395→                    <ChartContainer config={PIE_CHART_CONFIG} className="h-full w-full">
+  1396→                      <PieChart>
+  1397→                        <ChartTooltip content={<ChartTooltipContent />} />
+  1398→                        <Pie
+  1399→                          data={[
+  1400→                            { name: 'CGST', value: gstData.cgst },
+  1401→                            { name: 'SGST', value: gstData.sgst },
+  1402→                            ...(gstData.igst > 0 ? [{ name: 'IGST', value: gstData.igst }] : []),
+  1403→                          ]}
+  1404→                          cx="50%"
+  1405→                          cy="50%"
+  1406→                          outerRadius={90}
+  1407→                          innerRadius={45}
+  1408→                          dataKey="value"
+  1409→                          nameKey="name"
+  1410→                        >
+  1411→                          <Cell fill="hsl(var(--chart-1))" />
+  1412→                          <Cell fill="hsl(var(--chart-2))" />
+  1413→                          {gstData.igst > 0 && <Cell fill="hsl(var(--chart-3))" />}
+  1414→                        </Pie>
+  1415→                      </PieChart>
+  1416→                    </ChartContainer>
+  1417→                  </div>
+  1418→                </CardContent>
+  1419→              </Card>
+  1420→            )}
+  1421→          </div>
+  1422→        </TabsContent>
+  1423→
+  1424→        {/* ─── Daily Cash Reconciliation Tab ─────────────────────────────── */}
+  1425→        <TabsContent value="reconciliation">
+  1426→          <div className="space-y-4">
+  1427→            <Card>
+  1428→              <CardHeader>
+  1429→                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  1430→                  <div>
+  1431→                    <CardTitle className="text-lg flex items-center gap-2">
+  1432→                      <CheckCircle2 className="h-5 w-5" />
+  1433→                      Daily Cash Reconciliation
+  1434→                    </CardTitle>
+  1435→                    <CardDescription>Verify daily cash balance against sales and expenses</CardDescription>
+  1436→                  </div>
+  1437→                  <div className="flex items-center gap-2">
+  1438→                    <Label htmlFor="recon-date" className="text-xs whitespace-nowrap">Date:</Label>
+  1439→                    <Input id="recon-date" type="date" value={reconDate} onChange={(e) => setReconDate(e.target.value)} className="h-8 w-[150px] text-xs" />
+  1440→                    <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => setReconDate(getTodayStr())}>Today</Button>
+  1441→                  </div>
+  1442→                </div>
+  1443→              </CardHeader>
+  1444→              <CardContent>
+  1445→                {loadingSales || loadingExpenses ? (
+  1446→                  <TableSkeleton rows={4} cols={3} />
+  1447→                ) : (
+  1448→                  <div className="space-y-4">
+  1449→                    {/* Reconciliation Summary Cards */}
+  1450→                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+  1451→                      <div className="rounded-lg border p-3">
+  1452→                        <p className="text-[10px] text-muted-foreground">Total Sales</p>
+  1453→                        <p className="text-sm font-bold font-mono">{formatINR(dailyReconciliation.totalIncome)}</p>
+  1454→                        <p className="text-[10px] text-muted-foreground">{dailyReconciliation.totalTransactions} transactions</p>
+  1455→                      </div>
+  1456→                      <div className="rounded-lg border p-3">
+  1457→                        <p className="text-[10px] text-muted-foreground">Cash Sales</p>
+  1458→                        <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">{formatINR(dailyReconciliation.cashSales)}</p>
+  1459→                      </div>
+  1460→                      <div className="rounded-lg border p-3">
+  1461→                        <p className="text-[10px] text-muted-foreground">UPI Sales</p>
+  1462→                        <p className="text-sm font-bold text-violet-600 dark:text-violet-400 font-mono">{formatINR(dailyReconciliation.upiSales)}</p>
+  1463→                      </div>
+  1464→                      <div className="rounded-lg border p-3">
+  1465→                        <p className="text-[10px] text-muted-foreground">Card Sales</p>
+  1466→                        <p className="text-sm font-bold text-blue-600 dark:text-blue-400 font-mono">{formatINR(dailyReconciliation.cardSales)}</p>
+  1467→                      </div>
+  1468→                      <div className="rounded-lg border p-3">
+  1469→                        <p className="text-[10px] text-muted-foreground">Credit Sales</p>
+  1470→                        <p className="text-sm font-bold text-amber-600 dark:text-amber-400 font-mono">{formatINR(dailyReconciliation.creditSales)}</p>
+  1471→                      </div>
+  1472→                    </div>
+  1473→
+  1474→                    {/* Reconciliation Detail Table */}
+  1475→                    <div className="rounded-lg border overflow-hidden">
+  1476→                      <Table>
+  1477→                        <TableHeader>
+  1478→                          <TableRow>
+  1479→                            <TableHead className="text-xs">Item</TableHead>
+  1480→                            <TableHead className="text-xs text-right">Amount</TableHead>
+  1481→                            <TableHead className="text-xs text-right hidden sm:table-cell">Notes</TableHead>
+  1482→                          </TableRow>
+  1483→                        </TableHeader>
+  1484→                        <TableBody>
+  1485→                          <TableRow>
+  1486→                            <TableCell className="text-sm font-medium">Total Income (All Modes)</TableCell>
+  1487→                            <TableCell className="text-sm font-mono text-emerald-600 dark:text-emerald-400 text-right">{formatINR(dailyReconciliation.totalIncome)}</TableCell>
+  1488→                            <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">{dailyReconciliation.totalTransactions} sales</TableCell>
+  1489→                          </TableRow>
+  1490→                          <TableRow>
+  1491→                            <TableCell className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Cash Received</TableCell>
+  1492→                            <TableCell className="text-sm font-mono text-emerald-600 dark:text-emerald-400 text-right">+{formatINR(dailyReconciliation.cashSales)}</TableCell>
+  1493→                            <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">Cash payments</TableCell>
+  1494→                          </TableRow>
+  1495→                          <TableRow>
+  1496→                            <TableCell className="text-sm font-medium text-violet-600 dark:text-violet-400">UPI Received</TableCell>
+  1497→                            <TableCell className="text-sm font-mono text-violet-600 dark:text-violet-400 text-right">+{formatINR(dailyReconciliation.upiSales)}</TableCell>
+  1498→                            <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">GPay/PhonePe/Paytm</TableCell>
+  1499→                          </TableRow>
+  1500→                          <TableRow>
+  1501→                            <TableCell className="text-sm font-medium text-blue-600 dark:text-blue-400">Card Received</TableCell>
+  1502→                            <TableCell className="text-sm font-mono text-blue-600 dark:text-blue-400 text-right">+{formatINR(dailyReconciliation.cardSales)}</TableCell>
+  1503→                            <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">Debit/Credit card</TableCell>
+  1504→                          </TableRow>
+  1505→                          <TableRow>
+  1506→                            <TableCell className="text-sm font-medium text-amber-600 dark:text-amber-400">Credit Given</TableCell>
+  1507→                            <TableCell className="text-sm font-mono text-amber-600 dark:text-amber-400 text-right">{formatINR(dailyReconciliation.creditSales)}</TableCell>
+  1508→                            <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">Outstanding dues</TableCell>
+  1509→                          </TableRow>
+  1510→                          {dailyReconciliation.otherSales > 0 && (
+  1511→                            <TableRow>
+  1512→                              <TableCell className="text-sm font-medium">Other Modes</TableCell>
+  1513→                              <TableCell className="text-sm font-mono text-right">{formatINR(dailyReconciliation.otherSales)}</TableCell>
+  1514→                              <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">Mixed/Split</TableCell>
+  1515→                            </TableRow>
+  1516→                          )}
+  1517→                          <TableRow>
+  1518→                            <TableCell className="text-sm font-medium text-red-600 dark:text-red-400">Less: Expenses Paid (Cash)</TableCell>
+  1519→                            <TableCell className="text-sm font-mono text-red-600 dark:text-red-400 text-right">-{formatINR(dailyReconciliation.totalExpenses)}</TableCell>
+  1520→                            <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">{dailyReconciliation.expenses.length} expenses</TableCell>
+  1521→                          </TableRow>
+  1522→                        </TableBody>
+  1523→                        <TableFooter>
+  1524→                          <TableRow className="bg-muted/50 font-bold">
+  1525→                            <TableCell className="text-sm">Expected Cash in Hand</TableCell>
+  1526→                            <TableCell className={`text-sm font-mono text-right ${dailyReconciliation.expectedCash >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+  1527→                              {formatINR(dailyReconciliation.expectedCash)}
+  1528→                            </TableCell>
+  1529→                            <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">Cash In - Expenses</TableCell>
+  1530→                          </TableRow>
+  1531→                        </TableFooter>
+  1532→                      </Table>
+  1533→                    </div>
+  1534→
+  1535→                    {/* Day GST */}
+  1536→                    {dailyReconciliation.totalGST > 0 && (
+  1537→                      <div className="rounded-lg border p-3">
+  1538→                        <p className="text-xs font-medium text-muted-foreground mb-2">GST Collected on {formatDate(reconDate)}</p>
+  1539→                        <div className="grid grid-cols-3 gap-3">
+  1540→                          <div>
+  1541→                            <p className="text-[10px] text-muted-foreground">CGST</p>
+  1542→                            <p className="text-sm font-mono font-semibold">{formatINR(dailyReconciliation.dayCGST)}</p>
+  1543→                          </div>
+  1544→                          <div>
+  1545→                            <p className="text-[10px] text-muted-foreground">SGST</p>
+  1546→                            <p className="text-sm font-mono font-semibold">{formatINR(dailyReconciliation.daySGST)}</p>
+  1547→                          </div>
+  1548→                          <div>
+  1549→                            <p className="text-[10px] text-muted-foreground">IGST</p>
+  1550→                            <p className="text-sm font-mono font-semibold">{formatINR(dailyReconciliation.dayIGST)}</p>
+  1551→                          </div>
+  1552→                        </div>
+  1553→                      </div>
+  1554→                    )}
+  1555→
+  1556→                    {/* Transaction list for that day */}
+  1557→                    {dailyReconciliation.sales.length > 0 && (
+  1558→                      <div>
+  1559→                        <h3 className="text-sm font-semibold mb-2">Sales Transactions ({formatDate(reconDate)})</h3>
+  1560→                        <div className="max-h-60 overflow-y-auto rounded-md border">
+  1561→                          <Table>
+  1562→                            <TableHeader>
+  1563→                              <TableRow>
+  1564→                                <TableHead className="text-xs">Invoice</TableHead>
+  1565→                                <TableHead className="text-xs">Customer</TableHead>
+  1566→                                <TableHead className="text-xs">Mode</TableHead>
+  1567→                                <TableHead className="text-xs text-right">Amount</TableHead>
+  1568→                              </TableRow>
+  1569→                            </TableHeader>
+  1570→                            <TableBody>
+  1571→                              {dailyReconciliation.sales.map((s) => (
+  1572→                                <TableRow key={s.id}>
+  1573→                                  <TableCell className="text-xs font-mono">{s.invoiceNo || '—'}</TableCell>
+  1574→                                  <TableCell className="text-xs">{s.customer?.name || s.customerName || 'Walk-in'}</TableCell>
+  1575→                                  <TableCell className="text-xs">
+  1576→                                    <Badge variant="outline" className="text-[10px]">{s.paymentMode || 'Cash'}</Badge>
+  1577→                                  </TableCell>
+  1578→                                  <TableCell className="text-xs font-mono text-right font-semibold">{formatINR(s.total)}</TableCell>
+  1579→                                </TableRow>
+  1580→                              ))}
+  1581→                            </TableBody>
+  1582→                          </Table>
+  1583→                        </div>
+  1584→                      </div>
+  1585→                    )}
+  1586→                  </div>
+  1587→                )}
+  1588→              </CardContent>
+  1589→            </Card>
+  1590→          </div>
+  1591→        </TabsContent>
+  1592→
+  1593→        {/* ─── Dues Tab ─────────────────────────────────────────────────── */}
+  1594→        <TabsContent value="dues">
+  1595→          <Card>
+  1596→            <CardHeader>
+  1597→              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  1598→                <div>
+  1599→                  <CardTitle className="text-lg flex items-center gap-2"><CreditCard className="h-5 w-5" />Customer Dues</CardTitle>
+  1600→                  <CardDescription>
+  1601→                    {filteredDues.length} due{filteredDues.length !== 1 ? 's' : ''} &bull; Pending total: {formatINR(totalPendingDues)}
+  1602→                  </CardDescription>
+  1603→                </div>
+  1604→                <div className="flex items-center gap-2">
+  1605→                  <Filter className="h-4 w-4 text-muted-foreground" />
+  1606→                  <Select value={dueFilter} onValueChange={setDueFilter}>
+  1607→                    <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue /></SelectTrigger>
+  1608→                    <SelectContent>
+  1609→                      <SelectItem value="All">All Status</SelectItem>
+  1610→                      <SelectItem value="Pending">Pending</SelectItem>
+  1611→                      <SelectItem value="Partial">Partial</SelectItem>
+  1612→                      <SelectItem value="Paid">Paid</SelectItem>
+  1613→                      <SelectItem value="Overdue">Overdue</SelectItem>
+  1614→                    </SelectContent>
+  1615→                  </Select>
+  1616→                </div>
+  1617→              </div>
+  1618→            </CardHeader>
+  1619→            <CardContent>
+  1620→              {loadingDues ? (
+  1621→                <TableSkeleton rows={5} cols={6} />
+  1622→              ) : filteredDues.length === 0 ? (
+  1623→                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+  1624→                  <CreditCard className="h-10 w-10 mb-2 opacity-40" />
+  1625→                  <p className="text-sm">No dues found</p>
+  1626→                </div>
+  1627→              ) : (
+  1628→                <div className="max-h-[420px] overflow-y-auto rounded-md border">
+  1629→                  <Table>
+  1630→                    <TableHeader>
+  1631→                      <TableRow>
+  1632→                        <TableHead className="text-xs">Customer</TableHead>
+  1633→                        <TableHead className="text-xs">Phone</TableHead>
+  1634→                        <TableHead className="text-xs text-right">Total</TableHead>
+  1635→                        <TableHead className="text-xs text-right">Paid</TableHead>
+  1636→                        <TableHead className="text-xs text-right">Balance</TableHead>
+  1637→                        <TableHead className="text-xs">Status</TableHead>
+  1638→                        <TableHead className="text-xs">Due Date</TableHead>
+  1639→                        <TableHead className="text-xs text-right">Action</TableHead>
+  1640→                      </TableRow>
+  1641→                    </TableHeader>
+  1642→                    <TableBody>
+  1643→                      {filteredDues.map((due) => {
+  1644→                        const balance = (due.amount || 0) - (due.paid || 0);
+  1645→                        const overdue = isDueOverdue(due);
+  1646→                        const expanded = expandedDueId === due.id;
+  1647→                        const partialPayments = due.paid > 0 && due.paid < due.amount ? 1 : 0;
+  1648→                        return (
+  1649→                          <React.Fragment key={due.id}>
+  1650→                            <TableRow
+  1651→                              className="cursor-pointer"
+  1652→                              onClick={() => setExpandedDueId(expanded ? null : due.id)}
+  1653→                            >
+  1654→                              <TableCell className="text-xs font-medium">
+  1655→                                <div className="flex items-center gap-1.5">
+  1656→                                  {overdue && (
+  1657→                                    <span className="inline-block h-2 w-2 rounded-full bg-red-500 shrink-0" />
+  1658→                                  )}
+  1659→                                  {due.customer?.name || 'Unknown'}
+  1660→                                </div>
+  1661→                              </TableCell>
+  1662→                              <TableCell className="text-xs text-muted-foreground">{due.customer?.phone || '—'}</TableCell>
+  1663→                              <TableCell className="text-xs text-right font-mono">{formatINR(due.amount || 0)}</TableCell>
+  1664→                              <TableCell className="text-xs text-right font-mono text-emerald-600 dark:text-emerald-400">{formatINR(due.paid || 0)}</TableCell>
+  1665→                              <TableCell className="text-xs text-right font-mono font-semibold text-red-600 dark:text-red-400">{formatINR(balance)}</TableCell>
+  1666→                              <TableCell>
+  1667→                                <div className="flex items-center gap-1.5">
+  1668→                                  <DueStatusBadge status={due.status} />
+  1669→                                  {overdue && (
+  1670→                                    <Badge className="bg-red-100 text-red-700 border-red-200 text-[10px] px-1.5 py-0 dark:bg-red-950 dark:text-red-300 dark:border-red-800">OVERDUE</Badge>
+  1671→                                  )}
+  1672→                                </div>
+  1673→                              </TableCell>
+  1674→                              <TableCell className="text-xs">{due.dueDate ? formatDate(due.dueDate) : '—'}</TableCell>
+  1675→                              <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+  1676→                                {due.status !== 'Paid' ? (
+  1677→                                  <div className="flex items-center justify-end gap-1">
+  1678→                                    <Tooltip>
+  1679→                                      <TooltipTrigger asChild>
+  1680→                                        <a
+  1681→                                          href={`https://wa.me/91${due.customer?.phone || ''}?text=${encodeURIComponent(
+  1682→                                            `Dear ${due.customer?.name || 'Customer'},\n\nThis is a friendly reminder from Sankaran Kovil Opticals regarding your pending payment of ${formatINR(balance)}.\n${due.dueDate ? `Due date: ${formatDate(due.dueDate)}\n` : ''}Please clear the balance at your earliest convenience.\n\nThank you!`
+  1683→                                          )}`}
+  1684→                                          target="_blank"
+  1685→                                          rel="noopener noreferrer"
+  1686→                                        >
+  1687→                                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950">
+  1688→                                            <MessageCircle className="h-3.5 w-3.5" />
+  1689→                                            <span className="sr-only">WhatsApp Reminder</span>
+  1690→                                          </Button>
+  1691→                                        </a>
+  1692→                                      </TooltipTrigger>
+  1693→                                      <TooltipContent>Send WhatsApp Reminder</TooltipContent>
+  1694→                                    </Tooltip>
+  1695→                                    <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => openPaymentDialog(due)}>
+  1696→                                      <IndianRupee className="h-3 w-3" /> Pay
+  1697→                                    </Button>
+  1698→                                    <Button variant="ghost" size="sm" className="h-7 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950 gap-1" onClick={() => handleMarkPaid(due)} disabled={markPaidLoading}>
+  1699→                                      <CheckCircle2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">Mark Paid</span>
+  1700→                                    </Button>
+  1701→                                  </div>
+  1702→                                ) : (
+  1703→                                  <Check className="h-4 w-4 text-emerald-500 mx-auto" />
+  1704→                                )}
+  1705→                              </TableCell>
+  1706→                            </TableRow>
+  1707→                            {/* Payment History Expansion Row */}
+  1708→                            {expanded && (
+  1709→                              <TableRow>
+  1710→                                <TableCell colSpan={8} className="bg-muted/30 px-6 py-3">
+  1711→                                  <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
+  1712→                                    <span>Created: <strong className="text-foreground">{formatDate(due.createdAt)}</strong></span>
+  1713→                                    {due.updatedAt && due.paid > 0 && (
+  1714→                                      <span>Last payment: <strong className="text-foreground">{formatDate(due.updatedAt)}</strong></span>
+  1715→                                    )}
+  1716→                                    <span>Total paid: <strong className="text-emerald-600 dark:text-emerald-400">{formatINR(due.paid)}</strong> of {formatINR(due.amount)}</span>
+  1717→                                    {due.paid > 0 && due.paid < due.amount && (
+  1718→                                      <span>Partial payments made: <strong className="text-foreground">{partialPayments}+</strong> (amount tracked)</span>
+  1719→                                    )}
+  1720→                                    {due.notes && <span>Notes: {due.notes}</span>}
+  1721→                                  </div>
+  1722→                                </TableCell>
+  1723→                              </TableRow>
+  1724→                            )}
+  1725→                          </React.Fragment>
+  1726→                        );
+  1727→                      })}
+  1728→                    </TableBody>
+  1729→                  </Table>
+  1730→                </div>
+  1731→              )}
+  1732→            </CardContent>
+  1733→          </Card>
+  1734→        </TabsContent>
+  1735→
+  1736→        {/* ─── Returns Tab ──────────────────────────────────────────────── */}
+  1737→        <TabsContent value="returns">
+  1738→          <Card>
+  1739→            <CardHeader>
+  1740→              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  1741→                <div>
+  1742→                  <CardTitle className="text-lg flex items-center gap-2"><RotateCcw className="h-5 w-5" />Returns Management</CardTitle>
+  1743→                  <CardDescription>Track product returns and refunds</CardDescription>
+  1744→                </div>
+  1745→                <Button onClick={openCreateReturn} size="sm" className="gap-1.5"><Plus className="h-4 w-4" />Create Return</Button>
+  1746→              </div>
+  1747→            </CardHeader>
+  1748→            <CardContent>
+  1749→              {/* Returns Summary Cards */}
+  1750→              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+  1751→                <div className="rounded-lg border p-3">
+  1752→                  <p className="text-xs text-muted-foreground">Total Returns</p>
+  1753→                  <p className="text-lg font-bold font-mono">{returns.length}</p>
+  1754→                </div>
+  1755→                <div className="rounded-lg border p-3">
+  1756→                  <p className="text-xs text-muted-foreground">Total Refund Amount</p>
+  1757→                  <p className="text-lg font-bold font-mono text-red-600 dark:text-red-400">{formatINR(totalReturnRefund)}</p>
+  1758→                </div>
+  1759→                <div className="rounded-lg border p-3">
+  1760→                  <p className="text-xs text-muted-foreground">This Month Returns</p>
+  1761→                  <p className="text-lg font-bold font-mono">{thisMonthReturns.length} <span className="text-sm text-muted-foreground font-normal">({formatINR(thisMonthReturnAmount)})</span></p>
+  1762→                </div>
+  1763→              </div>
+  1764→
+  1765→              {loadingReturns ? (
+  1766→                <TableSkeleton rows={5} cols={6} />
+  1767→              ) : returns.length === 0 ? (
+  1768→                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+  1769→                  <RotateCcw className="h-10 w-10 mb-2 opacity-40" />
+  1770→                  <p className="text-sm">No returns recorded yet</p>
+  1771→                  <Button variant="outline" size="sm" className="mt-3 gap-1.5" onClick={openCreateReturn}><Plus className="h-3.5 w-3.5" />Create your first return</Button>
+  1772→                </div>
+  1773→              ) : (
+  1774→                <div className="max-h-[420px] overflow-y-auto rounded-md border">
+  1775→                  <Table>
+  1776→                    <TableHeader>
+  1777→                      <TableRow>
+  1778→                        <TableHead className="text-xs">Invoice #</TableHead>
+  1779→                        <TableHead className="text-xs">Customer</TableHead>
+  1780→                        <TableHead className="text-xs">Reason</TableHead>
+  1781→                        <TableHead className="text-xs text-right">Refund Amount</TableHead>
+  1782→                        <TableHead className="text-xs">Status</TableHead>
+  1783→                        <TableHead className="text-xs">Date</TableHead>
+  1784→                      </TableRow>
+  1785→                    </TableHeader>
+  1786→                    <TableBody>
+  1787→                      {returns.map((ret) => (
+  1788→                        <TableRow key={ret.id}>
+  1789→                          <TableCell className="text-xs font-mono">{ret.sale?.invoiceNo || '—'}</TableCell>
+  1790→                          <TableCell className="text-xs">{ret.sale?.customer?.name || 'Walk-in'}</TableCell>
+  1791→                          <TableCell className="text-xs max-w-[160px] truncate">{ret.reason}</TableCell>
+  1792→                          <TableCell className="text-xs text-right font-mono font-medium text-red-600 dark:text-red-400">{formatINR(ret.amount || 0)}</TableCell>
+  1793→                          <TableCell><ReturnStatusBadge status={ret.status} /></TableCell>
+  1794→                          <TableCell className="text-xs">{formatDate(ret.createdAt)}</TableCell>
+  1795→                        </TableRow>
+  1796→                      ))}
+  1797→                    </TableBody>
+  1798→                  </Table>
+  1799→                </div>
+  1800→              )}
+  1801→            </CardContent>
+  1802→          </Card>
+  1803→        </TabsContent>
+  1804→      </Tabs>
+  1805→
+  1806→      {/* ─── Expense Dialog ──────────────────────────────────────────────── */}
+  1807→      <Dialog open={expenseDialogOpen} onOpenChange={setExpenseDialogOpen}>
+  1808→        <DialogContent className="sm:max-w-[440px]">
+  1809→          <DialogHeader>
+  1810→            <DialogTitle>{editingExpense ? 'Edit Expense' : 'Add New Expense'}</DialogTitle>
+  1811→            <DialogDescription>
+  1812→              {editingExpense ? 'Update the expense details below' : 'Record a new expense transaction'}
+  1813→            </DialogDescription>
+  1814→          </DialogHeader>
+  1815→          <div className="grid gap-4 py-2">
+  1816→            <div className="grid gap-2">
+  1817→              <Label htmlFor="exp-category">Category *</Label>
+  1818→              <Select value={expForm.category} onValueChange={(v) => setExpForm((f) => ({ ...f, category: v }))}>
+  1819→                <SelectTrigger id="exp-category"><SelectValue placeholder="Select category" /></SelectTrigger>
+  1820→                <SelectContent>
+  1821→                  {EXPENSE_CATEGORIES.map((cat) => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+  1822→                </SelectContent>
+  1823→              </Select>
+  1824→            </div>
+  1825→            <div className="grid gap-2">
+  1826→              <Label htmlFor="exp-desc">Description *</Label>
+  1827→              <Input id="exp-desc" placeholder="What was the expense for?" value={expForm.description} onChange={(e) => setExpForm((f) => ({ ...f, description: e.target.value }))} />
+  1828→            </div>
+  1829→            <div className="grid grid-cols-2 gap-4">
+  1830→              <div className="grid gap-2">
+  1831→                <Label htmlFor="exp-amount">Amount (₹) *</Label>
+  1832→                <Input id="exp-amount" type="number" min="1" placeholder="0" value={expForm.amount} onChange={(e) => setExpForm((f) => ({ ...f, amount: e.target.value }))} />
+  1833→              </div>
+  1834→              <div className="grid gap-2">
+  1835→                <Label htmlFor="exp-date">Date *</Label>
+  1836→                <Input id="exp-date" type="date" value={expForm.date} onChange={(e) => setExpForm((f) => ({ ...f, date: e.target.value }))} />
+  1837→              </div>
+  1838→            </div>
+  1839→            <div className="grid gap-2">
+  1840→              <Label htmlFor="exp-vendor">Vendor (optional)</Label>
+  1841→              <Input id="exp-vendor" placeholder="Vendor or payee name" value={expForm.vendor} onChange={(e) => setExpForm((f) => ({ ...f, vendor: e.target.value }))} />
+  1842→            </div>
+  1843→          </div>
+  1844→          <DialogFooter className="gap-2 sm:gap-0">
+  1845→            <Button variant="outline" onClick={() => setExpenseDialogOpen(false)}>Cancel</Button>
+  1846→            <Button onClick={handleSaveExpense}>{editingExpense ? 'Update Expense' : 'Add Expense'}</Button>
+  1847→          </DialogFooter>
+  1848→        </DialogContent>
+  1849→      </Dialog>
+  1850→
+  1851→      {/* ─── Payment Dialog ──────────────────────────────────────────────── */}
+  1852→      <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+  1853→        <DialogContent className="sm:max-w-[400px]">
+  1854→          <DialogHeader>
+  1855→            <DialogTitle>Record Payment</DialogTitle>
+  1856→            <DialogDescription>
+  1857→              Collect payment from {payingDue?.customer?.name || 'customer'}
+  1858→            </DialogDescription>
+  1859→          </DialogHeader>
+  1860→          <div className="grid gap-4 py-2">
+  1861→            <div className="grid grid-cols-2 gap-4">
+  1862→              <div className="rounded-lg border p-3">
+  1863→                <p className="text-xs text-muted-foreground">Total Amount</p>
+  1864→                <p className="text-sm font-bold font-mono">{formatINR(payingDue?.amount || 0)}</p>
+  1865→              </div>
+  1866→              <div className="rounded-lg border p-3">
+  1867→                <p className="text-xs text-muted-foreground">Pending Balance</p>
+  1868→                <p className="text-sm font-bold font-mono text-red-600">{formatINR((payingDue?.amount || 0) - (payingDue?.paid || 0))}</p>
+  1869→              </div>
+  1870→            </div>
+  1871→            <div className="grid gap-2">
+  1872→              <Label htmlFor="pay-amount">Payment Amount (₹) *</Label>
+  1873→              <Input id="pay-amount" type="number" min="1" placeholder="Enter amount" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} />
+  1874→              <p className="text-xs text-muted-foreground">
+  1875→                Already paid: {formatINR(payingDue?.paid || 0)}
+  1876→              </p>
+  1877→            </div>
+  1878→            <div className="flex gap-2">
+  1879→              <Button variant="outline" size="sm" onClick={() => setPaymentAmount(String((payingDue?.amount || 0) - (payingDue?.paid || 0)))}>
+  1880→                Set Full Amount
+  1881→              </Button>
+  1882→            </div>
+  1883→          </div>
+  1884→          <DialogFooter className="gap-2 sm:gap-0">
+  1885→            <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>Cancel</Button>
+  1886→            <Button onClick={handleRecordPayment} disabled={markPaidLoading}>
+  1887→              {markPaidLoading ? 'Recording...' : 'Record Payment'}
+  1888→            </Button>
+  1889→          </DialogFooter>
+  1890→        </DialogContent>
+  1891→      </Dialog>
+  1892→
+  1893→      {/* ─── Create Return Dialog ───────────────────────────────────────── */}
+  1894→      <Dialog open={returnDialogOpen} onOpenChange={setReturnDialogOpen}>
+  1895→        <DialogContent className="sm:max-w-[480px]">
+  1896→          <DialogHeader>
+  1897→            <DialogTitle>Create Return</DialogTitle>
+  1898→            <DialogDescription>Search for a sale and create a return record</DialogDescription>
+  1899→          </DialogHeader>
+  1900→          <div className="grid gap-4 py-2">
+  1901→            {/* Sale Search */}
+  1902→            <div className="grid gap-2 relative">
+  1903→              <Label htmlFor="return-sale-search">Search Sale by Invoice #</Label>
+  1904→              <div className="relative">
+  1905→                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+  1906→                <Input
+  1907→                  id="return-sale-search"
+  1908→                  placeholder="Type invoice number..."
+  1909→                  value={returnForm.saleSearch}
+  1910→                  onChange={(e) => handleSaleSearch(e.target.value)}
+  1911→                  className="pl-9"
+  1912→                />
+  1913→              </div>
+  1914→              {/* Search Results Dropdown */}
+  1915→              {saleSearchResults.length > 0 && !selectedReturnSale && (
+  1916→                <div className="absolute z-50 top-full mt-1 left-0 right-0 rounded-md border bg-background shadow-lg max-h-48 overflow-y-auto">
+  1917→                  {saleSearchResults.map((s) => (
+  1918→                    <button
+  1919→                      key={s.id}
+  1920→                      className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center justify-between gap-2"
+  1921→                      onClick={() => selectReturnSale(s)}
+  1922→                    >
+  1923→                      <span className="font-mono">{s.invoiceNo}</span>
+  1924→                      <span className="text-muted-foreground">{s.customer?.name || s.customerName}</span>
+  1925→                      <span className="font-mono font-medium">{formatINR(s.total)}</span>
+  1926→                    </button>
+  1927→                  ))}
+  1928→                </div>
+  1929→              )}
+  1930→              {/* Selected Sale */}
+  1931→              {selectedReturnSale && (
+  1932→                <div className="rounded-lg border bg-muted/50 p-3 flex items-center justify-between">
+  1933→                  <div>
+  1934→                    <p className="text-xs font-mono font-medium">{selectedReturnSale.invoiceNo}</p>
+  1935→                    <p className="text-xs text-muted-foreground">{selectedReturnSale.customer?.name || selectedReturnSale.customerName}</p>
+  1936→                  </div>
+  1937→                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setSelectedReturnSale(null); setReturnForm((f) => ({ ...f, saleId: '', saleSearch: '' })); }}>
+  1938→                    <span className="sr-only">Clear</span>
+  1939→                    <Trash2 className="h-3 w-3" />
+  1940→                  </Button>
+  1941→                </div>
+  1942→              )}
+  1943→            </div>
+  1944→
+  1945→            {/* Reason */}
+  1946→            <div className="grid gap-2">
+  1947→              <Label>Return Reason *</Label>
+  1948→              <Select value={returnForm.reason} onValueChange={(v) => setReturnForm((f) => ({ ...f, reason: v }))}>
+  1949→                <SelectTrigger><SelectValue placeholder="Select reason" /></SelectTrigger>
+  1950→                <SelectContent>
+  1951→                  {RETURN_REASONS.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+  1952→                </SelectContent>
+  1953→              </Select>
+  1954→            </div>
+  1955→
+  1956→            {/* Refund Amount */}
+  1957→            <div className="grid gap-2">
+  1958→              <Label htmlFor="return-amount">Refund Amount (₹) *</Label>
+  1959→              <Input
+  1960→                id="return-amount"
+  1961→                type="number"
+  1962→                min="1"
+  1963→                placeholder="0"
+  1964→                value={returnForm.refundAmount}
+  1965→                onChange={(e) => setReturnForm((f) => ({ ...f, refundAmount: e.target.value }))}
+  1966→              />
+  1967→            </div>
+  1968→          </div>
+  1969→          <DialogFooter className="gap-2 sm:gap-0">
+  1970→            <Button variant="outline" onClick={() => setReturnDialogOpen(false)}>Cancel</Button>
+  1971→            <Button onClick={handleCreateReturn} disabled={creatingReturn}>
+  1972→              {creatingReturn ? 'Creating...' : 'Create Return'}
+  1973→            </Button>
+  1974→          </DialogFooter>
+  1975→        </DialogContent>
+  1976→      </Dialog>
+  1977→
+  1978→      {/* ─── Set Budget Dialog ──────────────────────────────────────────── */}
+  1979→      <Dialog open={budgetDialogOpen} onOpenChange={setBudgetDialogOpen}>
+  1980→        <DialogContent className="sm:max-w-[360px]">
+  1981→          <DialogHeader>
+  1982→            <DialogTitle>Set Monthly Budget</DialogTitle>
+  1983→            <DialogDescription>Set a spending limit for {format(new Date(), 'MMMM yyyy')}</DialogDescription>
+  1984→          </DialogHeader>
+  1985→          <div className="grid gap-4 py-2">
+  1986→            <div className="grid gap-2">
+  1987→              <Label htmlFor="budget-amount">Budget Amount (₹)</Label>
+  1988→              <Input
+  1989→                id="budget-amount"
+  1990→                type="number"
+  1991→                min="1"
+  1992→                placeholder="Enter budget"
+  1993→                value={budgetInput}
+  1994→                onChange={(e) => setBudgetInput(e.target.value)}
+  1995→              />
+  1996→              {monthlyBudget > 0 && (
+  1997→                <p className="text-xs text-muted-foreground">Current budget: {formatINR(monthlyBudget)}</p>
+  1998→              )}
+  1999→            </div>
+  2000→          </div>
+
+[showing lines 1-2000 of 2011; use offset=2001 with limit to continue reading]

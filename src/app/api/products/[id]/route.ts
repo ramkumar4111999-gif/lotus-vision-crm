@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { createNotification } from '@/lib/notifications'
 
 // GET single product by ID
 export async function GET(
@@ -66,6 +67,16 @@ export async function PUT(
         isActive: body.isActive,
       },
     })
+
+    // Low stock alert notification (fire-and-forget)
+    if (product.stock < product.minStock) {
+      createNotification({
+        title: `Low stock alert: ${product.name}`,
+        message: `${product.stock}/${product.minStock} units remaining`,
+        type: 'error',
+        link: 'inventory',
+      });
+    }
 
     return NextResponse.json(product)
   } catch (error: unknown) {

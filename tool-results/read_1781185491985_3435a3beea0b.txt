@@ -1,0 +1,943 @@
+     1→     1→'use client';
+     2→     2→
+     3→     3→import { useEffect, useState, useCallback } from 'react';
+     4→     4→import {
+     5→     5→  Users,
+     6→     6→  IndianRupee,
+     7→     7→  TrendingUp,
+     8→     8→  AlertTriangle,
+     9→     9→  FlaskConical,
+    10→    10→  Wallet,
+    11→    11→  Clock,
+    12→    12→  Eye,
+    13→    13→  EyeOff,
+    14→    14→  ShoppingCart,
+    15→    15→  UserPlus,
+    16→    16→  CalendarDays,
+    17→    17→  TestTube,
+    18→    18→  Target,
+    19→    19→  CheckCircle2,
+    20→    20→  TrendingUp as TrendingUpIcon,
+    21→    21→} from 'lucide-react';
+    22→    22→import { getSettings } from '@/lib/settings';
+    23→    23→import {
+    24→    24→  Card,
+    25→    25→  CardContent,
+    26→    26→  CardDescription,
+    27→    27→  CardHeader,
+    28→    28→  CardTitle,
+    29→    29→} from '@/components/ui/card';
+    30→    30→import { Badge } from '@/components/ui/badge';
+    31→    31→import { Skeleton } from '@/components/ui/skeleton';
+    32→    32→import { Button } from '@/components/ui/button';
+    33→    33→import { Progress } from '@/components/ui/progress';
+    34→    34→import { Alert, AlertDescription } from '@/components/ui/alert';
+    35→    35→import {
+    36→    36→  Table,
+    37→    37→  TableBody,
+    38→    38→  TableCell,
+    39→    39→  TableHead,
+    40→    40→  TableHeader,
+    41→    41→  TableRow,
+    42→    42→} from '@/components/ui/table';
+    43→    43→import { Separator } from '@/components/ui/separator';
+    44→    44→import {
+    45→    45→  ChartContainer,
+    46→    46→  ChartTooltip,
+    47→    47→  ChartTooltipContent,
+    48→    48→  type ChartConfig,
+    49→    49→} from '@/components/ui/chart';
+    50→    50→import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+    51→    51→import { format, parseISO, isToday, startOfDay } from 'date-fns';
+    52→    52→import { useCrmStore } from '@/components/crm/store';
+    53→    53→
+    54→    54→// ───────────────────────────────────────────────
+    55→    55→// Types
+    56→    56→// ───────────────────────────────────────────────
+    57→    57→
+    58→    58→interface DashboardStats {
+    59→    59→  totalCustomers: number;
+    60→    60→  todaySales: number;
+    61→    61→  monthlyRevenue: number;
+    62→    62→  lowStockAlerts: number;
+    63→    63→  pendingLabOrders: number;
+    64→    64→  pendingDues: number;
+    65→    65→  overdueAppointments?: number;
+    66→    66→}
+    67→    67→
+    68→    68→interface SalesTrendPoint {
+    69→    69→  date: string;
+    70→    70→  revenue: number;
+    71→    71→}
+    72→    72→
+    73→    73→interface TopProduct {
+    74→    74→  name: string;
+    75→    75→  salesCount: number;
+    76→    76→}
+    77→    77→
+    78→    78→interface RecentSale {
+    79→    79→  invoiceNo: string;
+    80→    80→  customerName: string;
+    81→    81→  amount: number;
+    82→    82→  date: string;
+    83→    83→  paymentMode: string;
+    84→    84→}
+    85→    85→
+    86→    86→interface Appointment {
+    87→    87→  time: string;
+    88→    88→  customerName: string;
+    89→    89→  purpose: string;
+    90→    90→  status: 'confirmed' | 'pending' | 'cancelled' | 'completed';
+    91→    91→}
+    92→    92→
+    93→    93→interface LowStockProduct {
+    94→    94→  name: string;
+    95→    95→  stock: number;
+    96→    96→  minStock: number;
+    97→    97→}
+    98→    98→
+    99→    99→// ───────────────────────────────────────────────
+   100→   100→// Helpers
+   101→   101→// ───────────────────────────────────────────────
+   102→   102→
+   103→   103→function formatCurrency(amount: number): string {
+   104→   104→  return new Intl.NumberFormat('en-IN', {
+   105→   105→    style: 'currency',
+   106→   106→    currency: 'INR',
+   107→   107→    minimumFractionDigits: 0,
+   108→   108→    maximumFractionDigits: 0,
+   109→   109→  }).format(amount);
+   110→   110→}
+   111→   111→
+   112→   112→function formatCompact(num: number): string {
+   113→   113→  if (num >= 100000) return `₹${(num / 100000).toFixed(1)}L`;
+   114→   114→  if (num >= 1000) return `₹${(num / 1000).toFixed(1)}K`;
+   115→   115→  return `₹${num.toLocaleString('en-IN')}`;
+   116→   116→}
+   117→   117→
+   118→   118→// ───────────────────────────────────────────────
+   119→   119→// Stat Card Config
+   120→   120→// ───────────────────────────────────────────────
+   121→   121→
+   122→   122→interface StatCardConfig {
+   123→   123→  key: keyof DashboardStats;
+   124→   124→  label: string;
+   125→   125→  icon: React.ElementType;
+   126→   126→  color: string;
+   127→   127→  bgColor: string;
+   128→   128→  borderColor: string;
+   129→   129→  iconColor: string;
+   130→   130→  format: (val: number) => string;
+   131→   131→}
+   132→   132→
+   133→   133→const statCards: StatCardConfig[] = [
+   134→   134→  {
+   135→   135→    key: 'totalCustomers',
+   136→   136→    label: 'Total Customers',
+   137→   137→    icon: Users,
+   138→   138→    color: 'text-emerald-700 dark:text-emerald-400',
+   139→   139→    bgColor: 'bg-emerald-50 dark:bg-emerald-950/40',
+   140→   140→    borderColor: 'border-emerald-200 dark:border-emerald-800/50',
+   141→   141→    iconColor: 'text-emerald-600 dark:text-emerald-400',
+   142→   142→    format: (v) => v.toLocaleString('en-IN'),
+   143→   143→  },
+   144→   144→  {
+   145→   145→    key: 'todaySales',
+   146→   146→    label: "Today's Sales",
+   147→   147→    icon: IndianRupee,
+   148→   148→    color: 'text-green-700 dark:text-green-400',
+   149→   149→    bgColor: 'bg-green-50 dark:bg-green-950/40',
+   150→   150→    borderColor: 'border-green-200 dark:border-green-800/50',
+   151→   151→    iconColor: 'text-green-600 dark:text-green-400',
+   152→   152→    format: (v) => formatCompact(v),
+   153→   153→  },
+   154→   154→  {
+   155→   155→    key: 'monthlyRevenue',
+   156→   156→    label: 'Monthly Revenue',
+   157→   157→    icon: TrendingUp,
+   158→   158→    color: 'text-sky-700 dark:text-sky-400',
+   159→   159→    bgColor: 'bg-sky-50 dark:bg-sky-950/40',
+   160→   160→    borderColor: 'border-sky-200 dark:border-sky-800/50',
+   161→   161→    iconColor: 'text-sky-600 dark:text-sky-400',
+   162→   162→    format: (v) => formatCompact(v),
+   163→   163→  },
+   164→   164→  {
+   165→   165→    key: 'lowStockAlerts',
+   166→   166→    label: 'Low Stock Alerts',
+   167→   167→    icon: AlertTriangle,
+   168→   168→    color: 'text-amber-700 dark:text-amber-400',
+   169→   169→    bgColor: 'bg-amber-50 dark:bg-amber-950/40',
+   170→   170→    borderColor: 'border-amber-200 dark:border-amber-800/50',
+   171→   171→    iconColor: 'text-amber-600 dark:text-amber-400',
+   172→   172→    format: (v) => v.toString(),
+   173→   173→  },
+   174→   174→  {
+   175→   175→    key: 'pendingLabOrders',
+   176→   176→    label: 'Pending Lab Orders',
+   177→   177→    icon: FlaskConical,
+   178→   178→    color: 'text-purple-700 dark:text-purple-400',
+   179→   179→    bgColor: 'bg-purple-50 dark:bg-purple-950/40',
+   180→   180→    borderColor: 'border-purple-200 dark:border-purple-800/50',
+   181→   181→    iconColor: 'text-purple-600 dark:text-purple-400',
+   182→   182→    format: (v) => v.toString(),
+   183→   183→  },
+   184→   184→  {
+   185→   185→    key: 'pendingDues',
+   186→   186→    label: 'Pending Dues',
+   187→   187→    icon: Wallet,
+   188→   188→    color: 'text-red-700 dark:text-red-400',
+   189→   189→    bgColor: 'bg-red-50 dark:bg-red-950/40',
+   190→   190→    borderColor: 'border-red-200 dark:border-red-800/50',
+   191→   191→    iconColor: 'text-red-600 dark:text-red-400',
+   192→   192→    format: (v) => formatCompact(v),
+   193→   193→  },
+   194→   194→];
+   195→   195→
+   196→   196→// ───────────────────────────────────────────────
+   197→   197→// Chart Configs
+   198→   198→// ───────────────────────────────────────────────
+   199→   199→
+   200→   200→const salesTrendConfig: ChartConfig = {
+   201→   201→  revenue: {
+   202→   202→    label: 'Revenue',
+   203→   203→    color: 'hsl(160, 84%, 39%)',
+   204→   204→  },
+   205→   205→};
+   206→   206→
+   207→   207→const topProductsConfig: ChartConfig = {
+   208→   208→  salesCount: {
+   209→   209→    label: 'Units Sold',
+   210→   210→    color: 'hsl(152, 76%, 36%)',
+   211→   211→  },
+   212→   212→};
+   213→   213→
+   214→   214→// ───────────────────────────────────────────────
+   215→   215→// Sub-Components
+   216→   216→// ───────────────────────────────────────────────
+   217→   217→
+   218→   218→function StatCardSkeleton() {
+   219→   219→  return (
+   220→   220→    <Card className="gap-0 py-0 overflow-hidden">
+   221→   221→      <CardContent className="p-4">
+   222→   222→        <div className="flex items-center justify-between">
+   223→   223→          <Skeleton className="h-4 w-24" />
+   224→   224→          <Skeleton className="h-9 w-9 rounded-lg" />
+   225→   225→        </div>
+   226→   226→        <Skeleton className="mt-2 h-7 w-20" />
+   227→   227→      </CardContent>
+   228→   228→    </Card>
+   229→   229→  );
+   230→   230→}
+   231→   231→
+   232→   232→function StatCard({ config, value }: { config: StatCardConfig; value: number }) {
+   233→   233→  const Icon = config.icon;
+   234→   234→  return (
+   235→   235→    <Card className={`gap-0 py-0 overflow-hidden ${config.borderColor}`}>
+   236→   236→      <CardContent className="p-4">
+   237→   237→        <div className="flex items-center justify-between">
+   238→   238→          <p className="text-sm font-medium text-muted-foreground">{config.label}</p>
+   239→   239→          <div className={`rounded-lg p-2 ${config.bgColor}`}>
+   240→   240→            <Icon className={`h-5 w-5 ${config.iconColor}`} />
+   241→   241→          </div>
+   242→   242→        </div>
+   243→   243→        <p className={`mt-2 text-2xl font-bold tracking-tight ${config.color}`}>
+   244→   244→          {config.format(value)}
+   245→   245→        </p>
+   246→   246→      </CardContent>
+   247→   247→    </Card>
+   248→   248→  );
+   249→   249→}
+   250→   250→
+   251→   251→function SalesChartSkeleton() {
+   252→   252→  return (
+   253→   253→    <Card className="h-[320px]">
+   254→   254→      <CardHeader>
+   255→   255→        <Skeleton className="h-5 w-32" />
+   256→   256→        <Skeleton className="h-4 w-48" />
+   257→   257→      </CardHeader>
+   258→   258→      <CardContent className="flex-1">
+   259→   259→        <Skeleton className="h-full w-full rounded-lg" />
+   260→   260→      </CardContent>
+   261→   261→    </Card>
+   262→   262→  );
+   263→   263→}
+   264→   264→
+   265→   265→function TopProductsChartSkeleton() {
+   266→   266→  return (
+   267→   267→    <Card className="h-[320px]">
+   268→   268→      <CardHeader>
+   269→   269→        <Skeleton className="h-5 w-40" />
+   270→   270→        <Skeleton className="h-4 w-52" />
+   271→   271→      </CardHeader>
+   272→   272→      <CardContent className="flex-1">
+   273→   273→        <Skeleton className="h-full w-full rounded-lg" />
+   274→   274→      </CardContent>
+   275→   275→    </Card>
+   276→   276→  );
+   277→   277→}
+   278→   278→
+   279→   279→function RecentSalesSkeleton() {
+   280→   280→  return (
+   281→   281→    <Card className="h-full">
+   282→   282→      <CardHeader>
+   283→   283→        <Skeleton className="h-5 w-32" />
+   284→   284→        <Skeleton className="h-4 w-48" />
+   285→   285→      </CardHeader>
+   286→   286→      <CardContent>
+   287→   287→        <div className="space-y-3">
+   288→   288→          {Array.from({ length: 5 }).map((_, i) => (
+   289→   289→            <div key={i} className="flex items-center justify-between">
+   290→   290→              <div className="space-y-1.5">
+   291→   291→                <Skeleton className="h-4 w-24" />
+   292→   292→                <Skeleton className="h-3 w-32" />
+   293→   293→              </div>
+   294→   294→              <Skeleton className="h-4 w-20" />
+   295→   295→            </div>
+   296→   296→          ))}
+   297→   297→        </div>
+   298→   298→      </CardContent>
+   299→   299→    </Card>
+   300→   300→  );
+   301→   301→}
+   302→   302→
+   303→   303→function AppointmentsSkeleton() {
+   304→   304→  return (
+   305→   305→    <Card className="h-full">
+   306→   306→      <CardHeader>
+   307→   307→        <Skeleton className="h-5 w-40" />
+   308→   308→        <Skeleton className="h-4 w-48" />
+   309→   309→      </CardHeader>
+   310→   310→      <CardContent>
+   311→   311→        <div className="space-y-4">
+   312→   312→          {Array.from({ length: 4 }).map((_, i) => (
+   313→   313→            <div key={i} className="flex items-start gap-3">
+   314→   314→              <Skeleton className="h-5 w-14 rounded" />
+   315→   315→              <div className="flex-1 space-y-1.5">
+   316→   316→                <Skeleton className="h-4 w-28" />
+   317→   317→                <Skeleton className="h-3 w-40" />
+   318→   318→              </div>
+   319→   319→              <Skeleton className="h-5 w-16 rounded-full" />
+   320→   320→            </div>
+   321→   321→          ))}
+   322→   322→        </div>
+   323→   323→      </CardContent>
+   324→   324→    </Card>
+   325→   325→  );
+   326→   326→}
+   327→   327→
+   328→   328→function LowStockSkeleton() {
+   329→   329→  return (
+   330→   330→    <Card className="h-full">
+   331→   331→      <CardHeader>
+   332→   332→        <Skeleton className="h-5 w-36" />
+   333→   333→        <Skeleton className="h-4 w-52" />
+   334→   334→      </CardHeader>
+   335→   335→      <CardContent>
+   336→   336→        <div className="space-y-3">
+   337→   337→          {Array.from({ length: 4 }).map((_, i) => (
+   338→   338→            <div key={i} className="flex items-center justify-between">
+   339→   339→              <Skeleton className="h-4 w-32" />
+   340→   340→              <div className="flex items-center gap-2">
+   341→   341→                <Skeleton className="h-4 w-8" />
+   342→   342→                <Skeleton className="h-4 w-8" />
+   343→   343→              </div>
+   344→   344→            </div>
+   345→   345→          ))}
+   346→   346→        </div>
+   347→   347→      </CardContent>
+   348→   348→    </Card>
+   349→   349→  );
+   350→   350→}
+   351→   351→
+   352→   352→const appointmentStatusVariant: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+   353→   353→  confirmed: 'default',
+   354→   354→  completed: 'secondary',
+   355→   355→  pending: 'outline',
+   356→   356→  cancelled: 'destructive',
+   357→   357→};
+   358→   358→
+   359→   359→const appointmentStatusClass: Record<string, string> = {
+   360→   360→  confirmed: 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800',
+   361→   361→  completed: 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700',
+   362→   362→  pending: 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800',
+   363→   363→  cancelled: 'bg-red-100 text-red-800 border-red-200 dark:bg-red-950/60 dark:text-red-300 dark:border-red-800',
+   364→   364→};
+   365→   365→
+   366→   366→// ───────────────────────────────────────────────
+   367→   367→// Main Dashboard Component
+   368→   368→// ───────────────────────────────────────────────
+   369→   369→
+   370→   370→export default function Dashboard() {
+   371→   371→  const [loading, setLoading] = useState(true);
+   372→   372→  const [settings, setSettings] = useState(() => getSettings());
+   373→   373→  const DAILY_REVENUE_GOAL = settings.dailyRevenueGoal;
+   374→   374→
+   375→   375→  // Refresh settings on mount (for SSR hydration)
+   376→   376→  useEffect(() => {
+   377→   377→    setSettings(getSettings());
+   378→   378→  }, []);
+   379→   379→  const [stats, setStats] = useState<DashboardStats | null>(null);
+   380→   380→  const [salesTrend, setSalesTrend] = useState<SalesTrendPoint[]>([]);
+   381→   381→  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
+   382→   382→  const [recentSales, setRecentSales] = useState<RecentSale[]>([]);
+   383→   383→  const [appointments, setAppointments] = useState<Appointment[]>([]);
+   384→   384→  const [lowStock, setLowStock] = useState<LowStockProduct[]>([]);
+   385→   385→  const [duesVisible, setDuesVisible] = useState(false);
+   386→   386→  const { setActiveSection } = useCrmStore();
+   387→   387→
+   388→   388→  const fetchData = useCallback(async () => {
+   389→   389→    setLoading(true);
+   390→   390→    try {
+   391→   391→      const [dashRes, trendRes, productsRes] = await Promise.allSettled([
+   392→   392→        fetch('/api/dashboard'),
+   393→   393→        fetch('/api/reports?type=sales-trend'),
+   394→   394→        fetch('/api/reports?type=top-products'),
+   395→   395→      ]);
+   396→   396→
+   397→   397→      // Dashboard stats
+   398→   398→      if (dashRes.status === 'fulfilled' && dashRes.value.ok) {
+   399→   399→        const dashData = await dashRes.value.json();
+   400→   400→        setStats(dashData.stats ?? dashData);
+   401→   401→        setRecentSales(dashData.recentSales ?? []);
+   402→   402→        setAppointments(dashData.appointments ?? []);
+   403→   403→        setLowStock(dashData.lowStock ?? []);
+   404→   404→      }
+   405→   405→
+   406→   406→      // Sales trend
+   407→   407→      if (trendRes.status === 'fulfilled' && trendRes.value.ok) {
+   408→   408→        const trendData = await trendRes.value.json();
+   409→   409→        setSalesTrend(trendData.data ?? trendData ?? []);
+   410→   410→      }
+   411→   411→
+   412→   412→      // Top products
+   413→   413→      if (productsRes.status === 'fulfilled' && productsRes.value.ok) {
+   414→   414→        const prodData = await productsRes.value.json();
+   415→   415→        setTopProducts(prodData.data ?? prodData ?? []);
+   416→   416→      }
+   417→   417→    } catch {
+   418→   418→      // Silently handle — UI shows empty state
+   419→   419→    } finally {
+   420→   420→      setLoading(false);
+   421→   421→    }
+   422→   422→  }, []);
+   423→   423→
+   424→   424→  useEffect(() => {
+   425→   425→    fetchData();
+   426→   426→  }, [fetchData]);
+   427→   427→
+   428→   428→  // ─── Derived chart data ───
+   429→   429→
+   430→   430→  // API returns { date, total } but chart expects revenue as dataKey
+   431→   431→  const trendChartData = salesTrend.map((point) => ({
+   432→   432→    date: format(parseISO(point.date), 'MMM dd'),
+   433→   433→    revenue: (point as { total?: number; revenue?: number }).revenue ?? (point as { total?: number }).total ?? 0,
+   434→   434→  }));
+   435→   435→
+   436→   436→  // API returns { name, totalQtySold } but chart uses salesCount
+   437→   437→  const productsChartData = topProducts.map((p) => {
+   438→   438→    const prod = p as { name: string; salesCount?: number; totalQtySold?: number };
+   439→   439→    const name = prod.name.length > 18 ? prod.name.slice(0, 18) + '…' : prod.name;
+   440→   440→    return {
+   441→   441→      name,
+   442→   442→      salesCount: prod.salesCount ?? prod.totalQtySold ?? 0,
+   443→   443→    };
+   444→   444→  });
+   445→   445→
+   446→   446→  // ─── Render helpers ───
+   447→   447→
+   448→   448→  const renderStatsGrid = () => (
+   449→   449→    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+   450→   450→      {loading
+   451→   451→        ? Array.from({ length: 6 }).map((_, i) => <StatCardSkeleton key={i} />)
+   452→   452→        : stats &&
+   453→   453→          statCards.map((cfg) => (
+   454→   454→            <StatCard key={cfg.key} config={cfg} value={stats[cfg.key]} />
+   455→   455→          ))}
+   456→   456→    </div>
+   457→   457→  );
+   458→   458→
+   459→   459→  const renderSalesTrendChart = () => {
+   460→   460→    if (loading) return <SalesChartSkeleton />;
+   461→   461→
+   462→   462→    return (
+   463→   463→      <Card className="h-[320px] flex flex-col">
+   464→   464→        <CardHeader className="pb-2">
+   465→   465→          <CardTitle className="text-base">Sales Trend</CardTitle>
+   466→   466→          <CardDescription>Revenue over the last 30 days</CardDescription>
+   467→   467→        </CardHeader>
+   468→   468→        <CardContent className="flex-1 min-h-0">
+   469→   469→          {trendChartData.length > 0 ? (
+   470→   470→            <ChartContainer config={salesTrendConfig} className="h-full w-full">
+   471→   471→              <LineChart data={trendChartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+   472→   472→                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+   473→   473→                <XAxis
+   474→   474→                  dataKey="date"
+   475→   475→                  tickLine={false}
+   476→   476→                  axisLine={false}
+   477→   477→                  tickMargin={8}
+   478→   478→                  fontSize={11}
+   479→   479→                  interval="preserveStartEnd"
+   480→   480→                />
+   481→   481→                <YAxis
+   482→   482→                  tickLine={false}
+   483→   483→                  axisLine={false}
+   484→   484→                  tickMargin={4}
+   485→   485→                  fontSize={11}
+   486→   486→                  tickFormatter={(v: number) => `₹${(v / 1000).toFixed(0)}K`}
+   487→   487→                />
+   488→   488→                <ChartTooltip
+   489→   489→                  content={
+   490→   490→                    <ChartTooltipContent
+   491→   491→                      formatter={(value: number) => (
+   492→   492→                        <span className="font-mono font-medium">{formatCurrency(value)}</span>
+   493→   493→                      )}
+   494→   494→                    />
+   495→   495→                  }
+   496→   496→                />
+   497→   497→                <Line
+   498→   498→                  type="monotone"
+   499→   499→                  dataKey="revenue"
+   500→   500→                  stroke="var(--color-revenue)"
+   501→   501→                  strokeWidth={2}
+   502→   502→                  dot={false}
+   503→   503→                  activeDot={{ r: 4, strokeWidth: 0 }}
+   504→   504→                />
+   505→   505→              </LineChart>
+   506→   506→            </ChartContainer>
+   507→   507→          ) : (
+   508→   508→            <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
+   509→   509→              <div className="rounded-full bg-emerald-100 dark:bg-emerald-900/30 p-3">
+   510→   510→                <TrendingUpIcon className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+   511→   511→              </div>
+   512→   512→              <div className="text-center">
+   513→   513→                <p className="text-sm font-medium">No sales trend data yet</p>
+   514→   514→                <p className="text-xs mt-1">Create your first sale to see trends here.</p>
+   515→   515→              </div>
+   516→   516→              <Button
+   517→   517→                variant="outline"
+   518→   518→                size="sm"
+   519→   519→                className="mt-1"
+   520→   520→                onClick={() => setActiveSection('sales')}
+   521→   521→              >
+   522→   522→                <ShoppingCart className="h-3.5 w-3.5 mr-1.5" />
+   523→   523→                Create your first sale
+   524→   524→              </Button>
+   525→   525→            </div>
+   526→   526→          )}
+   527→   527→        </CardContent>
+   528→   528→      </Card>
+   529→   529→    );
+   530→   530→  };
+   531→   531→
+   532→   532→  const renderTopProductsChart = () => {
+   533→   533→    if (loading) return <TopProductsChartSkeleton />;
+   534→   534→
+   535→   535→    return (
+   536→   536→      <Card className="h-[320px] flex flex-col">
+   537→   537→        <CardHeader className="pb-2">
+   538→   538→          <CardTitle className="text-base">Top Selling Products</CardTitle>
+   539→   539→          <CardDescription>Top 5 products by sales count</CardDescription>
+   540→   540→        </CardHeader>
+   541→   541→        <CardContent className="flex-1 min-h-0">
+   542→   542→          {productsChartData.length > 0 ? (
+   543→   543→            <ChartContainer config={topProductsConfig} className="h-full w-full">
+   544→   544→              <BarChart data={productsChartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+   545→   545→                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+   546→   546→                <XAxis
+   547→   547→                  dataKey="name"
+   548→   548→                  tickLine={false}
+   549→   549→                  axisLine={false}
+   550→   550→                  tickMargin={8}
+   551→   551→                  fontSize={11}
+   552→   552→                  interval={0}
+   553→   553→                  angle={-20}
+   554→   554→                  textAnchor="end"
+   555→   555→                  height={60}
+   556→   556→                />
+   557→   557→                <YAxis
+   558→   558→                  tickLine={false}
+   559→   559→                  axisLine={false}
+   560→   560→                  tickMargin={4}
+   561→   561→                  fontSize={11}
+   562→   562→                />
+   563→   563→                <ChartTooltip content={<ChartTooltipContent />} />
+   564→   564→                <Bar
+   565→   565→                  dataKey="salesCount"
+   566→   566→                  fill="var(--color-salesCount)"
+   567→   567→                  radius={[4, 4, 0, 0]}
+   568→   568→                  maxBarSize={48}
+   569→   569→                />
+   570→   570→              </BarChart>
+   571→   571→            </ChartContainer>
+   572→   572→          ) : (
+   573→   573→            <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
+   574→   574→              No product data available
+   575→   575→            </div>
+   576→   576→          )}
+   577→   577→        </CardContent>
+   578→   578→      </Card>
+   579→   579→    );
+   580→   580→  };
+   581→   581→
+   582→   582→  const renderRecentSales = () => {
+   583→   583→    if (loading) return <RecentSalesSkeleton />;
+   584→   584→
+   585→   585→    return (
+   586→   586→      <Card className="h-full">
+   587→   587→        <CardHeader>
+   588→   588→          <CardTitle className="text-base">Recent Sales</CardTitle>
+   589→   589→          <CardDescription>Last 5 completed transactions</CardDescription>
+   590→   590→        </CardHeader>
+   591→   591→        <CardContent>
+   592→   592→          {recentSales.length > 0 ? (
+   593→   593→            <Table>
+   594→   594→              <TableHeader>
+   595→   595→                <TableRow>
+   596→   596→                  <TableHead>Invoice #</TableHead>
+   597→   597→                  <TableHead>Customer</TableHead>
+   598→   598→                  <TableHead className="text-right">Amount</TableHead>
+   599→   599→                  <TableHead className="hidden sm:table-cell">Date</TableHead>
+   600→   600→                  <TableHead className="hidden md:table-cell">Mode</TableHead>
+   601→   601→                </TableRow>
+   602→   602→              </TableHeader>
+   603→   603→              <TableBody>
+   604→   604→                {recentSales.map((sale) => (
+   605→   605→                  <TableRow key={sale.invoiceNo}>
+   606→   606→                    <TableCell className="font-mono text-xs font-medium">
+   607→   607→                      {sale.invoiceNo}
+   608→   608→                    </TableCell>
+   609→   609→                    <TableCell className="font-medium max-w-[120px] truncate">
+   610→   610→                      {sale.customerName}
+   611→   611→                    </TableCell>
+   612→   612→                    <TableCell className="text-right font-mono font-medium text-emerald-700 dark:text-emerald-400">
+   613→   613→                      {formatCurrency(sale.amount)}
+   614→   614→                    </TableCell>
+   615→   615→                    <TableCell className="hidden sm:table-cell text-muted-foreground">
+   616→   616→                      {isToday(parseISO(sale.date))
+   617→   617→                        ? 'Today'
+   618→   618→                        : format(parseISO(sale.date), 'MMM dd')}
+   619→   619→                    </TableCell>
+   620→   620→                    <TableCell className="hidden md:table-cell">
+   621→   621→                      <Badge variant="outline" className="text-xs font-normal">
+   622→   622→                        {sale.paymentMode}
+   623→   623→                      </Badge>
+   624→   624→                    </TableCell>
+   625→   625→                  </TableRow>
+   626→   626→                ))}
+   627→   627→              </TableBody>
+   628→   628→            </Table>
+   629→   629→          ) : (
+   630→   630→            <div className="flex h-32 items-center justify-center text-muted-foreground text-sm">
+   631→   631→              No recent sales
+   632→   632→            </div>
+   633→   633→          )}
+   634→   634→        </CardContent>
+   635→   635→      </Card>
+   636→   636→    );
+   637→   637→  };
+   638→   638→
+   639→   639→  const renderAppointments = () => {
+   640→   640→    if (loading) return <AppointmentsSkeleton />;
+   641→   641→
+   642→   642→    return (
+   643→   643→      <Card className="h-full">
+   644→   644→        <CardHeader>
+   645→   645→          <CardTitle className="text-base">Today&apos;s Appointments</CardTitle>
+   646→   646→          <CardDescription>
+   647→   647→            {appointments.length > 0
+   648→   648→              ? `${appointments.length} scheduled for today`
+   649→   649→              : 'No appointments scheduled'}
+   650→   650→          </CardDescription>
+   651→   651→        </CardHeader>
+   652→   652→        <CardContent>
+   653→   653→          {appointments.length > 0 ? (
+   654→   654→            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+   655→   655→              {appointments.map((appt, idx) => (
+   656→   656→                <div key={idx}>
+   657→   657→                  <div className="flex items-start gap-3 py-1">
+   658→   658→                    <div className="flex items-center gap-1.5 shrink-0 min-w-[64px]">
+   659→   659→                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+   660→   660→                      <span className="text-sm font-mono font-medium text-foreground">
+   661→   661→                        {appt.time}
+   662→   662→                      </span>
+   663→   663→                    </div>
+   664→   664→                    <div className="flex-1 min-w-0">
+   665→   665→                      <p className="text-sm font-medium truncate">{appt.customerName}</p>
+   666→   666→                      <p className="text-xs text-muted-foreground truncate">{appt.purpose}</p>
+   667→   667→                    </div>
+   668→   668→                    <Badge
+   669→   669→                      variant={appointmentStatusVariant[appt.status] ?? 'outline'}
+   670→   670→                      className={appointmentStatusClass[appt.status] ?? ''}
+   671→   671→                    >
+   672→   672→                      {appt.status.charAt(0).toUpperCase() + appt.status.slice(1)}
+   673→   673→                    </Badge>
+   674→   674→                  </div>
+   675→   675→                  {idx < appointments.length - 1 && <Separator />}
+   676→   676→                </div>
+   677→   677→              ))}
+   678→   678→            </div>
+   679→   679→          ) : (
+   680→   680→            <div className="flex h-32 flex-col items-center justify-center gap-2 text-muted-foreground">
+   681→   681→              <div className="rounded-full bg-emerald-100 dark:bg-emerald-900/30 p-2.5">
+   682→   682→                <CalendarDays className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+   683→   683→              </div>
+   684→   684→              <div className="text-center">
+   685→   685→                <p className="text-sm font-medium">No appointments scheduled</p>
+   686→   686→                <p className="text-xs mt-0.5">Enjoy your day!</p>
+   687→   687→              </div>
+   688→   688→            </div>
+   689→   689→          )}
+   690→   690→        </CardContent>
+   691→   691→      </Card>
+   692→   692→    );
+   693→   693→  };
+   694→   694→
+   695→   695→  const renderLowStock = () => {
+   696→   696→    if (loading) return <LowStockSkeleton />;
+   697→   697→
+   698→   698→    return (
+   699→   699→      <Card className="h-full">
+   700→   700→        <CardHeader>
+   701→   701→          <CardTitle className="text-base flex items-center gap-2">
+   702→   702→            <AlertTriangle className="h-4 w-4 text-amber-500" />
+   703→   703→            Low Stock Products
+   704→   704→          </CardTitle>
+   705→   705→          <CardDescription>
+   706→   706→            {lowStock.length > 0
+   707→   707→              ? `${lowStock.length} products below minimum stock level`
+   708→   708→              : 'All products are well-stocked'}
+   709→   709→          </CardDescription>
+   710→   710→        </CardHeader>
+   711→   711→        <CardContent>
+   712→   712→          {lowStock.length > 0 ? (
+   713→   713→            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+   714→   714→              {lowStock.map((product, idx) => (
+   715→   715→                <div key={idx}>
+   716→   716→                  <div className="flex items-center justify-between py-1">
+   717→   717→                    <div className="min-w-0 flex-1">
+   718→   718→                      <p className="text-sm font-medium truncate">{product.name}</p>
+   719→   719→                    </div>
+   720→   720→                    <div className="flex items-center gap-3 shrink-0 ml-4">
+   721→   721→                      <div className="text-right">
+   722→   722→                        <span
+   723→   723→                          className={`text-sm font-mono font-bold ${
+   724→   724→                            product.stock === 0
+   725→   725→                              ? 'text-red-600 dark:text-red-400'
+   726→   726→                              : 'text-amber-600 dark:text-amber-400'
+   727→   727→                          }`}
+   728→   728→                        >
+   729→   729→                          {product.stock}
+   730→   730→                        </span>
+   731→   731→                        <span className="text-xs text-muted-foreground">
+   732→   732→                          {' / '}
+   733→   733→                          {product.minStock}
+   734→   734→                        </span>
+   735→   735→                      </div>
+   736→   736→                      <Badge
+   737→   737→                        variant={product.stock === 0 ? 'destructive' : 'outline'}
+   738→   738→                        className={`text-xs ${
+   739→   739→                          product.stock === 0
+   740→   740→                            ? ''
+   741→   741→                            : 'border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400'
+   742→   742→                        }`}
+   743→   743→                      >
+   744→   744→                        {product.stock === 0 ? 'Out of Stock' : 'Low'}
+   745→   745→                      </Badge>
+   746→   746→                    </div>
+   747→   747→                  </div>
+   748→   748→                  {idx < lowStock.length - 1 && <Separator />}
+   749→   749→                </div>
+   750→   750→              ))}
+   751→   751→            </div>
+   752→   752→          ) : (
+   753→   753→            <div className="flex h-32 flex-col items-center justify-center gap-2 text-muted-foreground">
+   754→   754→              <div className="rounded-full bg-emerald-100 dark:bg-emerald-900/30 p-2.5">
+   755→   755→                <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+   756→   756→              </div>
+   757→   757→              <div className="text-center">
+   758→   758→                <p className="text-sm font-medium">All products are well stocked!</p>
+   759→   759→                <p className="text-xs mt-0.5">Great job.</p>
+   760→   760→              </div>
+   761→   761→            </div>
+   762→   762→          )}
+   763→   763→        </CardContent>
+   764→   764→      </Card>
+   765→   765→    );
+   766→   766→  };
+   767→   767→
+   768→   768→  // ─── Quick Action Buttons ───
+   769→   769→  const renderQuickActions = () => {
+   770→   770→    const actions = [
+   771→   771→      { label: 'New Sale', icon: ShoppingCart, section: 'sales' as const, color: 'bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-700 dark:hover:bg-emerald-800' },
+   772→   772→      { label: 'Add Customer', icon: UserPlus, section: 'customers' as const, color: 'bg-sky-600 hover:bg-sky-700 text-white dark:bg-sky-700 dark:hover:bg-sky-800' },
+   773→   773→      { label: 'New Appointment', icon: CalendarDays, section: 'appointments' as const, color: 'bg-purple-600 hover:bg-purple-700 text-white dark:bg-purple-700 dark:hover:bg-purple-800' },
+   774→   774→      { label: 'Create Lab Order', icon: TestTube, section: 'lab-orders' as const, color: 'bg-orange-600 hover:bg-orange-700 text-white dark:bg-orange-700 dark:hover:bg-orange-800' },
+   775→   775→    ];
+   776→   776→
+   777→   777→    return (
+   778→   778→      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+   779→   779→        {actions.map((action) => {
+   780→   780→          const Icon = action.icon;
+   781→   781→          return (
+   782→   782→            <Button
+   783→   783→              key={action.section}
+   784→   784→              onClick={() => setActiveSection(action.section)}
+   785→   785→              className={`${action.color} h-auto py-4 flex flex-col items-center gap-2 rounded-xl shadow-sm transition-all hover:shadow-md`}
+   786→   786→            >
+   787→   787→              <Icon className="size-5" />
+   788→   788→              <span className="text-sm font-medium">{action.label}</span>
+   789→   789→            </Button>
+   790→   790→          );
+   791→   791→        })}
+   792→   792→      </div>
+   793→   793→    );
+   794→   794→  };
+   795→   795→
+   796→   796→  // ─── Overdue Appointments Alert ───
+   797→   797→  const renderOverdueAlert = () => {
+   798→   798→    const count = stats?.overdueAppointments ?? 0;
+   799→   799→    if (loading || count === 0) return null;
+   800→   800→
+   801→   801→    return (
+   802→   802→      <Alert className="border-red-200 bg-red-50 dark:border-red-900/50 dark:bg-red-950/20">
+   803→   803→        <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
+   804→   804→        <AlertDescription className="text-red-800 dark:text-red-300">
+   805→   805→          <span className="font-semibold">{count} overdue appointment{count > 1 ? 's' : ''}</span>
+   806→   806→          {' '}still pending from previous days. Please follow up with the customers.
+   807→   807→        </AlertDescription>
+   808→   808→        <Button
+   809→   809→          variant="outline"
+   810→   810→          size="sm"
+   811→   811→          className="ml-auto shrink-0 border-red-300 text-red-700 hover:bg-red-100 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950/50"
+   812→   812→          onClick={() => setActiveSection('appointments')}
+   813→   813→        >
+   814→   814→          View Appointments
+   815→   815→        </Button>
+   816→   816→      </Alert>
+   817→   817→    );
+   818→   818→  };
+   819→   819→
+   820→   820→  // ─── Today's Revenue Goal Progress ───
+   821→   821→  const renderRevenueGoal = () => {
+   822→   822→    const todaySalesAmount = stats?.todaySales ?? 0;
+   823→   823→    const percentage = Math.min(100, Math.round((todaySalesAmount / DAILY_REVENUE_GOAL) * 100));
+   824→   824→    const isGoalReached = percentage >= 100;
+   825→   825→
+   826→   826→    return (
+   827→   827→      <Card className="overflow-hidden">
+   828→   828→        <CardContent className="p-4">
+   829→   829→          <div className="flex items-center justify-between mb-2">
+   830→   830→            <div className="flex items-center gap-2">
+   831→   831→              <div className={`rounded-lg p-1.5 ${isGoalReached ? 'bg-emerald-100 dark:bg-emerald-900/40' : 'bg-amber-100 dark:bg-amber-900/40'}`}>
+   832→   832→                <Target className={`h-4 w-4 ${isGoalReached ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`} />
+   833→   833→              </div>
+   834→   834→              <div>
+   835→   835→                <p className="text-sm font-medium">Today&apos;s Revenue Goal</p>
+   836→   836→                <p className="text-xs text-muted-foreground">
+   837→   837→                  Daily target: {formatCurrency(DAILY_REVENUE_GOAL)}
+   838→   838→                </p>
+   839→   839→              </div>
+   840→   840→            </div>
+   841→   841→            <div className="text-right">
+   842→   842→              <p className={`text-lg font-bold font-mono ${isGoalReached ? 'text-emerald-700 dark:text-emerald-400' : 'text-foreground'}`}>
+   843→   843→                {formatCurrency(todaySalesAmount)}
+   844→   844→              </p>
+   845→   845→              <p className="text-xs text-muted-foreground">{percentage}%</p>
+   846→   846→            </div>
+   847→   847→          </div>
+   848→   848→          <Progress
+   849→   849→            value={percentage}
+   850→   850→            className={`h-2.5 ${isGoalReached ? '[&>div]:bg-emerald-500' : '[&>div]:bg-amber-500'}`}
+   851→   851→          />
+   852→   852→        </CardContent>
+   853→   853→      </Card>
+   854→   854→    );
+   855→   855→  };
+   856→   856→
+   857→   857→  // ─── Main Render ───
+   858→   858→
+   859→   859→  return (
+   860→   860→    <section className="space-y-6" aria-label="CRM Dashboard">
+   861→   861→      {/* Page Header */}
+   862→   862→      <div>
+   863→   863→        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+   864→   864→          Dashboard
+   865→   865→        </h1>
+   866→   866→        <p className="text-muted-foreground mt-1">
+   867→   867→          {format(startOfDay(new Date()), 'EEEE, MMMM d, yyyy')} — Optical Shop CRM
+   868→   868→        </p>
+   869→   869→      </div>
+   870→   870→
+   871→   871→      {/* Stats Cards */}
+   872→   872→      {renderStatsGrid()}
+   873→   873→
+   874→   874→      {/* Quick Action Buttons */}
+   875→   875→      {renderQuickActions()}
+   876→   876→
+   877→   877→      {/* Charts Section */}
+   878→   878→      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+   879→   879→        {renderSalesTrendChart()}
+   880→   880→        {renderTopProductsChart()}
+   881→   881→      </div>
+   882→   882→
+   883→   883→      {/* Today's Revenue Goal */}
+   884→   884→      {renderRevenueGoal()}
+   885→   885→
+   886→   886→      {/* Pending Dues Card */}
+   887→   887→      {!loading && stats && stats.pendingDues > 0 && (
+   888→   888→        <Card className="border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
+   889→   889→          <CardContent className="p-4 flex items-center justify-between">
+   890→   890→            <div className="flex items-center gap-3">
+   891→   891→              <div className="rounded-lg p-2 bg-red-100 dark:bg-red-950/60">
+   892→   892→                <Wallet className="h-5 w-5 text-red-600 dark:text-red-400" />
+   893→   893→              </div>
+   894→   894→              <div>
+   895→   895→                <p className="text-sm font-medium text-red-800 dark:text-red-300">
+   896→   896→                  Outstanding Dues
+   897→   897→                </p>
+   898→   898→                <p className="text-xs text-red-600/80 dark:text-red-400/80">
+   899→   899→                  Total pending payments from customers
+   900→   900→                </p>
+   901→   901→              </div>
+   902→   902→            </div>
+   903→   903→            <div className="flex items-center gap-2">
+   904→   904→              <span className="text-lg font-bold text-red-700 dark:text-red-300 font-mono">
+   905→   905→                {duesVisible
+   906→   906→                  ? formatCurrency(stats.pendingDues)
+   907→   907→                  : '₹••••••'}
+   908→   908→              </span>
+   909→   909→              <button
+   910→   910→                onClick={() => setDuesVisible(!duesVisible)}
+   911→   911→                className="p-1.5 rounded-md hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+   912→   912→                aria-label={duesVisible ? 'Hide dues amount' : 'Show dues amount'}
+   913→   913→              >
+   914→   914→                {duesVisible ? (
+   915→   915→                  <EyeOff className="h-4 w-4 text-red-500" />
+   916→   916→                ) : (
+   917→   917→                  <Eye className="h-4 w-4 text-red-500" />
+   918→   918→                )}
+   919→   919→              </button>
+   920→   920→            </div>
+   921→   921→          </CardContent>
+   922→   922→        </Card>
+   923→   923→      )}
+   924→   924→
+   925→   925→      {/* Overdue Appointments Alert */}
+   926→   926→      {renderOverdueAlert()}
+   927→   927→
+   928→   928→      {/* Recent Activity Section */}
+   929→   929→      <div>
+   930→   930→        <h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
+   931→   931→        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+   932→   932→          {/* Recent Sales — wider on desktop */}
+   933→   933→          <div className="lg:col-span-1">{renderRecentSales()}</div>
+   934→   934→
+   935→   935→          {/* Today's Appointments */}
+   936→   936→          <div>{renderAppointments()}</div>
+   937→   937→
+   938→   938→          <div>{renderLowStock()}</div>
+   939→   939→        </div>
+   940→   940→      </div>
+   941→   941→    </section>
+   942→   942→  );
+   943→   943→}

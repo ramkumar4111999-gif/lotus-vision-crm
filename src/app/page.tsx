@@ -3,9 +3,10 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   LayoutDashboard, Users, Package, Receipt, FlaskConical, CalendarDays, Wallet,
-  BarChart3, UserCog, Megaphone, Menu, Moon, Sun, LogOut, Bell, X, Search,
+  BarChart3, UserCog, Megaphone, Menu, Moon, Sun, LogOut, X, Search,
   Database, CheckCircle2, PackageX, UserPlus, Clock, AlertTriangle, Settings,
-  Loader2, Download, Upload, AlertOctagon, IndianRupee, TrendingUp, PackageSearch, ChevronDown, ChevronUp,
+  Loader, Download, Upload, AlertOctagon, IndianRupee, TrendingUp, PackageSearch, ChevronDown, ChevronUp,
+  ShoppingCart, Calculator, Eye,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -48,6 +49,9 @@ import Accounting from '@/components/crm/accounting';
 import Reports from '@/components/crm/reports';
 import Staff from '@/components/crm/staff';
 import Campaigns from '@/components/crm/campaigns';
+import Notifications from '@/components/crm/notifications';
+import PurchaseOrders from '@/components/crm/purchase-orders';
+import LensCalculator from '@/components/crm/lens-calculator';
 
 // ─── Navigation config ─────────────────────────────────────────────────
 
@@ -68,57 +72,13 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'reports', label: 'Reports', icon: BarChart3 },
   { key: 'staff', label: 'Staff', icon: UserCog },
   { key: 'campaigns', label: 'Campaigns', icon: Megaphone },
+  { key: 'purchase-orders', label: 'Purchase Orders', icon: ShoppingCart },
+  { key: 'lens-calculator', label: 'Lens Calculator', icon: Calculator },
 ];
 
 // ─── Mock notifications ────────────────────────────────────────────────
 
-const MOCK_NOTIFICATIONS = [
-  {
-    id: '1',
-    title: '3 Lab Orders Pending',
-    description: 'Lens orders from Sankaran and Priya are due today.',
-    time: '10 min ago',
-    icon: FlaskConical,
-    color: 'text-amber-600 dark:text-amber-400',
-    bg: 'bg-amber-50 dark:bg-amber-900/30',
-  },
-  {
-    id: '2',
-    title: 'Low Stock Alert',
-    description: '5 products are below minimum stock level.',
-    time: '1 hour ago',
-    icon: PackageX,
-    color: 'text-red-600 dark:text-red-400',
-    bg: 'bg-red-50 dark:bg-red-900/30',
-  },
-  {
-    id: '3',
-    title: 'New Customer Registered',
-    description: 'Meena Devi was added to the CRM.',
-    time: '3 hours ago',
-    icon: UserPlus,
-    color: 'text-emerald-600 dark:text-emerald-400',
-    bg: 'bg-emerald-50 dark:bg-emerald-900/30',
-  },
-  {
-    id: '4',
-    title: 'Appointment Reminder',
-    description: 'Dr. Vikram has an eye check-up at 4:00 PM.',
-    time: '5 hours ago',
-    icon: Clock,
-    color: 'text-sky-600 dark:text-sky-400',
-    bg: 'bg-sky-50 dark:bg-sky-900/30',
-  },
-  {
-    id: '5',
-    title: 'Overdue Payment',
-    description: 'Customer Rajan has ₹2,500 overdue for 15 days.',
-    time: 'Yesterday',
-    icon: AlertTriangle,
-    color: 'text-orange-600 dark:text-orange-400',
-    bg: 'bg-orange-50 dark:bg-orange-900/30',
-  },
-];
+// Notifications are now real — see src/components/crm/notifications.tsx
 
 // ─── Section renderer with transition ─────────────────────────────────
 
@@ -136,6 +96,8 @@ function SectionRenderer() {
     reports: Reports,
     staff: Staff,
     campaigns: Campaigns,
+    'purchase-orders': PurchaseOrders,
+    'lens-calculator': LensCalculator,
   };
 
   const Component = sectionMap[activeSection] ?? Dashboard;
@@ -586,7 +548,7 @@ function GlobalSearch() {
               />
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
               {searching && (
-                <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 animate-spin" />
+                <Loader className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 animate-spin" />
               )}
             </div>
           </TooltipTrigger>
@@ -889,7 +851,7 @@ function SettingsDialog() {
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={saving}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
+            {saving ? <Loader className="h-4 w-4 animate-spin mr-1.5" /> : null}
             Save Settings
           </Button>
         </DialogFooter>
@@ -978,57 +940,8 @@ function TopBar() {
         <TooltipContent>{darkMode ? 'Light mode' : 'Dark mode'}</TooltipContent>
       </Tooltip>
 
-      {/* Notifications Dropdown */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="relative shrink-0">
-            <Bell className="h-4.5 w-4.5 text-slate-600 dark:text-slate-400" />
-            <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-white dark:ring-slate-950">
-              {MOCK_NOTIFICATIONS.length}
-            </span>
-            <span className="sr-only">Notifications</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-80 p-0">
-          <DropdownMenuLabel className="flex items-center justify-between px-4 py-3">
-            <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">Notifications</span>
-            <Badge variant="secondary" className="text-[10px]">
-              {MOCK_NOTIFICATIONS.length} new
-            </Badge>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuGroup className="max-h-72 overflow-y-auto">
-            {MOCK_NOTIFICATIONS.map((n) => {
-              const Icon = n.icon;
-              return (
-                <DropdownMenuItem
-                  key={n.id}
-                  className="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                >
-                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${n.bg}`}>
-                    <Icon className={`h-4 w-4 ${n.color}`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-900 dark:text-slate-100 leading-snug">
-                      {n.title}
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug mt-0.5">
-                      {n.description}
-                    </p>
-                    <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
-                      {n.time}
-                    </p>
-                  </div>
-                </DropdownMenuItem>
-              );
-            })}
-          </DropdownMenuGroup>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem className="flex items-center justify-center px-4 py-2.5 text-sm text-emerald-600 dark:text-emerald-400 font-medium cursor-pointer hover:bg-emerald-50 dark:hover:bg-emerald-900/20">
-            View all notifications
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      {/* Notifications */}
+      <Notifications />
     </header>
   );
 }

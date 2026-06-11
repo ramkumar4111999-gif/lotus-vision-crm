@@ -37,7 +37,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, phone, role, email, salary, commission, isActive, joinDate, loginId } =
+    const { name, phone, role, email, salary, commission, isActive, joinDate, loginId, bankName, bankAccount, bankIfsc, panNumber } =
       body;
 
     // Verify the staff exists
@@ -56,6 +56,10 @@ export async function PUT(
       ...(isActive !== undefined && { isActive }),
       ...(loginId !== undefined && { loginId }),
       ...(joinDate !== undefined && { joinDate: joinDate ? new Date(joinDate) : null }),
+      ...(bankName !== undefined && { bankName }),
+      ...(bankAccount !== undefined && { bankAccount }),
+      ...(bankIfsc !== undefined && { bankIfsc }),
+      ...(panNumber !== undefined && { panNumber }),
     };
 
     const staff = await db.staff.update({

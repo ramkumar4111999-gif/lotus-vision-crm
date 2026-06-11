@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, phone, role, email, salary, commission, joinDate, loginId } = body;
+    const { name, phone, role, email, salary, commission, joinDate, loginId, bankName, bankAccount, bankIfsc, panNumber } = body;
 
     // Validate required fields
     if (!name || !name.trim()) {
@@ -112,6 +112,10 @@ export async function POST(request: NextRequest) {
             : 0,
         joinDate: joinDate ? new Date(joinDate) : new Date(),
         loginId: loginId ? loginId.trim() : null,
+        bankName: bankName ? bankName.trim() : null,
+        bankAccount: bankAccount ? bankAccount.trim() : null,
+        bankIfsc: bankIfsc ? bankIfsc.trim().toUpperCase() : null,
+        panNumber: panNumber ? panNumber.trim().toUpperCase() : null,
         isActive: true,
       },
     });

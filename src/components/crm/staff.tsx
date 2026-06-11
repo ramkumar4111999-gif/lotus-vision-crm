@@ -21,6 +21,9 @@ import {
   UserX,
   LogIn,
   LogOut,
+  Receipt,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -86,6 +89,10 @@ interface StaffFormData {
   commission: string
   isActive: boolean
   joinDate: string
+  bankName: string
+  bankAccount: string
+  bankIfsc: string
+  panNumber: string
 }
 
 interface StaffPerformance {
@@ -115,6 +122,10 @@ const EMPTY_FORM: StaffFormData = {
   commission: '',
   isActive: true,
   joinDate: new Date().toISOString().split('T')[0],
+  bankName: '',
+  bankAccount: '',
+  bankIfsc: '',
+  panNumber: '',
 }
 
 const ROLES = ['Owner', 'Admin', 'Optometrist', 'Sales Staff', 'Assistant'] as const
@@ -178,6 +189,172 @@ function formatElapsed(totalSeconds: number): string {
   if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`
   if (m > 0) return `${m}m ${String(s).padStart(2, '0')}s`
   return `${s}s`
+}
+
+// ─── Salary Management Sub-Component ────────────────────────────────────────
+
+interface SalaryRecord {
+  id: string
+  staffId: string
+  month: string
+  basicSalary: number
+  commission: number
+  deductions: number
+  advance: number
+  netPay: number
+  status: string
+  paidAt: string | null
+  notes: string | null
+  staff: { id: string; name: string; role: string }
+}
+
+function SalaryManagementSection({ staffList, performanceData }: { staffList: Staff[]; performanceData: StaffPerformance[] }) {
+  const [records, setRecords] = useState<SalaryRecord[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  })
+  const [genLoading, setGenLoading] = useState(false)
+
+  const fetchRecords = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/staff/salary?month=${selectedMonth}`)
+      if (res.ok) {
+        const json = await res.json()
+        setRecords(json.data ?? [])
+      }
+    } catch { /* silent */ }
+    finally { setLoading(false) }
+  }, [selectedMonth])
+
+  useEffect(() => { fetchRecords() }, [fetchRecords])
+
+  const handleGenerate = async () => {
+    setGenLoading(true)
+    try {
+      for (const staff of staffList.filter(s => s.isActive)) {
+        const perf = performanceData.find(p => p.staffId === staff.id)
+        const netPay = staff.salary + (perf?.commissionEarned ?? 0)
+        await fetch('/api/staff/salary', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            staffId: staff.id,
+            month: selectedMonth,
+            basicSalary: staff.salary,
+            commission: Math.round(perf?.commissionEarned ?? 0),
+            deductions: 0,
+            advance: 0,
+            netPay: Math.round(netPay),
+          }),
+        })
+      }
+      await fetchRecords()
+    } finally { setGenLoading(false) }
+  }
+
+  const handleMarkPaid = async (id: string) => {
+    await fetch('/api/staff/salary', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, status: 'Paid' }),
+    })
+    await fetchRecords()
+  }
+
+  const totalNet = records.reduce((sum, r) => sum + r.netPay, 0)
+  const paidCount = records.filter(r => r.status === 'Paid').length
+  const pendingCount = records.filter(r => r.status === 'Pending').length
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <Receipt className="size-5 text-primary" />
+            Salary Management
+          </CardTitle>
+          <CardDescription>
+            {records.length} record{records.length !== 1 ? 's' : ''} for {new Date(selectedMonth + '-01').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
+            {records.length > 0 && ` — Total: ${formatCurrency(totalNet)}`}
+          </CardDescription>
+        </div>
+        <div className="flex items-center gap-2">
+          <Input
+            type="month"
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="w-auto"
+          />
+          <Button onClick={handleGenerate} disabled={genLoading || staffList.length === 0} variant="outline">
+            {genLoading ? <span className="size-4 animate-spin inline-block border-2 border-current border-t-transparent rounded-full" /> : <DollarSign className="size-4" />}
+            Generate
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <span className="size-5 animate-spin inline-block border-2 border-current border-t-transparent rounded-full" />
+          </div>
+        ) : records.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Receipt className="size-10 mx-auto mb-2 opacity-30" />
+            <p className="text-sm">No salary records for this month.</p>
+            <p className="text-xs mt-1">Click &quot;Generate&quot; to create salary records for all active staff.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex gap-4 text-sm">
+              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400">
+                <CheckCircle2 className="size-3 mr-1" /> {paidCount} Paid
+              </Badge>
+              <Badge variant="outline" className="bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400">
+                <XCircle className="size-3 mr-1" /> {pendingCount} Pending
+              </Badge>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Staff</TableHead>
+                  <TableHead className="text-right">Basic</TableHead>
+                  <TableHead className="text-right">Commission</TableHead>
+                  <TableHead className="text-right">Deductions</TableHead>
+                  <TableHead className="text-right">Net Pay</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {records.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="font-medium">{r.staff.name}</TableCell>
+                    <TableCell className="text-right font-mono text-sm">{formatCurrency(r.basicSalary)}</TableCell>
+                    <TableCell className="text-right font-mono text-sm text-emerald-600 dark:text-emerald-400">{formatCurrency(r.commission)}</TableCell>
+                    <TableCell className="text-right font-mono text-sm text-red-600 dark:text-red-400">{r.deductions > 0 ? formatCurrency(r.deductions) : '—'}</TableCell>
+                    <TableCell className="text-right font-mono text-sm font-semibold">{formatCurrency(r.netPay)}</TableCell>
+                    <TableCell>
+                      <Badge variant={r.status === 'Paid' ? 'default' : 'secondary'} className={r.status === 'Paid' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' : ''}>
+                        {r.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {r.status === 'Pending' && (
+                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleMarkPaid(r.id)}>
+                          <CheckCircle2 className="size-3 mr-1" /> Mark Paid
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -313,7 +490,7 @@ export default function StaffManagement() {
       const res = await fetch('/api/staff/attendance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ staffId: staff.id, staffName: staff.name, action: 'clockIn' }),
+        body: JSON.stringify({ staffId: staff.id, action: 'clock-in' }),
       })
       if (res.ok) {
         await fetchAttendance()
@@ -329,7 +506,7 @@ export default function StaffManagement() {
       const res = await fetch('/api/staff/attendance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ staffId: staff.id, staffName: staff.name, action: 'clockOut' }),
+        body: JSON.stringify({ staffId: staff.id, action: 'clock-out' }),
       })
       if (res.ok) {
         await fetchAttendance()
@@ -412,6 +589,10 @@ export default function StaffManagement() {
       commission: String(staff.commission),
       isActive: staff.isActive,
       joinDate: staff.joinDate ? new Date(staff.joinDate).toISOString().split('T')[0] : '',
+      bankName: (staff as Record<string, unknown>).bankName as string ?? '',
+      bankAccount: (staff as Record<string, unknown>).bankAccount as string ?? '',
+      bankIfsc: (staff as Record<string, unknown>).bankIfsc as string ?? '',
+      panNumber: (staff as Record<string, unknown>).panNumber as string ?? '',
     })
     setFormErrors({})
     setDialogOpen(true)
@@ -452,6 +633,10 @@ export default function StaffManagement() {
         commission: Number(form.commission) || 0,
         isActive: form.isActive,
         joinDate: form.joinDate || null,
+        bankName: form.bankName.trim() || null,
+        bankAccount: form.bankAccount.trim() || null,
+        bankIfsc: form.bankIfsc.trim() || null,
+        panNumber: form.panNumber.trim() || null,
       }
 
       if (editingStaff) {
@@ -1109,6 +1294,9 @@ export default function StaffManagement() {
         </Card>
       )}
 
+      {/* ── Salary Management Section ───────────────────────────────────── */}
+      <SalaryManagementSection staffList={staffList} performanceData={performanceData} />
+
       {/* ── Add / Edit Staff Dialog ─────────────────────────────────────── */}
       <Dialog open={dialogOpen} onOpenChange={(open) => !submitting && setDialogOpen(open)}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
@@ -1252,6 +1440,32 @@ export default function StaffManagement() {
                 checked={form.isActive}
                 onCheckedChange={(checked) => updateField('isActive', checked)}
               />
+            </div>
+
+            {/* Bank Details Section */}
+            <div className="space-y-3">
+              <Separator />
+              <p className="text-sm font-medium">Bank Details (Optional)</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="staff-bank">Bank Name</Label>
+                  <Input id="staff-bank" placeholder="SBI, HDFC..." value={form.bankName} onChange={(e) => updateField('bankName', e.target.value)} />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="staff-pan">PAN Number</Label>
+                  <Input id="staff-pan" placeholder="ABCDE1234F" value={form.panNumber} onChange={(e) => updateField('panNumber', e.target.value.toUpperCase())} className="uppercase" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="staff-account">Account No.</Label>
+                  <Input id="staff-account" placeholder="Account number" value={form.bankAccount} onChange={(e) => updateField('bankAccount', e.target.value)} />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="staff-ifsc">IFSC Code</Label>
+                  <Input id="staff-ifsc" placeholder="SBIN0001234" value={form.bankIfsc} onChange={(e) => updateField('bankIfsc', e.target.value.toUpperCase())} className="uppercase" />
+                </div>
+              </div>
             </div>
           </div>
 

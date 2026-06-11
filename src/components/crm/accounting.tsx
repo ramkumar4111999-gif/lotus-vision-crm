@@ -28,6 +28,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Search,
+  FileText,
 } from 'lucide-react';
 import {
   Card,
@@ -229,6 +230,112 @@ function getBudgetKey(): string {
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
+
+// ─── Invoice GST Report Sub-Component ──────────────────────────────────
+
+function InvoiceGSTReport() {
+  const [sales, setSales] = useState<Array<Record<string, unknown>>>([]);
+  const [loading, setLoading] = useState(true);
+  const [month, setMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+
+  useEffect(() => {
+    setLoading(true);
+    const start = `${month}-01`;
+    const [y, m] = month.split('-').map(Number);
+    const lastDay = new Date(y, m, 0).getDate();
+    const end = `${month}-${String(lastDay).padStart(2, '0')}`;
+    fetch(`/api/sales?fromDate=${start}&toDate=${end}&limit=500`)
+      .then(r => r.ok ? r.json() : [])
+      .then(json => {
+        const data = json.sales ?? json.data ?? json ?? [];
+        setSales(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [month]);
+
+  const gstSales = sales.filter((s: Record<string, unknown>) => ((s.cgst as number) || 0) + ((s.sgst as number) || 0) + ((s.igst as number) || 0) > 0);
+  const totals = gstSales.reduce((acc: Record<string, number>, s: Record<string, unknown>) => {
+    acc.subtotal += (s.subtotal as number) || 0;
+    acc.cgst += (s.cgst as number) || 0;
+    acc.sgst += (s.sgst as number) || 0;
+    acc.igst += (s.igst as number) || 0;
+    acc.total += (s.totalAmount as number) || 0;
+    return acc;
+  }, { subtotal: 0, cgst: 0, sgst: 0, igst: 0, total: 0 });
+
+  if (loading) return <div className="flex items-center justify-center py-8"><span className="size-5 animate-spin inline-block border-2 border-current border-t-transparent rounded-full" /></div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Input type="month" value={month} onChange={e => setMonth(e.target.value)} className="w-auto" />
+        <p className="text-sm text-muted-foreground">{gstSales.length} invoices with GST</p>
+      </div>
+      {gstSales.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-8">No GST invoices for this month.</p>
+      ) : (
+        <>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Invoice</TableHead>
+                <TableHead>Customer</TableHead>
+                <TableHead className="text-right">Subtotal</TableHead>
+                <TableHead className="text-right">CGST</TableHead>
+                <TableHead className="text-right">SGST</TableHead>
+                <TableHead className="text-right">IGST</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {gstSales.map((s: Record<string, unknown>) => (
+                <TableRow key={s.id}>
+                  <TableCell className="font-mono text-xs">{s.invoiceNo as string}</TableCell>
+                  <TableCell className="text-sm">{(s.customerName as string) || 'Walk-in'}</TableCell>
+                  <TableCell className="text-right font-mono text-sm">{formatCurrency((s.subtotal as number) || 0)}</TableCell>
+                  <TableCell className="text-right font-mono text-sm text-blue-600 dark:text-blue-400">{formatCurrency((s.cgst as number) || 0)}</TableCell>
+                  <TableCell className="text-right font-mono text-sm text-blue-600 dark:text-blue-400">{formatCurrency((s.sgst as number) || 0)}</TableCell>
+                  <TableCell className="text-right font-mono text-sm text-purple-600 dark:text-purple-400">{formatCurrency((s.igst as number) || 0)}</TableCell>
+                  <TableCell className="text-right font-mono text-sm font-semibold">{formatCurrency((s.totalAmount as number) || 0)}</TableCell>
+                </TableRow>
+              ))}
+              <TableRow className="bg-muted/50 font-semibold">
+                <TableCell colSpan={2}>Total</TableCell>
+                <TableCell className="text-right font-mono text-sm">{formatCurrency(totals.subtotal)}</TableCell>
+                <TableCell className="text-right font-mono text-sm">{formatCurrency(totals.cgst)}</TableCell>
+                <TableCell className="text-right font-mono text-sm">{formatCurrency(totals.sgst)}</TableCell>
+                <TableCell className="text-right font-mono text-sm">{formatCurrency(totals.igst)}</TableCell>
+                <TableCell className="text-right font-mono text-sm">{formatCurrency(totals.total)}</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="rounded-lg border p-3 text-center">
+              <p className="text-xs text-muted-foreground">CGST</p>
+              <p className="font-mono font-semibold">{formatCurrency(totals.cgst)}</p>
+            </div>
+            <div className="rounded-lg border p-3 text-center">
+              <p className="text-xs text-muted-foreground">SGST</p>
+              <p className="font-mono font-semibold">{formatCurrency(totals.sgst)}</p>
+            </div>
+            <div className="rounded-lg border p-3 text-center">
+              <p className="text-xs text-muted-foreground">IGST</p>
+              <p className="font-mono font-semibold">{formatCurrency(totals.igst)}</p>
+            </div>
+            <div className="rounded-lg border p-3 text-center bg-emerald-50 dark:bg-emerald-900/20">
+              <p className="text-xs text-muted-foreground">Total GST</p>
+              <p className="font-mono font-semibold text-emerald-700 dark:text-emerald-400">{formatCurrency(totals.cgst + totals.sgst + totals.igst)}</p>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 export default function Accounting() {
   // Data state
@@ -1104,6 +1211,7 @@ export default function Accounting() {
           <TabsTrigger value="reconciliation" className="gap-1.5"><CheckCircle2 className="h-4 w-4" /><span className="hidden sm:inline">Reconciliation</span></TabsTrigger>
           <TabsTrigger value="dues" className="gap-1.5"><CreditCard className="h-4 w-4" /><span className="hidden sm:inline">Dues</span></TabsTrigger>
           <TabsTrigger value="returns" className="gap-1.5"><RotateCcw className="h-4 w-4" /><span className="hidden sm:inline">Returns</span></TabsTrigger>
+          <TabsTrigger value="invoice-gst" className="gap-1.5"><FileText className="h-4 w-4" /><span className="hidden sm:inline">Invoice GST</span></TabsTrigger>
         </TabsList>
 
         {/* ─── Cash Flow Tab ────────────────────────────────────────────── */}
@@ -1798,6 +1906,19 @@ export default function Accounting() {
                   </Table>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ─── Invoice GST Tab ──────────────────────────────────────── */}
+        <TabsContent value="invoice-gst">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Invoice-wise GST Report</CardTitle>
+              <CardDescription>GST breakdown for each sale invoice</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <InvoiceGSTReport />
             </CardContent>
           </Card>
         </TabsContent>

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { createNotification } from '@/lib/notifications';
+import { format } from 'date-fns';
 
 // GET /api/appointments - List appointments with filters and pagination
 export async function GET(request: NextRequest) {
@@ -87,7 +89,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { customerId, date, time, purpose, status, notes } = body;
+    const { customerId, date, time, purpose, status, notes, recurrence } = body;
 
     // Validate required fields
     if (!customerId) {
@@ -124,12 +126,21 @@ export async function POST(request: NextRequest) {
         purpose: purpose || null,
         status: status || 'Scheduled',
         notes: notes || null,
+        recurrence: recurrence || null,
       },
       include: {
         customer: {
           select: { id: true, name: true, phone: true, email: true },
         },
       },
+    });
+
+    // Fire notification (fire-and-forget)
+    createNotification({
+      title: `New appointment: ${customer.name}`,
+      message: `On ${format(new Date(date), 'MMM d, yyyy')}${time ? ` at ${time}` : ''}`,
+      type: 'info',
+      link: 'appointments',
     });
 
     return NextResponse.json({ data: appointment }, { status: 201 });

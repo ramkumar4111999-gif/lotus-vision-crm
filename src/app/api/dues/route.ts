@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { createNotification } from '@/lib/notifications';
 
 // GET /api/dues - List dues with filters and pagination
 export async function GET(request: NextRequest) {
@@ -116,6 +117,14 @@ export async function POST(request: NextRequest) {
           select: { id: true, name: true, phone: true },
         },
       },
+    });
+
+    // Fire notification (fire-and-forget)
+    createNotification({
+      title: `New due ₹${Number(amount).toLocaleString('en-IN')}`,
+      message: `For ${customer.name}`,
+      type: 'warning',
+      link: 'accounting',
     });
 
     return NextResponse.json({ data: due }, { status: 201 });

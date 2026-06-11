@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { createNotification } from '@/lib/notifications'
 
 // GET list of sales with filtering, pagination, date range, and search
 export async function GET(req: NextRequest) {
@@ -223,6 +224,14 @@ export async function POST(req: NextRequest) {
 
       return newSale
     })
+
+    // Fire notification (fire-and-forget)
+    createNotification({
+      title: `New sale ₹${totalAmount.toLocaleString('en-IN')}`,
+      message: `${sale.customer?.name ?? 'Walk-in'} — Invoice ${invoiceNo}`,
+      type: 'success',
+      link: 'sales',
+    });
 
     return NextResponse.json(sale, { status: 201 })
   } catch (error) {

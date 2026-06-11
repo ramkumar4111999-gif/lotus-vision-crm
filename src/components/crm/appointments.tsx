@@ -115,6 +115,7 @@ interface Appointment {
   purpose?: string | null
   status: string
   notes?: string | null
+  recurrence?: string | null
   createdAt: string
   updatedAt: string
 }
@@ -165,6 +166,13 @@ const STATUS_VARIANTS: Record<string, { label: string; className: string }> = {
 }
 
 const STATUS_LIST: string[] = ['Scheduled', 'Confirmed', 'Completed', 'Cancelled', 'No-Show']
+
+const RECURRENCE_OPTIONS = [
+  { value: '', label: 'Does not repeat' },
+  { value: 'weekly', label: 'Every week' },
+  { value: 'biweekly', label: 'Every 2 weeks' },
+  { value: 'monthly', label: 'Every month' },
+] as const
 
 const WEEK_TIME_SLOTS: string[] = [
   '09:00', '10:00', '11:00', '12:00', '13:00',
@@ -291,6 +299,7 @@ function AppointmentFormDialog({
   const [purpose, setPurpose] = useState<string>(appointment?.purpose ?? 'Eye Exam')
   const [status, setStatus] = useState(appointment?.status ?? 'Scheduled')
   const [notes, setNotes] = useState(appointment?.notes ?? '')
+  const [recurrence, setRecurrence] = useState(appointment?.recurrence ?? '')
   const [customerSearch, setCustomerSearch] = useState('')
   const [showCustomerPicker, setShowCustomerPicker] = useState(false)
 
@@ -339,7 +348,7 @@ function AppointmentFormDialog({
     if (!canSubmit) return
     setSubmitting(true)
     try {
-      await onSubmit({ customerId, date, time, purpose, status, notes, isWalkIn: isEditing ? false : isWalkIn })
+      await onSubmit({ customerId, date, time, purpose, status, notes, recurrence, isWalkIn: isEditing ? false : isWalkIn })
       onOpenChange(false)
     } finally {
       setSubmitting(false)
@@ -519,6 +528,25 @@ function AppointmentFormDialog({
               className="resize-none"
             />
           </div>
+
+          {/* Recurrence (new appointments only) */}
+          {!isEditing && (
+            <div className="space-y-2">
+              <Label>Repeat</Label>
+              <Select value={recurrence} onValueChange={setRecurrence}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Does not repeat" />
+                </SelectTrigger>
+                <SelectContent>
+                  {RECURRENCE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value || 'none'} value={opt.value || 'none'}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
@@ -1023,6 +1051,7 @@ export default function Appointments() {
     purpose: string
     status: string
     notes: string
+    recurrence: string
     isWalkIn?: boolean
   }) => {
     try {
@@ -1097,10 +1126,20 @@ export default function Appointments() {
     }
   }
 
-  const handleSMSReminder = () => {
-    toast.info('SMS reminder will be available in Cycle F', {
-      description: 'This feature is coming soon. Stay tuned!',
-    })
+  const handleSMSReminder = (appointment: Appointment) => {
+    const phone = appointment.customerPhone || appointment.customer?.phone
+    if (!phone) {
+      toast.error('No phone number found for this customer')
+      return
+    }
+    const cleanPhone = phone.replace(/\D/g, '')
+    const formattedDate = formatDate(appointment.date)
+    const formattedTime = formatTime(appointment.time)
+    const message = encodeURIComponent(
+      `Hi ${appointment.customerName}, reminder from Sankaran Kovil Opticals:\nYour appointment is on ${formattedDate}${appointment.time ? ` at ${formattedTime}` : ''}${appointment.purpose ? ` for ${appointment.purpose}` : ''}.\nPlease visit us on time. Thank you!`
+    )
+    window.open(`https://wa.me/91${cleanPhone}?text=${message}`, '_blank')
+    toast.success('WhatsApp reminder opened', { description: 'Send the message in the opened window' })
   }
 
   // ─── Render ─────────────────────────────────────────────────────────────
@@ -1225,12 +1264,12 @@ export default function Appointments() {
                         variant="ghost"
                         size="icon"
                         className="size-8 text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400"
-                        onClick={handleSMSReminder}
+                        onClick={() => handleSMSReminder(apt)}
                       >
                         <MessageSquare className="size-3.5" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>SMS Reminder</TooltipContent>
+                    <TooltipContent>WhatsApp Reminder</TooltipContent>
                   </Tooltip>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -1405,6 +1444,7 @@ export default function Appointments() {
                     <TableHead className="hidden md:table-cell">Purpose</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="hidden lg:table-cell">Notes</TableHead>
+                    <TableHead className="hidden xl:table-cell">Repeat</TableHead>
                     <TableHead className="pr-4 text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -1436,6 +1476,13 @@ export default function Appointments() {
                           {apt.notes || '—'}
                         </p>
                       </TableCell>
+                      <TableCell className="hidden xl:table-cell">
+                        {apt.recurrence ? (
+                          <Badge variant="outline" className="bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 text-[10px]">
+                            {apt.recurrence}
+                          </Badge>
+                        ) : '—'}
+                      </TableCell>
                       <TableCell className="pr-4 text-right">
                         <div className="flex items-center justify-end gap-0.5">
                           {/* SMS Reminder Button */}
@@ -1445,12 +1492,12 @@ export default function Appointments() {
                                 variant="ghost"
                                 size="icon"
                                 className="size-8 text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400"
-                                onClick={handleSMSReminder}
+                                onClick={() => handleSMSReminder(apt)}
                               >
                                 <MessageSquare className="size-3.5" />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>SMS Reminder</TooltipContent>
+                            <TooltipContent>WhatsApp Reminder</TooltipContent>
                           </Tooltip>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>

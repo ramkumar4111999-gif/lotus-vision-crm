@@ -5,14 +5,16 @@ import { createContext, useContext, useState, useCallback, useRef, type ReactNod
 export type SectionKey =
   | 'dashboard'
   | 'customers'
-  | 'inventory'
   | 'sales'
-  | 'lab-orders'
+  | 'inventory'
   | 'appointments'
+  | 'lab-orders'
   | 'accounting'
   | 'reports'
   | 'staff'
-  | 'campaigns';
+  | 'campaigns'
+  | 'purchase-orders'
+  | 'lens-calculator';
 
 interface CrmState {
   activeSection: SectionKey;

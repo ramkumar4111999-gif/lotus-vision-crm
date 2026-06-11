@@ -158,6 +158,8 @@ model Appointment {
   purpose    String?
   status     String   @default("Scheduled")
   notes      String?
+  recurrence String?  // 'none', 'weekly', 'biweekly', 'monthly'
+  parentAppointmentId String? // for tracking recurring series
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 }
@@ -186,18 +188,51 @@ model Due {
 }
 
 model Staff {
-  id          String   @id @default(cuid())
+  id          String       @id @default(cuid())
   name        String
   phone       String
-  role        String   @default("Staff")
+  role        String       @default("Staff")
   email       String?
-  salary      Float    @default(0)
-  commission  Float    @default(0)
-  isActive    Boolean  @default(true)
+  salary      Float        @default(0)
+  commission  Float        @default(0)
+  isActive    Boolean      @default(true)
   joinDate    DateTime?
-  loginId     String?  @unique
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  loginId     String?      @unique
+  bankName    String?
+  bankAccount  String?
+  bankIfsc    String?
+  panNumber   String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  attendance  Attendance[]
+  salaryRecords SalaryRecord[]
+}
+
+model Attendance {
+  id        String    @id @default(cuid())
+  staffId   String
+  staff     Staff     @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  clockIn   DateTime  @default(now())
+  clockOut  DateTime?
+  date      DateTime  @default(now())
+  notes     String?
+  createdAt DateTime  @default(now())
+}
+
+model SalaryRecord {
+  id            String   @id @default(cuid())
+  staffId       String
+  staff         Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  month         String   // e.g. "2026-06"
+  basicSalary   Float
+  commission    Float
+  deductions    Float    @default(0)
+  advance       Float    @default(0)
+  netPay        Float
+  paidAt        DateTime?
+  status        String   @default("Pending") // Pending, Paid
+  notes         String?
+  createdAt     DateTime @default(now())
 }
 
 model Campaign {
@@ -213,4 +248,29 @@ model Campaign {
   sentCount   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  title     String
+  message   String
+  type      String   @default("info")
+  isRead    Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+}
+
+model PurchaseOrder {
+  id            String   @id @default(cuid())
+  poNumber      String   @unique
+  supplier      String
+  supplierPhone String?
+  status        String   @default("Pending") // Pending, Ordered, PartiallyReceived, Received, Cancelled
+  items         String   // JSON array of { productId, name, qty, costPrice }
+  totalAmount   Float
+  receivedAt    DateTime?
+  notes         String?
+  expectedDate  DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
