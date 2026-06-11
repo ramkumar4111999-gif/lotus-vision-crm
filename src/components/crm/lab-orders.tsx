@@ -258,9 +258,8 @@ export default function LabOrders() {
       const data = await res.json()
       setOrders(data.orders ?? [])
       setTotalPages(data.totalPages ?? 1)
-    } catch (err) {
+    } catch {
       toast.error('Failed to load lab orders')
-      console.error(err)
     } finally {
       setLoading(false)
     }

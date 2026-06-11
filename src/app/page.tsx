@@ -4,9 +4,9 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   LayoutDashboard, Users, Package, Receipt, FlaskConical, CalendarDays, Wallet,
   BarChart3, UserCog, Megaphone, Menu, Moon, Sun, LogOut, X, Search,
-  Database, CheckCircle2, PackageX, UserPlus, Clock, AlertTriangle, Settings,
-  Loader, Download, Upload, AlertOctagon, IndianRupee, TrendingUp, PackageSearch, ChevronDown, ChevronUp,
-  ShoppingCart, Calculator, Eye,
+  Database, CheckCircle2, Settings,
+  Loader, Download, Upload, AlertOctagon, TrendingUp, ChevronDown,
+  ShoppingCart, Calculator,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -21,9 +21,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -990,10 +988,14 @@ function DarkModeEffect() {
 // ─── Keyboard Shortcuts ────────────────────────────────────────────────
 
 function KeyboardShortcuts() {
-  const { focusSearchInput, triggerNewSaleDialog, setSettingsOpen, settingsOpen } = useCrmStore();
+  const { focusSearchInput, triggerNewSaleDialog, setSettingsOpen, settingsOpen, setActiveSection } = useCrmStore();
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      // Don't trigger shortcuts when typing in inputs/textareas
+      const tag = (e.target as HTMLElement)?.tagName;
+      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+
       // Ctrl+K or Cmd+K: Focus search
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
@@ -1013,11 +1015,25 @@ function KeyboardShortcuts() {
         setSettingsOpen(false);
         return;
       }
+
+      // Number keys 1-9: Quick section switch (only when not in input)
+      if (!isInput && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const num = parseInt(e.key);
+        if (num >= 1 && num <= 9 && NAV_ITEMS[num - 1]) {
+          setActiveSection(NAV_ITEMS[num - 1].key);
+          return;
+        }
+        // 0 = section 10 (Staff)
+        if (e.key === '0' && NAV_ITEMS[9]) {
+          setActiveSection(NAV_ITEMS[9].key);
+          return;
+        }
+      }
     }
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [focusSearchInput, triggerNewSaleDialog, setSettingsOpen, settingsOpen]);
+  }, [focusSearchInput, triggerNewSaleDialog, setSettingsOpen, settingsOpen, setActiveSection]);
 
   return null;
 }

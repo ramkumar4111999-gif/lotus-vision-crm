@@ -1,0 +1,1519 @@
+     1→'use client'
+     2→
+     3→import { useState, useEffect, useCallback, useRef } from 'react'
+     4→import {
+     5→  Plus,
+     6→  Pencil,
+     7→  Trash2,
+     8→  Users,
+     9→  DollarSign,
+    10→  TrendingUp,
+    11→  ShoppingBag,
+    12→  Loader2,
+    13→  Phone,
+    14→  Mail,
+    15→  UserCircle,
+    16→  CalendarCheck,
+    17→  CircleDot,
+    18→  Clock,
+    19→  Lock,
+    20→  UserCheck,
+    21→  UserX,
+    22→  LogIn,
+    23→  LogOut,
+    24→  Receipt,
+    25→  CheckCircle2,
+    26→  XCircle,
+    27→} from 'lucide-react'
+    28→
+    29→import { Button } from '@/components/ui/button'
+    30→import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+    31→import { Badge } from '@/components/ui/badge'
+    32→import { Input } from '@/components/ui/input'
+    33→import { Label } from '@/components/ui/label'
+    34→import { Switch } from '@/components/ui/switch'
+    35→import { Separator } from '@/components/ui/separator'
+    36→import {
+    37→  Dialog,
+    38→  DialogContent,
+    39→  DialogDescription,
+    40→  DialogFooter,
+    41→  DialogHeader,
+    42→  DialogTitle,
+    43→} from '@/components/ui/dialog'
+    44→import {
+    45→  Select,
+    46→  SelectContent,
+    47→  SelectItem,
+    48→  SelectTrigger,
+    49→  SelectValue,
+    50→} from '@/components/ui/select'
+    51→import {
+    52→  Table,
+    53→  TableBody,
+    54→  TableCell,
+    55→  TableHead,
+    56→  TableHeader,
+    57→  TableRow,
+    58→} from '@/components/ui/table'
+    59→
+    60→// ─── Types ───────────────────────────────────────────────────────────────────
+    61→
+    62→interface Staff {
+    63→  id: string
+    64→  name: string
+    65→  phone: string
+    66→  email: string | null
+    67→  role: string
+    68→  salary: number
+    69→  commission: number
+    70→  isActive: boolean
+    71→  joinDate: string | null
+    72→  createdAt: string
+    73→  updatedAt: string
+    74→}
+    75→
+    76→interface Sale {
+    77→  id: string
+    78→  staffId: string | null
+    79→  totalAmount: number
+    80→  createdAt: string
+    81→}
+    82→
+    83→interface StaffFormData {
+    84→  name: string
+    85→  phone: string
+    86→  email: string
+    87→  role: string
+    88→  salary: string
+    89→  commission: string
+    90→  isActive: boolean
+    91→  joinDate: string
+    92→  bankName: string
+    93→  bankAccount: string
+    94→  bankIfsc: string
+    95→  panNumber: string
+    96→}
+    97→
+    98→interface StaffPerformance {
+    99→  staffId: string
+   100→  staffName: string
+   101→  staffRole: string
+   102→  totalSales: number
+   103→  commissionEarned: number
+   104→  transactionCount: number
+   105→}
+   106→
+   107→interface AttendanceEntry {
+   108→  staffId: string
+   109→  staffName: string
+   110→  clockIn: string
+   111→  clockOut: string | null
+   112→}
+   113→
+   114→// ─── Constants ───────────────────────────────────────────────────────────────
+   115→
+   116→const EMPTY_FORM: StaffFormData = {
+   117→  name: '',
+   118→  phone: '',
+   119→  email: '',
+   120→  role: 'Sales Staff',
+   121→  salary: '',
+   122→  commission: '',
+   123→  isActive: true,
+   124→  joinDate: new Date().toISOString().split('T')[0],
+   125→  bankName: '',
+   126→  bankAccount: '',
+   127→  bankIfsc: '',
+   128→  panNumber: '',
+   129→}
+   130→
+   131→const ROLES = ['Owner', 'Admin', 'Optometrist', 'Sales Staff', 'Assistant'] as const
+   132→
+   133→const ROLE_BADGE_STYLES: Record<string, string> = {
+   134→  Owner: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border-purple-200 dark:border-purple-800',
+   135→  Admin: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 border-red-200 dark:border-red-800',
+   136→  Optometrist: 'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300 border-teal-200 dark:border-teal-800',
+   137→  'Sales Staff': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+   138→  Assistant: 'bg-gray-100 text-gray-700 dark:bg-gray-800/40 dark:text-gray-300 border-gray-200 dark:border-gray-700',
+   139→}
+   140→
+   141→// ─── Helpers ─────────────────────────────────────────────────────────────────
+   142→
+   143→function formatCurrency(amount: number): string {
+   144→  return new Intl.NumberFormat('en-IN', {
+   145→    style: 'currency',
+   146→    currency: 'INR',
+   147→    minimumFractionDigits: 0,
+   148→    maximumFractionDigits: 0,
+   149→  }).format(amount)
+   150→}
+   151→
+   152→function formatDate(dateStr: string | null): string {
+   153→  if (!dateStr) return '—'
+   154→  return new Date(dateStr).toLocaleDateString('en-IN', {
+   155→    day: '2-digit',
+   156→    month: 'short',
+   157→    year: 'numeric',
+   158→  })
+   159→}
+   160→
+   161→function formatTime(isoStr: string): string {
+   162→  return new Date(isoStr).toLocaleTimeString('en-IN', {
+   163→    hour: '2-digit',
+   164→    minute: '2-digit',
+   165→    hour12: true,
+   166→  })
+   167→}
+   168→
+   169→function getAttendanceStatus(joinDate: string | null, isActive: boolean): { label: string; color: string } {
+   170→  if (!isActive) return { label: 'Inactive', color: 'bg-gray-100 text-gray-500 dark:bg-gray-800/40 dark:text-gray-400 border-gray-200 dark:border-gray-700' }
+   171→  return { label: 'Active', color: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border-green-200 dark:border-green-800' }
+   172→}
+   173→
+   174→function getCurrentMonthRange(): { start: Date; end: Date } {
+   175→  const now = new Date()
+   176→  const start = new Date(now.getFullYear(), now.getMonth(), 1)
+   177→  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+   178→  return { start, end }
+   179→}
+   180→
+   181→function getElapsedSeconds(isoStr: string): number {
+   182→  return Math.max(0, Math.floor((Date.now() - new Date(isoStr).getTime()) / 1000))
+   183→}
+   184→
+   185→function formatElapsed(totalSeconds: number): string {
+   186→  const h = Math.floor(totalSeconds / 3600)
+   187→  const m = Math.floor((totalSeconds % 3600) / 60)
+   188→  const s = totalSeconds % 60
+   189→  if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`
+   190→  if (m > 0) return `${m}m ${String(s).padStart(2, '0')}s`
+   191→  return `${s}s`
+   192→}
+   193→
+   194→// ─── Salary Management Sub-Component ────────────────────────────────────────
+   195→
+   196→interface SalaryRecord {
+   197→  id: string
+   198→  staffId: string
+   199→  month: string
+   200→  basicSalary: number
+   201→  commission: number
+   202→  deductions: number
+   203→  advance: number
+   204→  netPay: number
+   205→  status: string
+   206→  paidAt: string | null
+   207→  notes: string | null
+   208→  staff: { id: string; name: string; role: string }
+   209→}
+   210→
+   211→function SalaryManagementSection({ staffList, performanceData }: { staffList: Staff[]; performanceData: StaffPerformance[] }) {
+   212→  const [records, setRecords] = useState<SalaryRecord[]>([])
+   213→  const [loading, setLoading] = useState(true)
+   214→  const [selectedMonth, setSelectedMonth] = useState(() => {
+   215→    const now = new Date()
+   216→    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+   217→  })
+   218→  const [genLoading, setGenLoading] = useState(false)
+   219→
+   220→  const fetchRecords = useCallback(async () => {
+   221→    try {
+   222→      const res = await fetch(`/api/staff/salary?month=${selectedMonth}`)
+   223→      if (res.ok) {
+   224→        const json = await res.json()
+   225→        setRecords(json.data ?? [])
+   226→      }
+   227→    } catch { /* silent */ }
+   228→    finally { setLoading(false) }
+   229→  }, [selectedMonth])
+   230→
+   231→  useEffect(() => { fetchRecords() }, [fetchRecords])
+   232→
+   233→  const handleGenerate = async () => {
+   234→    setGenLoading(true)
+   235→    try {
+   236→      for (const staff of staffList.filter(s => s.isActive)) {
+   237→        const perf = performanceData.find(p => p.staffId === staff.id)
+   238→        const netPay = staff.salary + (perf?.commissionEarned ?? 0)
+   239→        await fetch('/api/staff/salary', {
+   240→          method: 'POST',
+   241→          headers: { 'Content-Type': 'application/json' },
+   242→          body: JSON.stringify({
+   243→            staffId: staff.id,
+   244→            month: selectedMonth,
+   245→            basicSalary: staff.salary,
+   246→            commission: Math.round(perf?.commissionEarned ?? 0),
+   247→            deductions: 0,
+   248→            advance: 0,
+   249→            netPay: Math.round(netPay),
+   250→          }),
+   251→        })
+   252→      }
+   253→      await fetchRecords()
+   254→    } finally { setGenLoading(false) }
+   255→  }
+   256→
+   257→  const handleMarkPaid = async (id: string) => {
+   258→    await fetch('/api/staff/salary', {
+   259→      method: 'PATCH',
+   260→      headers: { 'Content-Type': 'application/json' },
+   261→      body: JSON.stringify({ id, status: 'Paid' }),
+   262→    })
+   263→    await fetchRecords()
+   264→  }
+   265→
+   266→  const totalNet = records.reduce((sum, r) => sum + r.netPay, 0)
+   267→  const paidCount = records.filter(r => r.status === 'Paid').length
+   268→  const pendingCount = records.filter(r => r.status === 'Pending').length
+   269→
+   270→  return (
+   271→    <Card>
+   272→      <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+   273→        <div className="space-y-1">
+   274→          <CardTitle className="flex items-center gap-2 text-xl">
+   275→            <Receipt className="size-5 text-primary" />
+   276→            Salary Management
+   277→          </CardTitle>
+   278→          <CardDescription>
+   279→            {records.length} record{records.length !== 1 ? 's' : ''} for {new Date(selectedMonth + '-01').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
+   280→            {records.length > 0 && ` — Total: ${formatCurrency(totalNet)}`}
+   281→          </CardDescription>
+   282→        </div>
+   283→        <div className="flex items-center gap-2">
+   284→          <Input
+   285→            type="month"
+   286→            value={selectedMonth}
+   287→            onChange={(e) => setSelectedMonth(e.target.value)}
+   288→            className="w-auto"
+   289→          />
+   290→          <Button onClick={handleGenerate} disabled={genLoading || staffList.length === 0} variant="outline">
+   291→            {genLoading ? <span className="size-4 animate-spin inline-block border-2 border-current border-t-transparent rounded-full" /> : <DollarSign className="size-4" />}
+   292→            Generate
+   293→          </Button>
+   294→        </div>
+   295→      </CardHeader>
+   296→      <CardContent>
+   297→        {loading ? (
+   298→          <div className="flex items-center justify-center py-8">
+   299→            <span className="size-5 animate-spin inline-block border-2 border-current border-t-transparent rounded-full" />
+   300→          </div>
+   301→        ) : records.length === 0 ? (
+   302→          <div className="text-center py-8 text-muted-foreground">
+   303→            <Receipt className="size-10 mx-auto mb-2 opacity-30" />
+   304→            <p className="text-sm">No salary records for this month.</p>
+   305→            <p className="text-xs mt-1">Click &quot;Generate&quot; to create salary records for all active staff.</p>
+   306→          </div>
+   307→        ) : (
+   308→          <div className="space-y-4">
+   309→            <div className="flex gap-4 text-sm">
+   310→              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400">
+   311→                <CheckCircle2 className="size-3 mr-1" /> {paidCount} Paid
+   312→              </Badge>
+   313→              <Badge variant="outline" className="bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400">
+   314→                <XCircle className="size-3 mr-1" /> {pendingCount} Pending
+   315→              </Badge>
+   316→            </div>
+   317→            <Table>
+   318→              <TableHeader>
+   319→                <TableRow>
+   320→                  <TableHead>Staff</TableHead>
+   321→                  <TableHead className="text-right">Basic</TableHead>
+   322→                  <TableHead className="text-right">Commission</TableHead>
+   323→                  <TableHead className="text-right">Deductions</TableHead>
+   324→                  <TableHead className="text-right">Net Pay</TableHead>
+   325→                  <TableHead>Status</TableHead>
+   326→                  <TableHead className="text-right">Action</TableHead>
+   327→                </TableRow>
+   328→              </TableHeader>
+   329→              <TableBody>
+   330→                {records.map((r) => (
+   331→                  <TableRow key={r.id}>
+   332→                    <TableCell className="font-medium">{r.staff.name}</TableCell>
+   333→                    <TableCell className="text-right font-mono text-sm">{formatCurrency(r.basicSalary)}</TableCell>
+   334→                    <TableCell className="text-right font-mono text-sm text-emerald-600 dark:text-emerald-400">{formatCurrency(r.commission)}</TableCell>
+   335→                    <TableCell className="text-right font-mono text-sm text-red-600 dark:text-red-400">{r.deductions > 0 ? formatCurrency(r.deductions) : '—'}</TableCell>
+   336→                    <TableCell className="text-right font-mono text-sm font-semibold">{formatCurrency(r.netPay)}</TableCell>
+   337→                    <TableCell>
+   338→                      <Badge variant={r.status === 'Paid' ? 'default' : 'secondary'} className={r.status === 'Paid' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' : ''}>
+   339→                        {r.status}
+   340→                      </Badge>
+   341→                    </TableCell>
+   342→                    <TableCell className="text-right">
+   343→                      {r.status === 'Pending' && (
+   344→                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleMarkPaid(r.id)}>
+   345→                          <CheckCircle2 className="size-3 mr-1" /> Mark Paid
+   346→                        </Button>
+   347→                      )}
+   348→                    </TableCell>
+   349→                  </TableRow>
+   350→                ))}
+   351→              </TableBody>
+   352→            </Table>
+   353→          </div>
+   354→        )}
+   355→      </CardContent>
+   356→    </Card>
+   357→  )
+   358→}
+   359→
+   360→// ─── Component ───────────────────────────────────────────────────────────────
+   361→
+   362→export default function StaffManagement() {
+   363→  const [staffList, setStaffList] = useState<Staff[]>([])
+   364→  const [sales, setSales] = useState<Sale[]>([])
+   365→  const [loading, setLoading] = useState(true)
+   366→  const [submitting, setSubmitting] = useState(false)
+   367→
+   368→  // Dialog state
+   369→  const [dialogOpen, setDialogOpen] = useState(false)
+   370→  const [editingStaff, setEditingStaff] = useState<Staff | null>(null)
+   371→  const [form, setForm] = useState<StaffFormData>(EMPTY_FORM)
+   372→  const [formErrors, setFormErrors] = useState<Partial<Record<keyof StaffFormData, string>>>({})
+   373→
+   374→  // Delete confirmation state
+   375→  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+   376→  const [deletingStaff, setDeletingStaff] = useState<Staff | null>(null)
+   377→
+   378→  // Attendance state
+   379→  const [attendanceLog, setAttendanceLog] = useState<AttendanceEntry[]>([])
+   380→  const [attendanceLoading, setAttendanceLoading] = useState(true)
+   381→  const [clockSubmitting, setClockSubmitting] = useState<string | null>(null) // staffId
+   382→  const [timerTick, setTimerTick] = useState(0)
+   383→  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+   384→
+   385→  // ─── Data Fetching ────────────────────────────────────────────────────────
+   386→
+   387→  const fetchStaff = useCallback(async () => {
+   388→    try {
+   389→      const res = await fetch('/api/staff?limit=100')
+   390→      if (res.ok) {
+   391→        const json = await res.json()
+   392→        const data = Array.isArray(json) ? json : json.data ?? []
+   393→        setStaffList(data)
+   394→      }
+   395→    } catch {
+   396→      // Silently fail
+   397→    }
+   398→  }, [])
+   399→
+   400→  const fetchSales = useCallback(async () => {
+   401→    try {
+   402→      const { start, end } = getCurrentMonthRange()
+   403→      const from = start.toISOString()
+   404→      const to = end.toISOString()
+   405→      const res = await fetch(`/api/sales?limit=500&fromDate=${encodeURIComponent(from)}&toDate=${encodeURIComponent(to)}`)
+   406→      if (res.ok) {
+   407→        const json = await res.json()
+   408→        const data = Array.isArray(json) ? json : json.sales ?? json.data ?? []
+   409→        setSales(data)
+   410→      }
+   411→    } catch {
+   412→      // Silently fail
+   413→    }
+   414→  }, [])
+   415→
+   416→  const fetchAttendance = useCallback(async () => {
+   417→    try {
+   418→      const res = await fetch('/api/staff/attendance')
+   419→      if (res.ok) {
+   420→        const json = await res.json()
+   421→        const data = Array.isArray(json) ? json : json.data ?? []
+   422→        setAttendanceLog(data)
+   423→      }
+   424→    } catch {
+   425→      // Silently fail
+   426→    } finally {
+   427→      setAttendanceLoading(false)
+   428→    }
+   429→  }, [])
+   430→
+   431→  useEffect(() => {
+   432→    Promise.all([fetchStaff(), fetchSales(), fetchAttendance()]).finally(() => setLoading(false))
+   433→  }, [fetchStaff, fetchSales, fetchAttendance])
+   434→
+   435→  // ─── Live Timer ──────────────────────────────────────────────────────────
+   436→
+   437→  useEffect(() => {
+   438→    const hasActive = attendanceLog.some((e) => e.clockOut === null)
+   439→    if (hasActive) {
+   440→      if (!timerRef.current) {
+   441→        timerRef.current = setInterval(() => {
+   442→          setTimerTick((t) => t + 1)
+   443→        }, 1000)
+   444→      }
+   445→    } else {
+   446→      if (timerRef.current) {
+   447→        clearInterval(timerRef.current)
+   448→        timerRef.current = null
+   449→      }
+   450→    }
+   451→    return () => {
+   452→      if (timerRef.current) {
+   453→        clearInterval(timerRef.current)
+   454→        timerRef.current = null
+   455→      }
+   456→    }
+   457→  }, [attendanceLog])
+   458→
+   459→  // ─── Attendance Helpers ──────────────────────────────────────────────────
+   460→
+   461→  function getActiveAttendance(staffId: string): AttendanceEntry | undefined {
+   462→    return attendanceLog.find((e) => e.staffId === staffId && e.clockOut === null)
+   463→  }
+   464→
+   465→  function isClockedIn(staffId: string): boolean {
+   466→    return !!getActiveAttendance(staffId)
+   467→  }
+   468→
+   469→  function getTodayTotalHours(): number {
+   470→    let totalMs = 0
+   471→    for (const entry of attendanceLog) {
+   472→      const start = new Date(entry.clockIn).getTime()
+   473→      const end = entry.clockOut ? new Date(entry.clockOut).getTime() : Date.now()
+   474→      totalMs += Math.max(0, end - start)
+   475→    }
+   476→    return totalMs / (1000 * 60 * 60)
+   477→  }
+   478→
+   479→  function getPresentStaffIds(): Set<string> {
+   480→    const ids = new Set<string>()
+   481→    for (const entry of attendanceLog) {
+   482→      ids.add(entry.staffId)
+   483→    }
+   484→    return ids
+   485→  }
+   486→
+   487→  async function handleClockIn(staff: Staff) {
+   488→    setClockSubmitting(staff.id)
+   489→    try {
+   490→      const res = await fetch('/api/staff/attendance', {
+   491→        method: 'POST',
+   492→        headers: { 'Content-Type': 'application/json' },
+   493→        body: JSON.stringify({ staffId: staff.id, action: 'clock-in' }),
+   494→      })
+   495→      if (res.ok) {
+   496→        await fetchAttendance()
+   497→      }
+   498→    } finally {
+   499→      setClockSubmitting(null)
+   500→    }
+   501→  }
+   502→
+   503→  async function handleClockOut(staff: Staff) {
+   504→    setClockSubmitting(staff.id)
+   505→    try {
+   506→      const res = await fetch('/api/staff/attendance', {
+   507→        method: 'POST',
+   508→        headers: { 'Content-Type': 'application/json' },
+   509→        body: JSON.stringify({ staffId: staff.id, action: 'clock-out' }),
+   510→      })
+   511→      if (res.ok) {
+   512→        await fetchAttendance()
+   513→      }
+   514→    } finally {
+   515→      setClockSubmitting(null)
+   516→    }
+   517→  }
+   518→
+   519→  // ─── Performance Calculation ──────────────────────────────────────────────
+   520→
+   521→  const performanceData: StaffPerformance[] = (() => {
+   522→    const { start, end } = getCurrentMonthRange()
+   523→    const thisMonthSales = sales.filter((s) => {
+   524→      const d = new Date(s.createdAt)
+   525→      return d >= start && d <= end && s.staffId
+   526→    })
+   527→
+   528→    const staffMap = new Map<string, { total: number; count: number }>()
+   529→    for (const sale of thisMonthSales) {
+   530→      if (!sale.staffId) continue
+   531→      const entry = staffMap.get(sale.staffId) ?? { total: 0, count: 0 }
+   532→      entry.total += sale.totalAmount
+   533→      entry.count += 1
+   534→      staffMap.set(sale.staffId, entry)
+   535→    }
+   536→
+   537→    return staffList
+   538→      .filter((s) => s.isActive)
+   539→      .map((s) => {
+   540→        const stats = staffMap.get(s.id) ?? { total: 0, count: 0 }
+   541→        return {
+   542→          staffId: s.id,
+   543→          staffName: s.name,
+   544→          staffRole: s.role,
+   545→          totalSales: stats.total,
+   546→          commissionEarned: stats.total * (s.commission / 100),
+   547→          transactionCount: stats.count,
+   548→        }
+   549→      })
+   550→  })()
+   551→
+   552→  // ─── Summary Stats ──────────────────────────────────────────────────────
+   553→
+   554→  const summaryStats = {
+   555→    totalStaff: staffList.length,
+   556→    activeStaff: staffList.filter((s) => s.isActive).length,
+   557→    totalMonthlyPayroll: staffList.filter((s) => s.isActive).reduce((sum, s) => sum + s.salary, 0),
+   558→    totalMonthlySales: performanceData.reduce((sum, p) => sum + p.totalSales, 0),
+   559→  }
+   560→
+   561→  // Attendance derived data
+   562→  const presentStaffIds = getPresentStaffIds()
+   563→  const absentStaff = staffList.filter((s) => s.isActive && !presentStaffIds.has(s.id))
+   564→  const presentCount = presentStaffIds.size
+   565→  const todayDate = new Date().toLocaleDateString('en-IN', {
+   566→    weekday: 'long',
+   567→    day: '2-digit',
+   568→    month: 'long',
+   569→    year: 'numeric',
+   570→  })
+   571→
+   572→  // ─── Form Handlers ────────────────────────────────────────────────────────
+   573→
+   574→  function openAddDialog() {
+   575→    setEditingStaff(null)
+   576→    setForm(EMPTY_FORM)
+   577→    setFormErrors({})
+   578→    setDialogOpen(true)
+   579→  }
+   580→
+   581→  function openEditDialog(staff: Staff) {
+   582→    setEditingStaff(staff)
+   583→    setForm({
+   584→      name: staff.name,
+   585→      phone: staff.phone,
+   586→      email: staff.email ?? '',
+   587→      role: staff.role,
+   588→      salary: String(staff.salary),
+   589→      commission: String(staff.commission),
+   590→      isActive: staff.isActive,
+   591→      joinDate: staff.joinDate ? new Date(staff.joinDate).toISOString().split('T')[0] : '',
+   592→      bankName: (staff as Record<string, unknown>).bankName as string ?? '',
+   593→      bankAccount: (staff as Record<string, unknown>).bankAccount as string ?? '',
+   594→      bankIfsc: (staff as Record<string, unknown>).bankIfsc as string ?? '',
+   595→      panNumber: (staff as Record<string, unknown>).panNumber as string ?? '',
+   596→    })
+   597→    setFormErrors({})
+   598→    setDialogOpen(true)
+   599→  }
+   600→
+   601→  function openDeleteDialog(staff: Staff) {
+   602→    setDeletingStaff(staff)
+   603→    setDeleteDialogOpen(true)
+   604→  }
+   605→
+   606→  function validateForm(): boolean {
+   607→    const errors: Partial<Record<keyof StaffFormData, string>> = {}
+   608→
+   609→    if (!form.name.trim()) errors.name = 'Name is required'
+   610→    if (!form.phone.trim()) errors.phone = 'Phone is required'
+   611→    if (form.salary && isNaN(Number(form.salary)))
+   612→      errors.salary = 'Must be a valid number'
+   613→    if (form.commission && isNaN(Number(form.commission)))
+   614→      errors.commission = 'Must be a valid number'
+   615→    if (Number(form.commission) < 0 || Number(form.commission) > 100)
+   616→      errors.commission = 'Must be 0-100'
+   617→
+   618→    setFormErrors(errors)
+   619→    return Object.keys(errors).length === 0
+   620→  }
+   621→
+   622→  async function handleSubmit() {
+   623→    if (!validateForm()) return
+   624→
+   625→    setSubmitting(true)
+   626→    try {
+   627→      const payload = {
+   628→        name: form.name.trim(),
+   629→        phone: form.phone.trim(),
+   630→        email: form.email.trim() || null,
+   631→        role: form.role,
+   632→        salary: Number(form.salary) || 0,
+   633→        commission: Number(form.commission) || 0,
+   634→        isActive: form.isActive,
+   635→        joinDate: form.joinDate || null,
+   636→        bankName: form.bankName.trim() || null,
+   637→        bankAccount: form.bankAccount.trim() || null,
+   638→        bankIfsc: form.bankIfsc.trim() || null,
+   639→        panNumber: form.panNumber.trim() || null,
+   640→      }
+   641→
+   642→      if (editingStaff) {
+   643→        const res = await fetch(`/api/staff/${editingStaff.id}`, {
+   644→          method: 'PUT',
+   645→          headers: { 'Content-Type': 'application/json' },
+   646→          body: JSON.stringify(payload),
+   647→        })
+   648→        if (res.ok) {
+   649→          setDialogOpen(false)
+   650→          await fetchStaff()
+   651→        }
+   652→      } else {
+   653→        const res = await fetch('/api/staff', {
+   654→          method: 'POST',
+   655→          headers: { 'Content-Type': 'application/json' },
+   656→          body: JSON.stringify(payload),
+   657→        })
+   658→        if (res.ok) {
+   659→          setDialogOpen(false)
+   660→          await fetchStaff()
+   661→        }
+   662→      }
+   663→    } finally {
+   664→      setSubmitting(false)
+   665→    }
+   666→  }
+   667→
+   668→  async function handleDelete() {
+   669→    if (!deletingStaff) return
+   670→
+   671→    setSubmitting(true)
+   672→    try {
+   673→      const res = await fetch(`/api/staff/${deletingStaff.id}`, {
+   674→        method: 'DELETE',
+   675→      })
+   676→
+   677→      if (res.ok) {
+   678→        setDeleteDialogOpen(false)
+   679→        setDeletingStaff(null)
+   680→        await fetchStaff()
+   681→      }
+   682→    } finally {
+   683→      setSubmitting(false)
+   684→    }
+   685→  }
+   686→
+   687→  function updateField<K extends keyof StaffFormData>(key: K, value: StaffFormData[K]) {
+   688→    setForm((prev) => ({ ...prev, [key]: value }))
+   689→    if (formErrors[key]) {
+   690→      setFormErrors((prev) => {
+   691→        const next = { ...prev }
+   692→        delete next[key]
+   693→        return next
+   694→      })
+   695→    }
+   696→  }
+   697→
+   698→  // ─── Role Badge Renderer ─────────────────────────────────────────────────
+   699→
+   700→  function renderRoleBadge(role: string) {
+   701→    return (
+   702→      <Badge
+   703→        variant="outline"
+   704→        className={ROLE_BADGE_STYLES[role] ?? ''}
+   705→      >
+   706→        {role === 'Admin' && <Lock className="mr-1 size-3" />}
+   707→        {role}
+   708→      </Badge>
+   709→    )
+   710→  }
+   711→
+   712→  // ─── Render ───────────────────────────────────────────────────────────────
+   713→
+   714→  return (
+   715→    <div className="space-y-6">
+   716→      {/* ── Summary Cards ────────────────────────────────────────────── */}
+   717→      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+   718→        <Card className="p-4">
+   719→          <div className="flex items-center gap-3">
+   720→            <div className="rounded-lg bg-muted p-2.5">
+   721→              <Users className="size-5 text-foreground" />
+   722→            </div>
+   723→            <div>
+   724→              <p className="text-sm text-muted-foreground">Total Staff</p>
+   725→              <p className="text-2xl font-bold">{summaryStats.totalStaff}</p>
+   726→            </div>
+   727→          </div>
+   728→        </Card>
+   729→        <Card className="p-4">
+   730→          <div className="flex items-center gap-3">
+   731→            <div className="rounded-lg bg-green-100 dark:bg-green-900/30 p-2.5">
+   732→              <CircleDot className="size-5 text-green-600 dark:text-green-400" />
+   733→            </div>
+   734→            <div>
+   735→              <p className="text-sm text-muted-foreground">Active</p>
+   736→              <p className="text-2xl font-bold">{summaryStats.activeStaff}</p>
+   737→            </div>
+   738→          </div>
+   739→        </Card>
+   740→        <Card className="p-4">
+   741→          <div className="flex items-center gap-3">
+   742→            <div className="rounded-lg bg-amber-100 dark:bg-amber-900/30 p-2.5">
+   743→              <DollarSign className="size-5 text-amber-600 dark:text-amber-400" />
+   744→            </div>
+   745→            <div>
+   746→              <p className="text-sm text-muted-foreground">Monthly Payroll</p>
+   747→              <p className="text-2xl font-bold">{formatCurrency(summaryStats.totalMonthlyPayroll)}</p>
+   748→            </div>
+   749→          </div>
+   750→        </Card>
+   751→        <Card className="p-4">
+   752→          <div className="flex items-center gap-3">
+   753→            <div className="rounded-lg bg-emerald-100 dark:bg-emerald-900/30 p-2.5">
+   754→              <TrendingUp className="size-5 text-emerald-600 dark:text-emerald-400" />
+   755→            </div>
+   756→            <div>
+   757→              <p className="text-sm text-muted-foreground">Monthly Sales</p>
+   758→              <p className="text-2xl font-bold">{formatCurrency(summaryStats.totalMonthlySales)}</p>
+   759→            </div>
+   760→          </div>
+   761→        </Card>
+   762→      </div>
+   763→
+   764→      {/* ── Today's Attendance Card ─────────────────────────────────── */}
+   765→      <Card>
+   766→        <CardHeader>
+   767→          <CardTitle className="flex items-center gap-2 text-xl">
+   768→            <Clock className="size-5 text-primary" />
+   769→            Today&apos;s Attendance
+   770→          </CardTitle>
+   771→          <CardDescription className="flex items-center gap-3 flex-wrap">
+   772→            <span className="flex items-center gap-1.5">
+   773→              <CalendarCheck className="size-3.5" />
+   774→              {todayDate}
+   775→            </span>
+   776→            <span className="flex items-center gap-1.5">
+   777→              <UserCheck className="size-3.5 text-green-600" />
+   778→              {presentCount} Present
+   779→            </span>
+   780→            <span className="flex items-center gap-1.5">
+   781→              <Clock className="size-3.5 text-muted-foreground" />
+   782→              Total: {getTodayTotalHours().toFixed(1)}h worked
+   783→            </span>
+   784→          </CardDescription>
+   785→        </CardHeader>
+   786→        <CardContent>
+   787→          {attendanceLoading ? (
+   788→            <div className="flex items-center justify-center py-8">
+   789→              <Loader2 className="size-5 animate-spin text-muted-foreground" />
+   790→              <span className="ml-2 text-sm text-muted-foreground">Loading attendance...</span>
+   791→            </div>
+   792→          ) : (
+   793→            <div className="grid gap-4 md:grid-cols-2">
+   794→              {/* Present Staff */}
+   795→              <div className="space-y-2">
+   796→                <h4 className="text-sm font-medium flex items-center gap-1.5">
+   797→                  <UserCheck className="size-4 text-green-600" />
+   798→                  Present ({presentCount})
+   799→                </h4>
+   800→                {attendanceLog.length === 0 ? (
+   801→                  <p className="text-sm text-muted-foreground py-4 text-center">
+   802→                    No one has clocked in yet today.
+   803→                  </p>
+   804→                ) : (
+   805→                  <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
+   806→                    {attendanceLog.map((entry, idx) => {
+   807→                      const active = entry.clockOut === null
+   808→                      return (
+   809→                        <div
+   810→                          key={`${entry.staffId}-${idx}`}
+   811→                          className="flex items-center justify-between gap-2 rounded-lg border p-3 text-sm"
+   812→                        >
+   813→                          <div className="min-w-0 flex-1 space-y-0.5">
+   814→                            <p className="font-medium truncate">{entry.staffName}</p>
+   815→                            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+   816→                              <span className="flex items-center gap-1">
+   817→                                <LogIn className="size-3 text-green-500" />
+   818→                                In: {formatTime(entry.clockIn)}
+   819→                              </span>
+   820→                              {entry.clockOut && (
+   821→                                <span className="flex items-center gap-1">
+   822→                                  <LogOut className="size-3 text-orange-500" />
+   823→                                  Out: {formatTime(entry.clockOut)}
+   824→                                </span>
+   825→                              )}
+   826→                              {!active && entry.clockOut && (
+   827→                                <span className="text-muted-foreground">
+   828→                                  ({formatElapsed(getElapsedSeconds(entry.clockIn) - getElapsedSeconds(entry.clockOut))} worked)
+   829→                                </span>
+   830→                              )}
+   831→                            </div>
+   832→                          </div>
+   833→                          {active && (
+   834→                            <div className="shrink-0 flex flex-col items-end gap-1">
+   835→                              <Badge variant="outline" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800 text-[10px] px-1.5 py-0">
+   836→                                Working
+   837→                              </Badge>
+   838→                              <span className="text-xs font-mono text-muted-foreground tabular-nums">
+   839→                                {formatElapsed(getElapsedSeconds(entry.clockIn))}
+   840→                              </span>
+   841→                            </div>
+   842→                          )}
+   843→                        </div>
+   844→                      )
+   845→                    })}
+   846→                  </div>
+   847→                )}
+   848→              </div>
+   849→
+   850→              {/* Absent Staff */}
+   851→              <div className="space-y-2">
+   852→                <h4 className="text-sm font-medium flex items-center gap-1.5">
+   853→                  <UserX className="size-4 text-red-500" />
+   854→                  Absent ({absentStaff.length})
+   855→                </h4>
+   856→                {absentStaff.length === 0 ? (
+   857→                  <p className="text-sm text-muted-foreground py-4 text-center">
+   858→                    {staffList.length === 0 ? 'No staff registered.' : 'All active staff are present!'}
+   859→                  </p>
+   860→                ) : (
+   861→                  <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
+   862→                    {absentStaff.map((staff) => (
+   863→                      <div
+   864→                        key={staff.id}
+   865→                        className="flex items-center justify-between gap-2 rounded-lg border border-dashed p-3 text-sm"
+   866→                      >
+   867→                        <div className="min-w-0 flex-1">
+   868→                          <p className="font-medium truncate">{staff.name}</p>
+   869→                          <p className="text-xs text-muted-foreground">{staff.role}</p>
+   870→                        </div>
+   871→                        <Button
+   872→                          size="sm"
+   873→                          variant="outline"
+   874→                          className="shrink-0"
+   875→                          disabled={clockSubmitting === staff.id}
+   876→                          onClick={() => handleClockIn(staff)}
+   877→                        >
+   878→                          {clockSubmitting === staff.id ? (
+   879→                            <Loader2 className="size-3.5 animate-spin" />
+   880→                          ) : (
+   881→                            <LogIn className="size-3.5" />
+   882→                          )}
+   883→                          Clock In
+   884→                        </Button>
+   885→                      </div>
+   886→                    ))}
+   887→                  </div>
+   888→                )}
+   889→              </div>
+   890→            </div>
+   891→          )}
+   892→        </CardContent>
+   893→      </Card>
+   894→
+   895→      {/* ── Staff List Card ────────────────────────────────────────────── */}
+   896→      <Card>
+   897→        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+   898→          <div className="space-y-1">
+   899→            <CardTitle className="flex items-center gap-2 text-xl">
+   900→              <Users className="size-5 text-primary" />
+   901→              Staff Management
+   902→            </CardTitle>
+   903→            <CardDescription>
+   904→              {staffList.length} staff member{staffList.length !== 1 ? 's' : ''} registered
+   905→            </CardDescription>
+   906→          </div>
+   907→          <Button onClick={openAddDialog} className="w-full sm:w-auto">
+   908→            <Plus className="size-4" />
+   909→            Add Staff
+   910→          </Button>
+   911→        </CardHeader>
+   912→
+   913→        <CardContent>
+   914→          {loading ? (
+   915→            <div className="flex items-center justify-center py-16">
+   916→              <Loader2 className="size-6 animate-spin text-muted-foreground" />
+   917→              <span className="ml-2 text-muted-foreground">Loading staff...</span>
+   918→            </div>
+   919→          ) : staffList.length === 0 ? (
+   920→            <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
+   921→              <UserCircle className="size-12" />
+   922→              <p className="text-sm">No staff members yet.</p>
+   923→              <Button variant="outline" size="sm" onClick={openAddDialog}>
+   924→                <Plus className="size-4" />
+   925→                Add your first staff member
+   926→              </Button>
+   927→            </div>
+   928→          ) : (
+   929→            <>
+   930→              {/* Desktop Table */}
+   931→              <div className="hidden md:block">
+   932→                <Table>
+   933→                  <TableHeader>
+   934→                    <TableRow>
+   935→                      <TableHead className="pl-4">Name</TableHead>
+   936→                      <TableHead>Phone</TableHead>
+   937→                      <TableHead>Role</TableHead>
+   938→                      <TableHead>Join Date</TableHead>
+   939→                      <TableHead>Status</TableHead>
+   940→                      <TableHead className="text-right">Salary</TableHead>
+   941→                      <TableHead className="text-right">Commission</TableHead>
+   942→                      <TableHead className="text-center">Attendance</TableHead>
+   943→                      <TableHead className="pr-4 text-right">Actions</TableHead>
+   944→                    </TableRow>
+   945→                  </TableHeader>
+   946→                  <TableBody>
+   947→                    {staffList.map((staff) => {
+   948→                      const attStatus = getAttendanceStatus(staff.joinDate, staff.isActive)
+   949→                      const clocked = isClockedIn(staff.id)
+   950→                      const activeEntry = getActiveAttendance(staff.id)
+   951→                      return (
+   952→                        <TableRow key={staff.id}>
+   953→                          <TableCell className="pl-4">
+   954→                            <div className="flex items-center gap-2">
+   955→                              <span className="font-medium">{staff.name}</span>
+   956→                              {renderRoleBadge(staff.role)}
+   957→                              <Badge
+   958→                                variant="outline"
+   959→                                className={`text-[10px] px-1.5 py-0 ${attStatus.color}`}
+   960→                              >
+   961→                                {attStatus.label}
+   962→                              </Badge>
+   963→                            </div>
+   964→                          </TableCell>
+   965→                          <TableCell className="text-muted-foreground">{staff.phone}</TableCell>
+   966→                          <TableCell>
+   967→                            {renderRoleBadge(staff.role)}
+   968→                          </TableCell>
+   969→                          <TableCell className="text-muted-foreground text-sm">
+   970→                            <div className="flex items-center gap-1.5">
+   971→                              <CalendarCheck className="size-3.5" />
+   972→                              {formatDate(staff.joinDate)}
+   973→                            </div>
+   974→                          </TableCell>
+   975→                          <TableCell>
+   976→                            <Badge
+   977→                              variant={staff.isActive ? 'default' : 'secondary'}
+   978→                              className={
+   979→                                staff.isActive
+   980→                                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+   981→                                  : 'bg-gray-100 text-gray-500 dark:bg-gray-800/40 dark:text-gray-400 border-gray-200 dark:border-gray-700'
+   982→                              }
+   983→                            >
+   984→                              {staff.isActive ? 'Active' : 'Inactive'}
+   985→                            </Badge>
+   986→                          </TableCell>
+   987→                          <TableCell className="text-right font-mono text-sm">
+   988→                            {formatCurrency(staff.salary)}
+   989→                          </TableCell>
+   990→                          <TableCell className="text-right font-mono text-sm">
+   991→                            {staff.commission}%
+   992→                          </TableCell>
+   993→                          <TableCell className="text-center">
+   994→                            {staff.isActive && (
+   995→                              clocked ? (
+   996→                                <div className="flex flex-col items-center gap-0.5">
+   997→                                  <Button
+   998→                                    size="sm"
+   999→                                    variant="outline"
+  1000→                                    className="h-7 text-xs border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-900/20"
+  1001→                                    disabled={clockSubmitting === staff.id}
+  1002→                                    onClick={() => handleClockOut(staff)}
+  1003→                                  >
+  1004→                                    {clockSubmitting === staff.id ? (
+  1005→                                      <Loader2 className="size-3 animate-spin" />
+  1006→                                    ) : (
+  1007→                                      <LogOut className="size-3" />
+  1008→                                    )}
+  1009→                                    Clock Out
+  1010→                                  </Button>
+  1011→                                  {activeEntry && (
+  1012→                                    <span className="text-[10px] font-mono text-muted-foreground tabular-nums">
+  1013→                                      {formatElapsed(getElapsedSeconds(activeEntry.clockIn))}
+  1014→                                    </span>
+  1015→                                  )}
+  1016→                                </div>
+  1017→                              ) : (
+  1018→                                <Button
+  1019→                                  size="sm"
+  1020→                                  variant="outline"
+  1021→                                  className="h-7 text-xs border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/20"
+  1022→                                  disabled={clockSubmitting === staff.id}
+  1023→                                  onClick={() => handleClockIn(staff)}
+  1024→                                >
+  1025→                                  {clockSubmitting === staff.id ? (
+  1026→                                    <Loader2 className="size-3 animate-spin" />
+  1027→                                  ) : (
+  1028→                                    <LogIn className="size-3" />
+  1029→                                  )}
+  1030→                                  Clock In
+  1031→                                </Button>
+  1032→                              )
+  1033→                            )}
+  1034→                          </TableCell>
+  1035→                          <TableCell className="pr-4 text-right">
+  1036→                            <div className="flex items-center justify-end gap-1">
+  1037→                              <Button
+  1038→                                variant="ghost"
+  1039→                                size="icon"
+  1040→                                className="size-8"
+  1041→                                onClick={() => openEditDialog(staff)}
+  1042→                                aria-label={`Edit ${staff.name}`}
+  1043→                              >
+  1044→                                <Pencil className="size-4" />
+  1045→                              </Button>
+  1046→                              <Button
+  1047→                                variant="ghost"
+  1048→                                size="icon"
+  1049→                                className="size-8 text-destructive hover:text-destructive"
+  1050→                                onClick={() => openDeleteDialog(staff)}
+  1051→                                aria-label={`Delete ${staff.name}`}
+  1052→                              >
+  1053→                                <Trash2 className="size-4" />
+  1054→                              </Button>
+  1055→                            </div>
+  1056→                          </TableCell>
+  1057→                        </TableRow>
+  1058→                      )
+  1059→                    })}
+  1060→                  </TableBody>
+  1061→                </Table>
+  1062→              </div>
+  1063→
+  1064→              {/* Mobile Cards */}
+  1065→              <div className="space-y-3 md:hidden">
+  1066→                {staffList.map((staff) => {
+  1067→                  const attStatus = getAttendanceStatus(staff.joinDate, staff.isActive)
+  1068→                  const clocked = isClockedIn(staff.id)
+  1069→                  const activeEntry = getActiveAttendance(staff.id)
+  1070→                  return (
+  1071→                    <Card key={staff.id} className="p-4">
+  1072→                      <div className="flex items-start justify-between gap-3">
+  1073→                        <div className="min-w-0 space-y-1">
+  1074→                          <div className="flex items-center gap-2 flex-wrap">
+  1075→                            <p className="truncate font-medium">{staff.name}</p>
+  1076→                            {renderRoleBadge(staff.role)}
+  1077→                            <Badge
+  1078→                              variant="outline"
+  1079→                              className={`shrink-0 text-[10px] px-1.5 py-0 ${attStatus.color}`}
+  1080→                            >
+  1081→                              {attStatus.label}
+  1082→                            </Badge>
+  1083→                          </div>
+  1084→                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+  1085→                            <span className="flex items-center gap-1">
+  1086→                              <Phone className="size-3.5" />
+  1087→                              {staff.phone}
+  1088→                            </span>
+  1089→                            {staff.email && (
+  1090→                              <span className="flex items-center gap-1 truncate">
+  1091→                                <Mail className="size-3.5 shrink-0" />
+  1092→                                {staff.email}
+  1093→                              </span>
+  1094→                            )}
+  1095→                          </div>
+  1096→                        </div>
+  1097→                        <div className="flex shrink-0 gap-1">
+  1098→                          <Button
+  1099→                            variant="ghost"
+  1100→                            size="icon"
+  1101→                            className="size-8"
+  1102→                            onClick={() => openEditDialog(staff)}
+  1103→                            aria-label={`Edit ${staff.name}`}
+  1104→                          >
+  1105→                            <Pencil className="size-4" />
+  1106→                          </Button>
+  1107→                          <Button
+  1108→                            variant="ghost"
+  1109→                            size="icon"
+  1110→                            className="size-8 text-destructive hover:text-destructive"
+  1111→                            onClick={() => openDeleteDialog(staff)}
+  1112→                            aria-label={`Delete ${staff.name}`}
+  1113→                          >
+  1114→                            <Trash2 className="size-4" />
+  1115→                          </Button>
+  1116→                        </div>
+  1117→                      </div>
+  1118→                      <Separator className="my-3" />
+  1119→                      <div className="grid grid-cols-2 gap-2 text-sm">
+  1120→                        <div className="flex items-center justify-between">
+  1121→                          <span className="text-muted-foreground">Join Date</span>
+  1122→                          <span className="font-medium">{formatDate(staff.joinDate)}</span>
+  1123→                        </div>
+  1124→                        <div className="flex items-center justify-between">
+  1125→                          <span className="text-muted-foreground">Status</span>
+  1126→                          <Badge
+  1127→                            variant={staff.isActive ? 'default' : 'secondary'}
+  1128→                            className={
+  1129→                              staff.isActive
+  1130→                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 shrink-0'
+  1131→                                : 'bg-gray-100 text-gray-500 dark:bg-gray-800/40 dark:text-gray-400 border-gray-200 dark:border-gray-700 shrink-0'
+  1132→                            }
+  1133→                          >
+  1134→                            {staff.isActive ? 'Active' : 'Inactive'}
+  1135→                          </Badge>
+  1136→                        </div>
+  1137→                        <div className="flex items-center justify-between">
+  1138→                          <span className="text-muted-foreground">Salary</span>
+  1139→                          <span className="font-mono font-medium">{formatCurrency(staff.salary)}/mo</span>
+  1140→                        </div>
+  1141→                        <div className="flex items-center justify-between">
+  1142→                          <span className="text-muted-foreground">Commission</span>
+  1143→                          <span className="font-mono font-medium">{staff.commission}%</span>
+  1144→                        </div>
+  1145→                      </div>
+  1146→                      {staff.isActive && (
+  1147→                        <>
+  1148→                          <Separator className="my-3" />
+  1149→                          <div className="flex items-center justify-between">
+  1150→                            <span className="text-sm text-muted-foreground">Attendance</span>
+  1151→                            {clocked ? (
+  1152→                              <div className="flex items-center gap-2">
+  1153→                                {activeEntry && (
+  1154→                                  <span className="text-xs font-mono text-muted-foreground tabular-nums">
+  1155→                                    {formatElapsed(getElapsedSeconds(activeEntry.clockIn))}
+  1156→                                  </span>
+  1157→                                )}
+  1158→                                <Button
+  1159→                                  size="sm"
+  1160→                                  variant="outline"
+  1161→                                  className="h-7 text-xs border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-900/20"
+  1162→                                  disabled={clockSubmitting === staff.id}
+  1163→                                  onClick={() => handleClockOut(staff)}
+  1164→                                >
+  1165→                                  {clockSubmitting === staff.id ? (
+  1166→                                    <Loader2 className="size-3 animate-spin" />
+  1167→                                  ) : (
+  1168→                                    <LogOut className="size-3" />
+  1169→                                  )}
+  1170→                                  Clock Out
+  1171→                                </Button>
+  1172→                              </div>
+  1173→                            ) : (
+  1174→                              <Button
+  1175→                                size="sm"
+  1176→                                variant="outline"
+  1177→                                className="h-7 text-xs border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/20"
+  1178→                                disabled={clockSubmitting === staff.id}
+  1179→                                onClick={() => handleClockIn(staff)}
+  1180→                              >
+  1181→                                {clockSubmitting === staff.id ? (
+  1182→                                  <Loader2 className="size-3 animate-spin" />
+  1183→                                ) : (
+  1184→                                  <LogIn className="size-3" />
+  1185→                                )}
+  1186→                                Clock In
+  1187→                              </Button>
+  1188→                            )}
+  1189→                          </div>
+  1190→                        </>
+  1191→                      )}
+  1192→                    </Card>
+  1193→                  )
+  1194→                })}
+  1195→              </div>
+  1196→            </>
+  1197→          )}
+  1198→        </CardContent>
+  1199→      </Card>
+  1200→
+  1201→      {/* ── Staff Performance Section ───────────────────────────────────── */}
+  1202→      {performanceData.length > 0 && (
+  1203→        <Card>
+  1204→          <CardHeader>
+  1205→            <CardTitle className="flex items-center gap-2 text-xl">
+  1206→              <TrendingUp className="size-5 text-primary" />
+  1207→              Staff Performance
+  1208→            </CardTitle>
+  1209→            <CardDescription>
+  1210→              Monthly sales performance for active staff —{' '}
+  1211→              {new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
+  1212→            </CardDescription>
+  1213→          </CardHeader>
+  1214→          <CardContent>
+  1215→            {/* Desktop Performance Table */}
+  1216→            <div className="hidden md:block">
+  1217→              <Table>
+  1218→                <TableHeader>
+  1219→                  <TableRow>
+  1220→                    <TableHead className="pl-4">Staff</TableHead>
+  1221→                    <TableHead>Role</TableHead>
+  1222→                    <TableHead className="text-right">Total Sales</TableHead>
+  1223→                    <TableHead className="text-right">This Month&apos;s Commission</TableHead>
+  1224→                    <TableHead className="pr-4 text-right">Transactions</TableHead>
+  1225→                  </TableRow>
+  1226→                </TableHeader>
+  1227→                <TableBody>
+  1228→                  {performanceData.map((p) => (
+  1229→                    <TableRow key={p.staffId}>
+  1230→                      <TableCell className="pl-4 font-medium">{p.staffName}</TableCell>
+  1231→                      <TableCell>
+  1232→                        {renderRoleBadge(p.staffRole)}
+  1233→                      </TableCell>
+  1234→                      <TableCell className="text-right font-mono">
+  1235→                        {formatCurrency(p.totalSales)}
+  1236→                      </TableCell>
+  1237→                      <TableCell className="text-right font-mono text-emerald-600 dark:text-emerald-400">
+  1238→                        {formatCurrency(p.commissionEarned)}
+  1239→                      </TableCell>
+  1240→                      <TableCell className="pr-4 text-right">
+  1241→                        <span className="inline-flex items-center gap-1.5 font-mono">
+  1242→                          <ShoppingBag className="size-3.5 text-muted-foreground" />
+  1243→                          {p.transactionCount}
+  1244→                        </span>
+  1245→                      </TableCell>
+  1246→                    </TableRow>
+  1247→                  ))}
+  1248→                </TableBody>
+  1249→              </Table>
+  1250→            </div>
+  1251→
+  1252→            {/* Mobile Performance Cards */}
+  1253→            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 md:hidden">
+  1254→              {performanceData.map((p) => (
+  1255→                <Card key={p.staffId} className="p-4">
+  1256→                  <div className="mb-3 flex items-center justify-between">
+  1257→                    <div className="min-w-0">
+  1258→                      <p className="truncate font-medium">{p.staffName}</p>
+  1259→                      {renderRoleBadge(p.staffRole)}
+  1260→                    </div>
+  1261→                    <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
+  1262→                      <UserCircle className="size-5 text-primary" />
+  1263→                    </div>
+  1264→                  </div>
+  1265→                  <div className="space-y-2 text-sm">
+  1266→                    <div className="flex items-center justify-between">
+  1267→                      <span className="flex items-center gap-1.5 text-muted-foreground">
+  1268→                        <DollarSign className="size-3.5" />
+  1269→                        Total Sales
+  1270→                      </span>
+  1271→                      <span className="font-mono font-medium">{formatCurrency(p.totalSales)}</span>
+  1272→                    </div>
+  1273→                    <div className="flex items-center justify-between">
+  1274→                      <span className="flex items-center gap-1.5 text-muted-foreground">
+  1275→                        <TrendingUp className="size-3.5" />
+  1276→                        This Month&apos;s Commission
+  1277→                      </span>
+  1278→                      <span className="font-mono font-medium text-emerald-600 dark:text-emerald-400">
+  1279→                        {formatCurrency(p.commissionEarned)}
+  1280→                      </span>
+  1281→                    </div>
+  1282→                    <div className="flex items-center justify-between">
+  1283→                      <span className="flex items-center gap-1.5 text-muted-foreground">
+  1284→                        <ShoppingBag className="size-3.5" />
+  1285→                        Transactions
+  1286→                      </span>
+  1287→                      <span className="font-mono font-medium">{p.transactionCount}</span>
+  1288→                    </div>
+  1289→                  </div>
+  1290→                </Card>
+  1291→              ))}
+  1292→            </div>
+  1293→          </CardContent>
+  1294→        </Card>
+  1295→      )}
+  1296→
+  1297→      {/* ── Salary Management Section ───────────────────────────────────── */}
+  1298→      <SalaryManagementSection staffList={staffList} performanceData={performanceData} />
+  1299→
+  1300→      {/* ── Add / Edit Staff Dialog ─────────────────────────────────────── */}
+  1301→      <Dialog open={dialogOpen} onOpenChange={(open) => !submitting && setDialogOpen(open)}>
+  1302→        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
+  1303→          <DialogHeader>
+  1304→            <DialogTitle>{editingStaff ? 'Edit Staff Member' : 'Add Staff Member'}</DialogTitle>
+  1305→            <DialogDescription>
+  1306→              {editingStaff
+  1307→                ? `Update details for ${editingStaff.name}.`
+  1308→                : 'Fill in the information below to add a new staff member.'}
+  1309→            </DialogDescription>
+  1310→          </DialogHeader>
+  1311→
+  1312→          <div className="grid gap-4 py-2">
+  1313→            {/* Name */}
+  1314→            <div className="grid gap-2">
+  1315→              <Label htmlFor="staff-name">
+  1316→                Name <span className="text-destructive">*</span>
+  1317→              </Label>
+  1318→              <Input
+  1319→                id="staff-name"
+  1320→                placeholder="e.g., Kumar"
+  1321→                value={form.name}
+  1322→                onChange={(e) => updateField('name', e.target.value)}
+  1323→                aria-invalid={!!formErrors.name}
+  1324→              />
+  1325→              {formErrors.name && (
+  1326→                <p className="text-xs text-destructive">{formErrors.name}</p>
+  1327→              )}
+  1328→            </div>
+  1329→
+  1330→            {/* Phone */}
+  1331→            <div className="grid gap-2">
+  1332→              <Label htmlFor="staff-phone">
+  1333→                Phone <span className="text-destructive">*</span>
+  1334→              </Label>
+  1335→              <Input
+  1336→                id="staff-phone"
+  1337→                type="tel"
+  1338→                placeholder="+91 98765 43210"
+  1339→                value={form.phone}
+  1340→                onChange={(e) => updateField('phone', e.target.value)}
+  1341→                aria-invalid={!!formErrors.phone}
+  1342→              />
+  1343→              {formErrors.phone && (
+  1344→                <p className="text-xs text-destructive">{formErrors.phone}</p>
+  1345→              )}
+  1346→            </div>
+  1347→
+  1348→            {/* Email */}
+  1349→            <div className="grid gap-2">
+  1350→              <Label htmlFor="staff-email">Email</Label>
+  1351→              <Input
+  1352→                id="staff-email"
+  1353→                type="email"
+  1354→                placeholder="staff@example.com"
+  1355→                value={form.email}
+  1356→                onChange={(e) => updateField('email', e.target.value)}
+  1357→              />
+  1358→            </div>
+  1359→
+  1360→            {/* Role */}
+  1361→            <div className="grid gap-2">
+  1362→              <Label htmlFor="staff-role">Role</Label>
+  1363→              <Select
+  1364→                value={form.role}
+  1365→                onValueChange={(val) => updateField('role', val)}
+  1366→              >
+  1367→                <SelectTrigger id="staff-role" className="w-full">
+  1368→                  <SelectValue placeholder="Select role" />
+  1369→                </SelectTrigger>
+  1370→                <SelectContent>
+  1371→                  {ROLES.map((role) => (
+  1372→                    <SelectItem key={role} value={role}>
+  1373→                      {role}
+  1374→                    </SelectItem>
+  1375→                  ))}
+  1376→                </SelectContent>
+  1377→              </Select>
+  1378→            </div>
+  1379→
+  1380→            {/* Join Date */}
+  1381→            <div className="grid gap-2">
+  1382→              <Label htmlFor="staff-join-date">Join Date</Label>
+  1383→              <Input
+  1384→                id="staff-join-date"
+  1385→                type="date"
+  1386→                value={form.joinDate}
+  1387→                onChange={(e) => updateField('joinDate', e.target.value)}
+  1388→              />
+  1389→            </div>
+  1390→
+  1391→            {/* Salary & Commission Row */}
+  1392→            <div className="grid grid-cols-2 gap-4">
+  1393→              <div className="grid gap-2">
+  1394→                <Label htmlFor="staff-salary">Salary (₹/month)</Label>
+  1395→                <Input
+  1396→                  id="staff-salary"
+  1397→                  type="number"
+  1398→                  min="0"
+  1399→                  step="500"
+  1400→                  placeholder="15000"
+  1401→                  value={form.salary}
+  1402→                  onChange={(e) => updateField('salary', e.target.value)}
+  1403→                  aria-invalid={!!formErrors.salary}
+  1404→                />
+  1405→                {formErrors.salary && (
+  1406→                  <p className="text-xs text-destructive">{formErrors.salary}</p>
+  1407→                )}
+  1408→              </div>
+  1409→              <div className="grid gap-2">
+  1410→                <Label htmlFor="staff-commission">Commission (%)</Label>
+  1411→                <Input
+  1412→                  id="staff-commission"
+  1413→                  type="number"
+  1414→                  min="0"
+  1415→                  max="100"
+  1416→                  step="0.5"
+  1417→                  placeholder="5"
+  1418→                  value={form.commission}
+  1419→                  onChange={(e) => updateField('commission', e.target.value)}
+  1420→                  aria-invalid={!!formErrors.commission}
+  1421→                />
+  1422→                {formErrors.commission && (
+  1423→                  <p className="text-xs text-destructive">{formErrors.commission}</p>
+  1424→                )}
+  1425→              </div>
+  1426→            </div>
+  1427→
+  1428→            {/* Active Toggle */}
+  1429→            <div className="flex items-center justify-between rounded-lg border p-3">
+  1430→              <div className="space-y-0.5">
+  1431→                <Label htmlFor="staff-active" className="cursor-pointer">
+  1432→                  Active
+  1433→                </Label>
+  1434→                <p className="text-xs text-muted-foreground">
+  1435→                  Inactive staff won&apos;t appear in performance reports
+  1436→                </p>
+  1437→              </div>
+  1438→              <Switch
+  1439→                id="staff-active"
+  1440→                checked={form.isActive}
+  1441→                onCheckedChange={(checked) => updateField('isActive', checked)}
+  1442→              />
+  1443→            </div>
+  1444→
+  1445→            {/* Bank Details Section */}
+  1446→            <div className="space-y-3">
+  1447→              <Separator />
+  1448→              <p className="text-sm font-medium">Bank Details (Optional)</p>
+  1449→              <div className="grid grid-cols-2 gap-4">
+  1450→                <div className="grid gap-2">
+  1451→                  <Label htmlFor="staff-bank">Bank Name</Label>
+  1452→                  <Input id="staff-bank" placeholder="SBI, HDFC..." value={form.bankName} onChange={(e) => updateField('bankName', e.target.value)} />
+  1453→                </div>
+  1454→                <div className="grid gap-2">
+  1455→                  <Label htmlFor="staff-pan">PAN Number</Label>
+  1456→                  <Input id="staff-pan" placeholder="ABCDE1234F" value={form.panNumber} onChange={(e) => updateField('panNumber', e.target.value.toUpperCase())} className="uppercase" />
+  1457→                </div>
+  1458→              </div>
+  1459→              <div className="grid grid-cols-2 gap-4">
+  1460→                <div className="grid gap-2">
+  1461→                  <Label htmlFor="staff-account">Account No.</Label>
+  1462→                  <Input id="staff-account" placeholder="Account number" value={form.bankAccount} onChange={(e) => updateField('bankAccount', e.target.value)} />
+  1463→                </div>
+  1464→                <div className="grid gap-2">
+  1465→                  <Label htmlFor="staff-ifsc">IFSC Code</Label>
+  1466→                  <Input id="staff-ifsc" placeholder="SBIN0001234" value={form.bankIfsc} onChange={(e) => updateField('bankIfsc', e.target.value.toUpperCase())} className="uppercase" />
+  1467→                </div>
+  1468→              </div>
+  1469→            </div>
+  1470→          </div>
+  1471→
+  1472→          <DialogFooter>
+  1473→            <Button
+  1474→              type="button"
+  1475→              variant="outline"
+  1476→              onClick={() => setDialogOpen(false)}
+  1477→              disabled={submitting}
+  1478→            >
+  1479→              Cancel
+  1480→            </Button>
+  1481→            <Button type="button" onClick={handleSubmit} disabled={submitting}>
+  1482→              {submitting && <Loader2 className="size-4 animate-spin" />}
+  1483→              {editingStaff ? 'Update Staff' : 'Add Staff'}
+  1484→            </Button>
+  1485→          </DialogFooter>
+  1486→        </DialogContent>
+  1487→      </Dialog>
+  1488→
+  1489→      {/* ── Delete Confirmation Dialog ──────────────────────────────────── */}
+  1490→      <Dialog open={deleteDialogOpen} onOpenChange={(open) => !submitting && setDeleteDialogOpen(open)}>
+  1491→        <DialogContent className="sm:max-w-md">
+  1492→          <DialogHeader>
+  1493→            <DialogTitle>Delete Staff Member</DialogTitle>
+  1494→            <DialogDescription>
+  1495→              Are you sure you want to delete{' '}
+  1496→              <span className="font-semibold text-foreground">{deletingStaff?.name}</span>? This
+  1497→              action cannot be undone.
+  1498→            </DialogDescription>
+  1499→          </DialogHeader>
+  1500→          <DialogFooter>
+  1501→            <Button
+  1502→              type="button"
+  1503→              variant="outline"
+  1504→              onClick={() => setDeleteDialogOpen(false)}
+  1505→              disabled={submitting}
+  1506→            >
+  1507→              Cancel
+  1508→            </Button>
+  1509→            <Button type="button" variant="destructive" onClick={handleDelete} disabled={submitting}>
+  1510→              {submitting && <Loader2 className="size-4 animate-spin" />}
+  1511→              Delete
+  1512→            </Button>
+  1513→          </DialogFooter>
+  1514→        </DialogContent>
+  1515→      </Dialog>
+  1516→    </div>
+  1517→  )
+  1518→}
+  1519→

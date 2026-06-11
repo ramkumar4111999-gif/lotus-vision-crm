@@ -236,7 +236,7 @@ function SalaryManagementSection({ staffList, performanceData }: { staffList: St
       for (const staff of staffList.filter(s => s.isActive)) {
         const perf = performanceData.find(p => p.staffId === staff.id)
         const netPay = staff.salary + (perf?.commissionEarned ?? 0)
-        await fetch('/api/staff/salary', {
+        const res = await fetch('/api/staff/salary', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -249,18 +249,35 @@ function SalaryManagementSection({ staffList, performanceData }: { staffList: St
             netPay: Math.round(netPay),
           }),
         })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Failed' }))
+          toast.error(`Failed to generate salary for ${staff.name}: ${err.error}`)
+        }
       }
       await fetchRecords()
+      toast.success('Salary generation completed')
+    } catch (err) {
+      toast.error('Network error while generating salaries')
     } finally { setGenLoading(false) }
   }
 
   const handleMarkPaid = async (id: string) => {
-    await fetch('/api/staff/salary', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, status: 'Paid' }),
-    })
-    await fetchRecords()
+    try {
+      const res = await fetch('/api/staff/salary', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status: 'Paid' }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Failed' }))
+        toast.error(`Failed to mark as paid: ${err.error}`)
+        return
+      }
+      await fetchRecords()
+      toast.success('Salary marked as paid')
+    } catch {
+      toast.error('Network error while updating salary status')
+    }
   }
 
   const totalNet = records.reduce((sum, r) => sum + r.netPay, 0)

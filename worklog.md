@@ -1115,3 +1115,38 @@ Stage Summary:
 - Invoice detail has WhatsApp quick-share button
 - Mock dates are now realistic (current month)
 - Zero build errors
+---
+Task ID: crm-cycle-f-$(date +%s)
+Agent: CRM Build Bot - Cycle F (QA & Auto-Heal)
+Task: Comprehensive QA audit, bug fixes, keyboard shortcuts
+
+Work Log:
+- BUILD CHECK: Clean, zero errors
+- STATIC AUDIT: Scanned all 14 CRM components + page.tsx via subagent
+- FOUND: 14 unused imports across 4 files (page.tsx: 10, campaigns.tsx: 1, purchase-orders.tsx: 1, reports.tsx: 2)
+- FOUND: 4 console.error/warn in production code (customers.tsx: 3, lab-orders.tsx: 1)
+- FOUND: 2 critical missing try/catch in staff.tsx (handleMarkPaid line 258 had NO try/catch at all, handleGenerate line 239 had try/finally but no catch)
+- FOUND: 60+ silent catch blocks across all components
+- FOUND: Zero 'any' type abuse — typing discipline is good
+- FOUND: Page transitions and Ctrl+K/Ctrl+N shortcuts already exist
+
+FIXES APPLIED:
+- Removed 14 unused imports (PackageX, UserPlus, Clock, AlertTriangle, IndianRupee, PackageSearch, Eye, ChevronUp, DropdownMenuGroup, DropdownMenuLabel, FileEdit, CalendarDays, ComposedChart, useRef)
+- Replaced 3 console.error with toast.error in customers.tsx (prescription submit, visit submit, CSV import warnings)
+- Removed 1 console.error in lab-orders.tsx (fetch error)
+- Added full try/catch with toast.error to staff.tsx handleMarkPaid (was completely missing)
+- Added catch block with toast.error to staff.tsx handleGenerate (had try/finally without catch)
+- Added toast success/error to campaigns.tsx edit and delete handlers (were silent)
+- Added keyboard shortcuts: number keys 1-9 and 0 switch between CRM sections (skips when in INPUT/TEXTAREA/SELECT)
+- Verified: page transitions (animate-in fade-in-0 slide-in-from-bottom-2) already working
+
+BUILD: Clean, zero errors
+SERVER: Running on port 3000 with respawn loop
+
+Stage Summary:
+- 14 unused imports removed
+- 4 console.* statements removed from production code
+- 2 critical error handling bugs fixed in staff.tsx
+- 4 silent CRUD operations now show user feedback (campaigns edit/delete)
+- New feature: Number key shortcuts (1-0) for quick section switching
+- Zero build errors

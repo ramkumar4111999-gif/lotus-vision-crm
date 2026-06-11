@@ -1,0 +1,767 @@
+     1→     1→'use client';
+     2→     2→
+     3→     3→import React, { useState, useEffect, useCallback } from 'react';
+     4→     4→import { toast } from 'sonner';
+     5→     5→import {
+     6→     6→  ShoppingCart,
+     7→     7→  Plus,
+     8→     8→  Search,
+     9→     9→  ChevronLeft,
+    10→    10→  ChevronRight,
+    11→    11→  Pencil,
+    12→    12→  Trash2,
+    13→    13→  Eye,
+    14→    14→  Loader2,
+    15→    15→  IndianRupee,
+    16→    16→  Package,
+    17→    17→  Truck,
+    18→    18→  CheckCircle2,
+    19→    19→  XCircle,
+    20→    20→  Clock,
+    21→    21→  AlertCircle,
+    22→    22→  X,
+    23→    23→  FileText,
+    24→    24→  CalendarDays,
+    25→    25→  Phone,
+    26→    26→  ArrowUpDown,
+    27→    27→  ArrowUp,
+    28→    28→  ArrowDown,
+    29→    29→} from 'lucide-react';
+    30→    30→import { cn } from '@/lib/utils';
+    31→    31→import { useCrmStore } from '@/components/crm/store';
+    32→    32→import { Button } from '@/components/ui/button';
+    33→    33→import { Input } from '@/components/ui/input';
+    34→    34→import { Label } from '@/components/ui/label';
+    35→    35→import { Textarea } from '@/components/ui/textarea';
+    36→    36→import { Badge } from '@/components/ui/badge';
+    37→    37→import { Separator } from '@/components/ui/separator';
+    38→    38→import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+    39→    39→import {
+    40→    40→  Dialog,
+    41→    41→  DialogContent,
+    42→    42→  DialogDescription,
+    43→    43→  DialogFooter,
+    44→    44→  DialogHeader,
+    45→    45→  DialogTitle,
+    46→    46→} from '@/components/ui/dialog';
+    47→    47→import {
+    48→    48→  Table,
+    49→    49→  TableBody,
+    50→    50→  TableCell,
+    51→    51→  TableHead,
+    52→    52→  TableHeader,
+    53→    53→  TableRow,
+    54→    54→} from '@/components/ui/table';
+    55→    55→import {
+    56→    56→  Select,
+    57→    57→  SelectContent,
+    58→    58→  SelectItem,
+    59→    59→  SelectTrigger,
+    60→    60→  SelectValue,
+    61→    61→} from '@/components/ui/select';
+    62→    62→import { Skeleton } from '@/components/ui/skeleton';
+    63→    63→
+    64→    64→// ───────────────────────────────────────────────
+    65→    65→// Types
+    66→    66→// ───────────────────────────────────────────────
+    67→    67→
+    68→    68→interface POItem {
+    69→    69→  productId: string;
+    70→    70→  name: string;
+    71→    71→  qty: number;
+    72→    72→  costPrice: number;
+    73→    73→}
+    74→    74→
+    75→    75→interface PurchaseOrder {
+    76→    76→  id: string;
+    77→    77→  poNumber: string;
+    78→    78→  supplier: string;
+    79→    79→  supplierPhone: string | null;
+    80→    80→  status: string;
+    81→    81→  items: string; // JSON
+    82→    82→  totalAmount: number;
+    83→    83→  receivedAt: string | null;
+    84→    84→  notes: string | null;
+    85→    85→  expectedDate: string | null;
+    86→    86→  createdAt: string;
+    87→    87→  updatedAt: string;
+    88→    88→}
+    89→    89→
+    90→    90→interface Product {
+    91→    91→  id: string;
+    92→    92→  name: string;
+    93→    93→  sku: string;
+    94→    94→  category: string;
+    95→    95→  stock: number;
+    96→    96→  minStock: number;
+    97→    97→  costPrice: number | null;
+    98→    98→  supplier: string | null;
+    99→    99→  supplierPhone: string | null;
+   100→   100→}
+   101→   101→
+   102→   102→// ───────────────────────────────────────────────
+   103→   103→// Constants
+   104→   104→// ───────────────────────────────────────────────
+   105→   105→
+   106→   106→const STATUS_CONFIG: Record<string, { color: string; icon: React.ElementType; label: string }> = {
+   107→   107→  Pending: { color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-400', icon: Clock, label: 'Pending' },
+   108→   108→  Ordered: { color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-400', icon: Truck, label: 'Ordered' },
+   109→   109→  PartiallyReceived: { color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-400', icon: Package, label: 'Partial' },
+   110→   110→  Received: { color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400', icon: CheckCircle2, label: 'Received' },
+   111→   111→  Cancelled: { color: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-400', icon: XCircle, label: 'Cancelled' },
+   112→   112→};
+   113→   113→
+   114→   114→const EMPTY_ITEM: POItem = { productId: '', name: '', qty: 1, costPrice: 0 };
+   115→   115→
+   116→   116→function formatINR(amount: number): string {
+   117→   117→  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 }).format(amount);
+   118→   118→}
+   119→   119→
+   120→   120→function formatDate(dateStr: string | null): string {
+   121→   121→  if (!dateStr) return '—';
+   122→   122→  try {
+   123→   123→    return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+   124→   124→  } catch {
+   125→   125→    return dateStr;
+   126→   126→  }
+   127→   127→}
+   128→   128→
+   129→   129→// ───────────────────────────────────────────────
+   130→   130→// Component
+   131→   131→// ───────────────────────────────────────────────
+   132→   132→
+   133→   133→export default function PurchaseOrders() {
+   134→   134→  const { darkMode } = useCrmStore();
+   135→   135→
+   136→   136→  // List state
+   137→   137→  const [orders, setOrders] = useState<PurchaseOrder[]>([]);
+   138→   138→  const [loading, setLoading] = useState(true);
+   139→   139→  const [search, setSearch] = useState('');
+   140→   140→  const [statusFilter, setStatusFilter] = useState('all');
+   141→   141→  const [page, setPage] = useState(1);
+   142→   142→  const [totalPages, setTotalPages] = useState(1);
+   143→   143→
+   144→   144→  // Form dialog
+   145→   145→  const [dialogOpen, setDialogOpen] = useState(false);
+   146→   146→  const [editingOrder, setEditingOrder] = useState<PurchaseOrder | null>(null);
+   147→   147→  const [submitting, setSubmitting] = useState(false);
+   148→   148→
+   149→   149→  // View dialog
+   150→   150→  const [viewOrder, setViewOrder] = useState<PurchaseOrder | null>(null);
+   151→   151→
+   152→   152→  // Form state
+   153→   153→  const [supplier, setSupplier] = useState('');
+   154→   154→  const [supplierPhone, setSupplierPhone] = useState('');
+   155→   155→  const [items, setItems] = useState<POItem[]>([{ ...EMPTY_ITEM }]);
+   156→   156→  const [notes, setNotes] = useState('');
+   157→   157→  const [expectedDate, setExpectedDate] = useState('');
+   158→   158→
+   159→   159→  // Status change dialog
+   160→   160→  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+   161→   161→  const [statusChangeOrder, setStatusChangeOrder] = useState<PurchaseOrder | null>(null);
+   162→   162→  const [newStatus, setNewStatus] = useState('');
+   163→   163→
+   164→   164→  // Products for lookup
+   165→   165→  const [products, setProducts] = useState<Product[]>([]);
+   166→   166→  const [productSearch, setProductSearch] = useState('');
+   167→   167→
+   168→   168→  // ─── Fetch orders ─────────────────────────────
+   169→   169→
+   170→   170→  const fetchOrders = useCallback(async () => {
+   171→   171→    setLoading(true);
+   172→   172→    try {
+   173→   173→      const params = new URLSearchParams({ page: String(page), limit: '20' });
+   174→   174→      if (search) params.set('search', search);
+   175→   175→      if (statusFilter !== 'all') params.set('status', statusFilter);
+   176→   176→      const res = await fetch(`/api/purchase-orders?${params}`);
+   177→   177→      if (!res.ok) throw new Error('Failed to fetch');
+   178→   178→      const json = await res.json();
+   179→   179→      setOrders(json.purchaseOrders || []);
+   180→   180→      setTotalPages(json.totalPages || 1);
+   181→   181→    } catch {
+   182→   182→      toast.error('Failed to load purchase orders');
+   183→   183→    } finally {
+   184→   184→      setLoading(false);
+   185→   185→    }
+   186→   186→  }, [page, search, statusFilter]);
+   187→   187→
+   188→   188→  useEffect(() => { fetchOrders(); }, [fetchOrders]);
+   189→   189→
+   190→   190→  // Fetch products for autocomplete
+   191→   191→  const fetchProducts = useCallback(async (query: string) => {
+   192→   192→    if (!query || query.length < 2) { setProducts([]); return; }
+   193→   193→    try {
+   194→   194→      const res = await fetch(`/api/products?search=${encodeURIComponent(query)}&limit=10`);
+   195→   195→      if (!res.ok) return;
+   196→   196→      const json = await res.json();
+   197→   197→      setProducts(Array.isArray(json.products) ? json.products : (Array.isArray(json.data) ? json.data : []));
+   198→   198→    } catch {}
+   199→   199→  }, []);
+   200→   200→
+   201→   201→  useEffect(() => {
+   202→   202→    const timer = setTimeout(() => fetchProducts(productSearch), 300);
+   203→   203→    return () => clearTimeout(timer);
+   204→   204→  }, [productSearch, fetchProducts]);
+   205→   205→
+   206→   206→  // ─── Item handlers ────────────────────────────
+   207→   207→
+   208→   208→  const addItem = () => setItems([...items, { ...EMPTY_ITEM }]);
+   209→   209→
+   210→   210→  const removeItem = (index: number) => {
+   211→   211→    if (items.length <= 1) return;
+   212→   212→    setItems(items.filter((_, i) => i !== index));
+   213→   213→  };
+   214→   214→
+   215→   215→  const updateItem = (index: number, field: keyof POItem, value: string | number) => {
+   216→   216→    const updated = [...items];
+   217→   217→    (updated[index] as Record<string, unknown>)[field] = value;
+   218→   218→    // Auto-fill cost price from product
+   219→   219→    if (field === 'productId') {
+   220→   220→      const product = products.find((p) => p.id === value);
+   221→   221→      if (product) {
+   222→   222→        updated[index].name = product.name;
+   223→   223→        updated[index].costPrice = product.costPrice || 0;
+   224→   224→      }
+   225→   225→    }
+   226→   226→    setItems(updated);
+   227→   227→  };
+   228→   228→
+   229→   229→  const totalAmount = items.reduce((sum, item) => sum + item.qty * item.costPrice, 0);
+   230→   230→
+   231→   231→  // ─── Dialog handlers ──────────────────────────
+   232→   232→
+   233→   233→  const openCreateDialog = () => {
+   234→   234→    setEditingOrder(null);
+   235→   235→    setSupplier(''); setSupplierPhone(''); setNotes(''); setExpectedDate('');
+   236→   236→    setItems([{ ...EMPTY_ITEM }]);
+   237→   237→    setDialogOpen(true);
+   238→   238→  };
+   239→   239→
+   240→   240→  const openEditDialog = (order: PurchaseOrder) => {
+   241→   241→    setEditingOrder(order);
+   242→   242→    setSupplier(order.supplier);
+   243→   243→    setSupplierPhone(order.supplierPhone || '');
+   244→   244→    setNotes(order.notes || '');
+   245→   245→    setExpectedDate(order.expectedDate ? order.expectedDate.split('T')[0] : '');
+   246→   246→    try {
+   247→   247→      const parsedItems = JSON.parse(order.items);
+   248→   248→      setItems(Array.isArray(parsedItems) ? parsedItems : [{ ...EMPTY_ITEM }]);
+   249→   249→    } catch {
+   250→   250→      setItems([{ ...EMPTY_ITEM }]);
+   251→   251→    }
+   252→   252→    setDialogOpen(true);
+   253→   253→  };
+   254→   254→
+   255→   255→  const openStatusDialog = (order: PurchaseOrder) => {
+   256→   256→    setStatusChangeOrder(order);
+   257→   257→    setNewStatus(order.status);
+   258→   258→    setStatusDialogOpen(true);
+   259→   259→  };
+   260→   260→
+   261→   261→  const handleSubmit = async () => {
+   262→   262→    const validItems = items.filter((i) => i.name && i.qty > 0);
+   263→   263→    if (!supplier.trim()) { toast.error('Supplier name is required'); return; }
+   264→   264→    if (validItems.length === 0) { toast.error('Add at least one item'); return; }
+   265→   265→
+   266→   266→    setSubmitting(true);
+   267→   267→    try {
+   268→   268→      const url = editingOrder ? `/api/purchase-orders/${editingOrder.id}` : '/api/purchase-orders';
+   269→   269→      const method = editingOrder ? 'PUT' : 'POST';
+   270→   270→      const body: Record<string, unknown> = {
+   271→   271→        supplier, supplierPhone, items: validItems, notes, expectedDate,
+   272→   272→      };
+   273→   273→      if (editingOrder) body.status = editingOrder.status;
+   274→   274→
+   275→   275→      const res = await fetch(url, {
+   276→   276→        method,
+   277→   277→        headers: { 'Content-Type': 'application/json' },
+   278→   278→        body: JSON.stringify(body),
+   279→   279→      });
+   280→   280→
+   281→   281→      if (!res.ok) throw new Error('Failed to save');
+   282→   282→
+   283→   283→      toast.success(editingOrder ? 'Purchase order updated' : 'Purchase order created');
+   284→   284→      setDialogOpen(false);
+   285→   285→      fetchOrders();
+   286→   286→    } catch {
+   287→   287→      toast.error('Failed to save purchase order');
+   288→   288→    } finally {
+   289→   289→      setSubmitting(false);
+   290→   290→    }
+   291→   291→  };
+   292→   292→
+   293→   293→  const handleStatusChange = async () => {
+   294→   294→    if (!statusChangeOrder || !newStatus) return;
+   295→   295→    setSubmitting(true);
+   296→   296→    try {
+   297→   297→      const res = await fetch(`/api/purchase-orders/${statusChangeOrder.id}`, {
+   298→   298→        method: 'PUT',
+   299→   299→        headers: { 'Content-Type': 'application/json' },
+   300→   300→        body: JSON.stringify({ status: newStatus, items: JSON.parse(statusChangeOrder.items) }),
+   301→   301→      });
+   302→   302→      if (!res.ok) throw new Error('Failed');
+   303→   303→      toast.success(`Order ${statusChangeOrder.poNumber} → ${newStatus}`);
+   304→   304→      setStatusDialogOpen(false);
+   305→   305→      fetchOrders();
+   306→   306→    } catch {
+   307→   307→      toast.error('Failed to update status');
+   308→   308→    } finally {
+   309→   309→      setSubmitting(false);
+   310→   310→    }
+   311→   311→  };
+   312→   312→
+   313→   313→  const handleDelete = async (order: PurchaseOrder) => {
+   314→   314→    if (!confirm(`Delete ${order.poNumber}?`)) return;
+   315→   315→    try {
+   316→   316→      const res = await fetch(`/api/purchase-orders/${order.id}`, { method: 'DELETE' });
+   317→   317→      if (!res.ok) throw new Error('Failed');
+   318→   318→      toast.success('Purchase order deleted');
+   319→   319→      fetchOrders();
+   320→   320→    } catch {
+   321→   321→      toast.error('Failed to delete');
+   322→   322→    }
+   323→   323→  };
+   324→   324→
+   325→   325→  // ─── Render ───────────────────────────────────
+   326→   326→
+   327→   327→  return (
+   328→   328→    <div className="space-y-4">
+   329→   329→      {/* Header */}
+   330→   330→      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+   331→   331→        <div className="flex items-center gap-2">
+   332→   332→          <ShoppingCart className="h-5 w-5 text-emerald-600" />
+   333→   333→          <h2 className="text-lg font-semibold">Purchase Orders</h2>
+   334→   334→          {orders.length > 0 && (
+   335→   335→            <Badge variant="secondary" className="text-xs">{orders.length}</Badge>
+   336→   336→          )}
+   337→   337→        </div>
+   338→   338→        <Button onClick={openCreateDialog}>
+   339→   339→          <Plus className="mr-1 h-4 w-4" /> New PO
+   340→   340→        </Button>
+   341→   341→      </div>
+   342→   342→
+   343→   343→      {/* Filters */}
+   344→   344→      <div className="flex flex-col sm:flex-row gap-2">
+   345→   345→        <div className="relative flex-1">
+   346→   346→          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+   347→   347→          <Input
+   348→   348→            placeholder="Search by supplier, PO#..."
+   349→   349→            className="pl-9"
+   350→   350→            value={search}
+   351→   351→            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+   352→   352→          />
+   353→   353→        </div>
+   354→   354→        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
+   355→   355→          <SelectTrigger className="w-full sm:w-44">
+   356→   356→            <SelectValue placeholder="All Status" />
+   357→   357→          </SelectTrigger>
+   358→   358→          <SelectContent>
+   359→   359→            <SelectItem value="all">All Status</SelectItem>
+   360→   360→            {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+   361→   361→              <SelectItem key={key} value={key}>{cfg.label}</SelectItem>
+   362→   362→            ))}
+   363→   363→          </SelectContent>
+   364→   364→        </Select>
+   365→   365→      </div>
+   366→   366→
+   367→   367→      {/* Summary Cards */}
+   368→   368→      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+   369→   369→        {Object.entries(STATUS_CONFIG).map(([status, cfg]) => {
+   370→   370→          const count = orders.filter((o) => o.status === status).length;
+   371→   371→          return (
+   372→   372→            <Card key={status} className={darkMode ? 'border-gray-700 bg-gray-900' : ''}>
+   373→   373→              <CardContent className="p-3 text-center">
+   374→   374→                <div className="text-2xl font-bold">{count}</div>
+   375→   375→                <div className="text-xs text-muted-foreground">{cfg.label}</div>
+   376→   376→              </CardContent>
+   377→   377→            </Card>
+   378→   378→          );
+   379→   379→        })}
+   380→   380→      </div>
+   381→   381→
+   382→   382→      {/* Table */}
+   383→   383→      {loading ? (
+   384→   384→        <div className="space-y-2">
+   385→   385→          {[...Array(5)].map((_, i) => (
+   386→   386→            <Skeleton key={i} className="h-12 w-full" />
+   387→   387→          ))}
+   388→   388→        </div>
+   389→   389→      ) : orders.length === 0 ? (
+   390→   390→        <Card className={darkMode ? 'border-gray-700 bg-gray-900' : ''}>
+   391→   391→          <CardContent className="py-12 text-center text-muted-foreground">
+   392→   392→            <Package className="mx-auto h-10 w-10 mb-3 opacity-40" />
+   393→   393→            <p>No purchase orders found</p>
+   394→   394→            <p className="text-sm mt-1">Create your first purchase order to track supplier orders</p>
+   395→   395→          </CardContent>
+   396→   396→        </Card>
+   397→   397→      ) : (
+   398→   398→        <Card className={darkMode ? 'border-gray-700 bg-gray-900' : ''}>
+   399→   399→          <CardContent className="p-0">
+   400→   400→            <div className="overflow-x-auto">
+   401→   401→              <Table>
+   402→   402→                <TableHeader>
+   403→   403→                  <TableRow>
+   404→   404→                    <TableHead>PO #</TableHead>
+   405→   405→                    <TableHead>Supplier</TableHead>
+   406→   406→                    <TableHead className="text-right">Amount</TableHead>
+   407→   407→                    <TableHead>Status</TableHead>
+   408→   408→                    <TableHead>Expected</TableHead>
+   409→   409→                    <TableHead>Created</TableHead>
+   410→   410→                    <TableHead className="text-right">Actions</TableHead>
+   411→   411→                  </TableRow>
+   412→   412→                </TableHeader>
+   413→   413→                <TableBody>
+   414→   414→                  {orders.map((order) => {
+   415→   415→                    const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.Pending;
+   416→   416→                    const StatusIcon = cfg.icon;
+   417→   417→                    return (
+   418→   418→                      <TableRow key={order.id}>
+   419→   419→                        <TableCell className="font-mono font-medium">{order.poNumber}</TableCell>
+   420→   420→                        <TableCell>
+   421→   421→                          <div>
+   422→   422→                            <div className="font-medium">{order.supplier}</div>
+   423→   423→                            {order.supplierPhone && (
+   424→   424→                              <div className="text-xs text-muted-foreground">{order.supplierPhone}</div>
+   425→   425→                            )}
+   426→   426→                          </div>
+   427→   427→                        </TableCell>
+   428→   428→                        <TableCell className="text-right font-medium">
+   429→   429→                          {formatINR(order.totalAmount)}
+   430→   430→                        </TableCell>
+   431→   431→                        <TableCell>
+   432→   432→                          <button
+   433→   433→                            onClick={() => openStatusDialog(order)}
+   434→   434→                            className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium cursor-pointer hover:opacity-80', cfg.color)}
+   435→   435→                          >
+   436→   436→                            <StatusIcon className="h-3 w-3" />
+   437→   437→                            {cfg.label}
+   438→   438→                          </button>
+   439→   439→                        </TableCell>
+   440→   440→                        <TableCell className="text-sm">{formatDate(order.expectedDate)}</TableCell>
+   441→   441→                        <TableCell className="text-sm text-muted-foreground">{formatDate(order.createdAt)}</TableCell>
+   442→   442→                        <TableCell className="text-right">
+   443→   443→                          <div className="flex items-center justify-end gap-1">
+   444→   444→                            <Button variant="ghost" size="sm" onClick={() => setViewOrder(order)}>
+   445→   445→                              <Eye className="h-4 w-4" />
+   446→   446→                            </Button>
+   447→   447→                            <Button variant="ghost" size="sm" onClick={() => openEditDialog(order)}>
+   448→   448→                              <Pencil className="h-4 w-4" />
+   449→   449→                            </Button>
+   450→   450→                            <Button variant="ghost" size="sm" onClick={() => handleDelete(order)}>
+   451→   451→                              <Trash2 className="h-4 w-4 text-red-500" />
+   452→   452→                            </Button>
+   453→   453→                          </div>
+   454→   454→                        </TableCell>
+   455→   455→                      </TableRow>
+   456→   456→                    );
+   457→   457→                  })}
+   458→   458→                </TableBody>
+   459→   459→              </Table>
+   460→   460→            </div>
+   461→   461→          </CardContent>
+   462→   462→        </Card>
+   463→   463→      )}
+   464→   464→
+   465→   465→      {/* Pagination */}
+   466→   466→      {totalPages > 1 && (
+   467→   467→        <div className="flex items-center justify-between">
+   468→   468→          <p className="text-sm text-muted-foreground">Page {page} of {totalPages}</p>
+   469→   469→          <div className="flex gap-1">
+   470→   470→            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+   471→   471→              <ChevronLeft className="h-4 w-4" />
+   472→   472→            </Button>
+   473→   473→            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
+   474→   474→              <ChevronRight className="h-4 w-4" />
+   475→   475→            </Button>
+   476→   476→          </div>
+   477→   477→        </div>
+   478→   478→      )}
+   479→   479→
+   480→   480→      {/* ─── Create/Edit Dialog ─── */}
+   481→   481→      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+   482→   482→        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+   483→   483→          <DialogHeader>
+   484→   484→            <DialogTitle>{editingOrder ? `Edit ${editingOrder.poNumber}` : 'New Purchase Order'}</DialogTitle>
+   485→   485→            <DialogDescription>
+   486→   486→              {editingOrder ? 'Update purchase order details' : 'Create a new purchase order to your supplier'}
+   487→   487→            </DialogDescription>
+   488→   488→          </DialogHeader>
+   489→   489→
+   490→   490→          <div className="space-y-4">
+   491→   491→            {/* Supplier Info */}
+   492→   492→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   493→   493→              <div>
+   494→   494→                <Label>Supplier Name *</Label>
+   495→   495→                <Input
+   496→   496→                  placeholder="Supplier name"
+   497→   497→                  value={supplier}
+   498→   498→                  onChange={(e) => setSupplier(e.target.value)}
+   499→   499→                />
+   500→   500→              </div>
+   501→   501→              <div>
+   502→   502→                <Label>Supplier Phone</Label>
+   503→   503→                <Input
+   504→   504→                  placeholder="Phone number"
+   505→   505→                  value={supplierPhone}
+   506→   506→                  onChange={(e) => setSupplierPhone(e.target.value)}
+   507→   507→                />
+   508→   508→              </div>
+   509→   509→            </div>
+   510→   510→
+   511→   511→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   512→   512→              <div>
+   513→   513→                <Label>Expected Delivery Date</Label>
+   514→   514→                <Input
+   515→   515→                  type="date"
+   516→   516→                  value={expectedDate}
+   517→   517→                  onChange={(e) => setExpectedDate(e.target.value)}
+   518→   518→                />
+   519→   519→              </div>
+   520→   520→              <div className="flex items-end">
+   521→   521→                <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+   522→   522→                  Total: {formatINR(totalAmount)}
+   523→   523→                </div>
+   524→   524→              </div>
+   525→   525→            </div>
+   526→   526→
+   527→   527→            <Separator />
+   528→   528→
+   529→   529→            {/* Items */}
+   530→   530→            <div>
+   531→   531→              <div className="flex items-center justify-between mb-2">
+   532→   532→                <Label className="font-medium">Items</Label>
+   533→   533→                <Button variant="outline" size="sm" onClick={addItem}>
+   534→   534→                  <Plus className="mr-1 h-3 w-3" /> Add Item
+   535→   535→                </Button>
+   536→   536→              </div>
+   537→   537→
+   538→   538→              <div className="space-y-2">
+   539→   539→                {items.map((item, index) => (
+   540→   540→                  <div key={index} className="grid grid-cols-12 gap-2 items-end p-2 rounded-lg border dark:border-gray-700">
+   541→   541→                    <div className="col-span-4">
+   542→   542→                      {index === 0 && <Label className="text-xs text-muted-foreground">Product</Label>}
+   543→   543→                      <Input
+   544→   544→                        placeholder="Search product..."
+   545→   545→                        value={item.productId ? item.name : productSearch}
+   546→   546→                        onChange={(e) => {
+   547→   547→                          if (!item.productId) setProductSearch(e.target.value);
+   548→   548→                        }}
+   549→   549→                        onFocus={() => { if (item.productId) { updateItem(index, 'productId', ''); setProductSearch(''); } }}
+   550→   550→                      />
+   551→   551→                      {productSearch && !item.productId && products.length > 0 && (
+   552→   552→                        <div className="absolute z-10 bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-md shadow-lg mt-1 max-h-40 overflow-y-auto">
+   553→   553→                          {products.map((p) => (
+   554→   554→                            <button
+   555→   555→                              key={p.id}
+   556→   556→                              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+   557→   557→                              onClick={() => {
+   558→   558→                                updateItem(index, 'productId', p.id);
+   559→   559→                                setProductSearch('');
+   560→   560→                                setProducts([]);
+   561→   561→                              }}
+   562→   562→                            >
+   563→   563→                              {p.name} <span className="text-muted-foreground">({p.sku})</span>
+   564→   564→                            </button>
+   565→   565→                          ))}
+   566→   566→                        </div>
+   567→   567→                      )}
+   568→   568→                    </div>
+   569→   569→                    <div className="col-span-3">
+   570→   570→                      {index === 0 && <Label className="text-xs text-muted-foreground">Name</Label>}
+   571→   571→                      <Input
+   572→   572→                        placeholder="Item name"
+   573→   573→                        value={item.name}
+   574→   574→                        onChange={(e) => updateItem(index, 'name', e.target.value)}
+   575→   575→                      />
+   576→   576→                    </div>
+   577→   577→                    <div className="col-span-2">
+   578→   578→                      {index === 0 && <Label className="text-xs text-muted-foreground">Qty</Label>}
+   579→   579→                      <Input
+   580→   580→                        type="number"
+   581→   581→                        min="1"
+   582→   582→                        value={item.qty}
+   583→   583→                        onChange={(e) => updateItem(index, 'qty', parseInt(e.target.value) || 0)}
+   584→   584→                      />
+   585→   585→                    </div>
+   586→   586→                    <div className="col-span-2">
+   587→   587→                      {index === 0 && <Label className="text-xs text-muted-foreground">Cost Price</Label>}
+   588→   588→                      <Input
+   589→   589→                        type="number"
+   590→   590→                        min="0"
+   591→   591→                        value={item.costPrice}
+   592→   592→                        onChange={(e) => updateItem(index, 'costPrice', parseFloat(e.target.value) || 0)}
+   593→   593→                      />
+   594→   594→                    </div>
+   595→   595→                    <div className="col-span-1 flex items-center justify-center">
+   596→   596→                      {items.length > 1 && (
+   597→   597→                        <Button variant="ghost" size="sm" onClick={() => removeItem(index)}>
+   598→   598→                          <X className="h-4 w-4 text-red-500" />
+   599→   599→                        </Button>
+   600→   600→                      )}
+   601→   601→                    </div>
+   602→   602→                  </div>
+   603→   603→                ))}
+   604→   604→              </div>
+   605→   605→            </div>
+   606→   606→
+   607→   607→            {/* Notes */}
+   608→   608→            <div>
+   609→   609→              <Label>Notes</Label>
+   610→   610→              <Textarea
+   611→   611→                placeholder="Order notes, payment terms..."
+   612→   612→                value={notes}
+   613→   613→                onChange={(e) => setNotes(e.target.value)}
+   614→   614→                rows={2}
+   615→   615→              />
+   616→   616→            </div>
+   617→   617→          </div>
+   618→   618→
+   619→   619→          <DialogFooter>
+   620→   620→            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+   621→   621→            <Button onClick={handleSubmit} disabled={submitting}>
+   622→   622→              {submitting && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+   623→   623→              {editingOrder ? 'Update PO' : 'Create PO'}
+   624→   624→            </Button>
+   625→   625→          </DialogFooter>
+   626→   626→        </DialogContent>
+   627→   627→      </Dialog>
+   628→   628→
+   629→   629→      {/* ─── View Dialog ─── */}
+   630→   630→      <Dialog open={!!viewOrder} onOpenChange={() => setViewOrder(null)}>
+   631→   631→        <DialogContent className="max-w-lg">
+   632→   632→          <DialogHeader>
+   633→   633→            <DialogTitle className="flex items-center gap-2">
+   634→   634→              <FileText className="h-5 w-5" />
+   635→   635→              {viewOrder?.poNumber}
+   636→   636→            </DialogTitle>
+   637→   637→          </DialogHeader>
+   638→   638→          {viewOrder && (() => {
+   639→   639→            const cfg = STATUS_CONFIG[viewOrder.status] || STATUS_CONFIG.Pending;
+   640→   640→            const StatusIcon = cfg.icon;
+   641→   641→            let parsedItems: POItem[] = [];
+   642→   642→            try { parsedItems = JSON.parse(viewOrder.items); } catch {}
+   643→   643→
+   644→   644→            return (
+   645→   645→              <div className="space-y-3">
+   646→   646→                <div className="grid grid-cols-2 gap-3 text-sm">
+   647→   647→                  <div>
+   648→   648→                    <span className="text-muted-foreground">Supplier</span>
+   649→   649→                    <p className="font-medium">{viewOrder.supplier}</p>
+   650→   650→                  </div>
+   651→   651→                  <div>
+   652→   652→                    <span className="text-muted-foreground">Phone</span>
+   653→   653→                    <p className="font-medium">{viewOrder.supplierPhone || '—'}</p>
+   654→   654→                  </div>
+   655→   655→                  <div>
+   656→   656→                    <span className="text-muted-foreground">Status</span>
+   657→   657→                    <p>
+   658→   658→                      <Badge className={cfg.color}>
+   659→   659→                        <StatusIcon className="mr-1 h-3 w-3" />{cfg.label}
+   660→   660→                      </Badge>
+   661→   661→                    </p>
+   662→   662→                  </div>
+   663→   663→                  <div>
+   664→   664→                    <span className="text-muted-foreground">Total</span>
+   665→   665→                    <p className="font-bold text-lg">{formatINR(viewOrder.totalAmount)}</p>
+   666→   666→                  </div>
+   667→   667→                  <div>
+   668→   668→                    <span className="text-muted-foreground">Expected</span>
+   669→   669→                    <p>{formatDate(viewOrder.expectedDate)}</p>
+   670→   670→                  </div>
+   671→   671→                  <div>
+   672→   672→                    <span className="text-muted-foreground">Created</span>
+   673→   673→                    <p>{formatDate(viewOrder.createdAt)}</p>
+   674→   674→                  </div>
+   675→   675→                  {viewOrder.receivedAt && (
+   676→   676→                    <div>
+   677→   677→                      <span className="text-muted-foreground">Received</span>
+   678→   678→                      <p>{formatDate(viewOrder.receivedAt)}</p>
+   679→   679→                    </div>
+   680→   680→                  )}
+   681→   681→                </div>
+   682→   682→
+   683→   683→                {parsedItems.length > 0 && (
+   684→   684→                  <>
+   685→   685→                    <Separator />
+   686→   686→                    <div>
+   687→   687→                      <Label className="font-medium mb-2 block">Items ({parsedItems.length})</Label>
+   688→   688→                      <Table>
+   689→   689→                        <TableHeader>
+   690→   690→                          <TableRow>
+   691→   691→                            <TableHead>Product</TableHead>
+   692→   692→                            <TableHead className="text-right">Qty</TableHead>
+   693→   693→                            <TableHead className="text-right">Cost</TableHead>
+   694→   694→                            <TableHead className="text-right">Total</TableHead>
+   695→   695→                          </TableRow>
+   696→   696→                        </TableHeader>
+   697→   697→                        <TableBody>
+   698→   698→                          {parsedItems.map((item, i) => (
+   699→   699→                            <TableRow key={i}>
+   700→   700→                              <TableCell>{item.name}</TableCell>
+   701→   701→                              <TableCell className="text-right">{item.qty}</TableCell>
+   702→   702→                              <TableCell className="text-right">{formatINR(item.costPrice)}</TableCell>
+   703→   703→                              <TableCell className="text-right font-medium">{formatINR(item.qty * item.costPrice)}</TableCell>
+   704→   704→                            </TableRow>
+   705→   705→                          ))}
+   706→   706→                        </TableBody>
+   707→   707→                      </Table>
+   708→   708→                    </div>
+   709→   709→                  </>
+   710→   710→                )}
+   711→   711→
+   712→   712→                {viewOrder.notes && (
+   713→   713→                  <>
+   714→   714→                    <Separator />
+   715→   715→                    <div>
+   716→   716→                      <Label className="text-muted-foreground">Notes</Label>
+   717→   717→                      <p className="text-sm mt-1">{viewOrder.notes}</p>
+   718→   718→                    </div>
+   719→   719→                  </>
+   720→   720→                )}
+   721→   721→              </div>
+   722→   722→            );
+   723→   723→          })()}
+   724→   724→        </DialogContent>
+   725→   725→      </Dialog>
+   726→   726→
+   727→   727→      {/* ─── Status Change Dialog ─── */}
+   728→   728→      <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+   729→   729→        <DialogContent className="max-w-sm">
+   730→   730→          <DialogHeader>
+   731→   731→            <DialogTitle>Change Status</DialogTitle>
+   732→   732→            <DialogDescription>
+   733→   733→              Update {statusChangeOrder?.poNumber} status
+   734→   734→            </DialogDescription>
+   735→   735→          </DialogHeader>
+   736→   736→          <div className="space-y-3">
+   737→   737→            <Select value={newStatus} onValueChange={setNewStatus}>
+   738→   738→              <SelectTrigger>
+   739→   739→                <SelectValue />
+   740→   740→              </SelectTrigger>
+   741→   741→              <SelectContent>
+   742→   742→                {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+   743→   743→                  <SelectItem key={key} value={key}>{cfg.label}</SelectItem>
+   744→   744→                ))}
+   745→   745→              </SelectContent>
+   746→   746→            </Select>
+   747→   747→            {newStatus === 'Received' && (
+   748→   748→              <Alert className="border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/30">
+   749→   749→                <AlertCircle className="h-4 w-4 text-emerald-600" />
+   750→   750→                <AlertDescription className="text-sm">
+   751→   751→                  Product stock will be automatically updated when marked as Received.
+   752→   752→                </AlertDescription>
+   753→   753→              </Alert>
+   754→   754→            )}
+   755→   755→          </div>
+   756→   756→          <DialogFooter>
+   757→   757→            <Button variant="outline" onClick={() => setStatusDialogOpen(false)}>Cancel</Button>
+   758→   758→            <Button onClick={handleStatusChange} disabled={submitting || newStatus === statusChangeOrder?.status}>
+   759→   759→              {submitting && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+   760→   760→              Update Status
+   761→   761→            </Button>
+   762→   762→          </DialogFooter>
+   763→   763→        </DialogContent>
+   764→   764→      </Dialog>
+   765→   765→    </div>
+   766→   766→  );
+   767→   767→}

@@ -1,0 +1,1460 @@
+     1→'use client'
+     2→
+     3→import { useState, useEffect, useCallback, useMemo } from 'react'
+     4→import {
+     5→  Megaphone,
+     6→  Plus,
+     7→  Send,
+     8→  Clock,
+     9→  FileEdit,
+    10→  Trash2,
+    11→  AlertTriangle,
+    12→  PackageCheck,
+    13→  Cake,
+    14→  Phone,
+    15→  MessageSquare,
+    16→  CheckCircle2,
+    17→  XCircle,
+    18→  Eye,
+    19→  Gift,
+    20→  IndianRupee,
+    21→  Pencil,
+    22→  Users,
+    23→  BarChart3,
+    24→  Printer,
+    25→  Globe,
+    26→  TrendingUp,
+    27→  Sparkles,
+    28→} from 'lucide-react'
+    29→import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+    30→import { Button } from '@/components/ui/button'
+    31→import { Badge } from '@/components/ui/badge'
+    32→import {
+    33→  Table,
+    34→  TableBody,
+    35→  TableCell,
+    36→  TableHead,
+    37→  TableHeader,
+    38→  TableRow,
+    39→} from '@/components/ui/table'
+    40→import {
+    41→  Dialog,
+    42→  DialogContent,
+    43→  DialogDescription,
+    44→  DialogFooter,
+    45→  DialogHeader,
+    46→  DialogTitle,
+    47→  DialogTrigger,
+    48→} from '@/components/ui/dialog'
+    49→import { Input } from '@/components/ui/input'
+    50→import { Label } from '@/components/ui/label'
+    51→import { Textarea } from '@/components/ui/textarea'
+    52→import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+    53→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    54→import {
+    55→  Select,
+    56→  SelectContent,
+    57→  SelectItem,
+    58→  SelectTrigger,
+    59→  SelectValue,
+    60→} from '@/components/ui/select'
+    61→
+    62→// ─────────────────────────────────────────────────────────
+    63→// Types
+    64→// ─────────────────────────────────────────────────────────
+    65→interface Campaign {
+    66→  id: string
+    67→  name: string
+    68→  type: string
+    69→  message: string
+    70→  status: string
+    71→  budget: number
+    72→  reach: number
+    73→  targetGroup: string | null
+    74→  scheduledAt: string | null
+    75→  sentCount: number
+    76→  createdAt: string
+    77→  updatedAt: string
+    78→}
+    79→
+    80→interface BirthdayCustomer {
+    81→  id: string
+    82→  name: string
+    83→  phone: string
+    84→  dob: string
+    85→}
+    86→
+    87→interface DueRecord {
+    88→  id: string
+    89→  customerId: string
+    90→  customerName: string
+    91→  amount: number
+    92→  paid: number
+    93→  status: string
+    94→  dueDate: string | null
+    95→}
+    96→
+    97→interface LabOrderReady {
+    98→  id: string
+    99→  customerId: string | null
+   100→  customerName: string | null
+   101→  lensType: string
+   102→  dueDate: string | null
+   103→  createdAt: string
+   104→}
+   105→
+   106→interface HighValueCustomer {
+   107→  id: string
+   108→  name: string
+   109→  phone: string
+   110→  totalSpent: number
+   111→}
+   112→
+   113→// ─────────────────────────────────────────────────────────
+   114→// Constants
+   115→// ─────────────────────────────────────────────────────────
+   116→const AVERAGE_ORDER_VALUE = 2500
+   117→
+   118→const whatsAppTemplates = [
+   119→  {
+   120→    label: 'Promotional Offer',
+   121→    emoji: '🎯',
+   122→    message: '🎯 {customer_name}! Get {offer}% off on {product_category} at Lotus Vision Opticals! Limited time offer!',
+   123→  },
+   124→  {
+   125→    label: 'Collection Ready',
+   126→    emoji: '✅',
+   127→    message: '✅ Dear {customer_name}, your eyewear from Lotus Vision Opticals is READY! Visit us at Sankarankovil to collect.',
+   128→  },
+   129→  {
+   130→    label: 'Payment Reminder',
+   131→    emoji: '💰',
+   132→    message: '💰 Dear {customer_name}, your payment of ₹{amount} is due at Lotus Vision Opticals. Please clear it at the earliest.',
+   133→  },
+   134→  {
+   135→    label: 'New Arrival',
+   136→    emoji: '👋',
+   137→    message: '👋 Welcome to Lotus Vision Opticals, {customer_name}! We\'re glad you visited us.',
+   138→  },
+   139→]
+   140→
+   141→// ─────────────────────────────────────────────────────────
+   142→// Helpers
+   143→// ─────────────────────────────────────────────────────────
+   144→const statusConfig: Record<string, { label: string; className: string }> = {
+   145→  Planned: { label: 'Planned', className: 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-800' },
+   146→  Active: { label: 'Active', className: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800' },
+   147→  Completed: { label: 'Completed', className: 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-800' },
+   148→  Cancelled: { label: 'Cancelled', className: 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-800' },
+   149→  Sent: { label: 'Sent', className: 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-800' },
+   150→  Scheduled: { label: 'Scheduled', className: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800' },
+   151→  Failed: { label: 'Failed', className: 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-800' },
+   152→  Draft: { label: 'Draft', className: 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800/40 dark:text-gray-300 dark:border-gray-700' },
+   153→}
+   154→
+   155→const typeConfig: Record<string, { label: string; className: string; icon: React.ElementType }> = {
+   156→  SMS: { label: 'SMS', className: 'bg-blue-100 text-blue-700 border-blue-200', icon: MessageSquare },
+   157→  WhatsApp: { label: 'WhatsApp', className: 'bg-green-100 text-green-700 border-green-200', icon: Phone },
+   158→  Print: { label: 'Print', className: 'bg-amber-100 text-amber-700 border-amber-200', icon: Printer },
+   159→  Online: { label: 'Online', className: 'bg-purple-100 text-purple-700 border-purple-200', icon: Globe },
+   160→}
+   161→
+   162→const typePlaceholders: Record<string, string> = {
+   163→  SMS: 'Enter your SMS message here. Keep it under 160 characters for a single SMS.',
+   164→  WhatsApp: 'Enter your WhatsApp message here. You can use emojis and longer text for WhatsApp messages.',
+   165→  Print: 'Enter content for your print campaign (flyers, posters, banners, newspaper ads).',
+   166→  Online: 'Enter content for your online campaign (social media, email, Google Ads).',
+   167→}
+   168→
+   169→const targetGroups = [
+   170→  { value: 'All', label: 'All Customers' },
+   171→  { value: 'Regular', label: 'Regular' },
+   172→  { value: 'Wholesale', label: 'Wholesale' },
+   173→  { value: 'New', label: 'New' },
+   174→  { value: 'High Value', label: 'High Value' },
+   175→]
+   176→
+   177→function formatDate(dateStr: string | null): string {
+   178→  if (!dateStr) return '—'
+   179→  return new Date(dateStr).toLocaleDateString('en-IN', {
+   180→    day: '2-digit',
+   181→    month: 'short',
+   182→    year: 'numeric',
+   183→    hour: '2-digit',
+   184→    minute: '2-digit',
+   185→  })
+   186→}
+   187→
+   188→function formatCurrency(amount: number): string {
+   189→  return new Intl.NumberFormat('en-IN', {
+   190→    style: 'currency',
+   191→    currency: 'INR',
+   192→    minimumFractionDigits: 0,
+   193→    maximumFractionDigits: 0,
+   194→  }).format(amount)
+   195→}
+   196→
+   197→function truncate(str: string, max: number): string {
+   198→  if (str.length <= max) return str
+   199→  return str.slice(0, max) + '…'
+   200→}
+   201→
+   202→// ─────────────────────────────────────────────────────────
+   203→// Component
+   204→// ─────────────────────────────────────────────────────────
+   205→export default function Campaigns() {
+   206→  // Data state
+   207→  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+   208→  const [birthdays, setBirthdays] = useState<BirthdayCustomer[]>([])
+   209→  const [dues, setDues] = useState<DueRecord[]>([])
+   210→  const [labReady, setLabReady] = useState<LabOrderReady[]>([])
+   211→  const [highValueCustomers, setHighValueCustomers] = useState<HighValueCustomer[]>([])
+   212→
+   213→  // Analytics state
+   214→  const [analyticsData, setAnalyticsData] = useState<Campaign[]>([])
+   215→
+   216→  // UI state
+   217→  const [loading, setLoading] = useState(true)
+   218→  const [submitting, setSubmitting] = useState(false)
+   219→  const [activeTab, setActiveTab] = useState('campaigns')
+   220→
+   221→  // Form state - Create
+   222→  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+   223→  const [formName, setFormName] = useState('')
+   224→  const [formType, setFormType] = useState('SMS')
+   225→  const [formTargetGroup, setFormTargetGroup] = useState('All')
+   226→  const [formMessage, setFormMessage] = useState('')
+   227→  const [formScheduleOption, setFormScheduleOption] = useState('now')
+   228→  const [formScheduleDate, setFormScheduleDate] = useState('')
+   229→  const [formBudget, setFormBudget] = useState('')
+   230→  const [formReach, setFormReach] = useState('')
+   231→  const [formStatus, setFormStatus] = useState('Planned')
+   232→
+   233→  // Form state - Edit
+   234→  const [editDialogOpen, setEditDialogOpen] = useState(false)
+   235→  const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null)
+   236→  const [editName, setEditName] = useState('')
+   237→  const [editType, setEditType] = useState('SMS')
+   238→  const [editTargetGroup, setEditTargetGroup] = useState('All')
+   239→  const [editMessage, setEditMessage] = useState('')
+   240→  const [editBudget, setEditBudget] = useState('')
+   241→  const [editReach, setEditReach] = useState('')
+   242→  const [editStatus, setEditStatus] = useState('Planned')
+   243→
+   244→  // ─────────────────────────────────────────────────────────
+   245→  // Data fetching
+   246→  // ─────────────────────────────────────────────────────────
+   247→  const fetchCampaigns = useCallback(async () => {
+   248→    try {
+   249→      const res = await fetch('/api/campaigns')
+   250→      if (res.ok) {
+   251→        const json = await res.json()
+   252→        const data = json.data ?? json.campaigns ?? []
+   253→        setCampaigns(data)
+   254→        setAnalyticsData(data)
+   255→      }
+   256→    } catch {
+   257→      // silently fail
+   258→    }
+   259→  }, [])
+   260→
+   261→  const fetchBirthdays = useCallback(async () => {
+   262→    try {
+   263→      const res = await fetch('/api/customers?filter=birthday_this_week')
+   264→      if (res.ok) {
+   265→        const data = await res.json()
+   266→        setBirthdays(Array.isArray(data) ? data : [])
+   267→      }
+   268→    } catch {
+   269→      // silently fail
+   270→    }
+   271→  }, [])
+   272→
+   273→  const fetchDues = useCallback(async () => {
+   274→    try {
+   275→      const res = await fetch('/api/dues')
+   276→      if (res.ok) {
+   277→        const data = await res.json()
+   278→        setDues(Array.isArray(data) ? data : data.dues ?? [])
+   279→      }
+   280→    } catch {
+   281→      // silently fail
+   282→    }
+   283→  }, [])
+   284→
+   285→  const fetchLabReady = useCallback(async () => {
+   286→    try {
+   287→      const res = await fetch('/api/lab-orders?status=Ready')
+   288→      if (res.ok) {
+   289→        const data = await res.json()
+   290→        const orders = data.labOrders || data.data || data || []
+   291→        setLabReady(
+   292→          (Array.isArray(orders) ? orders : []).map((o: Record<string, unknown>) => ({
+   293→            id: o.id as string,
+   294→            customerId: (o.customerId as string) ?? null,
+   295→            customerName: (o.customer as Record<string, string> | null)?.name ?? null,
+   296→            lensType: o.lensType as string,
+   297→            dueDate: (o.dueDate as string | null) ?? null,
+   298→            createdAt: o.createdAt as string,
+   299→          }))
+   300→        )
+   301→      }
+   302→    } catch {
+   303→      // silently fail
+   304→    }
+   305→  }, [])
+   306→
+   307→  const fetchHighValueCustomers = useCallback(async () => {
+   308→    try {
+   309→      const res = await fetch('/api/customers?segment=high_value')
+   310→      if (res.ok) {
+   311→        const data = await res.json()
+   312→        const customers = Array.isArray(data) ? data : data.data ?? data.customers ?? []
+   313→        setHighValueCustomers(customers)
+   314→      }
+   315→    } catch {
+   316→      // silently fail
+   317→    }
+   318→  }, [])
+   319→
+   320→  useEffect(() => {
+   321→    const load = async () => {
+   322→      setLoading(true)
+   323→      await Promise.all([fetchCampaigns(), fetchBirthdays(), fetchDues(), fetchLabReady(), fetchHighValueCustomers()])
+   324→      setLoading(false)
+   325→    }
+   326→    load()
+   327→  }, [fetchCampaigns, fetchBirthdays, fetchDues, fetchLabReady, fetchHighValueCustomers])
+   328→
+   329→  // ─────────────────────────────────────────────────────────
+   330→  // Summary stats (with ROI tracking)
+   331→  // ─────────────────────────────────────────────────────────
+   332→  const totalSentCount = campaigns.reduce((s, c) => s + (c.sentCount || 0), 0)
+   333→  const totalRevenue = totalSentCount * AVERAGE_ORDER_VALUE
+   334→  const totalBudget = campaigns.reduce((s, c) => s + (c.budget || 0), 0)
+   335→  const roi = totalBudget > 0 ? ((totalRevenue - totalBudget) / totalBudget) * 100 : 0
+   336→
+   337→  const summaryStats = {
+   338→    total: campaigns.length,
+   339→    planned: campaigns.filter((c) => c.status === 'Planned' || c.status === 'Draft' || c.status === 'Scheduled').length,
+   340→    active: campaigns.filter((c) => c.status === 'Active' || c.status === 'Sent').length,
+   341→    completed: campaigns.filter((c) => c.status === 'Completed').length,
+   342→    totalBudget,
+   343→    totalReach: campaigns.reduce((s, c) => s + (c.reach || 0), 0),
+   344→  }
+   345→
+   346→  // ─────────────────────────────────────────────────────────
+   347→  // Form handlers - Create
+   348→  // ─────────────────────────────────────────────────────────
+   349→  const resetCreateForm = () => {
+   350→    setFormName('')
+   351→    setFormType('SMS')
+   352→    setFormTargetGroup('All')
+   353→    setFormMessage('')
+   354→    setFormScheduleOption('now')
+   355→    setFormScheduleDate('')
+   356→    setFormBudget('')
+   357→    setFormReach('')
+   358→    setFormStatus('Planned')
+   359→  }
+   360→
+   361→  const handleTypeChange = (newType: string) => {
+   362→    setFormType(newType)
+   363→    setFormMessage(typePlaceholders[newType] || '')
+   364→  }
+   365→
+   366→  const handleCreateSubmit = async () => {
+   367→    if (!formName.trim() || !formMessage.trim()) return
+   368→
+   369→    setSubmitting(true)
+   370→    try {
+   371→      const payload = {
+   372→        name: formName.trim(),
+   373→        type: formType,
+   374→        message: formMessage.trim(),
+   375→        targetGroup: formTargetGroup,
+   376→        status: formStatus,
+   377→        budget: formBudget ? Number(formBudget) : 0,
+   378→        reach: formReach ? Number(formReach) : 0,
+   379→        scheduledAt: formScheduleOption === 'later' && formScheduleDate ? formScheduleDate : null,
+   380→      }
+   381→
+   382→      const res = await fetch('/api/campaigns', {
+   383→        method: 'POST',
+   384→        headers: { 'Content-Type': 'application/json' },
+   385→        body: JSON.stringify(payload),
+   386→      })
+   387→
+   388→      if (res.ok) {
+   389→        await fetchCampaigns()
+   390→        setCreateDialogOpen(false)
+   391→        resetCreateForm()
+   392→      }
+   393→    } catch {
+   394→      // silently fail
+   395→    } finally {
+   396→      setSubmitting(false)
+   397→    }
+   398→  }
+   399→
+   400→  // ─────────────────────────────────────────────────────────
+   401→  // Form handlers - Edit
+   402→  // ─────────────────────────────────────────────────────────
+   403→  const openEditDialog = (campaign: Campaign) => {
+   404→    setEditingCampaign(campaign)
+   405→    setEditName(campaign.name)
+   406→    setEditType(campaign.type)
+   407→    setEditTargetGroup(campaign.targetGroup || 'All')
+   408→    setEditMessage(campaign.message)
+   409→    setEditBudget(String(campaign.budget || ''))
+   410→    setEditReach(String(campaign.reach || ''))
+   411→    setEditStatus(campaign.status)
+   412→    setEditDialogOpen(true)
+   413→  }
+   414→
+   415→  const handleEditSubmit = async () => {
+   416→    if (!editingCampaign || !editName.trim() || !editMessage.trim()) return
+   417→
+   418→    setSubmitting(true)
+   419→    try {
+   420→      const payload = {
+   421→        name: editName.trim(),
+   422→        type: editType,
+   423→        message: editMessage.trim(),
+   424→        targetGroup: editTargetGroup,
+   425→        status: editStatus,
+   426→        budget: editBudget ? Number(editBudget) : 0,
+   427→        reach: editReach ? Number(editReach) : 0,
+   428→      }
+   429→
+   430→      const res = await fetch(`/api/campaigns/${editingCampaign.id}`, {
+   431→        method: 'PUT',
+   432→        headers: { 'Content-Type': 'application/json' },
+   433→        body: JSON.stringify(payload),
+   434→      })
+   435→
+   436→      if (res.ok) {
+   437→        await fetchCampaigns()
+   438→        setEditDialogOpen(false)
+   439→        setEditingCampaign(null)
+   440→      }
+   441→    } catch {
+   442→      // silently fail
+   443→    } finally {
+   444→      setSubmitting(false)
+   445→    }
+   446→  }
+   447→
+   448→  const handleDeleteCampaign = async (id: string) => {
+   449→    try {
+   450→      const res = await fetch(`/api/campaigns/${id}`, { method: 'DELETE' })
+   451→      if (res.ok) {
+   452→        await fetchCampaigns()
+   453→      }
+   454→    } catch {
+   455→      // silently fail
+   456→    }
+   457→  }
+   458→
+   459→  // ─────────────────────────────────────────────────────────
+   460→  // Preview renderer
+   461→  // ─────────────────────────────────────────────────────────
+   462→  const renderPreview = (msg: string, type: string) => {
+   463→    if (!msg.trim()) {
+   464→      return (
+   465→        <p className="text-muted-foreground text-sm italic">Your message preview will appear here…</p>
+   466→      )
+   467→    }
+   468→    return (
+   469→      <div className="rounded-lg border p-4 space-y-2">
+   470→        <div className="flex items-center gap-2 mb-2">
+   471→          {typeConfig[type]?.icon && (() => {
+   472→            const Icon = typeConfig[type]!.icon
+   473→            return <Icon className="size-4" />
+   474→          })()}
+   475→          <span className="text-xs font-medium text-muted-foreground">
+   476→            {typeConfig[type]?.label || type} Preview
+   477→          </span>
+   478→          <Badge variant="outline" className={typeConfig[type]?.className}>{typeConfig[type]?.label}</Badge>
+   479→        </div>
+   480→        <div className="bg-muted/50 rounded-md p-3 whitespace-pre-wrap text-sm leading-relaxed">
+   481→          {msg}
+   482→        </div>
+   483→        <div className="flex items-center justify-end text-xs text-muted-foreground">
+   484→          <span>{msg.length} chars</span>
+   485→        </div>
+   486→      </div>
+   487→    )
+   488→  }
+   489→
+   490→  // ─────────────────────────────────────────────────────────
+   491→  // SMS character counter (160 limit)
+   492→  // ─────────────────────────────────────────────────────────
+   493→  const smsCharCount = formMessage.length
+   494→  const smsExceedsLimit = smsCharCount > 160
+   495→
+   496→  // ── Derived analytics ──────────────────────────────────────
+   497→  const totalCampaigns = analyticsData.length
+   498→  const totalSent = analyticsData.reduce((sum, c) => sum + c.sentCount, 0)
+   499→  const totalReach = analyticsData.reduce((sum, c) => sum + c.reach, 0)
+   500→  const avgROI = totalCampaigns > 0
+   501→    ? analyticsData.reduce((sum, c) => {
+   502→        const revenue = c.sentCount * AVERAGE_ORDER_VALUE * 0.05
+   503→        const roi = c.budget > 0 ? ((revenue - c.budget) / c.budget) * 100 : 0
+   504→        return sum + roi
+   505→      }, 0) / totalCampaigns
+   506→    : 0
+   507→  const maxSent = Math.max(...analyticsData.map((c) => c.sentCount), 1)
+   508→
+   509→  // ─────────────────────────────────────────────────────────
+   510→  if (loading) {
+   511→    return (
+   512→      <div className="flex items-center justify-center min-h-[60vh]">
+   513→        <span className="size-8 animate-spin inline-block border-2 border-current border-t-transparent rounded-full text-muted-foreground" />
+   514→      </div>
+   515→    )
+   516→  }
+   517→
+   518→  // ─────────────────────────────────────────────────────────
+   519→  // Render
+   520→  // ─────────────────────────────────────────────────────────
+   521→  return (
+   522→    <div className="space-y-6">
+   523→      {/* Page header */}
+   524→      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+   525→        <div>
+   526→          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+   527→            <Megaphone className="size-6 text-primary" />
+   528→            Communication & Campaigns
+   529→          </h1>
+   530→          <p className="text-muted-foreground mt-1">
+   531→            Manage campaigns, greetings, and customer communications
+   532→          </p>
+   533→        </div>
+   534→        <Dialog open={createDialogOpen} onOpenChange={(open) => { setCreateDialogOpen(open); if (!open) resetCreateForm() }}>
+   535→          <DialogTrigger asChild>
+   536→            <Button className="gap-2">
+   537→              <Plus className="size-4" />
+   538→              New Campaign
+   539→            </Button>
+   540→          </DialogTrigger>
+   541→          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+   542→            <DialogHeader>
+   543→              <DialogTitle>Create Campaign</DialogTitle>
+   544→              <DialogDescription>
+   545→                Compose a new campaign to reach your customers.
+   546→              </DialogDescription>
+   547→            </DialogHeader>
+   548→
+   549→            <div className="grid gap-5 py-2">
+   550→              {/* Campaign Name */}
+   551→              <div className="space-y-2">
+   552→                <Label htmlFor="campaign-name">Campaign Name</Label>
+   553→                <Input
+   554→                  id="campaign-name"
+   555→                  placeholder="e.g., Summer Sale 2026"
+   556→                  value={formName}
+   557→                  onChange={(e) => setFormName(e.target.value)}
+   558→                />
+   559→              </div>
+   560→
+   561→              {/* Campaign Type */}
+   562→              <div className="space-y-2">
+   563→                <Label>Type</Label>
+   564→                <div className="grid grid-cols-2 gap-2">
+   565→                  {Object.entries(typeConfig).map(([key, config]) => {
+   566→                    const Icon = config.icon
+   567→                    return (
+   568→                      <Button
+   569→                        key={key}
+   570→                        type="button"
+   571→                        variant={formType === key ? 'default' : 'outline'}
+   572→                        className="justify-start gap-2"
+   573→                        onClick={() => handleTypeChange(key)}
+   574→                      >
+   575→                        <Icon className="size-4" />
+   576→                        {config.label}
+   577→                      </Button>
+   578→                    )
+   579→                  })}
+   580→                </div>
+   581→              </div>
+   582→
+   583→              {/* WhatsApp Template Section */}
+   584→              {formType === 'WhatsApp' && (
+   585→                <div className="space-y-2">
+   586→                  <Label className="flex items-center gap-2">
+   587→                    <Sparkles className="size-4 text-green-600" />
+   588→                    WhatsApp Template
+   589→                  </Label>
+   590→                  <p className="text-xs text-muted-foreground">
+   591→                    Choose a pre-built template to quickly get started. Click to pre-fill the message.
+   592→                  </p>
+   593→                  <div className="grid grid-cols-2 gap-2">
+   594→                    {whatsAppTemplates.map((tmpl) => (
+   595→                      <Button
+   596→                        key={tmpl.label}
+   597→                        type="button"
+   598→                        variant="outline"
+   599→                        className="justify-start gap-2 h-auto py-2.5 px-3 text-left"
+   600→                        onClick={() => setFormMessage(tmpl.message)}
+   601→                      >
+   602→                        <span className="text-base">{tmpl.emoji}</span>
+   603→                        <div className="flex flex-col min-w-0">
+   604→                          <span className="text-xs font-medium">{tmpl.label}</span>
+   605→                          <span className="text-[10px] text-muted-foreground truncate">
+   606→                            {tmpl.message.slice(0, 45)}…
+   607→                          </span>
+   608→                        </div>
+   609→                      </Button>
+   610→                    ))}
+   611→                  </div>
+   612→                </div>
+   613→              )}
+   614→
+   615→              {/* Status */}
+   616→              <div className="grid grid-cols-2 gap-4">
+   617→                <div className="space-y-2">
+   618→                  <Label>Status</Label>
+   619→                  <Select value={formStatus} onValueChange={setFormStatus}>
+   620→                    <SelectTrigger className="w-full">
+   621→                      <SelectValue placeholder="Select status" />
+   622→                    </SelectTrigger>
+   623→                    <SelectContent>
+   624→                      <SelectItem value="Planned">Planned</SelectItem>
+   625→                      <SelectItem value="Active">Active</SelectItem>
+   626→                      <SelectItem value="Completed">Completed</SelectItem>
+   627→                      <SelectItem value="Cancelled">Cancelled</SelectItem>
+   628→                    </SelectContent>
+   629→                  </Select>
+   630→                </div>
+   631→                <div className="space-y-2">
+   632→                  <Label>Target Group</Label>
+   633→                  <Select value={formTargetGroup} onValueChange={setFormTargetGroup}>
+   634→                    <SelectTrigger className="w-full">
+   635→                      <SelectValue placeholder="Select group" />
+   636→                    </SelectTrigger>
+   637→                    <SelectContent>
+   638→                      {targetGroups.map((group) => (
+   639→                        <SelectItem key={group.value} value={group.value}>
+   640→                          {group.label}
+   641→                          {group.value === 'High Value' && (
+   642→                            <span className="ml-2 text-[10px] text-muted-foreground">
+   643→                              ({highValueCustomers.length} customers)
+   644→                            </span>
+   645→                          )}
+   646→                        </SelectItem>
+   647→                      ))}
+   648→                    </SelectContent>
+   649→                  </Select>
+   650→                </div>
+   651→              </div>
+   652→
+   653→              {/* Budget & Reach */}
+   654→              <div className="grid grid-cols-2 gap-4">
+   655→                <div className="space-y-2">
+   656→                  <Label htmlFor="campaign-budget">Budget (₹)</Label>
+   657→                  <Input
+   658→                    id="campaign-budget"
+   659→                    type="number"
+   660→                    min="0"
+   661→                    step="500"
+   662→                    placeholder="5000"
+   663→                    value={formBudget}
+   664→                    onChange={(e) => setFormBudget(e.target.value)}
+   665→                  />
+   666→                </div>
+   667→                <div className="space-y-2">
+   668→                  <Label htmlFor="campaign-reach">Expected Reach</Label>
+   669→                  <Input
+   670→                    id="campaign-reach"
+   671→                    type="number"
+   672→                    min="0"
+   673→                    placeholder="500"
+   674→                    value={formReach}
+   675→                    onChange={(e) => setFormReach(e.target.value)}
+   676→                  />
+   677→                </div>
+   678→              </div>
+   679→
+   680→              {/* Message */}
+   681→              <div className="space-y-2">
+   682→                <Label htmlFor="campaign-message">Message / Content</Label>
+   683→                <Textarea
+   684→                  id="campaign-message"
+   685→                  placeholder={typePlaceholders[formType]}
+   686→                  value={formMessage}
+   687→                  onChange={(e) => setFormMessage(e.target.value)}
+   688→                  rows={5}
+   689→                  className={`resize-none ${formType === 'SMS' && smsExceedsLimit ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+   690→                />
+   691→                {/* SMS character counter with 160 limit */}
+   692→                {formType === 'SMS' ? (
+   693→                  <div className="space-y-1">
+   694→                    <div className="flex items-center justify-between">
+   695→                      <span className={`text-xs font-medium ${smsExceedsLimit ? 'text-red-600' : 'text-muted-foreground'}`}>
+   696→                        SMS Tracker
+   697→                      </span>
+   698→                      <span className={`text-xs font-mono font-medium ${smsExceedsLimit ? 'text-red-600' : 'text-muted-foreground'}`}>
+   699→                        {smsCharCount}/160 chars
+   700→                      </span>
+   701→                    </div>
+   702→                    {/* Visual progress bar */}
+   703→                    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+   704→                      <div
+   705→                        className={`h-full rounded-full transition-all duration-200 ${
+   706→                          smsExceedsLimit ? 'bg-red-500' : smsCharCount > 130 ? 'bg-amber-500' : 'bg-green-500'
+   707→                        }`}
+   708→                        style={{ width: `${Math.min((smsCharCount / 160) * 100, 100)}%` }}
+   709→                      />
+   710→                    </div>
+   711→                    {smsExceedsLimit && (
+   712→                      <p className="text-xs text-red-600 font-medium">
+   713→                        SMS has {smsCharCount}/160 characters — exceeds limit!
+   714→                      </p>
+   715→                    )}
+   716→                  </div>
+   717→                ) : (
+   718→                  <p className="text-xs text-muted-foreground">
+   719→                    {formMessage.length}/500 characters
+   720→                  </p>
+   721→                )}
+   722→              </div>
+   723→
+   724→              {/* Schedule (for digital campaigns) */}
+   725→              {(formType === 'SMS' || formType === 'WhatsApp' || formType === 'Online') && (
+   726→                <div className="space-y-2">
+   727→                  <Label>Schedule</Label>
+   728→                  <RadioGroup
+   729→                    value={formScheduleOption}
+   730→                    onValueChange={setFormScheduleOption}
+   731→                    className="flex gap-4"
+   732→                  >
+   733→                    <div className="flex items-center gap-2">
+   734→                      <RadioGroupItem value="now" id="schedule-now" />
+   735→                      <Label htmlFor="schedule-now" className="cursor-pointer font-normal">
+   736→                        Send Now
+   737→                      </Label>
+   738→                    </div>
+   739→                    <div className="flex items-center gap-2">
+   740→                      <RadioGroupItem value="later" id="schedule-later" />
+   741→                      <Label htmlFor="schedule-later" className="cursor-pointer font-normal">
+   742→                        Schedule for Later
+   743→                      </Label>
+   744→                    </div>
+   745→                  </RadioGroup>
+   746→                  {formScheduleOption === 'later' && (
+   747→                    <Input
+   748→                      type="datetime-local"
+   749→                      value={formScheduleDate}
+   750→                      onChange={(e) => setFormScheduleDate(e.target.value)}
+   751→                      className="max-w-xs"
+   752→                    />
+   753→                  )}
+   754→                </div>
+   755→              )}
+   756→
+   757→              {/* Preview */}
+   758→              <div className="space-y-2">
+   759→                <Label className="flex items-center gap-2">
+   760→                  <Eye className="size-4" />
+   761→                  Preview
+   762→                </Label>
+   763→                {renderPreview(formMessage, formType)}
+   764→              </div>
+   765→            </div>
+   766→
+   767→            <DialogFooter>
+   768→              <Button variant="outline" onClick={() => { setCreateDialogOpen(false); resetCreateForm() }}>
+   769→                Cancel
+   770→              </Button>
+   771→              <Button
+   772→                onClick={handleCreateSubmit}
+   773→                disabled={!formName.trim() || !formMessage.trim() || submitting}
+   774→                className="gap-2"
+   775→              >
+   776→                {submitting ? (
+   777→                  <span className="size-4 animate-spin inline-block border-2 border-current border-t-transparent rounded-full" />
+   778→                ) : (
+   779→                  <Send className="size-4" />
+   780→                )}
+   781→                {submitting ? 'Creating…' : 'Create Campaign'}
+   782→              </Button>
+   783→            </DialogFooter>
+   784→          </DialogContent>
+   785→        </Dialog>
+   786→      </div>
+   787→
+   788→      {/* Enhanced Summary Stats */}
+   789→      <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
+   790→        <Card className="p-4">
+   791→          <div className="flex items-center gap-3">
+   792→            <div className="rounded-lg bg-muted p-2.5">
+   793→              <Megaphone className="size-5 text-foreground" />
+   794→            </div>
+   795→            <div>
+   796→              <p className="text-sm text-muted-foreground">Total Campaigns</p>
+   797→              <p className="text-2xl font-bold">{summaryStats.total}</p>
+   798→            </div>
+   799→          </div>
+   800→        </Card>
+   801→        <Card className="p-4">
+   802→          <div className="flex items-center gap-3">
+   803→            <div className="rounded-lg bg-amber-100 dark:bg-amber-900/30 p-2.5">
+   804→              <Clock className="size-5 text-amber-600 dark:text-amber-400" />
+   805→            </div>
+   806→            <div>
+   807→              <p className="text-sm text-muted-foreground">Planned</p>
+   808→              <p className="text-2xl font-bold">{summaryStats.planned}</p>
+   809→            </div>
+   810→          </div>
+   811→        </Card>
+   812→        <Card className="p-4">
+   813→          <div className="flex items-center gap-3">
+   814→            <div className="rounded-lg bg-emerald-100 dark:bg-emerald-900/30 p-2.5">
+   815→              <IndianRupee className="size-5 text-emerald-600 dark:text-emerald-400" />
+   816→            </div>
+   817→            <div>
+   818→              <p className="text-sm text-muted-foreground">Total Budget</p>
+   819→              <p className="text-2xl font-bold">{formatCurrency(summaryStats.totalBudget)}</p>
+   820→            </div>
+   821→          </div>
+   822→        </Card>
+   823→        <Card className="p-4">
+   824→          <div className="flex items-center gap-3">
+   825→            <div className="rounded-lg bg-blue-100 dark:bg-blue-900/30 p-2.5">
+   826→              <Users className="size-5 text-blue-600 dark:text-blue-400" />
+   827→            </div>
+   828→            <div>
+   829→              <p className="text-sm text-muted-foreground">Total Reach</p>
+   830→              <p className="text-2xl font-bold">{summaryStats.totalReach.toLocaleString()}</p>
+   831→            </div>
+   832→          </div>
+   833→        </Card>
+   834→        {/* Active/Sent Card — Blue background */}
+   835→        <Card className="p-4 bg-blue-600 text-white dark:bg-blue-700">
+   836→          <div className="flex items-center gap-3">
+   837→            <div className="rounded-lg bg-blue-500/50 dark:bg-blue-600/50 p-2.5">
+   838→              <Send className="size-5 text-white" />
+   839→            </div>
+   840→            <div>
+   841→              <p className="text-sm text-blue-100">Active / Sent</p>
+   842→              <p className="text-2xl font-bold">{summaryStats.active}</p>
+   843→            </div>
+   844→          </div>
+   845→        </Card>
+   846→      </div>
+   847→
+   848→      {/* ROI & Revenue Stats */}
+   849→      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+   850→        <Card className="p-4">
+   851→          <div className="flex items-center gap-3">
+   852→            <div className="rounded-lg bg-violet-100 dark:bg-violet-900/30 p-2.5">
+   853→              <TrendingUp className="size-5 text-violet-600 dark:text-violet-400" />
+   854→            </div>
+   855→            <div>
+   856→              <p className="text-sm text-muted-foreground">Campaign ROI</p>
+   857→              <p className={`text-2xl font-bold ${roi >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+   858→                {roi >= 0 ? '+' : ''}{roi.toFixed(1)}%
+   859→              </p>
+   860→              <p className="text-xs text-muted-foreground mt-0.5">
+   861→                {formatCurrency(totalRevenue)} − {formatCurrency(totalBudget)}
+   862→              </p>
+   863→            </div>
+   864→          </div>
+   865→        </Card>
+   866→        <Card className="p-4">
+   867→          <div className="flex items-center gap-3">
+   868→            <div className="rounded-lg bg-emerald-100 dark:bg-emerald-900/30 p-2.5">
+   869→              <IndianRupee className="size-5 text-emerald-600 dark:text-emerald-400" />
+   870→            </div>
+   871→            <div>
+   872→              <p className="text-sm text-muted-foreground">Total Revenue from Campaigns</p>
+   873→              <p className="text-2xl font-bold">{formatCurrency(totalRevenue)}</p>
+   874→              <p className="text-xs text-muted-foreground mt-0.5">
+   875→                {totalSentCount.toLocaleString()} sent × ₹{AVERAGE_ORDER_VALUE.toLocaleString()} avg order value
+   876→              </p>
+   877→            </div>
+   878→          </div>
+   879→        </Card>
+   880→        <Card className="p-4">
+   881→          <div className="flex items-center gap-3">
+   882→            <div className="rounded-lg bg-orange-100 dark:bg-orange-900/30 p-2.5">
+   883→              <BarChart3 className="size-5 text-orange-600 dark:text-orange-400" />
+   884→            </div>
+   885→            <div>
+   886→              <p className="text-sm text-muted-foreground">High Value Segment</p>
+   887→              <p className="text-2xl font-bold">{highValueCustomers.length}</p>
+   888→              <p className="text-xs text-muted-foreground mt-0.5">
+   889→                Customers available for targeted campaigns
+   890→              </p>
+   891→            </div>
+   892→          </div>
+   893→        </Card>
+   894→      </div>
+   895→
+   896→      {/* Quick Actions Section */}
+   897→      <div className="grid gap-4 md:grid-cols-3">
+   898→        {/* Birthday Greetings Card */}
+   899→        <Card className="overflow-hidden">
+   900→          <CardHeader className="pb-3">
+   901→            <div className="flex items-center justify-between">
+   902→              <CardTitle className="text-base flex items-center gap-2">
+   903→                <div className="flex items-center justify-center size-8 rounded-lg bg-amber-100">
+   904→                  <Cake className="size-4 text-amber-600" />
+   905→                </div>
+   906→                Birthday Greetings
+   907→              </CardTitle>
+   908→              <Badge variant="secondary" className="bg-amber-100 text-amber-700 border-amber-200">
+   909→                {birthdays.length} this week
+   910→              </Badge>
+   911→            </div>
+   912→            <CardDescription>Upcoming birthdays this week</CardDescription>
+   913→          </CardHeader>
+   914→          <CardContent className="pt-0">
+   915→            {birthdays.length === 0 ? (
+   916→              <p className="text-sm text-muted-foreground text-center py-4">No birthdays this week</p>
+   917→            ) : (
+   918→              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+   919→                {birthdays.map((b) => (
+   920→                  <div key={b.id} className="flex items-center justify-between rounded-lg border p-3 hover:bg-accent/50 transition-colors">
+   921→                    <div className="flex items-center gap-3 min-w-0">
+   922→                      <div className="flex items-center justify-center size-8 rounded-full bg-amber-100 shrink-0">
+   923→                        <Cake className="size-3.5 text-amber-600" />
+   924→                      </div>
+   925→                      <div className="min-w-0">
+   926→                        <p className="text-sm font-medium truncate">{b.name}</p>
+   927→                        <p className="text-xs text-muted-foreground">{b.phone}</p>
+   928→                      </div>
+   929→                    </div>
+   930→                    <span className="text-xs text-muted-foreground shrink-0 ml-2">{formatDate(b.dob)}</span>
+   931→                  </div>
+   932→                ))}
+   933→              </div>
+   934→            )}
+   935→            {birthdays.length > 0 && (
+   936→              <Button
+   937→                variant="outline"
+   938→                size="sm"
+   939→                className="w-full mt-3 gap-2"
+   940→                onClick={() => {
+   941→                  resetCreateForm()
+   942→                  setFormType('WhatsApp')
+   943→                  setFormTargetGroup('All')
+   944→                  setFormMessage('🎉 Happy Birthday, {customer_name}! 🎂\n\nWishing you a wonderful day filled with joy! Visit us at Lotus Vision Opticals for special birthday discounts on eyewear.\n\n- Lotus Vision Opticals, Sankarankovil')
+   945→                  setCreateDialogOpen(true)
+   946→                }}
+   947→              >
+   948→                <Gift className="size-3.5" />
+   949→                Send Birthday Wishes
+   950→              </Button>
+   951→            )}
+   952→          </CardContent>
+   953→        </Card>
+   954→
+   955→        {/* Due Reminders Card */}
+   956→        <Card className="overflow-hidden">
+   957→          <CardHeader className="pb-3">
+   958→            <div className="flex items-center justify-between">
+   959→              <CardTitle className="text-base flex items-center gap-2">
+   960→                <div className="flex items-center justify-center size-8 rounded-lg bg-orange-100">
+   961→                  <AlertTriangle className="size-4 text-orange-600" />
+   962→                </div>
+   963→                Due Reminders
+   964→              </CardTitle>
+   965→              <Badge variant="secondary" className="bg-orange-100 text-orange-700 border-orange-200">
+   966→                {dues.length} pending
+   967→              </Badge>
+   968→            </div>
+   969→            <CardDescription>Customers with pending dues</CardDescription>
+   970→          </CardHeader>
+   971→          <CardContent className="pt-0">
+   972→            {dues.length === 0 ? (
+   973→              <p className="text-sm text-muted-foreground text-center py-4">No pending dues</p>
+   974→            ) : (
+   975→              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+   976→                {dues.map((d) => (
+   977→                  <div key={d.id} className="flex items-center justify-between rounded-lg border p-3 hover:bg-accent/50 transition-colors">
+   978→                    <div className="flex items-center gap-3 min-w-0">
+   979→                      <div className="flex items-center justify-center size-8 rounded-full bg-orange-100 shrink-0">
+   980→                        <IndianRupee className="size-3.5 text-orange-600" />
+   981→                      </div>
+   982→                      <div className="min-w-0">
+   983→                        <p className="text-sm font-medium truncate">{d.customerName}</p>
+   984→                        <p className="text-xs text-muted-foreground">
+   985→                          Due: {formatCurrency(d.amount - d.paid)}
+   986→                        </p>
+   987→                      </div>
+   988→                    </div>
+   989→                    <span className="text-xs text-muted-foreground shrink-0 ml-2">
+   990→                      {d.dueDate ? formatDate(d.dueDate) : 'No date'}
+   991→                    </span>
+   992→                  </div>
+   993→                ))}
+   994→              </div>
+   995→            )}
+   996→            {dues.length > 0 && (
+   997→              <Button
+   998→                variant="outline"
+   999→                size="sm"
+  1000→                className="w-full mt-3 gap-2"
+  1001→                onClick={() => {
+  1002→                  resetCreateForm()
+  1003→                  setFormType('SMS')
+  1004→                  setFormTargetGroup('All')
+  1005→                  setFormName('Due Payment Reminder')
+  1006→                  setFormMessage('Dear {customer_name},\n\nThis is a reminder that you have a pending dues at Lotus Vision Opticals, Sankarankovil.\n\nKindly clear the dues at your earliest convenience.\n\nThank you!\n- Lotus Vision Opticals')
+  1007→                  setCreateDialogOpen(true)
+  1008→                }}
+  1009→              >
+  1010→                <Send className="size-3.5" />
+  1011→                Send Due Reminders
+  1012→              </Button>
+  1013→            )}
+  1014→          </CardContent>
+  1015→        </Card>
+  1016→
+  1017→        {/* Collection Ready Card */}
+  1018→        <Card className="overflow-hidden">
+  1019→          <CardHeader className="pb-3">
+  1020→            <div className="flex items-center justify-between">
+  1021→              <CardTitle className="text-base flex items-center gap-2">
+  1022→                <div className="flex items-center justify-center size-8 rounded-lg bg-emerald-100">
+  1023→                  <PackageCheck className="size-4 text-emerald-600" />
+  1024→                </div>
+  1025→                Collection Ready
+  1026→              </CardTitle>
+  1027→              <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 border-emerald-200">
+  1028→                {labReady.length} orders
+  1029→              </Badge>
+  1030→            </div>
+  1031→            <CardDescription>Lab orders ready for delivery</CardDescription>
+  1032→          </CardHeader>
+  1033→          <CardContent className="pt-0">
+  1034→            {labReady.length === 0 ? (
+  1035→              <p className="text-sm text-muted-foreground text-center py-4">No orders ready for collection</p>
+  1036→            ) : (
+  1037→              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+  1038→                {labReady.map((order) => (
+  1039→                  <div key={order.id} className="flex items-center justify-between rounded-lg border p-3 hover:bg-accent/50 transition-colors">
+  1040→                    <div className="flex items-center gap-3 min-w-0">
+  1041→                      <div className="flex items-center justify-center size-8 rounded-full bg-emerald-100 shrink-0">
+  1042→                        <PackageCheck className="size-3.5 text-emerald-600" />
+  1043→                      </div>
+  1044→                      <div className="min-w-0">
+  1045→                        <p className="text-sm font-medium truncate">{order.customerName || 'Walk-in Customer'}</p>
+  1046→                        <p className="text-xs text-muted-foreground">{order.lensType}</p>
+  1047→                      </div>
+  1048→                    </div>
+  1049→                    <span className="text-xs text-muted-foreground shrink-0 ml-2">{formatDate(order.createdAt)}</span>
+  1050→                  </div>
+  1051→                ))}
+  1052→              </div>
+  1053→            )}
+  1054→            {labReady.length > 0 && (
+  1055→              <Button
+  1056→                variant="outline"
+  1057→                size="sm"
+  1058→                className="w-full mt-3 gap-2"
+  1059→                onClick={() => {
+  1060→                  resetCreateForm()
+  1061→                  setFormType('WhatsApp')
+  1062→                  setFormTargetGroup('All')
+  1063→                  setFormName('Collection Ready Notification')
+  1064→                  setFormMessage('Dear {customer_name},\n\n✅ Your eyewear order is READY for collection!\n\nPlease visit us at Lotus Vision Opticals, Sankarankovil at your earliest convenience.\n\nThank you for choosing us!\n- Lotus Vision Opticals')
+  1065→                  setCreateDialogOpen(true)
+  1066→                }}
+  1067→              >
+  1068→                <CheckCircle2 className="size-3.5" />
+  1069→                Notify Customers
+  1070→              </Button>
+  1071→            )}
+  1072→          </CardContent>
+  1073→        </Card>
+  1074→      </div>
+  1075→
+  1076→      {/* Tabs: Campaign List */}
+  1077→      <Tabs value={activeTab} onValueChange={setActiveTab}>
+  1078→        <TabsList>
+  1079→          <TabsTrigger value="campaigns" className="gap-2">
+  1080→            <Megaphone className="size-4" />
+  1081→            All
+  1082→          </TabsTrigger>
+  1083→          <TabsTrigger value="planned" className="gap-2">
+  1084→            <Clock className="size-4" />
+  1085→            Planned
+  1086→          </TabsTrigger>
+  1087→          <TabsTrigger value="active" className="gap-2">
+  1088→            <CheckCircle2 className="size-4" />
+  1089→            Active
+  1090→          </TabsTrigger>
+  1091→          <TabsTrigger value="completed" className="gap-2">
+  1092→            <BarChart3 className="size-4" />
+  1093→            Completed
+  1094→          </TabsTrigger>
+  1095→          <TabsTrigger value="cancelled" className="gap-2">
+  1096→            <XCircle className="size-4" />
+  1097→            Cancelled
+  1098→          </TabsTrigger>
+  1099→          <TabsTrigger value="analytics" className="gap-2">
+  1100→            <BarChart3 className="size-4" />
+  1101→            Analytics
+  1102→          </TabsTrigger>
+  1103→        </TabsList>
+  1104→
+  1105→        <TabsContent value="campaigns">
+  1106→          <CampaignTable
+  1107→            campaigns={campaigns}
+  1108→            onEdit={openEditDialog}
+  1109→            onDelete={handleDeleteCampaign}
+  1110→            emptyMessage="No campaigns yet. Create your first campaign!"
+  1111→          />
+  1112→        </TabsContent>
+  1113→        <TabsContent value="planned">
+  1114→          <CampaignTable
+  1115→            campaigns={campaigns.filter((c) => c.status === 'Planned' || c.status === 'Draft' || c.status === 'Scheduled')}
+  1116→            onEdit={openEditDialog}
+  1117→            onDelete={handleDeleteCampaign}
+  1118→            emptyMessage="No planned campaigns."
+  1119→          />
+  1120→        </TabsContent>
+  1121→        <TabsContent value="active">
+  1122→          <CampaignTable
+  1123→            campaigns={campaigns.filter((c) => c.status === 'Active' || c.status === 'Sent')}
+  1124→            onEdit={openEditDialog}
+  1125→            onDelete={handleDeleteCampaign}
+  1126→            emptyMessage="No active campaigns."
+  1127→          />
+  1128→        </TabsContent>
+  1129→        <TabsContent value="completed">
+  1130→          <CampaignTable
+  1131→            campaigns={campaigns.filter((c) => c.status === 'Completed')}
+  1132→            onEdit={openEditDialog}
+  1133→            onDelete={handleDeleteCampaign}
+  1134→            emptyMessage="No completed campaigns."
+  1135→          />
+  1136→        </TabsContent>
+  1137→        <TabsContent value="cancelled">
+  1138→          <CampaignTable
+  1139→            campaigns={campaigns.filter((c) => c.status === 'Cancelled' || c.status === 'Failed')}
+  1140→            onEdit={openEditDialog}
+  1141→            onDelete={handleDeleteCampaign}
+  1142→            emptyMessage="No cancelled campaigns."
+  1143→          />
+  1144→        </TabsContent>
+  1145→        <TabsContent value="analytics">
+  1146→          <div className="space-y-6">
+  1147→            {/* ── Summary Cards ──────────────────────────────────── */}
+  1148→            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+  1149→              <Card>
+  1150→                <CardHeader className="pb-2">
+  1151→                  <CardDescription>Total Campaigns</CardDescription>
+  1152→                </CardHeader>
+  1153→                <CardContent>
+  1154→                  <p className="text-2xl font-bold">{totalCampaigns}</p>
+  1155→                </CardContent>
+  1156→              </Card>
+  1157→              <Card>
+  1158→                <CardHeader className="pb-2">
+  1159→                  <CardDescription>Total Sent</CardDescription>
+  1160→                </CardHeader>
+  1161→                <CardContent>
+  1162→                  <p className="text-2xl font-bold">{totalSent.toLocaleString()}</p>
+  1163→                </CardContent>
+  1164→              </Card>
+  1165→              <Card>
+  1166→                <CardHeader className="pb-2">
+  1167→                  <CardDescription>Total Reach</CardDescription>
+  1168→                </CardHeader>
+  1169→                <CardContent>
+  1170→                  <p className="text-2xl font-bold">{totalReach.toLocaleString()}</p>
+  1171→                </CardContent>
+  1172→              </Card>
+  1173→              <Card>
+  1174→                <CardHeader className="pb-2">
+  1175→                  <CardDescription>Avg ROI</CardDescription>
+  1176→                </CardHeader>
+  1177→                <CardContent>
+  1178→                  <p className="text-2xl font-bold">{avgROI.toFixed(1)}%</p>
+  1179→                </CardContent>
+  1180→              </Card>
+  1181→            </div>
+  1182→
+  1183→            {/* ── Performance Table ──────────────────────────────── */}
+  1184→            <Card>
+  1185→              <CardHeader>
+  1186→                <CardTitle className="text-base">Campaign Performance</CardTitle>
+  1187→              </CardHeader>
+  1188→              <CardContent>
+  1189→                <Table>
+  1190→                  <TableHeader>
+  1191→                    <TableRow>
+  1192→                      <TableHead>Campaign Name</TableHead>
+  1193→                      <TableHead>Type</TableHead>
+  1194→                      <TableHead>Sent Count</TableHead>
+  1195→                      <TableHead>Reach</TableHead>
+  1196→                      <TableHead>Status</TableHead>
+  1197→                      <TableHead>Created Date</TableHead>
+  1198→                    </TableRow>
+  1199→                  </TableHeader>
+  1200→                  <TableBody>
+  1201→                    {analyticsData.length === 0 ? (
+  1202→                      <TableRow>
+  1203→                        <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+  1204→                          No campaign data available.
+  1205→                        </TableCell>
+  1206→                      </TableRow>
+  1207→                    ) : (
+  1208→                      analyticsData.map((campaign) => {
+  1209→                        const status = statusConfig[campaign.status]
+  1210→                        return (
+  1211→                          <TableRow key={campaign.id}>
+  1212→                            <TableCell className="font-medium">{campaign.name}</TableCell>
+  1213→                            <TableCell>{campaign.type}</TableCell>
+  1214→                            <TableCell>{campaign.sentCount.toLocaleString()}</TableCell>
+  1215→                            <TableCell>{campaign.reach.toLocaleString()}</TableCell>
+  1216→                            <TableCell>
+  1217→                              <Badge variant="outline" className={status?.className ?? ''}>
+  1218→                                {status?.label ?? campaign.status}
+  1219→                              </Badge>
+  1220→                            </TableCell>
+  1221→                            <TableCell>{new Date(campaign.createdAt).toLocaleDateString()}</TableCell>
+  1222→                          </TableRow>
+  1223→                        )
+  1224→                      })
+  1225→                    )}
+  1226→                  </TableBody>
+  1227→                </Table>
+  1228→              </CardContent>
+  1229→            </Card>
+  1230→
+  1231→            {/* ── Bar Visualization ──────────────────────────────── */}
+  1232→            <Card>
+  1233→              <CardHeader>
+  1234→                <CardTitle className="text-base">Sent Count per Campaign</CardTitle>
+  1235→              </CardHeader>
+  1236→              <CardContent>
+  1237→                {analyticsData.length === 0 ? (
+  1238→                  <p className="text-center text-muted-foreground py-8">No data to visualize.</p>
+  1239→                ) : (
+  1240→                  <div className="space-y-3">
+  1241→                    {analyticsData.map((campaign) => (
+  1242→                      <div key={campaign.id} className="flex items-center gap-3">
+  1243→                        <span className="text-sm text-muted-foreground w-36 truncate shrink-0" title={campaign.name}>
+  1244→                          {campaign.name}
+  1245→                        </span>
+  1246→                        <div className="flex-1 bg-muted rounded-full h-6 overflow-hidden">
+  1247→                          <div
+  1248→                            className="h-full bg-primary rounded-full flex items-center justify-end px-2 transition-all"
+  1249→                            style={{ width: `${Math.max((campaign.sentCount / maxSent) * 100, 4)}%` }}
+  1250→                          >
+  1251→                            <span className="text-xs font-medium text-primary-foreground">
+  1252→                              {campaign.sentCount.toLocaleString()}
+  1253→                            </span>
+  1254→                          </div>
+  1255→                        </div>
+  1256→                      </div>
+  1257→                    ))}
+  1258→                  </div>
+  1259→                )}
+  1260→              </CardContent>
+  1261→            </Card>
+  1262→          </div>
+  1263→        </TabsContent>
+  1264→      </Tabs>
+  1265→
+  1266→      {/* ── Edit Campaign Dialog ──────────────────────────────────── */}
+  1267→      <Dialog open={editDialogOpen} onOpenChange={(open) => { setEditDialogOpen(open); if (!open) setEditingCampaign(null) }}>
+  1268→        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+  1269→          <DialogHeader>
+  1270→            <DialogTitle>Edit Campaign</DialogTitle>
+  1271→            <DialogDescription>Update campaign details below.</DialogDescription>
+  1272→          </DialogHeader>
+  1273→
+  1274→          <div className="grid gap-5 py-2">
+  1275→            <div className="space-y-2">
+  1276→              <Label htmlFor="edit-name">Campaign Name</Label>
+  1277→              <Input id="edit-name" value={editName} onChange={(e) => setEditName(e.target.value)} />
+  1278→            </div>
+  1279→
+  1280→            <div className="grid grid-cols-2 gap-4">
+  1281→              <div className="space-y-2">
+  1282→                <Label>Type</Label>
+  1283→                <Select value={editType} onValueChange={setEditType}>
+  1284→                  <SelectTrigger className="w-full">
+  1285→                    <SelectValue />
+  1286→                  </SelectTrigger>
+  1287→                  <SelectContent>
+  1288→                    {Object.entries(typeConfig).map(([key, config]) => (
+  1289→                      <SelectItem key={key} value={key}>{config.label}</SelectItem>
+  1290→                    ))}
+  1291→                  </SelectContent>
+  1292→                </Select>
+  1293→              </div>
+  1294→              <div className="space-y-2">
+  1295→                <Label>Status</Label>
+  1296→                <Select value={editStatus} onValueChange={setEditStatus}>
+  1297→                  <SelectTrigger className="w-full">
+  1298→                    <SelectValue />
+  1299→                  </SelectTrigger>
+  1300→                  <SelectContent>
+  1301→                    <SelectItem value="Planned">Planned</SelectItem>
+  1302→                    <SelectItem value="Active">Active</SelectItem>
+  1303→                    <SelectItem value="Completed">Completed</SelectItem>
+  1304→                    <SelectItem value="Cancelled">Cancelled</SelectItem>
+  1305→                  </SelectContent>
+  1306→                </Select>
+  1307→              </div>
+  1308→            </div>
+  1309→
+  1310→            <div className="grid grid-cols-2 gap-4">
+  1311→              <div className="space-y-2">
+  1312→                <Label htmlFor="edit-budget">Budget (₹)</Label>
+  1313→                <Input id="edit-budget" type="number" min="0" value={editBudget} onChange={(e) => setEditBudget(e.target.value)} />
+  1314→              </div>
+  1315→              <div className="space-y-2">
+  1316→                <Label htmlFor="edit-reach">Expected Reach</Label>
+  1317→                <Input id="edit-reach" type="number" min="0" value={editReach} onChange={(e) => setEditReach(e.target.value)} />
+  1318→              </div>
+  1319→            </div>
+  1320→
+  1321→            <div className="space-y-2">
+  1322→              <Label htmlFor="edit-message">Message / Content</Label>
+  1323→              <Textarea id="edit-message" value={editMessage} onChange={(e) => setEditMessage(e.target.value)} rows={5} className="resize-none" />
+  1324→              <p className="text-xs text-muted-foreground">{editMessage.length}/500 characters</p>
+  1325→            </div>
+  1326→
+  1327→            <div className="space-y-2">
+  1328→              <Label>Preview</Label>
+  1329→              {renderPreview(editMessage, editType)}
+  1330→            </div>
+  1331→          </div>
+  1332→
+  1333→          <DialogFooter>
+  1334→            <Button variant="outline" onClick={() => { setEditDialogOpen(false); setEditingCampaign(null) }}>
+  1335→              Cancel
+  1336→            </Button>
+  1337→            <Button onClick={handleEditSubmit} disabled={!editName.trim() || !editMessage.trim() || submitting}>
+  1338→              {submitting && <span className="size-4 animate-spin inline-block border-2 border-current border-t-transparent rounded-full mr-2" />}
+  1339→              <Pencil className="size-4 mr-2" />
+  1340→              Save Changes
+  1341→            </Button>
+  1342→          </DialogFooter>
+  1343→        </DialogContent>
+  1344→      </Dialog>
+  1345→    </div>
+  1346→  )
+  1347→}
+  1348→
+  1349→// ─────────────────────────────────────────────────────────
+  1350→// Campaign Table Sub-component
+  1351→// ─────────────────────────────────────────────────────────
+  1352→interface CampaignTableProps {
+  1353→  campaigns: Campaign[]
+  1354→  onEdit: (campaign: Campaign) => void
+  1355→  onDelete: (id: string) => void
+  1356→  emptyMessage: string
+  1357→}
+  1358→
+  1359→function CampaignTable({ campaigns, onEdit, onDelete, emptyMessage }: CampaignTableProps) {
+  1360→  if (campaigns.length === 0) {
+  1361→    return (
+  1362→      <Card>
+  1363→        <CardContent className="flex flex-col items-center justify-center py-12 gap-3">
+  1364→          <div className="flex items-center justify-center size-12 rounded-full bg-muted">
+  1365→            <Megaphone className="size-6 text-muted-foreground" />
+  1366→          </div>
+  1367→          <p className="text-muted-foreground text-sm">{emptyMessage}</p>
+  1368→        </CardContent>
+  1369→      </Card>
+  1370→    )
+  1371→  }
+  1372→
+  1373→  return (
+  1374→    <Card>
+  1375→      <CardContent className="p-0">
+  1376→        <div className="overflow-x-auto">
+  1377→          <Table>
+  1378→            <TableHeader>
+  1379→              <TableRow>
+  1380→                <TableHead className="w-[160px]">Name</TableHead>
+  1381→                <TableHead className="w-[100px]">Type</TableHead>
+  1382→                <TableHead className="min-w-[160px]">Message</TableHead>
+  1383→                <TableHead className="w-[100px]">Status</TableHead>
+  1384→                <TableHead className="w-[100px] text-right">Budget</TableHead>
+  1385→                <TableHead className="w-[80px] text-right">Reach</TableHead>
+  1386→                <TableHead className="w-[100px]">Target</TableHead>
+  1387→                <TableHead className="w-[100px]">Scheduled</TableHead>
+  1388→                <TableHead className="w-[80px] text-center">Sent</TableHead>
+  1389→                <TableHead className="w-[80px] text-right">Actions</TableHead>
+  1390→              </TableRow>
+  1391→            </TableHeader>
+  1392→            <TableBody>
+  1393→              {campaigns.map((campaign) => (
+  1394→                <TableRow key={campaign.id}>
+  1395→                  <TableCell>
+  1396→                    <div className="font-medium text-sm">{campaign.name}</div>
+  1397→                  </TableCell>
+  1398→                  <TableCell>
+  1399→                    <Badge variant="outline" className={typeConfig[campaign.type]?.className}>
+  1400→                      {typeConfig[campaign.type]?.label || campaign.type}
+  1401→                    </Badge>
+  1402→                  </TableCell>
+  1403→                  <TableCell>
+  1404→                    <p className="text-sm text-muted-foreground max-w-[200px] truncate">
+  1405→                      {truncate(campaign.message, 50)}
+  1406→                    </p>
+  1407→                  </TableCell>
+  1408→                  <TableCell>
+  1409→                    <Badge variant="outline" className={statusConfig[campaign.status]?.className}>
+  1410→                      {statusConfig[campaign.status]?.label || campaign.status}
+  1411→                    </Badge>
+  1412→                  </TableCell>
+  1413→                  <TableCell className="text-right font-mono text-sm">
+  1414→                    {campaign.budget ? formatCurrency(campaign.budget) : '—'}
+  1415→                  </TableCell>
+  1416→                  <TableCell className="text-right font-mono text-sm">
+  1417→                    {campaign.reach ? campaign.reach.toLocaleString() : '—'}
+  1418→                  </TableCell>
+  1419→                  <TableCell className="text-sm text-muted-foreground">
+  1420→                    {campaign.targetGroup || '—'}
+  1421→                  </TableCell>
+  1422→                  <TableCell>
+  1423→                    <span className="text-xs text-muted-foreground">{formatDate(campaign.scheduledAt)}</span>
+  1424→                  </TableCell>
+  1425→                  <TableCell className="text-center">
+  1426→                    <span className="text-sm font-medium">{campaign.sentCount}</span>
+  1427→                  </TableCell>
+  1428→                  <TableCell className="text-right">
+  1429→                    <div className="flex items-center justify-end gap-1">
+  1430→                      <Button
+  1431→                        variant="ghost"
+  1432→                        size="icon"
+  1433→                        className="size-8"
+  1434→                        title="Edit"
+  1435→                        onClick={() => onEdit(campaign)}
+  1436→                      >
+  1437→                        <Pencil className="size-3.5" />
+  1438→                        <span className="sr-only">Edit</span>
+  1439→                      </Button>
+  1440→                      <Button
+  1441→                        variant="ghost"
+  1442→                        size="icon"
+  1443→                        className="size-8 text-destructive hover:text-destructive"
+  1444→                        title="Delete"
+  1445→                        onClick={() => onDelete(campaign.id)}
+  1446→                      >
+  1447→                        <Trash2 className="size-3.5" />
+  1448→                        <span className="sr-only">Delete</span>
+  1449→                      </Button>
+  1450→                    </div>
+  1451→                  </TableCell>
+  1452→                </TableRow>
+  1453→              ))}
+  1454→            </TableBody>
+  1455→          </Table>
+  1456→        </div>
+  1457→      </CardContent>
+  1458→    </Card>
+  1459→  )
+  1460→}

@@ -6,7 +6,6 @@ import {
   Plus,
   Send,
   Clock,
-  FileEdit,
   Trash2,
   AlertTriangle,
   PackageCheck,
@@ -389,9 +388,13 @@ export default function Campaigns() {
         await fetchCampaigns()
         setCreateDialogOpen(false)
         resetCreateForm()
+        toast.success('Campaign created successfully')
+      } else {
+        const err = await res.json().catch(() => ({ error: 'Failed' }))
+        toast.error(err.error || 'Failed to create campaign')
       }
     } catch {
-      // silently fail
+      toast.error('Network error while creating campaign')
     } finally {
       setSubmitting(false)
     }
@@ -437,9 +440,12 @@ export default function Campaigns() {
         await fetchCampaigns()
         setEditDialogOpen(false)
         setEditingCampaign(null)
+        toast.success('Campaign updated')
+      } else {
+        toast.error('Failed to update campaign')
       }
     } catch {
-      // silently fail
+      toast.error('Network error while updating campaign')
     } finally {
       setSubmitting(false)
     }
@@ -450,9 +456,12 @@ export default function Campaigns() {
       const res = await fetch(`/api/campaigns/${id}`, { method: 'DELETE' })
       if (res.ok) {
         await fetchCampaigns()
+        toast.success('Campaign deleted')
+      } else {
+        toast.error('Failed to delete campaign')
       }
     } catch {
-      // silently fail
+      toast.error('Network error while deleting campaign')
     }
   }
 

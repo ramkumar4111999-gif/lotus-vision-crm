@@ -653,8 +653,7 @@ export default function Customers() {
       setPrescriptionDialogOpen(false);
       fetchCustomerDetails(selectedCustomer.id);
     } catch (err) {
-      // Could show toast here; for now just log
-      console.error(err);
+      toast.error(err instanceof Error ? err.message : 'Failed to save prescription');
     } finally {
       setPrescriptionSubmitting(false);
     }
@@ -686,7 +685,7 @@ export default function Customers() {
       setVisitDialogOpen(false);
       fetchCustomerDetails(selectedCustomer.id);
     } catch (err) {
-      console.error(err);
+      toast.error(err instanceof Error ? err.message : 'Failed to save visit');
     } finally {
       setVisitSubmitting(false);
     }
@@ -760,7 +759,7 @@ export default function Customers() {
       const result = await res.json();
       toast.success(`Imported ${result.imported} customers${result.skipped > 0 ? `, ${result.skipped} skipped` : ''}`);
       if (result.errors?.length) {
-        console.warn('Import errors:', result.errors);
+        toast.warning(`${result.errors.length} row(s) had errors and were skipped`);
       }
       fetchCustomers();
     } catch (err) {
