@@ -1,0 +1,1077 @@
+     1→'use client';
+     2→
+     3→import { useEffect, useState, useCallback, useRef } from 'react';
+     4→import {
+     5→  LayoutDashboard, Users, Package, Receipt, FlaskConical, CalendarDays, Wallet,
+     6→  BarChart3, UserCog, Megaphone, Menu, Moon, Sun, LogOut, X, Search,
+     7→  Database, CheckCircle2, PackageX, UserPlus, Clock, AlertTriangle, Settings,
+     8→  Loader, Download, Upload, AlertOctagon, IndianRupee, TrendingUp, PackageSearch, ChevronDown, ChevronUp,
+     9→  ShoppingCart, Calculator, Eye,
+    10→} from 'lucide-react';
+    11→import { Button } from '@/components/ui/button';
+    12→import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+    13→import { Input } from '@/components/ui/input';
+    14→import { Label } from '@/components/ui/label';
+    15→import { ScrollArea } from '@/components/ui/scroll-area';
+    16→import { Badge } from '@/components/ui/badge';
+    17→import { Separator } from '@/components/ui/separator';
+    18→import {
+    19→  Tooltip, TooltipContent, TooltipTrigger,
+    20→} from '@/components/ui/tooltip';
+    21→import {
+    22→  DropdownMenu,
+    23→  DropdownMenuContent,
+    24→  DropdownMenuGroup,
+    25→  DropdownMenuItem,
+    26→  DropdownMenuLabel,
+    27→  DropdownMenuSeparator,
+    28→  DropdownMenuTrigger,
+    29→} from '@/components/ui/dropdown-menu';
+    30→import {
+    31→  Dialog,
+    32→  DialogContent,
+    33→  DialogHeader,
+    34→  DialogTitle,
+    35→  DialogDescription,
+    36→  DialogFooter,
+    37→} from '@/components/ui/dialog';
+    38→import { CrmProvider, useCrmStore, type SectionKey } from '@/components/crm/store';
+    39→import { getSettings, saveSettings, type CrmSettings } from '@/lib/settings';
+    40→import { toast } from 'sonner';
+    41→import { ErrorBoundary } from '@/components/error-boundary';
+    42→import Dashboard from '@/components/crm/dashboard';
+    43→import Customers from '@/components/crm/customers';
+    44→import Inventory from '@/components/crm/inventory';
+    45→import Sales from '@/components/crm/sales';
+    46→import LabOrders from '@/components/crm/lab-orders';
+    47→import Appointments from '@/components/crm/appointments';
+    48→import Accounting from '@/components/crm/accounting';
+    49→import Reports from '@/components/crm/reports';
+    50→import Staff from '@/components/crm/staff';
+    51→import Campaigns from '@/components/crm/campaigns';
+    52→import Notifications from '@/components/crm/notifications';
+    53→import PurchaseOrders from '@/components/crm/purchase-orders';
+    54→import LensCalculator from '@/components/crm/lens-calculator';
+    55→
+    56→// ─── Navigation config ─────────────────────────────────────────────────
+    57→
+    58→interface NavItem {
+    59→  key: SectionKey;
+    60→  label: string;
+    61→  icon: React.ElementType;
+    62→}
+    63→
+    64→const NAV_ITEMS: NavItem[] = [
+    65→  { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    66→  { key: 'customers', label: 'Customers', icon: Users },
+    67→  { key: 'sales', label: 'Sales', icon: Receipt },
+    68→  { key: 'inventory', label: 'Inventory', icon: Package },
+    69→  { key: 'appointments', label: 'Appointments', icon: CalendarDays },
+    70→  { key: 'lab-orders', label: 'Lab Orders', icon: FlaskConical },
+    71→  { key: 'accounting', label: 'Accounting', icon: Wallet },
+    72→  { key: 'reports', label: 'Reports', icon: BarChart3 },
+    73→  { key: 'staff', label: 'Staff', icon: UserCog },
+    74→  { key: 'campaigns', label: 'Campaigns', icon: Megaphone },
+    75→  { key: 'purchase-orders', label: 'Purchase Orders', icon: ShoppingCart },
+    76→  { key: 'lens-calculator', label: 'Lens Calculator', icon: Calculator },
+    77→];
+    78→
+    79→// ─── Mock notifications ────────────────────────────────────────────────
+    80→
+    81→// Notifications are now real — see src/components/crm/notifications.tsx
+    82→
+    83→// ─── Section renderer with transition ─────────────────────────────────
+    84→
+    85→function SectionRenderer() {
+    86→  const { activeSection, setLoadingBar } = useCrmStore();
+    87→
+    88→  const sectionMap: Record<SectionKey, React.ComponentType> = {
+    89→    dashboard: Dashboard,
+    90→    customers: Customers,
+    91→    sales: Sales,
+    92→    inventory: Inventory,
+    93→    appointments: Appointments,
+    94→    'lab-orders': LabOrders,
+    95→    accounting: Accounting,
+    96→    reports: Reports,
+    97→    staff: Staff,
+    98→    campaigns: Campaigns,
+    99→    'purchase-orders': PurchaseOrders,
+   100→    'lens-calculator': LensCalculator,
+   101→  };
+   102→
+   103→  const Component = sectionMap[activeSection] ?? Dashboard;
+   104→
+   105→  useEffect(() => {
+   106→    setLoadingBar(true);
+   107→    const timer = setTimeout(() => setLoadingBar(false), 800);
+   108→    return () => clearTimeout(timer);
+   109→  }, [activeSection, setLoadingBar]);
+   110→
+   111→  return (
+   112→    <div key={activeSection} className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+   113→      <Component />
+   114→    </div>
+   115→  );
+   116→}
+   117→
+   118→// ─── Sidebar (Desktop) ─────────────────────────────────────────────────
+   119→
+   120→function Sidebar({ onNav }: { onNav?: () => void }) {
+   121→  const { activeSection, setActiveSection, darkMode, toggleDarkMode } = useCrmStore();
+   122→  const [isSeeding, setIsSeeding] = useState(false);
+   123→  const [seedDone, setSeedDone] = useState(false);
+   124→
+   125→  // Quick stats for mobile sidebar
+   126→  const [quickStats, setQuickStats] = useState({ todaySales: 0, pendingLab: 0, lowStock: 0, dueAmount: 0 });
+   127→  const [statsLoaded, setStatsLoaded] = useState(false);
+   128→
+   129→  useEffect(() => {
+   130→    let cancelled = false;
+   131→    (async () => {
+   132→      try {
+   133→        const today = new Date().toISOString().split('T')[0];
+   134→        const [salesRes, labRes, lowStockRes, duesRes] = await Promise.allSettled([
+   135→          fetch(`/api/sales?fromDate=${today}&toDate=${today}&limit=999`),
+   136→          fetch('/api/lab-orders?status=Pending'),
+   137→          fetch('/api/products/low-stock'),
+   138→          fetch('/api/dues'),
+   139→        ]);
+   140→        if (cancelled) return;
+   141→
+   142→        let todaySales = 0;
+   143→        if (salesRes.status === 'fulfilled' && salesRes.value.ok) {
+   144→          const data = await salesRes.value.json();
+   145→          const list = Array.isArray(data.sales) ? data.sales : [];
+   146→          todaySales = list.reduce((sum: number, s: { total: number }) => sum + (s.total || 0), 0);
+   147→        }
+   148→
+   149→        let pendingLab = 0;
+   150→        if (labRes.status === 'fulfilled' && labRes.value.ok) {
+   151→          const data = await labRes.value.json();
+   152→          pendingLab = Array.isArray(data.data) ? data.data.length : Array.isArray(data) ? data.length : 0;
+   153→        }
+   154→
+   155→        let lowStock = 0;
+   156→        if (lowStockRes.status === 'fulfilled' && lowStockRes.value.ok) {
+   157→          const data = await lowStockRes.value.json();
+   158→          lowStock = Array.isArray(data.products) ? data.products.length : Array.isArray(data) ? data.length : 0;
+   159→        }
+   160→
+   161→        let dueAmount = 0;
+   162→        if (duesRes.status === 'fulfilled' && duesRes.value.ok) {
+   163→          const data = await duesRes.value.json();
+   164→          const list = Array.isArray(data.data) ? data.data : [];
+   165→          dueAmount = list.reduce((sum: number, d: { amount: number; paid: number }) => sum + ((d.amount || 0) - (d.paid || 0)), 0);
+   166→        }
+   167→
+   168→        if (!cancelled) {
+   169→          setQuickStats({ todaySales, pendingLab, lowStock, dueAmount });
+   170→          setStatsLoaded(true);
+   171→        }
+   172→      } catch {
+   173→        // silent
+   174→      }
+   175→    })();
+   176→    return () => { cancelled = true; };
+   177→  }, []);
+   178→
+   179→  const handleSeed = useCallback(async () => {
+   180→    setIsSeeding(true);
+   181→    try {
+   182→      const res = await fetch('/api/seed', { method: 'POST' });
+   183→      if (res.ok) {
+   184→        setSeedDone(true);
+   185→        setTimeout(() => setSeedDone(false), 3000);
+   186→      }
+   187→    } catch { /* ignore */ }
+   188→    setIsSeeding(false);
+   189→  }, []);
+   190→
+   191→  return (
+   192→    <div className="flex h-full flex-col bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800">
+   193→      {/* Brand */}
+   194→      <div className="flex items-center gap-3 px-5 py-5">
+   195→        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white font-bold text-sm shadow-lg shadow-emerald-200 dark:shadow-emerald-900/40">
+   196→          SKO
+   197→        </div>
+   198→        <div className="flex flex-col">
+   199→          <span className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight">
+   200→            Sankaran Kovil
+   201→          </span>
+   202→          <span className="text-xs text-slate-500 dark:text-slate-400 leading-tight">
+   203→            Opticals CRM
+   204→          </span>
+   205→        </div>
+   206→      </div>
+   207→
+   208→      <Separator />
+   209→
+   210→      {/* Nav items */}
+   211→      <ScrollArea className="flex-1 px-3 py-3">
+   212→        {/* Quick Stats - visible on mobile sidebar */}
+   213→        {statsLoaded && (
+   214→          <div className="mb-3 lg:hidden">
+   215→            <button
+   216→              className="w-full flex items-center justify-between rounded-lg bg-emerald-50 dark:bg-emerald-950/30 px-3 py-2 text-xs font-medium text-emerald-700 dark:text-emerald-400"
+   217→              onClick={(e) => {
+   218→                const el = e.currentTarget.nextElementSibling;
+   219→                if (el) el.classList.toggle('hidden');
+   220→              }}
+   221→            >
+   222→              <span className="flex items-center gap-1.5">
+   223→                <TrendingUp className="h-3.5 w-3.5" />
+   224→                Quick Stats
+   225→              </span>
+   226→              <ChevronDown className="h-3.5 w-3.5" />
+   227→            </button>
+   228→            <div className="mt-2 grid grid-cols-2 gap-2">
+   229→              <div className="rounded-md bg-white dark:bg-slate-800 border dark:border-slate-700 p-2.5">
+   230→                <p className="text-[10px] text-muted-foreground leading-tight">Today&apos;s Sales</p>
+   231→                <p className="text-sm font-bold font-mono text-emerald-600 dark:text-emerald-400">
+   232→                  ₹{quickStats.todaySales.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+   233→                </p>
+   234→              </div>
+   235→              <div className="rounded-md bg-white dark:bg-slate-800 border dark:border-slate-700 p-2.5">
+   236→                <p className="text-[10px] text-muted-foreground leading-tight">Pending Lab</p>
+   237→                <p className="text-sm font-bold font-mono text-amber-600 dark:text-amber-400">
+   238→                  {quickStats.pendingLab}
+   239→                </p>
+   240→              </div>
+   241→              <div className="rounded-md bg-white dark:bg-slate-800 border dark:border-slate-700 p-2.5">
+   242→                <p className="text-[10px] text-muted-foreground leading-tight">Low Stock</p>
+   243→                <p className="text-sm font-bold font-mono text-red-600 dark:text-red-400">
+   244→                  {quickStats.lowStock}
+   245→                </p>
+   246→              </div>
+   247→              <div className="rounded-md bg-white dark:bg-slate-800 border dark:border-slate-700 p-2.5">
+   248→                <p className="text-[10px] text-muted-foreground leading-tight">Due Amount</p>
+   249→                <p className="text-sm font-bold font-mono text-orange-600 dark:text-orange-400">
+   250→                  ₹{quickStats.dueAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+   251→                </p>
+   252→              </div>
+   253→            </div>
+   254→          </div>
+   255→        )}
+   256→
+   257→        <nav className="flex flex-col gap-1">
+   258→          {NAV_ITEMS.map((item) => {
+   259→            const Icon = item.icon;
+   260→            const isActive = activeSection === item.key;
+   261→            return (
+   262→              <Tooltip key={item.key}>
+   263→                <TooltipTrigger asChild>
+   264→                  <button
+   265→                    onClick={() => {
+   266→                      setActiveSection(item.key);
+   267→                      onNav?.();
+   268→                    }}
+   269→                    className={`
+   270→                      flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150
+   271→                      ${isActive
+   272→                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200 dark:shadow-emerald-900/40'
+   273→                        : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
+   274→                      }
+   275→                    `}
+   276→                  >
+   277→                    <Icon className="h-4.5 w-4.5 shrink-0" />
+   278→                    <span>{item.label}</span>
+   279→                    {item.key === 'lab-orders' && (
+   280→                      <Badge variant="secondary" className="ml-auto bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400 text-[10px] px-1.5">
+   281→                        3
+   282→                      </Badge>
+   283→                    )}
+   284→                  </button>
+   285→                </TooltipTrigger>
+   286→                <TooltipContent side="right" className="lg:hidden">
+   287→                  {item.label}
+   288→                </TooltipContent>
+   289→              </Tooltip>
+   290→            );
+   291→          })}
+   292→        </nav>
+   293→      </ScrollArea>
+   294→
+   295→      <Separator />
+   296→
+   297→      {/* Footer */}
+   298→      <div className="p-3 space-y-1">
+   299→        {/* Seed Database button */}
+   300→        <Button
+   301→          variant="ghost"
+   302→          size="sm"
+   303→          onClick={handleSeed}
+   304→          disabled={isSeeding}
+   305→          className="w-full justify-start gap-2 px-3 text-xs text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+   306→        >
+   307→          {isSeeding ? (
+   308→            <Database className="h-3.5 w-3.5 animate-pulse" />
+   309→          ) : seedDone ? (
+   310→            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+   311→          ) : (
+   312→            <Database className="h-3.5 w-3.5" />
+   313→          )}
+   314→          {isSeeding ? 'Seeding...' : seedDone ? 'Database Seeded!' : 'Seed Database'}
+   315→        </Button>
+   316→
+   317→        <button
+   318→          onClick={toggleDarkMode}
+   319→          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
+   320→        >
+   321→          {darkMode ? <Sun className="h-4.5 w-4.5" /> : <Moon className="h-4.5 w-4.5" />}
+   322→          {darkMode ? 'Light Mode' : 'Dark Mode'}
+   323→        </button>
+   324→        <div className="flex items-center gap-3 px-3 py-2">
+   325→          <Avatar className="h-8 w-8">
+   326→            <AvatarFallback className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 text-xs font-semibold">
+   327→              RK
+   328→            </AvatarFallback>
+   329→          </Avatar>
+   330→          <div className="flex-1 min-w-0">
+   331→            <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">Ram Kumar</p>
+   332→            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">Owner</p>
+   333→          </div>
+   334→          <button className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+   335→            <LogOut className="h-4 w-4" />
+   336→          </button>
+   337→        </div>
+   338→      </div>
+   339→    </div>
+   340→  );
+   341→}
+   342→
+   343→// ─── Global Search ─────────────────────────────────────────────────────
+   344→
+   345→interface SearchResult {
+   346→  type: 'customer' | 'product' | 'sale';
+   347→  id: string;
+   348→  primary: string;
+   349→  secondary: string;
+   350→  tertiary?: string;
+   351→}
+   352→
+   353→function GlobalSearch() {
+   354→  const [query, setQuery] = useState('');
+   355→  const [results, setResults] = useState<SearchResult[]>([]);
+   356→  const [open, setOpen] = useState(false);
+   357→  const [searching, setSearching] = useState(false);
+   358→  const [mobileExpanded, setMobileExpanded] = useState(false);
+   359→  const inputRef = useRef<HTMLInputElement>(null);
+   360→  const containerRef = useRef<HTMLDivElement>(null);
+   361→  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+   362→  const { setActiveSection } = useCrmStore();
+   363→
+   364→  // Expose the ref to the store for keyboard shortcut focus
+   365→  const { setSearchInputRef } = useCrmStore();
+   366→  useEffect(() => {
+   367→    setSearchInputRef(inputRef);
+   368→  }, [inputRef, setSearchInputRef]);
+   369→
+   370→  const doSearch = useCallback(async (q: string) => {
+   371→    if (q.length < 2) {
+   372→      setResults([]);
+   373→      setOpen(false);
+   374→      return;
+   375→    }
+   376→    setSearching(true);
+   377→    try {
+   378→      const [custRes, prodRes, saleRes] = await Promise.allSettled([
+   379→        fetch(`/api/customers?search=${encodeURIComponent(q)}&limit=5`),
+   380→        fetch(`/api/products?search=${encodeURIComponent(q)}&pageSize=5`),
+   381→        fetch(`/api/sales?search=${encodeURIComponent(q)}&limit=5`),
+   382→      ]);
+   383→
+   384→      const found: SearchResult[] = [];
+   385→
+   386→      if (custRes.status === 'fulfilled' && custRes.value.ok) {
+   387→        const data = await custRes.value.json();
+   388→        const list = Array.isArray(data.data) ? data.data : [];
+   389→        list.forEach((c: { id: string; name: string; phone: string }) => {
+   390→          found.push({ type: 'customer', id: c.id, primary: c.name, secondary: c.phone });
+   391→        });
+   392→      }
+   393→
+   394→      if (prodRes.status === 'fulfilled' && prodRes.value.ok) {
+   395→        const data = await prodRes.value.json();
+   396→        const list = Array.isArray(data.products) ? data.products : [];
+   397→        list.forEach((p: { id: string; name: string; price: number; stock: number }) => {
+   398→          found.push({
+   399→            type: 'product',
+   400→            id: p.id,
+   401→            primary: p.name,
+   402→            secondary: `₹${p.price.toLocaleString('en-IN')}`,
+   403→            tertiary: `Stock: ${p.stock}`,
+   404→          });
+   405→        });
+   406→      }
+   407→
+   408→      if (saleRes.status === 'fulfilled' && saleRes.value.ok) {
+   409→        const data = await saleRes.value.json();
+   410→        const list = Array.isArray(data.sales) ? data.sales : [];
+   411→        list.forEach((s: { id: string; invoiceNo: string; customerName: string; total: number }) => {
+   412→          found.push({
+   413→            type: 'sale',
+   414→            id: s.id,
+   415→            primary: s.invoiceNo,
+   416→            secondary: s.customerName,
+   417→            tertiary: `₹${s.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+   418→          });
+   419→        });
+   420→      }
+   421→
+   422→      setResults(found);
+   423→      setOpen(found.length > 0);
+   424→    } catch {
+   425→      // ignore
+   426→    } finally {
+   427→      setSearching(false);
+   428→    }
+   429→  }, []);
+   430→
+   431→  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+   432→    const val = e.target.value;
+   433→    setQuery(val);
+   434→    if (debounceRef.current) clearTimeout(debounceRef.current);
+   435→    debounceRef.current = setTimeout(() => doSearch(val), 300);
+   436→  }, [doSearch]);
+   437→
+   438→  const handleSelect = useCallback((result: SearchResult) => {
+   439→    const sectionMap: Record<string, SectionKey> = {
+   440→      customer: 'customers',
+   441→      product: 'inventory',
+   442→      sale: 'sales',
+   443→    };
+   444→    setActiveSection(sectionMap[result.type] ?? 'dashboard');
+   445→    setQuery('');
+   446→    setOpen(false);
+   447→    setMobileExpanded(false);
+   448→  }, [setActiveSection]);
+   449→
+   450→  // Close on click outside
+   451→  useEffect(() => {
+   452→    function handleClick(e: MouseEvent) {
+   453→      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+   454→        setOpen(false);
+   455→        setMobileExpanded(false);
+   456→      }
+   457→    }
+   458→    document.addEventListener('mousedown', handleClick);
+   459→    return () => document.removeEventListener('mousedown', handleClick);
+   460→  }, []);
+   461→
+   462→  // Close on Escape
+   463→  useEffect(() => {
+   464→    function handleKey(e: KeyboardEvent) {
+   465→      if (e.key === 'Escape') {
+   466→        setOpen(false);
+   467→        setMobileExpanded(false);
+   468→        inputRef.current?.blur();
+   469→      }
+   470→    }
+   471→    document.addEventListener('keydown', handleKey);
+   472→    return () => document.removeEventListener('keydown', handleKey);
+   473→  }, []);
+   474→
+   475→  const customers = results.filter((r) => r.type === 'customer');
+   476→  const products = results.filter((r) => r.type === 'product');
+   477→  const sales = results.filter((r) => r.type === 'sale');
+   478→  const hasResults = customers.length > 0 || products.length > 0 || sales.length > 0;
+   479→
+   480→  const typeIcon = (type: string) => {
+   481→    switch (type) {
+   482→      case 'customer': return <Users className="h-3.5 w-3.5 text-emerald-500" />;
+   483→      case 'product': return <Package className="h-3.5 w-3.5 text-sky-500" />;
+   484→      case 'sale': return <Receipt className="h-3.5 w-3.5 text-amber-500" />;
+   485→    }
+   486→  };
+   487→
+   488→  const typeLabel = (type: string) => {
+   489→    switch (type) {
+   490→      case 'customer': return 'Customers';
+   491→      case 'product': return 'Products';
+   492→      case 'sale': return 'Sales';
+   493→    }
+   494→  };
+   495→
+   496→  return (
+   497→    <div ref={containerRef} className="relative">
+   498→      {/* Mobile: icon-only, expandable */}
+   499→      <div className="sm:hidden">
+   500→        {mobileExpanded ? (
+   501→          <div className="flex items-center gap-1">
+   502→            <Input
+   503→              ref={inputRef}
+   504→              placeholder="Search..."
+   505→              value={query}
+   506→              onChange={handleChange}
+   507→              autoFocus
+   508→              className="h-9 w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-sm"
+   509→            />
+   510→            <Button
+   511→              variant="ghost"
+   512→              size="icon"
+   513→              className="shrink-0"
+   514→              onClick={() => { setMobileExpanded(false); setQuery(''); setOpen(false); }}
+   515→            >
+   516→              <X className="h-4 w-4" />
+   517→            </Button>
+   518→          </div>
+   519→        ) : (
+   520→          <Tooltip>
+   521→            <TooltipTrigger asChild>
+   522→              <Button
+   523→                variant="ghost"
+   524→                size="icon"
+   525→                className="shrink-0"
+   526→                onClick={() => setMobileExpanded(true)}
+   527→              >
+   528→                <Search className="h-4.5 w-4.5 text-slate-600 dark:text-slate-400" />
+   529→              </Button>
+   530→            </TooltipTrigger>
+   531→            <TooltipContent>Search (Ctrl+K)</TooltipContent>
+   532→          </Tooltip>
+   533→        )}
+   534→      </div>
+   535→
+   536→      {/* Desktop: full search input */}
+   537→      <div className="hidden sm:block">
+   538→        <Tooltip>
+   539→          <TooltipTrigger asChild>
+   540→            <div className="relative w-64">
+   541→              <Input
+   542→                ref={inputRef}
+   543→                placeholder="Search... (Ctrl+K)"
+   544→                value={query}
+   545→                onChange={handleChange}
+   546→                onFocus={() => { if (results.length > 0) setOpen(true); }}
+   547→                className="h-9 pl-9 pr-8 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-sm"
+   548→              />
+   549→              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+   550→              {searching && (
+   551→                <Loader className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 animate-spin" />
+   552→              )}
+   553→            </div>
+   554→          </TooltipTrigger>
+   555→          <TooltipContent>Ctrl+K to search</TooltipContent>
+   556→        </Tooltip>
+   557→      </div>
+   558→
+   559→      {/* Dropdown */}
+   560→      {open && hasResults && (
+   561→        <div className="absolute right-0 sm:right-auto sm:left-0 top-full mt-1.5 w-[340px] sm:w-80 z-50 rounded-lg border bg-popover shadow-lg max-h-80 overflow-y-auto">
+   562→          {/* Customers group */}
+   563→          {customers.length > 0 && (
+   564→            <div>
+   565→              <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+   566→                <Users className="h-3 w-3" /> Customers
+   567→              </div>
+   568→              {customers.map((r) => (
+   569→                <button
+   570→                  key={`cust-${r.id}`}
+   571→                  className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center gap-2.5 transition-colors"
+   572→                  onClick={() => handleSelect(r)}
+   573→                >
+   574→                  <div className="rounded-full bg-emerald-100 dark:bg-emerald-900/40 p-1.5 shrink-0">
+   575→                    {typeIcon(r.type)}
+   576→                  </div>
+   577→                  <div className="min-w-0 flex-1">
+   578→                    <p className="font-medium truncate">{r.primary}</p>
+   579→                    <p className="text-xs text-muted-foreground truncate">{r.secondary}</p>
+   580→                  </div>
+   581→                </button>
+   582→              ))}
+   583→              {products.length > 0 && <Separator />}
+   584→            </div>
+   585→          )}
+   586→
+   587→          {/* Products group */}
+   588→          {products.length > 0 && (
+   589→            <div>
+   590→              <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+   591→                <Package className="h-3 w-3" /> Products
+   592→              </div>
+   593→              {products.map((r) => (
+   594→                <button
+   595→                  key={`prod-${r.id}`}
+   596→                  className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center gap-2.5 transition-colors"
+   597→                  onClick={() => handleSelect(r)}
+   598→                >
+   599→                  <div className="rounded-full bg-sky-100 dark:bg-sky-900/40 p-1.5 shrink-0">
+   600→                    {typeIcon(r.type)}
+   601→                  </div>
+   602→                  <div className="min-w-0 flex-1">
+   603→                    <p className="font-medium truncate">{r.primary}</p>
+   604→                    <p className="text-xs text-muted-foreground truncate">
+   605→                      {r.secondary} {r.tertiary ? `· ${r.tertiary}` : ''}
+   606→                    </p>
+   607→                  </div>
+   608→                </button>
+   609→              ))}
+   610→              {sales.length > 0 && <Separator />}
+   611→            </div>
+   612→          )}
+   613→
+   614→          {/* Sales group */}
+   615→          {sales.length > 0 && (
+   616→            <div>
+   617→              <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+   618→                <Receipt className="h-3 w-3" /> Sales
+   619→              </div>
+   620→              {sales.map((r) => (
+   621→                <button
+   622→                  key={`sale-${r.id}`}
+   623→                  className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center gap-2.5 transition-colors"
+   624→                  onClick={() => handleSelect(r)}
+   625→                >
+   626→                  <div className="rounded-full bg-amber-100 dark:bg-amber-900/40 p-1.5 shrink-0">
+   627→                    {typeIcon(r.type)}
+   628→                  </div>
+   629→                  <div className="min-w-0 flex-1">
+   630→                    <p className="font-medium truncate">{r.primary}</p>
+   631→                    <p className="text-xs text-muted-foreground truncate">
+   632→                      {r.secondary} {r.tertiary ? `· ${r.tertiary}` : ''}
+   633→                    </p>
+   634→                  </div>
+   635→                </button>
+   636→              ))}
+   637→            </div>
+   638→          )}
+   639→        </div>
+   640→      )}
+   641→
+   642→      {/* No results message */}
+   643→      {open && query.length >= 2 && !searching && !hasResults && (
+   644→        <div className="absolute right-0 sm:right-auto sm:left-0 top-full mt-1.5 w-[340px] sm:w-80 z-50 rounded-lg border bg-popover shadow-lg p-4 text-center">
+   645→          <p className="text-sm text-muted-foreground">No results found for &ldquo;{query}&rdquo;</p>
+   646→        </div>
+   647→      )}
+   648→    </div>
+   649→  );
+   650→}
+   651→
+   652→// ─── Settings Dialog ───────────────────────────────────────────────────
+   653→
+   654→function SettingsDialog() {
+   655→  const { settingsOpen, setSettingsOpen } = useCrmStore();
+   656→  const [form, setForm] = useState<CrmSettings>(getSettings());
+   657→  const [saving, setSaving] = useState(false);
+   658→
+   659→  useEffect(() => {
+   660→    if (settingsOpen) {
+   661→      setForm(getSettings());
+   662→    }
+   663→  }, [settingsOpen]);
+   664→
+   665→  const handleSave = useCallback(() => {
+   666→    setSaving(true);
+   667→    // Simulate a tiny delay for UX
+   668→    setTimeout(() => {
+   669→      saveSettings(form);
+   670→      setSaving(false);
+   671→      setSettingsOpen(false);
+   672→      toast.success('Settings saved successfully');
+   673→    }, 200);
+   674→  }, [form, setSettingsOpen]);
+   675→
+   676→  const updateField = <K extends keyof CrmSettings>(key: K, value: CrmSettings[K]) => {
+   677→    setForm((prev) => ({ ...prev, [key]: value }));
+   678→  };
+   679→
+   680→  return (
+   681→    <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+   682→      <DialogContent className="sm:max-w-md">
+   683→        <DialogHeader>
+   684→          <DialogTitle className="flex items-center gap-2">
+   685→            <Settings className="h-5 w-5" />
+   686→            Settings
+   687→          </DialogTitle>
+   688→          <DialogDescription>
+   689→            Configure your shop details and preferences. These are used across invoices and reports.
+   690→          </DialogDescription>
+   691→        </DialogHeader>
+   692→
+   693→        <div className="space-y-4 py-2">
+   694→          <div className="space-y-2">
+   695→            <Label htmlFor="setting-shop-name">Shop Name</Label>
+   696→            <Input
+   697→              id="setting-shop-name"
+   698→              value={form.shopName}
+   699→              onChange={(e) => updateField('shopName', e.target.value)}
+   700→              placeholder="Shop name"
+   701→            />
+   702→          </div>
+   703→
+   704→          <div className="space-y-2">
+   705→            <Label htmlFor="setting-revenue-goal">Daily Revenue Goal (₹)</Label>
+   706→            <Input
+   707→              id="setting-revenue-goal"
+   708→              type="number"
+   709→              min={0}
+   710→              value={form.dailyRevenueGoal}
+   711→              onChange={(e) => updateField('dailyRevenueGoal', parseFloat(e.target.value) || 0)}
+   712→              placeholder="25000"
+   713→            />
+   714→            <p className="text-xs text-muted-foreground">Used by the Dashboard&apos;s revenue goal progress bar.</p>
+   715→          </div>
+   716→
+   717→          <div className="space-y-2">
+   718→            <Label htmlFor="setting-gstin">GSTIN</Label>
+   719→            <Input
+   720→              id="setting-gstin"
+   721→              value={form.gstin}
+   722→              onChange={(e) => updateField('gstin', e.target.value)}
+   723→              placeholder="GST identification number"
+   724→            />
+   725→            <p className="text-xs text-muted-foreground">Displayed on printed invoices.</p>
+   726→          </div>
+   727→
+   728→          <div className="space-y-2">
+   729→            <Label htmlFor="setting-phone">Phone</Label>
+   730→            <Input
+   731→              id="setting-phone"
+   732→              value={form.phone}
+   733→              onChange={(e) => updateField('phone', e.target.value)}
+   734→              placeholder="+91 94432 12345"
+   735→            />
+   736→            <p className="text-xs text-muted-foreground">Displayed on printed invoices.</p>
+   737→          </div>
+   738→
+   739→          <div className="space-y-2">
+   740→            <Label htmlFor="setting-address">Address</Label>
+   741→            <Input
+   742→              id="setting-address"
+   743→              value={form.address}
+   744→              onChange={(e) => updateField('address', e.target.value)}
+   745→              placeholder="Full shop address"
+   746→            />
+   747→            <p className="text-xs text-muted-foreground">Displayed on printed invoices.</p>
+   748→          </div>
+   749→        </div>
+   750→
+   751→        <Separator />
+   752→
+   753→        {/* Data Management Section */}
+   754→        <div className="space-y-3">
+   755→          <Label className="text-sm font-semibold flex items-center gap-2">
+   756→            <Database className="h-4 w-4" />
+   757→            Data Management
+   758→          </Label>
+   759→          <p className="text-xs text-muted-foreground">
+   760→            Export or import your entire CRM database as a JSON backup file.
+   761→          </p>
+   762→          <div className="flex flex-col sm:flex-row gap-2">
+   763→            <Button
+   764→              variant="outline"
+   765→              size="sm"
+   766→              className="gap-2"
+   767→              onClick={async () => {
+   768→                try {
+   769→                  const res = await fetch('/api/backup');
+   770→                  if (!res.ok) throw new Error('Export failed');
+   771→                  const blob = await res.json();
+   772→                  const dataStr = JSON.stringify(blob, null, 2);
+   773→                  const fileBlob = new Blob([dataStr], { type: 'application/json' });
+   774→                  const url = URL.createObjectURL(fileBlob);
+   775→                  const a = document.createElement('a');
+   776→                  const today = new Date().toISOString().split('T')[0];
+   777→                  a.href = url;
+   778→                  a.download = `sko-crm-backup-${today}.json`;
+   779→                  document.body.appendChild(a);
+   780→                  a.click();
+   781→                  document.body.removeChild(a);
+   782→                  URL.revokeObjectURL(url);
+   783→                  toast.success('Backup exported successfully!');
+   784→                } catch {
+   785→                  toast.error('Failed to export backup');
+   786→                }
+   787→              }}
+   788→            >
+   789→              <Download className="h-4 w-4" />
+   790→              Export Backup
+   791→            </Button>
+   792→
+   793→            <label className="cursor-pointer">
+   794→              <input
+   795→                type="file"
+   796→                accept=".json"
+   797→                className="hidden"
+   798→                onChange={async (e) => {
+   799→                  const file = e.target.files?.[0];
+   800→                  if (!file) return;
+   801→                  try {
+   802→                    const text = await file.text();
+   803→                    const data = JSON.parse(text);
+   804→                    if (!data.version || !data.data) {
+   805→                      toast.error('Invalid backup file format');
+   806→                      return;
+   807→                    }
+   808→                    const res = await fetch('/api/restore', {
+   809→                      method: 'POST',
+   810→                      headers: { 'Content-Type': 'application/json' },
+   811→                      body: JSON.stringify(data),
+   812→                    });
+   813→                    if (res.ok) {
+   814→                      const result = await res.json().catch(() => ({}));
+   815→                      const counts = result.restored;
+   816→                      const parts = Object.entries(counts || {}).map(([k, v]) => `${k}: ${v}`).join(', ');
+   817→                      toast.success(`Data restored successfully! ${parts ? '(' + parts + ')' : ''} Refreshing...`);
+   818→                      setTimeout(() => window.location.reload(), 1500);
+   819→                    } else {
+   820→                      const err = await res.json().catch(() => ({}));
+   821→                      toast.error(err.error || 'Failed to restore backup');
+   822→                    }
+   823→                  } catch {
+   824→                    toast.error('Failed to read or restore backup file');
+   825→                  }
+   826→                  // Reset input
+   827→                  e.target.value = '';
+   828→                }}
+   829→              />
+   830→              <span
+   831→                role="button"
+   832→                tabIndex={0}
+   833→                className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+   834→              >
+   835→                <Upload className="h-4 w-4" />
+   836→                Import Backup
+   837→              </span>
+   838→            </label>
+   839→          </div>
+   840→          <div className="flex items-start gap-2 rounded-md border border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20 p-2.5">
+   841→            <AlertOctagon className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+   842→            <p className="text-xs text-amber-800 dark:text-amber-300">
+   843→              <span className="font-semibold">Warning:</span> Importing a backup will REPLACE all current data.
+   844→              This action cannot be undone.
+   845→            </p>
+   846→          </div>
+   847→        </div>
+   848→
+   849→        <DialogFooter>
+   850→          <Button variant="outline" onClick={() => setSettingsOpen(false)}>
+   851→            Cancel
+   852→          </Button>
+   853→          <Button onClick={handleSave} disabled={saving}>
+   854→            {saving ? <Loader className="h-4 w-4 animate-spin mr-1.5" /> : null}
+   855→            Save Settings
+   856→          </Button>
+   857→        </DialogFooter>
+   858→      </DialogContent>
+   859→    </Dialog>
+   860→  );
+   861→}
+   862→
+   863→// ─── Loading Bar ───────────────────────────────────────────────────────
+   864→
+   865→function LoadingBar() {
+   866→  const { loadingBar } = useCrmStore();
+   867→
+   868→  return (
+   869→    <div
+   870→      className={`h-0.5 bg-emerald-500 transition-all duration-500 ease-out ${
+   871→        loadingBar ? 'w-full opacity-100' : 'w-0 opacity-0'
+   872→      }`}
+   873→      role="progressbar"
+   874→      aria-label="Loading"
+   875→    />
+   876→  );
+   877→}
+   878→
+   879→// ─── Top Bar ────────────────────────────────────────────────────────────
+   880→
+   881→function TopBar() {
+   882→  const { activeSection, setSidebarOpen, darkMode, toggleDarkMode, setSettingsOpen } = useCrmStore();
+   883→
+   884→  const currentLabel = NAV_ITEMS.find((n) => n.key === activeSection)?.label ?? 'Dashboard';
+   885→
+   886→  return (
+   887→    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md px-4 md:px-6">
+   888→      {/* Mobile menu button */}
+   889→      <Button
+   890→        variant="ghost"
+   891→        size="icon"
+   892→        className="lg:hidden shrink-0"
+   893→        onClick={() => setSidebarOpen(true)}
+   894→      >
+   895→        <Menu className="h-5 w-5" />
+   896→      </Button>
+   897→
+   898→      <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100 truncate">
+   899→        {currentLabel}
+   900→      </h1>
+   901→
+   902→      <div className="flex-1" />
+   903→
+   904→      {/* Global Search */}
+   905→      <GlobalSearch />
+   906→
+   907→      {/* Settings */}
+   908→      <Tooltip>
+   909→        <TooltipTrigger asChild>
+   910→          <Button
+   911→            variant="ghost"
+   912→            size="icon"
+   913→            className="shrink-0"
+   914→            onClick={() => setSettingsOpen(true)}
+   915→          >
+   916→            <Settings className="h-4.5 w-4.5 text-slate-600 dark:text-slate-400" />
+   917→            <span className="sr-only">Settings</span>
+   918→          </Button>
+   919→        </TooltipTrigger>
+   920→        <TooltipContent>Settings</TooltipContent>
+   921→      </Tooltip>
+   922→
+   923→      {/* Dark Mode Toggle */}
+   924→      <Tooltip>
+   925→        <TooltipTrigger asChild>
+   926→          <Button
+   927→            variant="ghost"
+   928→            size="icon"
+   929→            className="shrink-0"
+   930→            onClick={toggleDarkMode}
+   931→          >
+   932→            {darkMode ? (
+   933→              <Sun className="h-4.5 w-4.5 text-amber-500" />
+   934→            ) : (
+   935→              <Moon className="h-4.5 w-4.5 text-slate-600 dark:text-slate-400" />
+   936→            )}
+   937→            <span className="sr-only">Toggle dark mode</span>
+   938→          </Button>
+   939→        </TooltipTrigger>
+   940→        <TooltipContent>{darkMode ? 'Light mode' : 'Dark mode'}</TooltipContent>
+   941→      </Tooltip>
+   942→
+   943→      {/* Notifications */}
+   944→      <Notifications />
+   945→    </header>
+   946→  );
+   947→}
+   948→
+   949→// ─── Mobile Sidebar Overlay with transitions ────────────────────────────
+   950→
+   951→function MobileSidebar() {
+   952→  const { sidebarOpen, setSidebarOpen } = useCrmStore();
+   953→
+   954→  const handleClose = useCallback(() => {
+   955→    setSidebarOpen(false);
+   956→  }, [setSidebarOpen]);
+   957→
+   958→  return (
+   959→    <div
+   960→      className={`fixed inset-0 z-50 lg:hidden pointer-events-none transition-[visibility,opacity] duration-200 ${
+   961→        sidebarOpen ? 'pointer-events-auto !visible opacity-100' : 'invisible opacity-0'
+   962→      }`}
+   963→    >
+   964→      {/* Backdrop with fade */}
+   965→      <div
+   966→        className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-200 ${
+   967→          sidebarOpen ? 'opacity-100' : 'opacity-0'
+   968→        }`}
+   969→        onClick={handleClose}
+   970→      />
+   971→      {/* Sidebar panel with slide */}
+   972→      <div
+   973→        className={`relative z-10 h-full w-72 transition-transform duration-200 ease-out ${
+   974→          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+   975→        }`}
+   976→      >
+   977→        <button
+   978→          onClick={handleClose}
+   979→          className="absolute top-3 right-3 z-20 rounded-md bg-white/80 dark:bg-slate-800/80 p-1.5 shadow-sm transition-colors hover:bg-white dark:hover:bg-slate-800"
+   980→        >
+   981→          <X className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+   982→        </button>
+   983→        <Sidebar onNav={handleClose} />
+   984→      </div>
+   985→    </div>
+   986→  );
+   987→}
+   988→
+   989→// ─── Dark Mode Effect ───────────────────────────────────────────────────
+   990→
+   991→function DarkModeEffect() {
+   992→  const { darkMode } = useCrmStore();
+   993→
+   994→  useEffect(() => {
+   995→    document.documentElement.classList.toggle('dark', darkMode);
+   996→  }, [darkMode]);
+   997→
+   998→  return null;
+   999→}
+  1000→
+  1001→// ─── Keyboard Shortcuts ────────────────────────────────────────────────
+  1002→
+  1003→function KeyboardShortcuts() {
+  1004→  const { focusSearchInput, triggerNewSaleDialog, setSettingsOpen, settingsOpen } = useCrmStore();
+  1005→
+  1006→  useEffect(() => {
+  1007→    function handleKeyDown(e: KeyboardEvent) {
+  1008→      // Ctrl+K or Cmd+K: Focus search
+  1009→      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+  1010→        e.preventDefault();
+  1011→        focusSearchInput();
+  1012→        return;
+  1013→      }
+  1014→
+  1015→      // Ctrl+N: New Sale
+  1016→      if (e.ctrlKey && e.key === 'n') {
+  1017→        e.preventDefault();
+  1018→        triggerNewSaleDialog();
+  1019→        return;
+  1020→      }
+  1021→
+  1022→      // Escape: Close settings dialog
+  1023→      if (e.key === 'Escape' && settingsOpen) {
+  1024→        setSettingsOpen(false);
+  1025→        return;
+  1026→      }
+  1027→    }
+  1028→
+  1029→    document.addEventListener('keydown', handleKeyDown);
+  1030→    return () => document.removeEventListener('keydown', handleKeyDown);
+  1031→  }, [focusSearchInput, triggerNewSaleDialog, setSettingsOpen, settingsOpen]);
+  1032→
+  1033→  return null;
+  1034→}
+  1035→
+  1036→// ─── Main Layout ────────────────────────────────────────────────────────
+  1037→
+  1038→function CrmLayout() {
+  1039→  return (
+  1040→    <div className="flex h-screen overflow-hidden bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+  1041→      <DarkModeEffect />
+  1042→      <KeyboardShortcuts />
+  1043→
+  1044→      {/* Desktop sidebar */}
+  1045→      <aside className="hidden lg:flex lg:w-64 lg:shrink-0">
+  1046→        <Sidebar />
+  1047→      </aside>
+  1048→
+  1049→      {/* Mobile sidebar */}
+  1050→      <MobileSidebar />
+  1051→
+  1052→      {/* Main content area */}
+  1053→      <div className="flex flex-1 flex-col overflow-hidden">
+  1054→        <TopBar />
+  1055→        <LoadingBar />
+  1056→        <main className="flex-1 overflow-y-auto">
+  1057→          <ErrorBoundary>
+  1058→            <SectionRenderer />
+  1059→          </ErrorBoundary>
+  1060→        </main>
+  1061→      </div>
+  1062→
+  1063→      {/* Settings Dialog */}
+  1064→      <SettingsDialog />
+  1065→    </div>
+  1066→  );
+  1067→}
+  1068→
+  1069→// ─── Root Page ──────────────────────────────────────────────────────────
+  1070→
+  1071→export default function Home() {
+  1072→  return (
+  1073→    <CrmProvider>
+  1074→      <CrmLayout />
+  1075→    </CrmProvider>
+  1076→  );
+  1077→}

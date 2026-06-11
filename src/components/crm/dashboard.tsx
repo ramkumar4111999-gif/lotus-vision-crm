@@ -17,7 +17,6 @@ import {
   TestTube,
   Target,
   CheckCircle2,
-  TrendingUp as TrendingUpIcon,
   ArrowUpRight,
   ArrowDownRight,
   ChevronRight,
@@ -575,7 +574,7 @@ export default function Dashboard() {
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
               <div className="rounded-full bg-emerald-100 dark:bg-emerald-900/30 p-3">
-                <TrendingUpIcon className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                <TrendingUp className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div className="text-center">
                 <p className="text-sm font-medium">No sales trend data yet</p>
