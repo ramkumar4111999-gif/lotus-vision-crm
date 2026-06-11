@@ -804,13 +804,13 @@ function CalendarWeekView({ appointments }: { appointments: Appointment[] }) {
             Week of {format(weekStart, 'MMM d')} – {format(addDays(weekStart, 6), 'MMM d, yyyy')}
           </CardTitle>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleGoToday}>
+            <Button variant="outline" size="sm" className="min-h-[44px] touch-manipulation" onClick={handleGoToday}>
               Today
             </Button>
-            <Button variant="outline" size="icon" className="size-8" onClick={handlePrevWeek}>
+            <Button variant="outline" size="icon" className="min-w-[44px] min-h-[44px] touch-manipulation" onClick={handlePrevWeek}>
               <ChevronLeft className="size-4" />
             </Button>
-            <Button variant="outline" size="icon" className="size-8" onClick={handleNextWeek}>
+            <Button variant="outline" size="icon" className="min-w-[44px] min-h-[44px] touch-manipulation" onClick={handleNextWeek}>
               <ChevronRight className="size-4" />
             </Button>
           </div>
@@ -1263,7 +1263,7 @@ export default function Appointments() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="size-8 text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400"
+                        className="min-w-[44px] min-h-[44px] touch-manipulation text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400"
                         onClick={() => handleSMSReminder(apt)}
                       >
                         <MessageSquare className="size-3.5" />
@@ -1273,7 +1273,7 @@ export default function Appointments() {
                   </Tooltip>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="size-8">
+                      <Button variant="ghost" size="icon" className="min-w-[44px] min-h-[44px] touch-manipulation">
                         <MoreHorizontal className="size-4" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -1435,6 +1435,7 @@ export default function Appointments() {
                 </Button>
               </div>
             ) : (
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -1491,7 +1492,7 @@ export default function Appointments() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="size-8 text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400"
+                                className="min-w-[44px] min-h-[44px] touch-manipulation text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400"
                                 onClick={() => handleSMSReminder(apt)}
                               >
                                 <MessageSquare className="size-3.5" />
@@ -1501,7 +1502,7 @@ export default function Appointments() {
                           </Tooltip>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="size-8">
+                              <Button variant="ghost" size="icon" className="min-w-[44px] min-h-[44px] touch-manipulation">
                                 <MoreHorizontal className="size-4" />
                               </Button>
                             </DropdownMenuTrigger>
@@ -1544,6 +1545,7 @@ export default function Appointments() {
                   ))}
                 </TableBody>
               </Table>
+              </div>
             )}
           </CardContent>
         </Card>

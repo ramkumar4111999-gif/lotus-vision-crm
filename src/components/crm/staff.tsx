@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { toast } from 'sonner'
 import {
   Plus,
   Pencil,
@@ -129,6 +130,14 @@ const EMPTY_FORM: StaffFormData = {
 }
 
 const ROLES = ['Owner', 'Admin', 'Optometrist', 'Sales Staff', 'Assistant'] as const
+
+const ROLE_PERMISSIONS: Record<string, { canManageStaff: boolean; canAccessSalary: boolean; canManageInventory: boolean; canViewReports: boolean; canDeleteSales: boolean; label: string }> = {
+  Owner: { canManageStaff: true, canAccessSalary: true, canManageInventory: true, canViewReports: true, canDeleteSales: true, label: 'Full access to all features' },
+  Admin: { canManageStaff: true, canAccessSalary: true, canManageInventory: true, canViewReports: true, canDeleteSales: false, label: 'All features except sales deletion' },
+  Optometrist: { canManageStaff: false, canAccessSalary: false, canManageInventory: false, canViewReports: true, canDeleteSales: false, label: 'View reports, manage prescriptions' },
+  'Sales Staff': { canManageStaff: false, canAccessSalary: false, canManageInventory: true, canViewReports: false, canDeleteSales: false, label: 'Manage sales and inventory' },
+  Assistant: { canManageStaff: false, canAccessSalary: false, canManageInventory: false, canViewReports: false, canDeleteSales: false, label: 'Basic view and data entry' },
+}
 
 const ROLE_BADGE_STYLES: Record<string, string> = {
   Owner: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border-purple-200 dark:border-purple-800',
@@ -665,6 +674,7 @@ export default function StaffManagement() {
         if (res.ok) {
           setDialogOpen(false)
           await fetchStaff()
+          toast.success('Staff member updated')
         }
       } else {
         const res = await fetch('/api/staff', {
@@ -675,6 +685,7 @@ export default function StaffManagement() {
         if (res.ok) {
           setDialogOpen(false)
           await fetchStaff()
+          toast.success('Staff member added')
         }
       }
     } finally {
@@ -695,6 +706,7 @@ export default function StaffManagement() {
         setDeleteDialogOpen(false)
         setDeletingStaff(null)
         await fetchStaff()
+        toast.success('Staff member deleted')
       }
     } finally {
       setSubmitting(false)
@@ -1054,7 +1066,7 @@ export default function StaffManagement() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="size-8"
+                                className="min-w-[44px] min-h-[44px] touch-manipulation"
                                 onClick={() => openEditDialog(staff)}
                                 aria-label={`Edit ${staff.name}`}
                               >
@@ -1063,7 +1075,7 @@ export default function StaffManagement() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="size-8 text-destructive hover:text-destructive"
+                                className="min-w-[44px] min-h-[44px] touch-manipulation text-destructive hover:text-destructive"
                                 onClick={() => openDeleteDialog(staff)}
                                 aria-label={`Delete ${staff.name}`}
                               >
@@ -1115,7 +1127,7 @@ export default function StaffManagement() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="size-8"
+                            className="min-w-[44px] min-h-[44px] touch-manipulation"
                             onClick={() => openEditDialog(staff)}
                             aria-label={`Edit ${staff.name}`}
                           >
@@ -1124,7 +1136,7 @@ export default function StaffManagement() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="size-8 text-destructive hover:text-destructive"
+                            className="min-w-[44px] min-h-[44px] touch-manipulation text-destructive hover:text-destructive"
                             onClick={() => openDeleteDialog(staff)}
                             aria-label={`Delete ${staff.name}`}
                           >
@@ -1310,6 +1322,51 @@ export default function StaffManagement() {
           </CardContent>
         </Card>
       )}
+
+      {/* ── Role-Based Access Reference ─────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <Lock className="size-5 text-primary" />
+            Role-Based Access
+          </CardTitle>
+          <CardDescription>Permission levels for each staff role</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Role</TableHead>
+                  <TableHead className="text-center">Manage Staff</TableHead>
+                  <TableHead className="text-center">Access Salary</TableHead>
+                  <TableHead className="text-center">Manage Inventory</TableHead>
+                  <TableHead className="text-center">View Reports</TableHead>
+                  <TableHead className="text-center">Delete Sales</TableHead>
+                  <TableHead className="hidden lg:table-cell">Description</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {ROLES.map((role) => {
+                  const perms = ROLE_PERMISSIONS[role]
+                  if (!perms) return null
+                  return (
+                    <TableRow key={role}>
+                      <TableCell className="font-medium">{renderRoleBadge(role)}</TableCell>
+                      <TableCell className="text-center">{perms.canManageStaff ? <CheckCircle2 className="size-4 text-green-600 mx-auto" /> : <XCircle className="size-4 text-red-400 mx-auto" />}</TableCell>
+                      <TableCell className="text-center">{perms.canAccessSalary ? <CheckCircle2 className="size-4 text-green-600 mx-auto" /> : <XCircle className="size-4 text-red-400 mx-auto" />}</TableCell>
+                      <TableCell className="text-center">{perms.canManageInventory ? <CheckCircle2 className="size-4 text-green-600 mx-auto" /> : <XCircle className="size-4 text-red-400 mx-auto" />}</TableCell>
+                      <TableCell className="text-center">{perms.canViewReports ? <CheckCircle2 className="size-4 text-green-600 mx-auto" /> : <XCircle className="size-4 text-red-400 mx-auto" />}</TableCell>
+                      <TableCell className="text-center">{perms.canDeleteSales ? <CheckCircle2 className="size-4 text-green-600 mx-auto" /> : <XCircle className="size-4 text-red-400 mx-auto" />}</TableCell>
+                      <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">{perms.label}</TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* ── Salary Management Section ───────────────────────────────────── */}
       <SalaryManagementSection staffList={staffList} performanceData={performanceData} />

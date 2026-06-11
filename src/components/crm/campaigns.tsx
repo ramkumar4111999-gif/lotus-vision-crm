@@ -123,7 +123,7 @@ const whatsAppTemplates = [
   {
     label: 'Collection Ready',
     emoji: '✅',
-    message: '✅ Dear {customer_name}, your eyewear from Lotus Vision Opticals is READY! Visit us at Sankarankovil to collect.',
+    message: '✅ Dear {customer_name}, your eyewear from Lotus Vision Opticals is READY! Visit us to collect.',
   },
   {
     label: 'Payment Reminder',
@@ -950,7 +950,7 @@ export default function Campaigns() {
                   resetCreateForm()
                   setFormType('WhatsApp')
                   setFormTargetGroup('All')
-                  setFormMessage('🎉 Happy Birthday, {customer_name}! 🎂\n\nWishing you a wonderful day filled with joy! Visit us at Lotus Vision Opticals for special birthday discounts on eyewear.\n\n- Lotus Vision Opticals, Sankarankovil')
+                  setFormMessage('🎉 Happy Birthday, {customer_name}! 🎂\n\nWishing you a wonderful day filled with joy! Visit us at Lotus Vision Opticals for special birthday discounts on eyewear.\n\n- Lotus Vision Opticals')
                   setCreateDialogOpen(true)
                 }}
               >
@@ -1012,7 +1012,7 @@ export default function Campaigns() {
                   setFormType('SMS')
                   setFormTargetGroup('All')
                   setFormName('Due Payment Reminder')
-                  setFormMessage('Dear {customer_name},\n\nThis is a reminder that you have a pending dues at Lotus Vision Opticals, Sankarankovil.\n\nKindly clear the dues at your earliest convenience.\n\nThank you!\n- Lotus Vision Opticals')
+                  setFormMessage('Dear {customer_name},\n\nThis is a reminder that you have a pending dues at Lotus Vision Opticals.\n\nKindly clear the dues at your earliest convenience.\n\nThank you!\n- Lotus Vision Opticals')
                   setCreateDialogOpen(true)
                 }}
               >
@@ -1070,7 +1070,7 @@ export default function Campaigns() {
                   setFormType('WhatsApp')
                   setFormTargetGroup('All')
                   setFormName('Collection Ready Notification')
-                  setFormMessage('Dear {customer_name},\n\n✅ Your eyewear order is READY for collection!\n\nPlease visit us at Lotus Vision Opticals, Sankarankovil at your earliest convenience.\n\nThank you for choosing us!\n- Lotus Vision Opticals')
+                  setFormMessage('Dear {customer_name},\n\n✅ Your eyewear order is READY for collection!\n\nPlease visit us at Lotus Vision Opticals at your earliest convenience.\n\nThank you for choosing us!\n- Lotus Vision Opticals')
                   setCreateDialogOpen(true)
                 }}
               >
@@ -1382,7 +1382,7 @@ function CampaignTable({ campaigns, onEdit, onDelete, emptyMessage }: CampaignTa
   return (
     <Card>
       <CardContent className="p-0">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto hidden md:block">
           <Table>
             <TableHeader>
               <TableRow>
@@ -1439,7 +1439,7 @@ function CampaignTable({ campaigns, onEdit, onDelete, emptyMessage }: CampaignTa
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="size-8"
+                        className="min-w-[44px] min-h-[44px] touch-manipulation"
                         title="Edit"
                         onClick={() => onEdit(campaign)}
                       >
@@ -1449,7 +1449,7 @@ function CampaignTable({ campaigns, onEdit, onDelete, emptyMessage }: CampaignTa
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="size-8 text-destructive hover:text-destructive"
+                        className="min-w-[44px] min-h-[44px] touch-manipulation text-destructive hover:text-destructive"
                         title="Delete"
                         onClick={() => onDelete(campaign.id)}
                       >
@@ -1462,6 +1462,54 @@ function CampaignTable({ campaigns, onEdit, onDelete, emptyMessage }: CampaignTa
               ))}
             </TableBody>
           </Table>
+        </div>
+
+        {/* Mobile Campaign Cards */}
+        <div className="space-y-3 md:hidden pt-4 px-1">
+          {campaigns.map((campaign) => (
+            <div key={campaign.id} className="rounded-lg border p-4 space-y-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-medium text-sm truncate">{campaign.name}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge variant="outline" className={typeConfig[campaign.type]?.className}>
+                      {typeConfig[campaign.type]?.label || campaign.type}
+                    </Badge>
+                    <Badge variant="outline" className={statusConfig[campaign.status]?.className}>
+                      {statusConfig[campaign.status]?.label || campaign.status}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="flex shrink-0 gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="min-w-[44px] min-h-[44px] touch-manipulation"
+                    onClick={() => onEdit(campaign)}
+                  >
+                    <Pencil className="size-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="min-w-[44px] min-h-[44px] touch-manipulation text-destructive hover:text-destructive"
+                    onClick={() => onDelete(campaign.id)}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground line-clamp-2">{truncate(campaign.message, 80)}</p>
+              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                {campaign.budget > 0 && <span>Budget: {formatCurrency(campaign.budget)}</span>}
+                {campaign.reach > 0 && <span>Reach: {campaign.reach.toLocaleString()}</span>}
+                {campaign.sentCount > 0 && <span>Sent: {campaign.sentCount}</span>}
+              </div>
+              {campaign.targetGroup && campaign.targetGroup !== 'All' && (
+                <Badge variant="secondary" className="text-[10px]">Target: {campaign.targetGroup}</Badge>
+              )}
+            </div>
+          ))}
         </div>
       </CardContent>
     </Card>

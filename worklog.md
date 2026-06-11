@@ -1150,3 +1150,50 @@ Stage Summary:
 - 4 silent CRUD operations now show user feedback (campaigns edit/delete)
 - New feature: Number key shortcuts (1-0) for quick section switching
 - Zero build errors
+
+---
+Task ID: crm-cycle-e-$(date +%s)
+Agent: CRM Build Bot - Cycle E
+Task: Improve Appointments, Staff, Campaigns — mobile touch targets, role access, name fixes
+
+Work Log:
+- AUDIT: Read all 3 files (appointments.tsx: 1592 lines, staff.tsx: 1536 lines, campaigns.tsx: 1469 lines)
+- FOUND: Appointments already has purpose types (Eye Exam, Frame Selection, Lens Fitting, Delivery, Follow-up, Walk-in)
+- FOUND: Appointments already has calendar week view (CalendarWeekView component)
+- FOUND: Appointments already has SMS reminder placeholder (WhatsApp reminder via handleSMSReminder)
+- FOUND: Appointments already has walk-in vs scheduled toggle (isWalkIn state with Footprints button)
+- FOUND: Staff already has attendance tracker (clock in/out with live timer)
+- FOUND: Staff already has commission tracking per sale (performanceData with commissionEarned)
+- FOUND: Staff already has roles (Owner, Admin, Optometrist, Sales Staff, Assistant)
+- FOUND: Campaigns already has WhatsApp templates (whatsAppTemplates array)
+- FOUND: Campaigns already has SMS campaign tracker (character counter with 160 limit, progress bar)
+- FOUND: Campaigns already has ROI tracking (roi calculation, revenue cards, analytics tab)
+- FOUND: Campaigns already has customer segment targeting (targetGroups: All, Regular, Wholesale, New, High Value)
+
+APPOINTMENTS FIXES:
+- Wrapped list view Table in overflow-x-auto for mobile horizontal scroll
+- 7 touch target fixes: Today's section (2 buttons), Table actions (2 buttons), Week view nav (3 buttons) — all changed from size-8 to min-w-[44px] min-h-[44px] touch-manipulation
+
+STAFF IMPROVEMENTS:
+- 4 touch target fixes: Desktop table Edit/Delete buttons (2), Mobile card Edit/Delete buttons (2) — all to 44px with touch-manipulation
+- Added ROLE_PERMISSIONS constant defining 5 permission flags per role (canManageStaff, canAccessSalary, canManageInventory, canViewReports, canDeleteSales)
+- Added Role-Based Access Reference card with CheckCircle2/XCircle visual matrix table
+- Added toast.success feedback on staff CRUD operations (add, update, delete)
+- Added import { toast } from 'sonner'
+
+CAMPAIGNS FIXES:
+- 2 touch target fixes: CampaignTable Edit/Delete buttons → 44px with touch-manipulation
+- Removed 4 "Sankarankovil" references from WhatsApp templates and quick-action messages (branding consistency)
+- Added mobile-responsive campaign cards (hidden table on mobile, card layout with badges, message preview, stats)
+- Campaign table now hidden on mobile (hidden md:block), cards shown instead (md:hidden)
+
+BUILD: Clean, zero errors
+SERVER: Running on port 3000 with respawn loop
+
+Stage Summary:
+- All requested features were ALREADY IMPLEMENTED in prior cycles — this cycle focused on polish
+- 13 touch target fixes across 3 components (all buttons now 44px minimum)
+- Role-based access permission matrix added to Staff
+- Toast feedback added to staff CRUD (was silent)
+- Mobile campaign cards added (table-only was not mobile-friendly)
+- All "Sankarankovil" branding references removed from campaigns (address references in sales.tsx/settings.ts are legitimate)
