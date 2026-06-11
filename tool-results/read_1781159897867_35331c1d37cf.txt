@@ -1,0 +1,1619 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+     4→import { format, parseISO, startOfDay, isToday, isWithinInterval, startOfMonth, endOfMonth, subMonths, isBefore } from 'date-fns';
+     5→import {
+     6→  TrendingUp,
+     7→  TrendingDown,
+     8→  Wallet,
+     9→  AlertTriangle,
+    10→  Plus,
+    11→  Pencil,
+    12→  Trash2,
+    13→  IndianRupee,
+    14→  CalendarDays,
+    15→  Filter,
+    16→  Receipt,
+    17→  CreditCard,
+    18→  PieChart as PieChartIcon,
+    19→  Banknote,
+    20→  CheckCircle2,
+    21→  Check,
+    22→  RotateCcw,
+    23→  MessageCircle,
+    24→  ChevronDown,
+    25→  ChevronUp,
+    26→  Download,
+    27→  Target,
+    28→  ArrowUpRight,
+    29→  ArrowDownRight,
+    30→  Search,
+    31→} from 'lucide-react';
+    32→import {
+    33→  Card,
+    34→  CardContent,
+    35→  CardDescription,
+    36→  CardHeader,
+    37→  CardTitle,
+    38→} from '@/components/ui/card';
+    39→import { Button } from '@/components/ui/button';
+    40→import { Badge } from '@/components/ui/badge';
+    41→import {
+    42→  Table,
+    43→  TableBody,
+    44→  TableCell,
+    45→  TableFooter,
+    46→  TableHead,
+    47→  TableHeader,
+    48→  TableRow,
+    49→} from '@/components/ui/table';
+    50→import { Input } from '@/components/ui/input';
+    51→import { Label } from '@/components/ui/label';
+    52→import {
+    53→  Select,
+    54→  SelectContent,
+    55→  SelectItem,
+    56→  SelectTrigger,
+    57→  SelectValue,
+    58→} from '@/components/ui/select';
+    59→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+    60→import { Separator } from '@/components/ui/separator';
+    61→import {
+    62→  Dialog,
+    63→  DialogContent,
+    64→  DialogDescription,
+    65→  DialogFooter,
+    66→  DialogHeader,
+    67→  DialogTitle,
+    68→} from '@/components/ui/dialog';
+    69→import {
+    70→  ChartContainer,
+    71→  ChartTooltip,
+    72→  ChartTooltipContent,
+    73→  type ChartConfig,
+    74→} from '@/components/ui/chart';
+    75→import { Progress } from '@/components/ui/progress';
+    76→import {
+    77→  Collapsible,
+    78→  CollapsibleTrigger,
+    79→  CollapsibleContent,
+    80→} from '@/components/ui/collapsible';
+    81→import {
+    82→  Tooltip,
+    83→  TooltipTrigger,
+    84→  TooltipContent,
+    85→} from '@/components/ui/tooltip';
+    86→import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+    87→import { toast } from 'sonner';
+    88→
+    89→// ─── Types ───────────────────────────────────────────────────────────────────
+    90→
+    91→interface Expense {
+    92→  id: string;
+    93→  category: string;
+    94→  description: string;
+    95→  amount: number;
+    96→  date: string;
+    97→  vendor: string | null;
+    98→  createdAt: string;
+    99→}
+   100→
+   101→interface Due {
+   102→  id: string;
+   103→  customer: { name: string; phone: string } | null;
+   104→  amount: number;
+   105→  paid: number;
+   106→  status: string;
+   107→  dueDate: string | null;
+   108→  notes: string | null;
+   109→  createdAt: string;
+   110→  updatedAt?: string;
+   111→}
+   112→
+   113→interface Sale {
+   114→  id: string;
+   115→  invoiceNo: string;
+   116→  customerName: string;
+   117→  customer?: { name: string; phone: string } | null;
+   118→  total: number;
+   119→  paymentMode: string;
+   120→  createdAt: string;
+   121→}
+   122→
+   123→interface CashFlowEntry {
+   124→  date: string;
+   125→  description: string;
+   126→  type: 'Income' | 'Expense';
+   127→  amount: number;
+   128→  balance: number;
+   129→}
+   130→
+   131→interface ReturnItem {
+   132→  id: string;
+   133→  saleId: string;
+   134→  reason: string;
+   135→  amount: number;
+   136→  status: string;
+   137→  createdAt: string;
+   138→  sale?: {
+   139→    id: string;
+   140→    invoiceNo: string;
+   141→    customer?: { id: string; name: string; phone: string } | null;
+   142→  };
+   143→}
+   144→
+   145→// ─── Constants ───────────────────────────────────────────────────────────────
+   146→
+   147→const EXPENSE_CATEGORIES = [
+   148→  'Rent',
+   149→  'Salary',
+   150→  'Electricity',
+   151→  'Supplies',
+   152→  'Marketing',
+   153→  'Transport',
+   154→  'Maintenance',
+   155→  'Other',
+   156→] as const;
+   157→
+   158→const RETURN_REASONS = [
+   159→  'Defective',
+   160→  'Wrong Product',
+   161→  'Customer Changed Mind',
+   162→  'Warranty',
+   163→  'Other',
+   164→] as const;
+   165→
+   166→const PIE_COLORS = [
+   167→  'hsl(var(--chart-1))',
+   168→  'hsl(var(--chart-2))',
+   169→  'hsl(var(--chart-3))',
+   170→  'hsl(var(--chart-4))',
+   171→  'hsl(var(--chart-5))',
+   172→  'hsl(var(--chart-6))',
+   173→  'hsl(var(--chart-1) / 0.6)',
+   174→  'hsl(var(--chart-2) / 0.6)',
+   175→];
+   176→
+   177→const BAR_CHART_CONFIG: ChartConfig = {
+   178→  amount: { label: 'Amount', color: 'hsl(var(--chart-1))' },
+   179→};
+   180→
+   181→const PIE_CHART_CONFIG: ChartConfig = {
+   182→  value: { label: 'Amount' },
+   183→  Rent: { label: 'Rent', color: 'hsl(var(--chart-1))' },
+   184→  Salary: { label: 'Salary', color: 'hsl(var(--chart-2))' },
+   185→  Electricity: { label: 'Electricity', color: 'hsl(var(--chart-3))' },
+   186→  Supplies: { label: 'Supplies', color: 'hsl(var(--chart-4))' },
+   187→  Marketing: { label: 'Marketing', color: 'hsl(var(--chart-5))' },
+   188→  Transport: { label: 'Transport', color: 'hsl(var(--chart-6))' },
+   189→  Maintenance: { label: 'Maintenance', color: 'hsl(var(--chart-1) / 0.6)' },
+   190→  Other: { label: 'Other', color: 'hsl(40, 80%, 55%)' },
+   191→};
+   192→
+   193→// ─── Helpers ─────────────────────────────────────────────────────────────────
+   194→
+   195→function formatINR(amount: number): string {
+   196→  return new Intl.NumberFormat('en-IN', {
+   197→    style: 'currency',
+   198→    currency: 'INR',
+   199→    minimumFractionDigits: 0,
+   200→    maximumFractionDigits: 0,
+   201→  }).format(amount);
+   202→}
+   203→
+   204→function formatDate(dateStr: string | Date): string {
+   205→  try {
+   206→    const d = typeof dateStr === 'string' ? parseISO(dateStr) : dateStr;
+   207→    return format(d, 'dd MMM yyyy');
+   208→  } catch {
+   209→    return String(dateStr);
+   210→  }
+   211→}
+   212→
+   213→function toDateString(dateStr: string | Date): string {
+   214→  try {
+   215→    const d = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
+   216→    return format(d, 'yyyy-MM-dd');
+   217→  } catch {
+   218→    return String(dateStr);
+   219→  }
+   220→}
+   221→
+   222→function getTodayStr(): string {
+   223→  return format(new Date(), 'yyyy-MM-dd');
+   224→}
+   225→
+   226→function getBudgetKey(): string {
+   227→  const now = new Date();
+   228→  return `accounting_budget_${now.getFullYear()}_${now.getMonth() + 1}`;
+   229→}
+   230→
+   231→// ─── Component ───────────────────────────────────────────────────────────────
+   232→
+   233→export default function Accounting() {
+   234→  // Data state
+   235→  const [expenses, setExpenses] = useState<Expense[]>([]);
+   236→  const [dues, setDues] = useState<Due[]>([]);
+   237→  const [sales, setSales] = useState<Sale[]>([]);
+   238→  const [returns, setReturns] = useState<ReturnItem[]>([]);
+   239→
+   240→  // Loading states
+   241→  const [loadingExpenses, setLoadingExpenses] = useState(true);
+   242→  const [loadingDues, setLoadingDues] = useState(true);
+   243→  const [loadingSales, setLoadingSales] = useState(true);
+   244→  const [loadingReturns, setLoadingReturns] = useState(true);
+   245→
+   246→  // Dialog states
+   247→  const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
+   248→  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+   249→  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+   250→  const [payingDue, setPayingDue] = useState<Due | null>(null);
+   251→  const [markPaidLoading, setMarkPaidLoading] = useState(false);
+   252→  const [returnDialogOpen, setReturnDialogOpen] = useState(false);
+   253→  const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
+   254→
+   255→  // Expense form state
+   256→  const [expForm, setExpForm] = useState({
+   257→    category: '',
+   258→    description: '',
+   259→    amount: '',
+   260→    date: getTodayStr(),
+   261→    vendor: '',
+   262→  });
+   263→
+   264→  // Payment form state
+   265→  const [paymentAmount, setPaymentAmount] = useState('');
+   266→
+   267→  // Return form state
+   268→  const [returnForm, setReturnForm] = useState({
+   269→    saleSearch: '',
+   270→    saleId: '',
+   271→    refundAmount: '',
+   272→    reason: '',
+   273→  });
+   274→  const [saleSearchResults, setSaleSearchResults] = useState<Sale[]>([]);
+   275→  const [selectedReturnSale, setSelectedReturnSale] = useState<Sale | null>(null);
+   276→  const [creatingReturn, setCreatingReturn] = useState(false);
+   277→  const saleSearchTimeout = useRef<NodeJS.Timeout | null>(null);
+   278→
+   279→  // Budget state
+   280→  const [monthlyBudget, setMonthlyBudget] = useState<number>(0);
+   281→  const [budgetInput, setBudgetInput] = useState('');
+   282→
+   283→  // Expanded due row (payment history)
+   284→  const [expandedDueId, setExpandedDueId] = useState<string | null>(null);
+   285→
+   286→  // P&L collapsible
+   287→  const [plOpen, setPlOpen] = useState(false);
+   288→
+   289→  // Filter states
+   290→  const [cashFlowFrom, setCashFlowFrom] = useState(
+   291→    format(startOfMonth(new Date()), 'yyyy-MM-dd')
+   292→  );
+   293→  const [cashFlowTo, setCashFlowTo] = useState(getTodayStr());
+   294→  const [dueFilter, setDueFilter] = useState<string>('All');
+   295→
+   296→  // Deleting state
+   297→  const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
+   298→
+   299→  // ─── Fetch Data ──────────────────────────────────────────────────────────
+   300→
+   301→  const fetchExpenses = useCallback(async () => {
+   302→    try {
+   303→      setLoadingExpenses(true);
+   304→      const res = await fetch('/api/expenses?limit=200');
+   305→      if (res.ok) {
+   306→        const json = await res.json();
+   307→        setExpenses(Array.isArray(json.data) ? json.data : Array.isArray(json) ? json : []);
+   308→      }
+   309→    } catch {
+   310→      toast.error('Failed to fetch expenses');
+   311→    } finally {
+   312→      setLoadingExpenses(false);
+   313→    }
+   314→  }, []);
+   315→
+   316→  const fetchDues = useCallback(async () => {
+   317→    try {
+   318→      setLoadingDues(true);
+   319→      const res = await fetch('/api/dues?limit=200');
+   320→      if (res.ok) {
+   321→        const json = await res.json();
+   322→        setDues(Array.isArray(json.data) ? json.data : Array.isArray(json) ? json : []);
+   323→      }
+   324→    } catch {
+   325→      toast.error('Failed to fetch dues');
+   326→    } finally {
+   327→      setLoadingDues(false);
+   328→    }
+   329→  }, []);
+   330→
+   331→  const fetchSales = useCallback(async () => {
+   332→    try {
+   333→      setLoadingSales(true);
+   334→      const res = await fetch('/api/sales?limit=500');
+   335→      if (res.ok) {
+   336→        const json = await res.json();
+   337→        const arr = Array.isArray(json.sales) ? json.sales : Array.isArray(json.data) ? json.data : [];
+   338→        setSales(arr);
+   339→      }
+   340→    } catch {
+   341→      toast.error('Failed to fetch sales');
+   342→    } finally {
+   343→      setLoadingSales(false);
+   344→    }
+   345→  }, []);
+   346→
+   347→  const fetchReturns = useCallback(async () => {
+   348→    try {
+   349→      setLoadingReturns(true);
+   350→      const res = await fetch('/api/returns?limit=50');
+   351→      if (res.ok) {
+   352→        const json = await res.json();
+   353→        setReturns(Array.isArray(json.returns) ? json.returns : Array.isArray(json.data) ? json.data : []);
+   354→      }
+   355→    } catch {
+   356→      toast.error('Failed to fetch returns');
+   357→    } finally {
+   358→      setLoadingReturns(false);
+   359→    }
+   360→  }, []);
+   361→
+   362→  // Load budget from localStorage
+   363→  useEffect(() => {
+   364→    try {
+   365→      const stored = localStorage.getItem(getBudgetKey());
+   366→      if (stored) setMonthlyBudget(parseFloat(stored) || 0);
+   367→    } catch { /* ignore */ }
+   368→  }, []);
+   369→
+   370→  useEffect(() => {
+   371→    fetchExpenses();
+   372→    fetchDues();
+   373→    fetchSales();
+   374→    fetchReturns();
+   375→  }, [fetchExpenses, fetchDues, fetchSales, fetchReturns]);
+   376→
+   377→  // ─── Summary Calculations ────────────────────────────────────────────────
+   378→
+   379→  const todayIncome = useMemo(() => {
+   380→    return sales
+   381→      .filter((s) => {
+   382→        try { return isToday(new Date(s.createdAt)); } catch { return false; }
+   383→      })
+   384→      .reduce((sum, s) => sum + (s.total || 0), 0);
+   385→  }, [sales]);
+   386→
+   387→  const monthlyIncome = useMemo(() => {
+   388→    const mStart = startOfMonth(new Date());
+   389→    return sales
+   390→      .filter((s) => {
+   391→        try { return new Date(s.createdAt) >= mStart; } catch { return false; }
+   392→      })
+   393→      .reduce((sum, s) => sum + (s.total || 0), 0);
+   394→  }, [sales]);
+   395→
+   396→  const lastMonthIncome = useMemo(() => {
+   397→    const lastMStart = startOfMonth(subMonths(new Date(), 1));
+   398→    const lastMEnd = endOfMonth(subMonths(new Date(), 1));
+   399→    return sales
+   400→      .filter((s) => {
+   401→        try {
+   402→          const d = new Date(s.createdAt);
+   403→          return d >= lastMStart && d <= lastMEnd;
+   404→        } catch { return false; }
+   405→      })
+   406→      .reduce((sum, s) => sum + (s.total || 0), 0);
+   407→  }, [sales]);
+   408→
+   409→  const monthlyExpensesTotal = useMemo(() => {
+   410→    const mStart = startOfMonth(new Date());
+   411→    return expenses
+   412→      .filter((e) => {
+   413→        try { return new Date(e.date) >= mStart; } catch { return false; }
+   414→      })
+   415→      .reduce((sum, e) => sum + (e.amount || 0), 0);
+   416→  }, [expenses]);
+   417→
+   418→  const totalExpenses = useMemo(() => {
+   419→    return expenses.reduce((s, e) => s + (e.amount || 0), 0);
+   420→  }, [expenses]);
+   421→
+   422→  const todayExpenses = useMemo(() => {
+   423→    return expenses
+   424→      .filter((e) => {
+   425→        try { return isToday(new Date(e.date)); } catch { return false; }
+   426→      })
+   427→      .reduce((sum, e) => sum + (e.amount || 0), 0);
+   428→  }, [expenses]);
+   429→
+   430→  const totalPendingDues = useMemo(() => {
+   431→    return dues
+   432→      .filter((d) => d.status !== 'Paid')
+   433→      .reduce((sum, d) => sum + ((d.amount || 0) - (d.paid || 0)), 0);
+   434→  }, [dues]);
+   435→
+   436→  // ─── Returns Summary ────────────────────────────────────────────────────
+   437→
+   438→  const totalReturnRefund = useMemo(() => {
+   439→    return returns.reduce((s, r) => s + (r.amount || 0), 0);
+   440→  }, [returns]);
+   441→
+   442→  const thisMonthReturns = useMemo(() => {
+   443→    const mStart = startOfMonth(new Date());
+   444→    return returns.filter((r) => {
+   445→      try { return new Date(r.createdAt) >= mStart; } catch { return false; }
+   446→    });
+   447→  }, [returns]);
+   448→
+   449→  const thisMonthReturnAmount = useMemo(() => {
+   450→    return thisMonthReturns.reduce((s, r) => s + (r.amount || 0), 0);
+   451→  }, [thisMonthReturns]);
+   452→
+   453→  // ─── P&L Calculations ───────────────────────────────────────────────────
+   454→
+   455→  const netProfit = useMemo(() => {
+   456→    return monthlyIncome - monthlyExpensesTotal;
+   457→  }, [monthlyIncome, monthlyExpensesTotal]);
+   458→
+   459→  const momChangePercent = useMemo(() => {
+   460→    if (lastMonthIncome === 0) return monthlyIncome > 0 ? 100 : 0;
+   461→    return Math.round(((monthlyIncome - lastMonthIncome) / lastMonthIncome) * 100);
+   462→  }, [monthlyIncome, lastMonthIncome]);
+   463→
+   464→  // ─── Cash Flow Calculations ──────────────────────────────────────────────
+   465→
+   466→  const cashFlowData = useMemo((): CashFlowEntry[] => {
+   467→    const fromDate = startOfDay(parseISO(cashFlowFrom));
+   468→    const toDate = startOfDay(parseISO(cashFlowTo));
+   469→
+   470→    const incomeEntries: CashFlowEntry[] = sales
+   471→      .filter((s) => {
+   472→        try {
+   473→          const d = new Date(s.createdAt);
+   474→          return isWithinInterval(d, { start: fromDate, end: new Date(cashFlowTo + 'T23:59:59') });
+   475→        } catch { return false; }
+   476→      })
+   477→      .map((s) => ({
+   478→        date: toDateString(s.createdAt),
+   479→        description: `Sale - ${s.customer?.name || s.customerName || 'Customer'} (${s.invoiceNo || ''})`,
+   480→        type: 'Income' as const,
+   481→        amount: s.total || 0,
+   482→        balance: 0,
+   483→      }));
+   484→
+   485→    const expenseEntries: CashFlowEntry[] = expenses
+   486→      .filter((e) => {
+   487→        try {
+   488→          const d = new Date(e.date);
+   489→          return isWithinInterval(d, { start: fromDate, end: new Date(cashFlowTo + 'T23:59:59') });
+   490→        } catch { return false; }
+   491→      })
+   492→      .map((e) => ({
+   493→        date: toDateString(e.date),
+   494→        description: `${e.category} - ${e.description || e.vendor || 'Expense'}`,
+   495→        type: 'Expense' as const,
+   496→        amount: e.amount,
+   497→        balance: 0,
+   498→      }));
+   499→
+   500→    const allEntries = [...incomeEntries, ...expenseEntries].sort((a, b) => {
+   501→      const dc = a.date.localeCompare(b.date);
+   502→      if (dc !== 0) return dc;
+   503→      return a.type === 'Income' ? -1 : 1;
+   504→    });
+   505→
+   506→    let runningBalance = 0;
+   507→    return allEntries.map((entry) => {
+   508→      if (entry.type === 'Income') runningBalance += entry.amount;
+   509→      else runningBalance -= entry.amount;
+   510→      return { ...entry, balance: runningBalance };
+   511→    });
+   512→  }, [sales, expenses, cashFlowFrom, cashFlowTo]);
+   513→
+   514→  const cashFlowSummary = useMemo(() => {
+   515→    const totalIncome = cashFlowData.filter((e) => e.type === 'Income').reduce((s, e) => s + e.amount, 0);
+   516→    const totalExpense = cashFlowData.filter((e) => e.type === 'Expense').reduce((s, e) => s + e.amount, 0);
+   517→    return { totalIncome, totalExpense, net: totalIncome - totalExpense };
+   518→  }, [cashFlowData]);
+   519→
+   520→  // ─── Expense Category Summary ────────────────────────────────────────────
+   521→
+   522→  const categorySummary = useMemo(() => {
+   523→    const map: Record<string, number> = {};
+   524→    expenses.forEach((e) => {
+   525→      const cat = e.category || 'Other';
+   526→      map[cat] = (map[cat] || 0) + (e.amount || 0);
+   527→    });
+   528→    return EXPENSE_CATEGORIES.map((cat) => ({
+   529→      name: cat,
+   530→      value: map[cat] || 0,
+   531→    })).filter((c) => c.value > 0);
+   532→  }, [expenses]);
+   533→
+   534→  // ─── Filtered Dues (with overdue detection) ──────────────────────────────
+   535→
+   536→  const filteredDues = useMemo(() => {
+   537→    let filtered = dues;
+   538→    if (dueFilter === 'All') {
+   539→      // no filter
+   540→    } else if (dueFilter === 'Overdue') {
+   541→      const todayStr = getTodayStr();
+   542→      filtered = dues.filter((d) => {
+   543→        if (d.status === 'Paid') return false;
+   544→        if (!d.dueDate) return false;
+   545→        try {
+   546→          return isBefore(parseISO(toDateString(d.dueDate)), parseISO(todayStr));
+   547→        } catch { return false; }
+   548→      });
+   549→    } else {
+   550→      filtered = dues.filter((d) => d.status === dueFilter);
+   551→    }
+   552→    return filtered;
+   553→  }, [dues, dueFilter]);
+   554→
+   555→  // ─── Overdue check helper ────────────────────────────────────────────────
+   556→
+   557→  const isDueOverdue = useCallback((due: Due): boolean => {
+   558→    if (due.status === 'Paid') return false;
+   559→    if (!due.dueDate) return false;
+   560→    try {
+   561→      return isBefore(parseISO(toDateString(due.dueDate)), parseISO(getTodayStr()));
+   562→    } catch { return false; }
+   563→  }, []);
+   564→
+   565→  // ─── Expense Form Handlers ───────────────────────────────────────────────
+   566→
+   567→  const resetExpForm = () => {
+   568→    setExpForm({ category: '', description: '', amount: '', date: getTodayStr(), vendor: '' });
+   569→    setEditingExpense(null);
+   570→  };
+   571→
+   572→  const openAddExpense = () => { resetExpForm(); setExpenseDialogOpen(true); };
+   573→
+   574→  const openEditExpense = (expense: Expense) => {
+   575→    setEditingExpense(expense);
+   576→    setExpForm({
+   577→      category: expense.category || '',
+   578→      description: expense.description || '',
+   579→      amount: String(expense.amount || ''),
+   580→      date: toDateString(expense.date),
+   581→      vendor: expense.vendor || '',
+   582→    });
+   583→    setExpenseDialogOpen(true);
+   584→  };
+   585→
+   586→  const handleSaveExpense = async () => {
+   587→    const amount = parseFloat(expForm.amount);
+   588→    if (!expForm.category || !expForm.description || isNaN(amount) || amount <= 0 || !expForm.date) {
+   589→      toast.error('Please fill in all required fields with valid data');
+   590→      return;
+   591→    }
+   592→    try {
+   593→      const isEdit = !!editingExpense;
+   594→      const url = editingExpense ? `/api/expenses?id=${editingExpense.id}` : '/api/expenses';
+   595→      const res = await fetch(url, {
+   596→        method: isEdit ? 'PUT' : 'POST',
+   597→        headers: { 'Content-Type': 'application/json' },
+   598→        body: JSON.stringify({
+   599→          category: expForm.category,
+   600→          description: expForm.description,
+   601→          amount,
+   602→          date: expForm.date,
+   603→          vendor: expForm.vendor || null,
+   604→        }),
+   605→      });
+   606→      if (res.ok) {
+   607→        toast.success(isEdit ? 'Expense updated' : 'Expense added');
+   608→        setExpenseDialogOpen(false);
+   609→        resetExpForm();
+   610→        fetchExpenses();
+   611→      } else {
+   612→        const err = await res.json().catch(() => ({}));
+   613→        toast.error(err.error || 'Failed to save expense');
+   614→      }
+   615→    } catch { toast.error('Network error'); }
+   616→  };
+   617→
+   618→  const handleDeleteExpense = async (id: string) => {
+   619→    setDeletingExpenseId(id);
+   620→    try {
+   621→      const res = await fetch(`/api/expenses?id=${id}`, { method: 'DELETE' });
+   622→      if (res.ok) { toast.success('Expense deleted'); fetchExpenses(); }
+   623→      else toast.error('Failed to delete expense');
+   624→    } catch { toast.error('Network error'); }
+   625→    finally { setDeletingExpenseId(null); }
+   626→  };
+   627→
+   628→  // ─── Payment Handlers ────────────────────────────────────────────────────
+   629→
+   630→  const openPaymentDialog = (due: Due) => {
+   631→    setPayingDue(due);
+   632→    setPaymentAmount('');
+   633→    setPaymentDialogOpen(true);
+   634→  };
+   635→
+   636→  const handleRecordPayment = async () => {
+   637→    if (!payingDue) return;
+   638→    const amount = parseFloat(paymentAmount);
+   639→    const balance = (payingDue.amount || 0) - (payingDue.paid || 0);
+   640→    if (isNaN(amount) || amount <= 0) { toast.error('Please enter a valid amount'); return; }
+   641→    if (amount > balance) { toast.error('Amount exceeds pending balance'); return; }
+   642→
+   643→    setMarkPaidLoading(true);
+   644→    try {
+   645→      const res = await fetch(`/api/dues?id=${payingDue.id}`, {
+   646→        method: 'PUT',
+   647→        headers: { 'Content-Type': 'application/json' },
+   648→        body: JSON.stringify({ paidAmount: amount }),
+   649→      });
+   650→      if (res.ok) {
+   651→        toast.success(`Payment of ${formatINR(amount)} recorded`);
+   652→        setPaymentDialogOpen(false);
+   653→        setPayingDue(null);
+   654→        fetchDues();
+   655→      } else toast.error('Failed to record payment');
+   656→    } catch { toast.error('Network error'); }
+   657→    finally { setMarkPaidLoading(false); }
+   658→  };
+   659→
+   660→  const handleMarkPaid = async (due: Due) => {
+   661→    setMarkPaidLoading(true);
+   662→    try {
+   663→      const res = await fetch(`/api/dues?id=${due.id}`, {
+   664→        method: 'PUT',
+   665→        headers: { 'Content-Type': 'application/json' },
+   666→        body: JSON.stringify({ status: 'Paid' }),
+   667→      });
+   668→      if (res.ok) { toast.success(`${due.customer?.name || 'Customer'} marked as paid`); fetchDues(); }
+   669→      else toast.error('Failed to update');
+   670→    } catch { toast.error('Network error'); }
+   671→    finally { setMarkPaidLoading(false); }
+   672→  };
+   673→
+   674→  // ─── Return Handlers ─────────────────────────────────────────────────────
+   675→
+   676→  const openCreateReturn = () => {
+   677→    setReturnForm({ saleSearch: '', saleId: '', refundAmount: '', reason: '' });
+   678→    setSaleSearchResults([]);
+   679→    setSelectedReturnSale(null);
+   680→    setReturnDialogOpen(true);
+   681→  };
+   682→
+   683→  const handleSaleSearch = (query: string) => {
+   684→    setReturnForm((f) => ({ ...f, saleSearch: query }));
+   685→    if (saleSearchTimeout.current) clearTimeout(saleSearchTimeout.current);
+   686→    if (!query.trim()) { setSaleSearchResults([]); return; }
+   687→    saleSearchTimeout.current = setTimeout(async () => {
+   688→      try {
+   689→        const res = await fetch(`/api/sales?search=${encodeURIComponent(query)}&limit=10`);
+   690→        if (res.ok) {
+   691→          const json = await res.json();
+   692→          const arr = Array.isArray(json.sales) ? json.sales : Array.isArray(json.data) ? json.data : [];
+   693→          setSaleSearchResults(arr);
+   694→        }
+   695→      } catch { /* ignore */ }
+   696→    }, 300);
+   697→  };
+   698→
+   699→  const selectReturnSale = (sale: Sale) => {
+   700→    setSelectedReturnSale(sale);
+   701→    setReturnForm((f) => ({ ...f, saleId: sale.id, refundAmount: String(sale.total || 0) }));
+   702→    setSaleSearchResults([]);
+   703→  };
+   704→
+   705→  const handleCreateReturn = async () => {
+   706→    if (!returnForm.saleId || !returnForm.reason) {
+   707→      toast.error('Please select a sale and a reason');
+   708→      return;
+   709→    }
+   710→    const amount = parseFloat(returnForm.refundAmount);
+   711→    if (isNaN(amount) || amount <= 0) {
+   712→      toast.error('Please enter a valid refund amount');
+   713→      return;
+   714→    }
+   715→    setCreatingReturn(true);
+   716→    try {
+   717→      const res = await fetch('/api/returns', {
+   718→        method: 'POST',
+   719→        headers: { 'Content-Type': 'application/json' },
+   720→        body: JSON.stringify({
+   721→          saleId: returnForm.saleId,
+   722→          reason: returnForm.reason,
+   723→          refundAmount: amount,
+   724→        }),
+   725→      });
+   726→      if (res.ok) {
+   727→        toast.success('Return created successfully');
+   728→        setReturnDialogOpen(false);
+   729→        fetchReturns();
+   730→      } else {
+   731→        const err = await res.json().catch(() => ({}));
+   732→        toast.error(err.error || 'Failed to create return');
+   733→      }
+   734→    } catch { toast.error('Network error'); }
+   735→    finally { setCreatingReturn(false); }
+   736→  };
+   737→
+   738→  // ─── CSV Export ──────────────────────────────────────────────────────────
+   739→
+   740→  const handleExportCSV = () => {
+   741→    const rows = expenses.map((e) => [
+   742→      formatDate(e.date),
+   743→      e.category,
+   744→      `"${(e.description || '').replace(/"/g, '""')}"`,
+   745→      e.amount,
+   746→      `"${(e.vendor || '').replace(/"/g, '""')}"`,
+   747→    ]);
+   748→    const csv = ['Date,Category,Description,Amount,Vendor', ...rows.map((r) => r.join(','))].join('\n');
+   749→    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+   750→    const url = URL.createObjectURL(blob);
+   751→    const a = document.createElement('a');
+   752→    a.href = url;
+   753→    a.download = `expenses_${getTodayStr()}.csv`;
+   754→    a.click();
+   755→    URL.revokeObjectURL(url);
+   756→    toast.success('CSV exported successfully');
+   757→  };
+   758→
+   759→  // ─── Budget Handlers ─────────────────────────────────────────────────────
+   760→
+   761→  const handleSetBudget = () => {
+   762→    const val = parseFloat(budgetInput);
+   763→    if (isNaN(val) || val <= 0) {
+   764→      toast.error('Please enter a valid budget amount');
+   765→      return;
+   766→    }
+   767→    setMonthlyBudget(val);
+   768→    localStorage.setItem(getBudgetKey(), String(val));
+   769→    setBudgetDialogOpen(false);
+   770→    setBudgetInput('');
+   771→    toast.success('Monthly budget set to ' + formatINR(val));
+   772→  };
+   773→
+   774→  const budgetPercent = monthlyBudget > 0 ? Math.min((monthlyExpensesTotal / monthlyBudget) * 100, 100) : 0;
+   775→  const budgetRemaining = monthlyBudget - monthlyExpensesTotal;
+   776→
+   777→  // ─── Status Badges ───────────────────────────────────────────────────────
+   778→
+   779→  const DueStatusBadge = ({ status }: { status: string }) => {
+   780→    const styles: Record<string, string> = {
+   781→      Pending: 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800',
+   782→      Partial: 'bg-sky-100 text-sky-800 border-sky-200 hover:bg-sky-100 dark:bg-sky-950 dark:text-sky-300 dark:border-sky-800',
+   783→      Paid: 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800',
+   784→      Overdue: 'bg-red-100 text-red-800 border-red-200 hover:bg-red-100 dark:bg-red-950 dark:text-red-300 dark:border-red-800',
+   785→    };
+   786→    return (
+   787→      <Badge className={styles[status] || 'border'}>
+   788→        {status}
+   789→      </Badge>
+   790→    );
+   791→  };
+   792→
+   793→  const ReturnStatusBadge = ({ status }: { status: string }) => {
+   794→    const styles: Record<string, string> = {
+   795→      Completed: 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800',
+   796→      Pending: 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800',
+   797→      Rejected: 'bg-red-100 text-red-800 border-red-200 hover:bg-red-100 dark:bg-red-950 dark:text-red-300 dark:border-red-800',
+   798→    };
+   799→    return (
+   800→      <Badge className={styles[status] || 'border'}>
+   801→        {status}
+   802→      </Badge>
+   803→    );
+   804→  };
+   805→
+   806→  // ─── Skeleton ─────────────────────────────────────────────────────────────
+   807→
+   808→  const TableSkeleton = ({ rows = 5, cols = 6 }: { rows?: number; cols?: number }) => (
+   809→    <div className="space-y-2 p-4">
+   810→      {Array.from({ length: rows }).map((_, i) => (
+   811→        <div key={i} className="flex gap-4">
+   812→          {Array.from({ length: cols }).map((_, j) => (
+   813→            <div key={j} className="h-8 bg-muted rounded animate-pulse flex-1" />
+   814→          ))}
+   815→        </div>
+   816→      ))}
+   817→    </div>
+   818→  );
+   819→
+   820→  // ─── Render ──────────────────────────────────────────────────────────────
+   821→
+   822→  return (
+   823→    <div className="space-y-6 p-4 md:p-6">
+   824→      {/* Page Header */}
+   825→      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+   826→        <div>
+   827→          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+   828→            <IndianRupee className="h-6 w-6" />
+   829→            Accounting & Finance
+   830→          </h1>
+   831→          <p className="text-muted-foreground text-sm mt-1">
+   832→            Track income, expenses, and pending dues
+   833→          </p>
+   834→        </div>
+   835→        <Button onClick={openAddExpense} size="sm" className="gap-1.5 w-fit">
+   836→          <Plus className="h-4 w-4" />
+   837→          Add Expense
+   838→        </Button>
+   839→      </div>
+   840→
+   841→      {/* ─── Profit & Loss Card ─────────────────────────────────────────── */}
+   842→      <Collapsible open={plOpen} onOpenChange={setPlOpen}>
+   843→        <Card>
+   844→          <CollapsibleTrigger className="w-full">
+   845→            <CardHeader className="pb-2 cursor-pointer">
+   846→              <div className="flex items-center justify-between">
+   847→                <div className="flex items-center gap-2">
+   848→                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-950">
+   849→                    <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+   850→                  </div>
+   851→                  <div>
+   852→                    <CardTitle className="text-base">Profit &amp; Loss Summary</CardTitle>
+   853→                    <CardDescription className="text-xs">
+   854→                      {format(new Date(), 'MMMM yyyy')} &bull; Net: <span className={netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-red-600 dark:text-red-400 font-semibold'}>{formatINR(netProfit)}</span>
+   855→                    </CardDescription>
+   856→                  </div>
+   857→                </div>
+   858→                <div className="flex items-center gap-3">
+   859→                  {lastMonthIncome > 0 && (
+   860→                    <div className={`flex items-center gap-0.5 text-xs font-medium ${momChangePercent >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+   861→                      {momChangePercent >= 0 ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
+   862→                      {Math.abs(momChangePercent)}% vs last month
+   863→                    </div>
+   864→                  )}
+   865→                  {plOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+   866→                </div>
+   867→              </div>
+   868→            </CardHeader>
+   869→          </CollapsibleTrigger>
+   870→          <CollapsibleContent>
+   871→            <CardContent className="pt-0">
+   872→              <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+   873→                <div className="rounded-lg border p-3">
+   874→                  <p className="text-xs text-muted-foreground">Revenue</p>
+   875→                  <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">{formatINR(monthlyIncome)}</p>
+   876→                  <p className="text-[10px] text-muted-foreground mt-0.5">Monthly collections</p>
+   877→                </div>
+   878→                <div className="rounded-lg border p-3">
+   879→                  <p className="text-xs text-muted-foreground">Cost of Goods</p>
+   880→                  <p className="text-sm font-bold text-muted-foreground font-mono">Not tracked</p>
+   881→                  <p className="text-[10px] text-muted-foreground mt-0.5">Enable product costing</p>
+   882→                </div>
+   883→                <div className="rounded-lg border p-3">
+   884→                  <p className="text-xs text-muted-foreground">Gross Profit</p>
+   885→                  <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">{formatINR(monthlyIncome)}</p>
+   886→                  <p className="text-[10px] text-muted-foreground mt-0.5">Revenue (COGS not tracked)</p>
+   887→                </div>
+   888→                <div className="rounded-lg border p-3">
+   889→                  <p className="text-xs text-muted-foreground">Total Expenses</p>
+   890→                  <p className="text-sm font-bold text-red-600 dark:text-red-400 font-mono">{formatINR(monthlyExpensesTotal)}</p>
+   891→                  <p className="text-[10px] text-muted-foreground mt-0.5">This month</p>
+   892→                </div>
+   893→                <div className={`rounded-lg border p-3 ${netProfit >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-red-50 dark:bg-red-950/30'}`}>
+   894→                  <p className="text-xs text-muted-foreground">Net Profit</p>
+   895→                  <p className={`text-sm font-bold font-mono ${netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{formatINR(netProfit)}</p>
+   896→                  <p className="text-[10px] text-muted-foreground mt-0.5">Revenue - Expenses</p>
+   897→                </div>
+   898→              </div>
+   899→            </CardContent>
+   900→          </CollapsibleContent>
+   901→        </Card>
+   902→      </Collapsible>
+   903→
+   904→      {/* Summary Cards */}
+   905→      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+   906→        <Card className="py-4">
+   907→          <CardContent className="px-4">
+   908→            <div className="flex items-center gap-3">
+   909→              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-950">
+   910→                <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+   911→              </div>
+   912→              <div className="min-w-0">
+   913→                <p className="text-xs text-muted-foreground font-medium">Today&apos;s Collections</p>
+   914→                <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 truncate">{formatINR(todayIncome)}</p>
+   915→              </div>
+   916→            </div>
+   917→          </CardContent>
+   918→        </Card>
+   919→
+   920→        <Card className="py-4">
+   921→          <CardContent className="px-4">
+   922→            <div className="flex items-center gap-3">
+   923→              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-100 dark:bg-teal-950">
+   924→                <Wallet className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+   925→              </div>
+   926→              <div className="min-w-0">
+   927→                <p className="text-xs text-muted-foreground font-medium">Monthly Collections</p>
+   928→                <p className="text-lg font-bold text-teal-600 dark:text-teal-400 truncate">{formatINR(monthlyIncome)}</p>
+   929→              </div>
+   930→            </div>
+   931→          </CardContent>
+   932→        </Card>
+   933→
+   934→        <Card className="py-4">
+   935→          <CardContent className="px-4">
+   936→            <div className="flex items-center gap-3">
+   937→              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-950">
+   938→                <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+   939→              </div>
+   940→              <div className="min-w-0">
+   941→                <p className="text-xs text-muted-foreground font-medium">Outstanding Dues</p>
+   942→                <p className="text-lg font-bold text-amber-600 dark:text-amber-400 truncate">{formatINR(totalPendingDues)}</p>
+   943→              </div>
+   944→            </div>
+   945→          </CardContent>
+   946→        </Card>
+   947→
+   948→        <Card className="py-4">
+   949→          <CardContent className="px-4">
+   950→            <div className="flex items-center gap-3">
+   951→              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-100 dark:bg-red-950">
+   952→                <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
+   953→              </div>
+   954→              <div className="min-w-0">
+   955→                <p className="text-xs text-muted-foreground font-medium">Total Expenses</p>
+   956→                <p className="text-lg font-bold text-red-600 dark:text-red-400 truncate">{formatINR(totalExpenses)}</p>
+   957→              </div>
+   958→            </div>
+   959→          </CardContent>
+   960→        </Card>
+   961→      </div>
+   962→
+   963→      {/* Tabs */}
+   964→      <Tabs defaultValue="cashflow" className="space-y-4">
+   965→        <TabsList className="flex-wrap">
+   966→          <TabsTrigger value="cashflow" className="gap-1.5"><Banknote className="h-4 w-4" /><span className="hidden sm:inline">Cash Flow</span></TabsTrigger>
+   967→          <TabsTrigger value="expenses" className="gap-1.5"><Receipt className="h-4 w-4" /><span className="hidden sm:inline">Expenses</span></TabsTrigger>
+   968→          <TabsTrigger value="dues" className="gap-1.5"><CreditCard className="h-4 w-4" /><span className="hidden sm:inline">Dues</span></TabsTrigger>
+   969→          <TabsTrigger value="returns" className="gap-1.5"><RotateCcw className="h-4 w-4" /><span className="hidden sm:inline">Returns</span></TabsTrigger>
+   970→        </TabsList>
+   971→
+   972→        {/* ─── Cash Flow Tab ────────────────────────────────────────────── */}
+   973→        <TabsContent value="cashflow">
+   974→          <Card>
+   975→            <CardHeader>
+   976→              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+   977→                <div>
+   978→                  <CardTitle className="text-lg">Cash Flow Statement</CardTitle>
+   979→                  <CardDescription>Track all income and expense transactions</CardDescription>
+   980→                </div>
+   981→                <div className="flex items-center gap-2 flex-wrap">
+   982→                  <div className="flex items-center gap-1.5">
+   983→                    <Label htmlFor="cf-from" className="text-xs whitespace-nowrap"><CalendarDays className="h-3.5 w-3.5 inline mr-1" />From</Label>
+   984→                    <Input id="cf-from" type="date" value={cashFlowFrom} onChange={(e) => setCashFlowFrom(e.target.value)} className="h-8 w-[140px] text-xs" />
+   985→                  </div>
+   986→                  <div className="flex items-center gap-1.5">
+   987→                    <Label htmlFor="cf-to" className="text-xs whitespace-nowrap">To</Label>
+   988→                    <Input id="cf-to" type="date" value={cashFlowTo} onChange={(e) => setCashFlowTo(e.target.value)} className="h-8 w-[140px] text-xs" />
+   989→                  </div>
+   990→                </div>
+   991→              </div>
+   992→            </CardHeader>
+   993→            <CardContent>
+   994→              {loadingSales || loadingExpenses ? (
+   995→                <TableSkeleton rows={6} cols={5} />
+   996→              ) : cashFlowData.length === 0 ? (
+   997→                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+   998→                  <Wallet className="h-10 w-10 mb-2 opacity-40" />
+   999→                  <p className="text-sm">No transactions found in this period</p>
+  1000→                </div>
+  1001→              ) : (
+  1002→                <>
+  1003→                  <div className="max-h-[420px] overflow-y-auto rounded-md border">
+  1004→                    <Table>
+  1005→                      <TableHeader>
+  1006→                        <TableRow>
+  1007→                          <TableHead className="text-xs">Date</TableHead>
+  1008→                          <TableHead className="text-xs">Description</TableHead>
+  1009→                          <TableHead className="text-xs">Type</TableHead>
+  1010→                          <TableHead className="text-xs text-right">Amount</TableHead>
+  1011→                          <TableHead className="text-xs text-right">Balance</TableHead>
+  1012→                        </TableRow>
+  1013→                      </TableHeader>
+  1014→                      <TableBody>
+  1015→                        {cashFlowData.map((entry, i) => (
+  1016→                          <TableRow key={`cf-${i}`}>
+  1017→                            <TableCell className="text-xs">{formatDate(entry.date)}</TableCell>
+  1018→                            <TableCell className="text-xs max-w-[200px] truncate">{entry.description}</TableCell>
+  1019→                            <TableCell>
+  1020→                              {entry.type === 'Income' ? (
+  1021→                                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800">Income</Badge>
+  1022→                              ) : (
+  1023→                                <Badge className="bg-red-100 text-red-700 border-red-200 text-xs dark:bg-red-950 dark:text-red-300 dark:border-red-800">Expense</Badge>
+  1024→                              )}
+  1025→                            </TableCell>
+  1026→                            <TableCell className={`text-xs text-right font-mono font-medium ${entry.type === 'Income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+  1027→                              {entry.type === 'Income' ? '+' : '-'}{formatINR(entry.amount)}
+  1028→                            </TableCell>
+  1029→                            <TableCell className={`text-xs text-right font-mono font-medium ${entry.balance >= 0 ? 'text-foreground' : 'text-red-600 dark:text-red-400'}`}>
+  1030→                              {formatINR(entry.balance)}
+  1031→                            </TableCell>
+  1032→                          </TableRow>
+  1033→                        ))}
+  1034→                      </TableBody>
+  1035→                      <TableFooter>
+  1036→                        <TableRow>
+  1037→                          <TableCell colSpan={3} className="text-xs font-semibold">Summary</TableCell>
+  1038→                          <TableCell className="text-xs text-right">
+  1039→                            <div className="space-y-0.5">
+  1040→                              <span className="block text-emerald-600 dark:text-emerald-400 font-mono">+{formatINR(cashFlowSummary.totalIncome)}</span>
+  1041→                              <span className="block text-red-600 dark:text-red-400 font-mono">-{formatINR(cashFlowSummary.totalExpense)}</span>
+  1042→                            </div>
+  1043→                          </TableCell>
+  1044→                          <TableCell className={`text-xs text-right font-mono font-bold ${cashFlowSummary.net >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+  1045→                            {cashFlowSummary.net >= 0 ? '+' : ''}{formatINR(cashFlowSummary.net)}
+  1046→                          </TableCell>
+  1047→                        </TableRow>
+  1048→                      </TableFooter>
+  1049→                    </Table>
+  1050→                  </div>
+  1051→                  <div className="grid grid-cols-3 gap-3 mt-4">
+  1052→                    <div className="rounded-lg border bg-emerald-50 dark:bg-emerald-950/30 p-3 text-center">
+  1053→                      <p className="text-xs text-muted-foreground">Total Income</p>
+  1054→                      <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">{formatINR(cashFlowSummary.totalIncome)}</p>
+  1055→                    </div>
+  1056→                    <div className="rounded-lg border bg-red-50 dark:bg-red-950/30 p-3 text-center">
+  1057→                      <p className="text-xs text-muted-foreground">Total Expense</p>
+  1058→                      <p className="text-sm font-bold text-red-600 dark:text-red-400 font-mono">{formatINR(cashFlowSummary.totalExpense)}</p>
+  1059→                    </div>
+  1060→                    <div className={`rounded-lg border p-3 text-center ${cashFlowSummary.net >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-red-50 dark:bg-red-950/30'}`}>
+  1061→                      <p className="text-xs text-muted-foreground">Net</p>
+  1062→                      <p className={`text-sm font-bold font-mono ${cashFlowSummary.net >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+  1063→                        {cashFlowSummary.net >= 0 ? '+' : ''}{formatINR(cashFlowSummary.net)}
+  1064→                      </p>
+  1065→                    </div>
+  1066→                  </div>
+  1067→                </>
+  1068→              )}
+  1069→            </CardContent>
+  1070→          </Card>
+  1071→        </TabsContent>
+  1072→
+  1073→        {/* ─── Expenses Tab ─────────────────────────────────────────────── */}
+  1074→        <TabsContent value="expenses">
+  1075→          <Card>
+  1076→            <CardHeader>
+  1077→              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  1078→                <div>
+  1079→                  <CardTitle className="text-lg flex items-center gap-2"><Receipt className="h-5 w-5" />Expense Management</CardTitle>
+  1080→                  <CardDescription>{expenses.length} expense{expenses.length !== 1 ? 's' : ''} totaling {formatINR(totalExpenses)}</CardDescription>
+  1081→                </div>
+  1082→                <div className="flex items-center gap-2">
+  1083→                  <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { setBudgetInput(monthlyBudget > 0 ? String(monthlyBudget) : ''); setBudgetDialogOpen(true); }}>
+  1084→                    <Target className="h-3.5 w-3.5" />Set Budget
+  1085→                  </Button>
+  1086→                  <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExportCSV} disabled={expenses.length === 0}>
+  1087→                    <Download className="h-3.5 w-3.5" />CSV
+  1088→                  </Button>
+  1089→                  <Button onClick={openAddExpense} size="sm" className="gap-1.5"><Plus className="h-4 w-4" />Add Expense</Button>
+  1090→                </div>
+  1091→              </div>
+  1092→            </CardHeader>
+  1093→            <CardContent>
+  1094→              {/* Monthly Budget Tracking */}
+  1095→              {monthlyBudget > 0 && (
+  1096→                <div className="mb-4 rounded-lg border p-4">
+  1097→                  <div className="flex items-center justify-between mb-2">
+  1098→                    <div className="flex items-center gap-2">
+  1099→                      <Target className="h-4 w-4 text-muted-foreground" />
+  1100→                      <span className="text-xs font-medium">Monthly Budget: {formatINR(monthlyBudget)}</span>
+  1101→                    </div>
+  1102→                    <span className={`text-xs font-semibold ${budgetRemaining >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+  1103→                      {budgetRemaining >= 0 ? `${formatINR(budgetRemaining)} remaining` : `${formatINR(Math.abs(budgetRemaining))} over budget`}
+  1104→                    </span>
+  1105→                  </div>
+  1106→                  <div className="relative">
+  1107→                    <Progress
+  1108→                      value={budgetPercent}
+  1109→                      className={`h-3 ${budgetPercent < 75 ? '[&>div]:bg-emerald-500' : budgetPercent < 100 ? '[&>div]:bg-amber-500' : '[&>div]:bg-red-500'}`}
+  1110→                    />
+  1111→                  </div>
+  1112→                  <div className="flex items-center justify-between mt-1.5">
+  1113→                    <span className="text-[11px] text-muted-foreground">{formatINR(monthlyExpensesTotal)} spent this month</span>
+  1114→                    <span className="text-[11px] text-muted-foreground">{Math.round(budgetPercent)}% used</span>
+  1115→                  </div>
+  1116→                </div>
+  1117→              )}
+  1118→
+  1119→              {loadingExpenses ? (
+  1120→                <TableSkeleton rows={6} cols={6} />
+  1121→              ) : expenses.length === 0 ? (
+  1122→                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+  1123→                  <Receipt className="h-10 w-10 mb-2 opacity-40" />
+  1124→                  <p className="text-sm">No expenses recorded yet</p>
+  1125→                  <Button variant="outline" size="sm" className="mt-3 gap-1.5" onClick={openAddExpense}><Plus className="h-3.5 w-3.5" />Add your first expense</Button>
+  1126→                </div>
+  1127→              ) : (
+  1128→                <>
+  1129→                  <div className="max-h-[360px] overflow-y-auto rounded-md border">
+  1130→                    <Table>
+  1131→                      <TableHeader>
+  1132→                        <TableRow>
+  1133→                          <TableHead className="text-xs">Date</TableHead>
+  1134→                          <TableHead className="text-xs">Category</TableHead>
+  1135→                          <TableHead className="text-xs">Description</TableHead>
+  1136→                          <TableHead className="text-xs text-right">Amount</TableHead>
+  1137→                          <TableHead className="text-xs hidden sm:table-cell">Vendor</TableHead>
+  1138→                          <TableHead className="text-xs text-right">Actions</TableHead>
+  1139→                        </TableRow>
+  1140→                      </TableHeader>
+  1141→                      <TableBody>
+  1142→                        {expenses.map((exp) => (
+  1143→                          <TableRow key={exp.id}>
+  1144→                            <TableCell className="text-xs">{formatDate(exp.date)}</TableCell>
+  1145→                            <TableCell><Badge variant="outline" className="text-xs">{exp.category}</Badge></TableCell>
+  1146→                            <TableCell className="text-xs max-w-[180px] truncate">{exp.description}</TableCell>
+  1147→                            <TableCell className="text-xs text-right font-mono font-medium text-red-600 dark:text-red-400">{formatINR(exp.amount)}</TableCell>
+  1148→                            <TableCell className="text-xs hidden sm:table-cell max-w-[120px] truncate">{exp.vendor || '—'}</TableCell>
+  1149→                            <TableCell className="text-right">
+  1150→                              <div className="flex items-center justify-end gap-1">
+  1151→                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openEditExpense(exp)}><Pencil className="h-3.5 w-3.5" /><span className="sr-only">Edit</span></Button>
+  1152→                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950" onClick={() => handleDeleteExpense(exp.id)} disabled={deletingExpenseId === exp.id}>
+  1153→                                  {deletingExpenseId === exp.id ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <Trash2 className="h-3.5 w-3.5" />}
+  1154→                                  <span className="sr-only">Delete</span>
+  1155→                                </Button>
+  1156→                              </div>
+  1157→                            </TableCell>
+  1158→                          </TableRow>
+  1159→                        ))}
+  1160→                      </TableBody>
+  1161→                    </Table>
+  1162→                  </div>
+  1163→
+  1164→                  {categorySummary.length > 0 && (
+  1165→                    <div className="mt-6">
+  1166→                      <Separator className="mb-4" />
+  1167→                      <h3 className="text-sm font-semibold mb-4 flex items-center gap-2"><PieChartIcon className="h-4 w-4" />Expense Distribution by Category</h3>
+  1168→                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  1169→                        <div className="flex items-center justify-center">
+  1170→                          <ChartContainer config={PIE_CHART_CONFIG} className="h-[250px] w-full max-w-[250px]">
+  1171→                            <PieChart>
+  1172→                              <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+  1173→                              <Pie data={categorySummary} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2} strokeWidth={2}>
+  1174→                                {categorySummary.map((_, index) => <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+  1175→                              </Pie>
+  1176→                            </PieChart>
+  1177→                          </ChartContainer>
+  1178→                        </div>
+  1179→                        <div className="space-y-3">
+  1180→                          <ChartContainer config={BAR_CHART_CONFIG} className="h-[200px] w-full">
+  1181→                            <BarChart data={categorySummary} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 60 }}>
+  1182→                              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+  1183→                              <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
+  1184→                              <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} width={65} />
+  1185→                              <ChartTooltip content={<ChartTooltipContent />} />
+  1186→                              <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+  1187→                                {categorySummary.map((_, index) => <Cell key={`bar-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+  1188→                              </Bar>
+  1189→                            </BarChart>
+  1190→                          </ChartContainer>
+  1191→                        </div>
+  1192→                      </div>
+  1193→                    </div>
+  1194→                  )}
+  1195→                </>
+  1196→              )}
+  1197→            </CardContent>
+  1198→          </Card>
+  1199→        </TabsContent>
+  1200→
+  1201→        {/* ─── Dues Tab ─────────────────────────────────────────────────── */}
+  1202→        <TabsContent value="dues">
+  1203→          <Card>
+  1204→            <CardHeader>
+  1205→              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  1206→                <div>
+  1207→                  <CardTitle className="text-lg flex items-center gap-2"><CreditCard className="h-5 w-5" />Customer Dues</CardTitle>
+  1208→                  <CardDescription>
+  1209→                    {filteredDues.length} due{filteredDues.length !== 1 ? 's' : ''} &bull; Pending total: {formatINR(totalPendingDues)}
+  1210→                  </CardDescription>
+  1211→                </div>
+  1212→                <div className="flex items-center gap-2">
+  1213→                  <Filter className="h-4 w-4 text-muted-foreground" />
+  1214→                  <Select value={dueFilter} onValueChange={setDueFilter}>
+  1215→                    <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue /></SelectTrigger>
+  1216→                    <SelectContent>
+  1217→                      <SelectItem value="All">All Status</SelectItem>
+  1218→                      <SelectItem value="Pending">Pending</SelectItem>
+  1219→                      <SelectItem value="Partial">Partial</SelectItem>
+  1220→                      <SelectItem value="Paid">Paid</SelectItem>
+  1221→                      <SelectItem value="Overdue">Overdue</SelectItem>
+  1222→                    </SelectContent>
+  1223→                  </Select>
+  1224→                </div>
+  1225→              </div>
+  1226→            </CardHeader>
+  1227→            <CardContent>
+  1228→              {loadingDues ? (
+  1229→                <TableSkeleton rows={5} cols={6} />
+  1230→              ) : filteredDues.length === 0 ? (
+  1231→                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+  1232→                  <CreditCard className="h-10 w-10 mb-2 opacity-40" />
+  1233→                  <p className="text-sm">No dues found</p>
+  1234→                </div>
+  1235→              ) : (
+  1236→                <div className="max-h-[420px] overflow-y-auto rounded-md border">
+  1237→                  <Table>
+  1238→                    <TableHeader>
+  1239→                      <TableRow>
+  1240→                        <TableHead className="text-xs">Customer</TableHead>
+  1241→                        <TableHead className="text-xs">Phone</TableHead>
+  1242→                        <TableHead className="text-xs text-right">Total</TableHead>
+  1243→                        <TableHead className="text-xs text-right">Paid</TableHead>
+  1244→                        <TableHead className="text-xs text-right">Balance</TableHead>
+  1245→                        <TableHead className="text-xs">Status</TableHead>
+  1246→                        <TableHead className="text-xs">Due Date</TableHead>
+  1247→                        <TableHead className="text-xs text-right">Action</TableHead>
+  1248→                      </TableRow>
+  1249→                    </TableHeader>
+  1250→                    <TableBody>
+  1251→                      {filteredDues.map((due) => {
+  1252→                        const balance = (due.amount || 0) - (due.paid || 0);
+  1253→                        const overdue = isDueOverdue(due);
+  1254→                        const expanded = expandedDueId === due.id;
+  1255→                        const partialPayments = due.paid > 0 && due.paid < due.amount ? 1 : 0;
+  1256→                        return (
+  1257→                          <React.Fragment key={due.id}>
+  1258→                            <TableRow
+  1259→                              className="cursor-pointer"
+  1260→                              onClick={() => setExpandedDueId(expanded ? null : due.id)}
+  1261→                            >
+  1262→                              <TableCell className="text-xs font-medium">
+  1263→                                <div className="flex items-center gap-1.5">
+  1264→                                  {overdue && (
+  1265→                                    <span className="inline-block h-2 w-2 rounded-full bg-red-500 shrink-0" />
+  1266→                                  )}
+  1267→                                  {due.customer?.name || 'Unknown'}
+  1268→                                </div>
+  1269→                              </TableCell>
+  1270→                              <TableCell className="text-xs text-muted-foreground">{due.customer?.phone || '—'}</TableCell>
+  1271→                              <TableCell className="text-xs text-right font-mono">{formatINR(due.amount || 0)}</TableCell>
+  1272→                              <TableCell className="text-xs text-right font-mono text-emerald-600 dark:text-emerald-400">{formatINR(due.paid || 0)}</TableCell>
+  1273→                              <TableCell className="text-xs text-right font-mono font-semibold text-red-600 dark:text-red-400">{formatINR(balance)}</TableCell>
+  1274→                              <TableCell>
+  1275→                                <div className="flex items-center gap-1.5">
+  1276→                                  <DueStatusBadge status={due.status} />
+  1277→                                  {overdue && (
+  1278→                                    <Badge className="bg-red-100 text-red-700 border-red-200 text-[10px] px-1.5 py-0 dark:bg-red-950 dark:text-red-300 dark:border-red-800">OVERDUE</Badge>
+  1279→                                  )}
+  1280→                                </div>
+  1281→                              </TableCell>
+  1282→                              <TableCell className="text-xs">{due.dueDate ? formatDate(due.dueDate) : '—'}</TableCell>
+  1283→                              <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+  1284→                                {due.status !== 'Paid' ? (
+  1285→                                  <div className="flex items-center justify-end gap-1">
+  1286→                                    <Tooltip>
+  1287→                                      <TooltipTrigger asChild>
+  1288→                                        <a
+  1289→                                          href={`https://wa.me/91${due.customer?.phone || ''}?text=${encodeURIComponent(
+  1290→                                            `Dear ${due.customer?.name || 'Customer'},\n\nThis is a friendly reminder from Sankaran Kovil Opticals regarding your pending payment of ${formatINR(balance)}.\n${due.dueDate ? `Due date: ${formatDate(due.dueDate)}\n` : ''}Please clear the balance at your earliest convenience.\n\nThank you!`
+  1291→                                          )}`}
+  1292→                                          target="_blank"
+  1293→                                          rel="noopener noreferrer"
+  1294→                                        >
+  1295→                                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950">
+  1296→                                            <MessageCircle className="h-3.5 w-3.5" />
+  1297→                                            <span className="sr-only">WhatsApp Reminder</span>
+  1298→                                          </Button>
+  1299→                                        </a>
+  1300→                                      </TooltipTrigger>
+  1301→                                      <TooltipContent>Send WhatsApp Reminder</TooltipContent>
+  1302→                                    </Tooltip>
+  1303→                                    <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => openPaymentDialog(due)}>
+  1304→                                      <IndianRupee className="h-3 w-3" /> Pay
+  1305→                                    </Button>
+  1306→                                    <Button variant="ghost" size="sm" className="h-7 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950 gap-1" onClick={() => handleMarkPaid(due)} disabled={markPaidLoading}>
+  1307→                                      <CheckCircle2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">Mark Paid</span>
+  1308→                                    </Button>
+  1309→                                  </div>
+  1310→                                ) : (
+  1311→                                  <Check className="h-4 w-4 text-emerald-500 mx-auto" />
+  1312→                                )}
+  1313→                              </TableCell>
+  1314→                            </TableRow>
+  1315→                            {/* Payment History Expansion Row */}
+  1316→                            {expanded && (
+  1317→                              <TableRow>
+  1318→                                <TableCell colSpan={8} className="bg-muted/30 px-6 py-3">
+  1319→                                  <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
+  1320→                                    <span>Created: <strong className="text-foreground">{formatDate(due.createdAt)}</strong></span>
+  1321→                                    {due.updatedAt && due.paid > 0 && (
+  1322→                                      <span>Last payment: <strong className="text-foreground">{formatDate(due.updatedAt)}</strong></span>
+  1323→                                    )}
+  1324→                                    <span>Total paid: <strong className="text-emerald-600 dark:text-emerald-400">{formatINR(due.paid)}</strong> of {formatINR(due.amount)}</span>
+  1325→                                    {due.paid > 0 && due.paid < due.amount && (
+  1326→                                      <span>Partial payments made: <strong className="text-foreground">{partialPayments}+</strong> (amount tracked)</span>
+  1327→                                    )}
+  1328→                                    {due.notes && <span>Notes: {due.notes}</span>}
+  1329→                                  </div>
+  1330→                                </TableCell>
+  1331→                              </TableRow>
+  1332→                            )}
+  1333→                          </React.Fragment>
+  1334→                        );
+  1335→                      })}
+  1336→                    </TableBody>
+  1337→                  </Table>
+  1338→                </div>
+  1339→              )}
+  1340→            </CardContent>
+  1341→          </Card>
+  1342→        </TabsContent>
+  1343→
+  1344→        {/* ─── Returns Tab ──────────────────────────────────────────────── */}
+  1345→        <TabsContent value="returns">
+  1346→          <Card>
+  1347→            <CardHeader>
+  1348→              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  1349→                <div>
+  1350→                  <CardTitle className="text-lg flex items-center gap-2"><RotateCcw className="h-5 w-5" />Returns Management</CardTitle>
+  1351→                  <CardDescription>Track product returns and refunds</CardDescription>
+  1352→                </div>
+  1353→                <Button onClick={openCreateReturn} size="sm" className="gap-1.5"><Plus className="h-4 w-4" />Create Return</Button>
+  1354→              </div>
+  1355→            </CardHeader>
+  1356→            <CardContent>
+  1357→              {/* Returns Summary Cards */}
+  1358→              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+  1359→                <div className="rounded-lg border p-3">
+  1360→                  <p className="text-xs text-muted-foreground">Total Returns</p>
+  1361→                  <p className="text-lg font-bold font-mono">{returns.length}</p>
+  1362→                </div>
+  1363→                <div className="rounded-lg border p-3">
+  1364→                  <p className="text-xs text-muted-foreground">Total Refund Amount</p>
+  1365→                  <p className="text-lg font-bold font-mono text-red-600 dark:text-red-400">{formatINR(totalReturnRefund)}</p>
+  1366→                </div>
+  1367→                <div className="rounded-lg border p-3">
+  1368→                  <p className="text-xs text-muted-foreground">This Month Returns</p>
+  1369→                  <p className="text-lg font-bold font-mono">{thisMonthReturns.length} <span className="text-sm text-muted-foreground font-normal">({formatINR(thisMonthReturnAmount)})</span></p>
+  1370→                </div>
+  1371→              </div>
+  1372→
+  1373→              {loadingReturns ? (
+  1374→                <TableSkeleton rows={5} cols={6} />
+  1375→              ) : returns.length === 0 ? (
+  1376→                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+  1377→                  <RotateCcw className="h-10 w-10 mb-2 opacity-40" />
+  1378→                  <p className="text-sm">No returns recorded yet</p>
+  1379→                  <Button variant="outline" size="sm" className="mt-3 gap-1.5" onClick={openCreateReturn}><Plus className="h-3.5 w-3.5" />Create your first return</Button>
+  1380→                </div>
+  1381→              ) : (
+  1382→                <div className="max-h-[420px] overflow-y-auto rounded-md border">
+  1383→                  <Table>
+  1384→                    <TableHeader>
+  1385→                      <TableRow>
+  1386→                        <TableHead className="text-xs">Invoice #</TableHead>
+  1387→                        <TableHead className="text-xs">Customer</TableHead>
+  1388→                        <TableHead className="text-xs">Reason</TableHead>
+  1389→                        <TableHead className="text-xs text-right">Refund Amount</TableHead>
+  1390→                        <TableHead className="text-xs">Status</TableHead>
+  1391→                        <TableHead className="text-xs">Date</TableHead>
+  1392→                      </TableRow>
+  1393→                    </TableHeader>
+  1394→                    <TableBody>
+  1395→                      {returns.map((ret) => (
+  1396→                        <TableRow key={ret.id}>
+  1397→                          <TableCell className="text-xs font-mono">{ret.sale?.invoiceNo || '—'}</TableCell>
+  1398→                          <TableCell className="text-xs">{ret.sale?.customer?.name || 'Walk-in'}</TableCell>
+  1399→                          <TableCell className="text-xs max-w-[160px] truncate">{ret.reason}</TableCell>
+  1400→                          <TableCell className="text-xs text-right font-mono font-medium text-red-600 dark:text-red-400">{formatINR(ret.amount || 0)}</TableCell>
+  1401→                          <TableCell><ReturnStatusBadge status={ret.status} /></TableCell>
+  1402→                          <TableCell className="text-xs">{formatDate(ret.createdAt)}</TableCell>
+  1403→                        </TableRow>
+  1404→                      ))}
+  1405→                    </TableBody>
+  1406→                  </Table>
+  1407→                </div>
+  1408→              )}
+  1409→            </CardContent>
+  1410→          </Card>
+  1411→        </TabsContent>
+  1412→      </Tabs>
+  1413→
+  1414→      {/* ─── Expense Dialog ──────────────────────────────────────────────── */}
+  1415→      <Dialog open={expenseDialogOpen} onOpenChange={setExpenseDialogOpen}>
+  1416→        <DialogContent className="sm:max-w-[440px]">
+  1417→          <DialogHeader>
+  1418→            <DialogTitle>{editingExpense ? 'Edit Expense' : 'Add New Expense'}</DialogTitle>
+  1419→            <DialogDescription>
+  1420→              {editingExpense ? 'Update the expense details below' : 'Record a new expense transaction'}
+  1421→            </DialogDescription>
+  1422→          </DialogHeader>
+  1423→          <div className="grid gap-4 py-2">
+  1424→            <div className="grid gap-2">
+  1425→              <Label htmlFor="exp-category">Category *</Label>
+  1426→              <Select value={expForm.category} onValueChange={(v) => setExpForm((f) => ({ ...f, category: v }))}>
+  1427→                <SelectTrigger id="exp-category"><SelectValue placeholder="Select category" /></SelectTrigger>
+  1428→                <SelectContent>
+  1429→                  {EXPENSE_CATEGORIES.map((cat) => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+  1430→                </SelectContent>
+  1431→              </Select>
+  1432→            </div>
+  1433→            <div className="grid gap-2">
+  1434→              <Label htmlFor="exp-desc">Description *</Label>
+  1435→              <Input id="exp-desc" placeholder="What was the expense for?" value={expForm.description} onChange={(e) => setExpForm((f) => ({ ...f, description: e.target.value }))} />
+  1436→            </div>
+  1437→            <div className="grid grid-cols-2 gap-4">
+  1438→              <div className="grid gap-2">
+  1439→                <Label htmlFor="exp-amount">Amount (₹) *</Label>
+  1440→                <Input id="exp-amount" type="number" min="1" placeholder="0" value={expForm.amount} onChange={(e) => setExpForm((f) => ({ ...f, amount: e.target.value }))} />
+  1441→              </div>
+  1442→              <div className="grid gap-2">
+  1443→                <Label htmlFor="exp-date">Date *</Label>
+  1444→                <Input id="exp-date" type="date" value={expForm.date} onChange={(e) => setExpForm((f) => ({ ...f, date: e.target.value }))} />
+  1445→              </div>
+  1446→            </div>
+  1447→            <div className="grid gap-2">
+  1448→              <Label htmlFor="exp-vendor">Vendor (optional)</Label>
+  1449→              <Input id="exp-vendor" placeholder="Vendor or payee name" value={expForm.vendor} onChange={(e) => setExpForm((f) => ({ ...f, vendor: e.target.value }))} />
+  1450→            </div>
+  1451→          </div>
+  1452→          <DialogFooter className="gap-2 sm:gap-0">
+  1453→            <Button variant="outline" onClick={() => setExpenseDialogOpen(false)}>Cancel</Button>
+  1454→            <Button onClick={handleSaveExpense}>{editingExpense ? 'Update Expense' : 'Add Expense'}</Button>
+  1455→          </DialogFooter>
+  1456→        </DialogContent>
+  1457→      </Dialog>
+  1458→
+  1459→      {/* ─── Payment Dialog ──────────────────────────────────────────────── */}
+  1460→      <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+  1461→        <DialogContent className="sm:max-w-[400px]">
+  1462→          <DialogHeader>
+  1463→            <DialogTitle>Record Payment</DialogTitle>
+  1464→            <DialogDescription>
+  1465→              Collect payment from {payingDue?.customer?.name || 'customer'}
+  1466→            </DialogDescription>
+  1467→          </DialogHeader>
+  1468→          <div className="grid gap-4 py-2">
+  1469→            <div className="grid grid-cols-2 gap-4">
+  1470→              <div className="rounded-lg border p-3">
+  1471→                <p className="text-xs text-muted-foreground">Total Amount</p>
+  1472→                <p className="text-sm font-bold font-mono">{formatINR(payingDue?.amount || 0)}</p>
+  1473→              </div>
+  1474→              <div className="rounded-lg border p-3">
+  1475→                <p className="text-xs text-muted-foreground">Pending Balance</p>
+  1476→                <p className="text-sm font-bold font-mono text-red-600">{formatINR((payingDue?.amount || 0) - (payingDue?.paid || 0))}</p>
+  1477→              </div>
+  1478→            </div>
+  1479→            <div className="grid gap-2">
+  1480→              <Label htmlFor="pay-amount">Payment Amount (₹) *</Label>
+  1481→              <Input id="pay-amount" type="number" min="1" placeholder="Enter amount" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} />
+  1482→              <p className="text-xs text-muted-foreground">
+  1483→                Already paid: {formatINR(payingDue?.paid || 0)}
+  1484→              </p>
+  1485→            </div>
+  1486→            <div className="flex gap-2">
+  1487→              <Button variant="outline" size="sm" onClick={() => setPaymentAmount(String((payingDue?.amount || 0) - (payingDue?.paid || 0)))}>
+  1488→                Set Full Amount
+  1489→              </Button>
+  1490→            </div>
+  1491→          </div>
+  1492→          <DialogFooter className="gap-2 sm:gap-0">
+  1493→            <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>Cancel</Button>
+  1494→            <Button onClick={handleRecordPayment} disabled={markPaidLoading}>
+  1495→              {markPaidLoading ? 'Recording...' : 'Record Payment'}
+  1496→            </Button>
+  1497→          </DialogFooter>
+  1498→        </DialogContent>
+  1499→      </Dialog>
+  1500→
+  1501→      {/* ─── Create Return Dialog ───────────────────────────────────────── */}
+  1502→      <Dialog open={returnDialogOpen} onOpenChange={setReturnDialogOpen}>
+  1503→        <DialogContent className="sm:max-w-[480px]">
+  1504→          <DialogHeader>
+  1505→            <DialogTitle>Create Return</DialogTitle>
+  1506→            <DialogDescription>Search for a sale and create a return record</DialogDescription>
+  1507→          </DialogHeader>
+  1508→          <div className="grid gap-4 py-2">
+  1509→            {/* Sale Search */}
+  1510→            <div className="grid gap-2 relative">
+  1511→              <Label htmlFor="return-sale-search">Search Sale by Invoice #</Label>
+  1512→              <div className="relative">
+  1513→                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+  1514→                <Input
+  1515→                  id="return-sale-search"
+  1516→                  placeholder="Type invoice number..."
+  1517→                  value={returnForm.saleSearch}
+  1518→                  onChange={(e) => handleSaleSearch(e.target.value)}
+  1519→                  className="pl-9"
+  1520→                />
+  1521→              </div>
+  1522→              {/* Search Results Dropdown */}
+  1523→              {saleSearchResults.length > 0 && !selectedReturnSale && (
+  1524→                <div className="absolute z-50 top-full mt-1 left-0 right-0 rounded-md border bg-background shadow-lg max-h-48 overflow-y-auto">
+  1525→                  {saleSearchResults.map((s) => (
+  1526→                    <button
+  1527→                      key={s.id}
+  1528→                      className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center justify-between gap-2"
+  1529→                      onClick={() => selectReturnSale(s)}
+  1530→                    >
+  1531→                      <span className="font-mono">{s.invoiceNo}</span>
+  1532→                      <span className="text-muted-foreground">{s.customer?.name || s.customerName}</span>
+  1533→                      <span className="font-mono font-medium">{formatINR(s.total)}</span>
+  1534→                    </button>
+  1535→                  ))}
+  1536→                </div>
+  1537→              )}
+  1538→              {/* Selected Sale */}
+  1539→              {selectedReturnSale && (
+  1540→                <div className="rounded-lg border bg-muted/50 p-3 flex items-center justify-between">
+  1541→                  <div>
+  1542→                    <p className="text-xs font-mono font-medium">{selectedReturnSale.invoiceNo}</p>
+  1543→                    <p className="text-xs text-muted-foreground">{selectedReturnSale.customer?.name || selectedReturnSale.customerName}</p>
+  1544→                  </div>
+  1545→                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setSelectedReturnSale(null); setReturnForm((f) => ({ ...f, saleId: '', saleSearch: '' })); }}>
+  1546→                    <span className="sr-only">Clear</span>
+  1547→                    <Trash2 className="h-3 w-3" />
+  1548→                  </Button>
+  1549→                </div>
+  1550→              )}
+  1551→            </div>
+  1552→
+  1553→            {/* Reason */}
+  1554→            <div className="grid gap-2">
+  1555→              <Label>Return Reason *</Label>
+  1556→              <Select value={returnForm.reason} onValueChange={(v) => setReturnForm((f) => ({ ...f, reason: v }))}>
+  1557→                <SelectTrigger><SelectValue placeholder="Select reason" /></SelectTrigger>
+  1558→                <SelectContent>
+  1559→                  {RETURN_REASONS.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+  1560→                </SelectContent>
+  1561→              </Select>
+  1562→            </div>
+  1563→
+  1564→            {/* Refund Amount */}
+  1565→            <div className="grid gap-2">
+  1566→              <Label htmlFor="return-amount">Refund Amount (₹) *</Label>
+  1567→              <Input
+  1568→                id="return-amount"
+  1569→                type="number"
+  1570→                min="1"
+  1571→                placeholder="0"
+  1572→                value={returnForm.refundAmount}
+  1573→                onChange={(e) => setReturnForm((f) => ({ ...f, refundAmount: e.target.value }))}
+  1574→              />
+  1575→            </div>
+  1576→          </div>
+  1577→          <DialogFooter className="gap-2 sm:gap-0">
+  1578→            <Button variant="outline" onClick={() => setReturnDialogOpen(false)}>Cancel</Button>
+  1579→            <Button onClick={handleCreateReturn} disabled={creatingReturn}>
+  1580→              {creatingReturn ? 'Creating...' : 'Create Return'}
+  1581→            </Button>
+  1582→          </DialogFooter>
+  1583→        </DialogContent>
+  1584→      </Dialog>
+  1585→
+  1586→      {/* ─── Set Budget Dialog ──────────────────────────────────────────── */}
+  1587→      <Dialog open={budgetDialogOpen} onOpenChange={setBudgetDialogOpen}>
+  1588→        <DialogContent className="sm:max-w-[360px]">
+  1589→          <DialogHeader>
+  1590→            <DialogTitle>Set Monthly Budget</DialogTitle>
+  1591→            <DialogDescription>Set a spending limit for {format(new Date(), 'MMMM yyyy')}</DialogDescription>
+  1592→          </DialogHeader>
+  1593→          <div className="grid gap-4 py-2">
+  1594→            <div className="grid gap-2">
+  1595→              <Label htmlFor="budget-amount">Budget Amount (₹)</Label>
+  1596→              <Input
+  1597→                id="budget-amount"
+  1598→                type="number"
+  1599→                min="1"
+  1600→                placeholder="Enter budget"
+  1601→                value={budgetInput}
+  1602→                onChange={(e) => setBudgetInput(e.target.value)}
+  1603→              />
+  1604→              {monthlyBudget > 0 && (
+  1605→                <p className="text-xs text-muted-foreground">Current budget: {formatINR(monthlyBudget)}</p>
+  1606→              )}
+  1607→            </div>
+  1608→          </div>
+  1609→          <DialogFooter className="gap-2 sm:gap-0">
+  1610→            {monthlyBudget > 0 && (
+  1611→              <Button variant="outline" onClick={() => { setMonthlyBudget(0); localStorage.removeItem(getBudgetKey()); setBudgetDialogOpen(false); toast.success('Budget cleared'); }}>Clear Budget</Button>
+  1612→            )}
+  1613→            <Button onClick={handleSetBudget}>Save Budget</Button>
+  1614→          </DialogFooter>
+  1615→        </DialogContent>
+  1616→      </Dialog>
+  1617→    </div>
+  1618→  );
+  1619→}

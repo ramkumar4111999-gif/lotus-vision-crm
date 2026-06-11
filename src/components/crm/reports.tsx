@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState, useCallback, useEffect } from "react";
+import React, { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   AreaChart,
@@ -17,6 +17,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  ComposedChart,
 } from "recharts";
 import {
   TrendingUp,
@@ -30,8 +31,10 @@ import {
   BarChart3,
   Download,
   Loader2,
+  FileText,
+  Printer,
 } from "lucide-react";
-import { format, subDays, parseISO, isWithinInterval } from "date-fns";
+import { format, subDays, parseISO, isWithinInterval, startOfMonth, endOfMonth, subMonths } from "date-fns";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -82,6 +85,8 @@ const PAYMENT_COLORS: Record<string, string> = {
 };
 
 const CHART_GRADIENT_ID = "emeraldGradient";
+const THIS_MONTH_COLOR = "#059669";
+const LAST_MONTH_COLOR = "#94a3b8";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -117,10 +122,19 @@ interface TopCustomer {
 interface SaleRecord {
   id: string;
   total: number;
+  totalAmount?: number;
   paymentMode: string;
   createdAt: string;
   customerName: string;
+  invoiceNo?: string;
+  discount?: number;
+  cgst?: number;
+  sgst?: number;
+  igst?: number;
+  status?: string;
   customer?: { name: string; phone: string } | null;
+  itemsCount?: number;
+  subtotal?: number;
 }
 
 interface Product {
@@ -131,6 +145,38 @@ interface Product {
   minStock: number;
   costPrice: number | null;
   price: number;
+}
+
+interface RevenueComparisonSummary {
+  thisMonth: { total: number; orders: number; cgst: number; sgst: number; igst: number };
+  lastMonth: { total: number; orders: number; cgst: number; sgst: number; igst: number };
+  changePercent: number;
+}
+
+interface RevenueComparisonDay {
+  day: number;
+  revenue: number;
+  orders: number;
+}
+
+interface ProductPerformanceCategory {
+  category: string;
+  revenue: number;
+  qty: number;
+  products: number;
+}
+
+interface ProductPerformanceItem {
+  productId: string;
+  name: string;
+  category: string;
+  brand: string;
+  price: number;
+  costPrice: number;
+  currentStock: number;
+  totalQtySold: number;
+  totalRevenue: number;
+  profitMargin: number;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -267,7 +313,7 @@ function useReportsData<T>(type: string, fallbackData: T) {
 }
 
 function useSalesData() {
-  return useQuery<{ data: SaleRecord[] }>({
+  return useQuery<{ sales?: SaleRecord[]; data?: SaleRecord[] }>({
     queryKey: ["sales-all"],
     queryFn: () => fetch("/api/sales?limit=1000").then((r) => r.json()),
     staleTime: 60_000,
@@ -275,7 +321,7 @@ function useSalesData() {
 }
 
 function useProductsData() {
-  return useQuery<{ data: Product[] }>({
+  return useQuery<{ products?: Product[]; data?: Product[] }>({
     queryKey: ["products"],
     queryFn: () => fetch("/api/products").then((r) => r.json()),
     staleTime: 60_000,
@@ -290,11 +336,114 @@ function useTopCustomers() {
   });
 }
 
+function useRevenueComparison() {
+  return useQuery<{
+    summary: RevenueComparisonSummary;
+    thisMonthData: RevenueComparisonDay[];
+    lastMonthData: RevenueComparisonDay[];
+  }>({
+    queryKey: ["revenue-comparison"],
+    queryFn: () => fetch("/api/reports?type=revenue-comparison").then((r) => r.json()),
+    staleTime: 60_000,
+  });
+}
+
+function useProductPerformance() {
+  return useQuery<{
+    categoryData: ProductPerformanceCategory[];
+    productData: ProductPerformanceItem[];
+    totalProducts: number;
+    totalRevenue: number;
+  }>({
+    queryKey: ["product-performance"],
+    queryFn: () => fetch("/api/reports?type=product-performance").then((r) => r.json()),
+    staleTime: 60_000,
+  });
+}
+
 // ─── Fallback Data ───────────────────────────────────────────────────────────
 
 const FALLBACK_SALES_TREND: SalesTrendPoint[] = [];
 const FALLBACK_PRODUCTS: ProductSale[] = [];
 const FALLBACK_CUSTOMERS: TopCustomer[] = [];
+
+// ─── PDF Export ───────────────────────────────────────────────────────────────
+
+function usePDFExport() {
+  const [exporting, setExporting] = useState(false);
+
+  const exportPDF = useCallback(async (
+    title: string,
+    elementId: string,
+  ) => {
+    setExporting(true);
+    try {
+      const element = document.getElementById(elementId);
+      if (!element) {
+        toast.error("Could not find report content to export");
+        return;
+      }
+
+      // Use browser print as PDF — works universally without extra libs
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) {
+        toast.error("Please allow popups for PDF export");
+        return;
+      }
+
+      const styles = Array.from(document.styleSheets)
+        .map((sheet) => {
+          try {
+            return Array.from(sheet.cssRules).map((rule) => rule.cssText).join("\n");
+          } catch {
+            return "";
+          }
+        })
+        .join("\n");
+
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>${title} - Sankaran Kovil Opticals</title>
+          <style>
+            ${styles}
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 20px; color: #111; background: #fff; }
+            .print-header { text-align: center; margin-bottom: 24px; border-bottom: 2px solid #059669; padding-bottom: 12px; }
+            .print-header h1 { font-size: 20px; margin: 0; color: #059669; }
+            .print-header p { font-size: 12px; color: #666; margin: 4px 0 0; }
+            table { width: 100%; border-collapse: collapse; font-size: 12px; }
+            th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
+            th { background: #f3f4f6; font-weight: 600; }
+            tr:nth-child(even) { background: #f9fafb; }
+            .text-right { text-align: right; }
+            .font-mono { font-family: monospace; }
+            .no-print { display: none !important; }
+            @media print { body { padding: 0; } }
+          </style>
+        </head>
+        <body>
+          <div class="print-header">
+            <h1>Sankaran Kovil Opticals</h1>
+            <p>${title} | Generated: ${new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</p>
+          </div>
+          ${element.innerHTML}
+          <script>
+            setTimeout(() => { window.print(); window.close(); }, 500);
+          </script>
+        </body>
+        </html>
+      `);
+      printWindow.document.close();
+    } catch {
+      toast.error("Failed to generate PDF");
+    } finally {
+      setExporting(false);
+    }
+  }, []);
+
+  return { exporting, exportPDF };
+}
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
@@ -306,12 +455,16 @@ export default function Reports() {
   const [dateFrom, setDateFrom] = useState(defaultFrom);
   const [dateTo, setDateTo] = useState(defaultTo);
 
+  const { exporting: csvExporting, exportPDF } = usePDFExport();
+
   // Fetch data
   const salesTrendQuery = useReportsData<{ data: SalesTrendPoint[] }>("sales-trend", { data: FALLBACK_SALES_TREND });
   const topProductsQuery = useReportsData<{ data: ProductSale[] }>("top-products", { data: FALLBACK_PRODUCTS });
   const topCustomersQuery = useTopCustomers();
   const salesQuery = useSalesData();
   const productsQuery = useProductsData();
+  const revenueCompQuery = useRevenueComparison();
+  const productPerfQuery = useProductPerformance();
 
   // Parse raw data with fallbacks
   const salesTrendData = useMemo(() => {
@@ -345,10 +498,25 @@ export default function Reports() {
 
   const allProducts = useMemo(() => {
     const raw = productsQuery.data;
+    if (raw && "products" in raw && Array.isArray(raw.products)) return raw.products;
     if (raw && "data" in raw && Array.isArray(raw.data)) return raw.data;
     if (Array.isArray(raw)) return raw;
     return [] as Product[];
   }, [productsQuery.data]);
+
+  // Revenue comparison data
+  const revenueComp = useMemo(() => {
+    const raw = revenueCompQuery.data;
+    if (!raw || !raw.summary) return null;
+    return raw as { summary: RevenueComparisonSummary; thisMonthData: RevenueComparisonDay[]; lastMonthData: RevenueComparisonDay[] };
+  }, [revenueCompQuery.data]);
+
+  // Product performance data
+  const productPerf = useMemo(() => {
+    const raw = productPerfQuery.data;
+    if (!raw) return null;
+    return raw as { categoryData: ProductPerformanceCategory[]; productData: ProductPerformanceItem[]; totalProducts: number; totalRevenue: number };
+  }, [productPerfQuery.data]);
 
   // ─── Revenue Summary from all sales ────────────────────────────────────
 
@@ -359,7 +527,7 @@ export default function Reports() {
       try { return isWithinInterval(new Date(s.createdAt), { start: from, end: to }); }
       catch { return false; }
     });
-    const totalRevenue = filtered.reduce((sum, s) => sum + (s.total || 0), 0);
+    const totalRevenue = filtered.reduce((sum, s) => sum + (s.total || s.totalAmount || 0), 0);
     const numTx = filtered.length;
     const avgValue = numTx > 0 ? Math.round(totalRevenue / numTx) : 0;
     return { totalRevenue, numTx, avgValue };
@@ -379,7 +547,7 @@ export default function Reports() {
       const mode = s.paymentMode || "Cash";
       if (!map[mode]) map[mode] = { mode, count: 0, amount: 0 };
       map[mode].count += 1;
-      map[mode].amount += s.total || 0;
+      map[mode].amount += s.total || s.totalAmount || 0;
     });
     return Object.values(map).sort((a, b) => b.amount - a.amount);
   }, [allSales, dateFrom, dateTo]);
@@ -397,7 +565,7 @@ export default function Reports() {
     filtered.forEach((s) => {
       const day = format(new Date(s.createdAt), "yyyy-MM-dd");
       const existing = dayMap.get(day) || { date: day, revenue: 0, orders: 0 };
-      existing.revenue += s.total || 0;
+      existing.revenue += s.total || s.totalAmount || 0;
       existing.orders += 1;
       dayMap.set(day, existing);
     });
@@ -421,7 +589,6 @@ export default function Reports() {
       })
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
       .forEach((s) => {
-        // Each unique customer's first sale counts as acquisition
         const key = s.customer?.name || s.customerName || `anon-${s.id}`;
         if (!seen.has(key)) {
           seen.add(key);
@@ -457,12 +624,11 @@ export default function Reports() {
 
   const monthlyRevenue = useMemo((): SalesTrendPoint[] => {
     if (salesTrendData.length === 0) {
-      // Build from raw sales
       const monthMap = new Map<string, { date: string; revenue: number; orders: number }>();
       allSales.forEach((s) => {
         const month = format(new Date(s.createdAt), "MMM yyyy");
         const existing = monthMap.get(month) || { date: month, revenue: 0, orders: 0 };
-        existing.revenue += s.total || 0;
+        existing.revenue += s.total || s.totalAmount || 0;
         existing.orders += 1;
         monthMap.set(month, existing);
       });
@@ -477,6 +643,24 @@ export default function Reports() {
   const totalMonthlyRevenue = monthlyRevenue.reduce((s, d) => s + d.revenue, 0);
   const totalMonthlyOrders = monthlyRevenue.reduce((s, d) => s + d.orders, 0);
   const avgMonthlySaleValue = totalMonthlyOrders > 0 ? Math.round(totalMonthlyRevenue / totalMonthlyOrders) : 0;
+
+  // ─── Revenue Comparison Chart Data (merge this month & last month by day) ───
+
+  const comparisonChartData = useMemo(() => {
+    if (!revenueComp) return [];
+    const maxDays = Math.max(revenueComp.thisMonthData.length, revenueComp.lastMonthData.length);
+    const data: { day: number; thisMonth: number; lastMonth: number }[] = [];
+    for (let d = 1; d <= maxDays; d++) {
+      const tm = revenueComp.thisMonthData.find((x) => x.day === d);
+      const lm = revenueComp.lastMonthData.find((x) => x.day === d);
+      data.push({
+        day: d,
+        thisMonth: tm?.revenue || 0,
+        lastMonth: lm?.revenue || 0,
+      });
+    }
+    return data;
+  }, [revenueComp]);
 
   // ─── CSV Export ──────────────────────────────────────────────────────
   const [exporting, setExporting] = useState(false);
@@ -498,18 +682,18 @@ export default function Reports() {
         const list: SaleRecord[] = Array.isArray(salesData.sales) ? salesData.sales : [];
         for (const s of list) {
           const dateStr = s.createdAt ? format(new Date(s.createdAt), "dd-MMM-yyyy") : "";
-          const items = (s as Record<string, unknown>).itemsCount || 0;
+          const items = s.itemsCount || 0;
           const disc = s.discount || 0;
-          const tax = ((s as Record<string, unknown>).cgst || 0) + ((s as Record<string, unknown>).sgst || 0);
+          const tax = (s.cgst || 0) + (s.sgst || 0) + (s.igst || 0);
           const line = [
             dateStr,
             `"${s.invoiceNo || ""}"`,
             `"${(s.customer?.name || s.customerName || "").replace(/"/g, '""')}"`,
             items,
-            (s as Record<string, unknown>).subtotal || 0,
+            s.subtotal || 0,
             disc,
             tax,
-            s.total || 0,
+            s.total || s.totalAmount || 0,
             s.paymentMode || "",
             s.status || "",
           ].join(",");
@@ -528,7 +712,7 @@ export default function Reports() {
           const name = s.customer?.name || s.customerName || "Walk-in";
           const existing = customersMap.get(name) || { orders: 0, spent: 0 };
           existing.orders += 1;
-          existing.spent += s.total || 0;
+          existing.spent += s.total || s.totalAmount || 0;
           customersMap.set(name, existing);
         }
       }
@@ -551,29 +735,21 @@ export default function Reports() {
 
       // ─── Section 3: Product Performance ─────────────────────────────
       let productSheet = "\nPRODUCT PERFORMANCE\n";
-      productSheet += "Name,Category,Price,Stock,Revenue\n";
-      const productSalesMap = new Map<string, { qty: number; revenue: number }>();
-      if (salesRes.status === "fulfilled" && salesRes.value.ok) {
-        // Fetch sale items from individual sale details for product performance
-        // We'll use the top products API for this
-      }
+      productSheet += "Name,Category,Price,Stock,Qty Sold,Revenue\n";
       if (prodRes.status === "fulfilled" && prodRes.value.ok) {
-        const prodData = await prodRes.value.json();
-        const prodList = Array.isArray(prodData.products) ? prodData.products : [];
-        // Try to get product performance data from the reports API
         try {
-          const perfRes = await fetch("/api/reports?type=top-products");
+          const perfRes = await fetch("/api/reports?type=product-performance");
           if (perfRes.ok) {
             const perfData = await perfRes.json();
             const perfList = Array.isArray(perfData.data) ? perfData.data : [];
             const perfMap = new Map<string, { qty: number; revenue: number }>();
-            for (const p of perfList) {
-              const pr = p as Record<string, unknown>;
-              perfMap.set(pr.name as string, {
-                qty: (pr.totalQtySold as number) || 0,
-                revenue: (pr.totalRevenue as number) || 0,
-              });
+            if (Array.isArray(perfData.productData)) {
+              for (const p of perfData.productData) {
+                perfMap.set(p.name, { qty: p.totalQtySold, revenue: p.totalRevenue });
+              }
             }
+            const prodData = await prodRes.value.json();
+            const prodList = Array.isArray(prodData.products) ? prodData.products : [];
             for (const p of prodList) {
               const pr = p as Record<string, unknown>;
               const perf = perfMap.get(pr.name as string) || { qty: 0, revenue: 0 };
@@ -582,32 +758,21 @@ export default function Reports() {
                 `"${(pr.category || "").toString()}"`,
                 pr.price || 0,
                 pr.stock || 0,
+                perf.qty,
                 perf.revenue,
-              ].join(",");
-              productSheet += line + "\n";
-            }
-          } else {
-            for (const p of prodList) {
-              const pr = p as Record<string, unknown>;
-              const line = [
-                `"${(pr.name || "").toString().replace(/"/g, '""')}"`,
-                `"${(pr.category || "").toString()}"`,
-                pr.price || 0,
-                pr.stock || 0,
-                0,
               ].join(",");
               productSheet += line + "\n";
             }
           }
         } catch {
-          for (const p of prodList) {
+          for (const p of (await prodRes.value.json()).products || []) {
             const pr = p as Record<string, unknown>;
             const line = [
               `"${(pr.name || "").toString().replace(/"/g, '""')}"`,
               `"${(pr.category || "").toString()}"`,
               pr.price || 0,
               pr.stock || 0,
-              0,
+              0, 0,
             ].join(",");
             productSheet += line + "\n";
           }
@@ -635,28 +800,46 @@ export default function Reports() {
   return (
     <div className="space-y-6 p-4 md:p-6">
       {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <BarChart3 className="h-6 w-6" />
-          Reports & Analytics
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Business insights for Sankaran Kovil Opticals
-        </p>
-        <Button
-          variant="outline"
-          size="sm"
-          className="mt-2 gap-2"
-          onClick={handleDownloadCSV}
-          disabled={exporting}
-        >
-          {exporting ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Download className="h-4 w-4" />
-          )}
-          Download CSV Report
-        </Button>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <BarChart3 className="h-6 w-6" />
+            Reports &amp; Analytics
+          </h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Business insights for Sankaran Kovil Opticals
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => exportPDF("Reports & Analytics", "reports-content")}
+            disabled={csvExporting}
+          >
+            {csvExporting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Printer className="h-4 w-4" />
+            )}
+            Export PDF
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={handleDownloadCSV}
+            disabled={exporting}
+          >
+            {exporting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            Download CSV
+          </Button>
+        </div>
       </div>
 
       {/* Date Range Picker */}
@@ -682,6 +865,13 @@ export default function Reports() {
               <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => { setDateFrom(format(subDays(today, 7), "yyyy-MM-dd")); setDateTo(defaultTo); }}>
                 Last 7 Days
               </Button>
+              <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => {
+                const mStart = format(startOfMonth(today), "yyyy-MM-dd");
+                const mEnd = format(endOfMonth(today), "yyyy-MM-dd");
+                setDateFrom(mStart); setDateTo(mEnd);
+              }}>
+                This Month
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -694,290 +884,448 @@ export default function Reports() {
         <StatCard title="Transactions" value={formatNumber(revenueSummary.numTx)} icon={<ShoppingCart className="size-5 text-white" />} iconBg="bg-emerald-700" />
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview" className="gap-1.5"><TrendingUp className="h-4 w-4" /><span className="hidden sm:inline">Overview</span></TabsTrigger>
-          <TabsTrigger value="products" className="gap-1.5"><ShoppingCart className="h-4 w-4" /><span className="hidden sm:inline">Products</span></TabsTrigger>
-          <TabsTrigger value="customers" className="gap-1.5"><Users className="h-4 w-4" /><span className="hidden sm:inline">Customers</span></TabsTrigger>
-        </TabsList>
+      {/* Revenue Comparison: This Month vs Last Month */}
+      {revenueComp && (
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  Revenue Comparison
+                </CardTitle>
+                <CardDescription>This month vs last month</CardDescription>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">This Month</p>
+                  <p className="text-lg font-bold font-mono text-emerald-600 dark:text-emerald-400">{formatCurrency(revenueComp.summary.thisMonth.total)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">Last Month</p>
+                  <p className="text-lg font-bold font-mono text-muted-foreground">{formatCurrency(revenueComp.summary.lastMonth.total)}</p>
+                </div>
+                <Badge className={`text-xs ${revenueComp.summary.changePercent >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'}`}>
+                  {revenueComp.summary.changePercent >= 0 ? <ArrowUpRight className="h-3 w-3 inline mr-0.5" /> : <ArrowDownRight className="h-3 w-3 inline mr-0.5" />}
+                  {Math.abs(revenueComp.summary.changePercent)}%
+                </Badge>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {comparisonChartData.length === 0 ? (
+              <ChartSkeleton height={300} />
+            ) : (
+              <div className="space-y-4">
+                {/* Dual-bar chart comparing this month vs last month */}
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={comparisonChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                    <XAxis dataKey="day" tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+                    <Tooltip
+                      content={<ChartTooltip valuePrefix="₹" />}
+                      formatter={(value: number, name: string) => [formatCurrency(value), name === "thisMonth" ? "This Month" : "Last Month"]}
+                    />
+                    <Legend formatter={(v: string) => <span className="text-xs">{v === "thisMonth" ? "This Month" : "Last Month"}</span>} />
+                    <Bar dataKey="lastMonth" fill={LAST_MONTH_COLOR} radius={[2, 2, 0, 0]} barSize={14} name="Last Month" opacity={0.7} />
+                    <Bar dataKey="thisMonth" fill={THIS_MONTH_COLOR} radius={[2, 2, 0, 0]} barSize={14} name="This Month" />
+                  </BarChart>
+                </ResponsiveContainer>
 
-        {/* ─── Overview Tab ──────────────────────────────────────────── */}
-        <TabsContent value="overview">
-          <div className="space-y-6">
-            {/* Revenue Trend + Payment Modes */}
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <Card className="lg:col-span-2">
-                <CardHeader>
-                  <CardTitle className="text-base">Monthly Revenue Trend</CardTitle>
-                  <CardDescription>Revenue over the past 12 months</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {monthlyRevenue.length === 0 ? (
-                    <ChartSkeleton height={320} />
-                  ) : (
-                    <ResponsiveContainer width="100%" height={320}>
-                      <AreaChart data={monthlyRevenue} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id={CHART_GRADIENT_ID} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#059669" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="#059669" stopOpacity={0.02} />
-                          </linearGradient>
-                        </defs>
-                        <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                {/* Comparison details */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="rounded-lg border p-3">
+                    <p className="text-[10px] text-muted-foreground">This Month Orders</p>
+                    <p className="text-sm font-bold font-mono">{revenueComp.summary.thisMonth.orders}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-[10px] text-muted-foreground">Last Month Orders</p>
+                    <p className="text-sm font-bold font-mono text-muted-foreground">{revenueComp.summary.lastMonth.orders}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-[10px] text-muted-foreground">Avg Order Value (This)</p>
+                    <p className="text-sm font-bold font-mono">
+                      {revenueComp.summary.thisMonth.orders > 0 ? formatCurrency(Math.round(revenueComp.summary.thisMonth.total / revenueComp.summary.thisMonth.orders)) : "—"}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-[10px] text-muted-foreground">Avg Order Value (Last)</p>
+                    <p className="text-sm font-bold font-mono text-muted-foreground">
+                      {revenueComp.summary.lastMonth.orders > 0 ? formatCurrency(Math.round(revenueComp.summary.lastMonth.total / revenueComp.summary.lastMonth.orders)) : "—"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      <div id="reports-content">
+        <Tabs defaultValue="overview" className="space-y-4">
+          <TabsList className="flex-wrap">
+            <TabsTrigger value="overview" className="gap-1.5"><TrendingUp className="h-4 w-4" /><span className="hidden sm:inline">Overview</span></TabsTrigger>
+            <TabsTrigger value="products" className="gap-1.5"><ShoppingCart className="h-4 w-4" /><span className="hidden sm:inline">Products</span></TabsTrigger>
+            <TabsTrigger value="customers" className="gap-1.5"><Users className="h-4 w-4" /><span className="hidden sm:inline">Customers</span></TabsTrigger>
+          </TabsList>
+
+          {/* ─── Overview Tab ──────────────────────────────────────────── */}
+          <TabsContent value="overview">
+            <div className="space-y-6">
+              {/* Revenue Trend + Payment Modes */}
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                <Card className="lg:col-span-2">
+                  <CardHeader>
+                    <CardTitle className="text-base">Monthly Revenue Trend</CardTitle>
+                    <CardDescription>Revenue over the past 12 months</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {monthlyRevenue.length === 0 ? (
+                      <ChartSkeleton height={320} />
+                    ) : (
+                      <ResponsiveContainer width="100%" height={320}>
+                        <AreaChart data={monthlyRevenue} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id={CHART_GRADIENT_ID} x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#059669" stopOpacity={0.3} />
+                              <stop offset="95%" stopColor="#059669" stopOpacity={0.02} />
+                            </linearGradient>
+                          </defs>
+                          <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                          <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+                          <Tooltip content={<ChartTooltip valuePrefix="₹" />} formatter={(value: number) => [formatCurrency(value), "Revenue"]} />
+                          <Area type="monotone" dataKey="revenue" stroke="#059669" strokeWidth={2} fill={`url(#${CHART_GRADIENT_ID})`} name="Revenue" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Payment Mode Pie Chart */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Sales by Payment Mode</CardTitle>
+                    <CardDescription>UPI, Cash, Card distribution</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {paymentModes.length === 0 ? (
+                      <div className="flex items-center justify-center h-[320px] text-muted-foreground text-sm">No sales data in selected period</div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={320}>
+                        <PieChart>
+                          <Pie
+                            data={paymentModes}
+                            cx="50%"
+                            cy="45%"
+                            outerRadius={85}
+                            innerRadius={40}
+                            dataKey="amount"
+                            nameKey="mode"
+                            labelLine={false}
+                            label={renderCustomLabel}
+                          >
+                            {paymentModes.map((entry) => (
+                              <Cell key={entry.mode} fill={PAYMENT_COLORS[entry.mode] || COLORS[paymentModes.indexOf(entry) % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            content={<ChartTooltip valuePrefix="₹" />}
+                            formatter={(value: number, name: string) => [formatCurrency(value), name]}
+                          />
+                          <Legend verticalAlign="bottom" iconType="circle" iconSize={8} formatter={(v: string) => <span className="text-xs text-foreground">{v}</span>} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Payment Mode Bar Chart */}
+              {paymentModes.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Payment Mode Breakdown</CardTitle>
+                    <CardDescription>Transaction count and revenue by payment method</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={280}>
+                      <BarChart data={paymentModes} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                        <XAxis dataKey="mode" tick={{ fontSize: 12, fill: "#6b7280" }} axisLine={false} tickLine={false} />
                         <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
-                        <Tooltip content={<ChartTooltip valuePrefix="₹" />} formatter={(value: number) => [formatCurrency(value), "Revenue"]} />
-                        <Area type="monotone" dataKey="revenue" stroke="#059669" strokeWidth={2} fill={`url(#${CHART_GRADIENT_ID})`} name="Revenue" />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Payment Mode Pie Chart */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Sales by Payment Mode</CardTitle>
-                  <CardDescription>UPI, Cash, Card distribution</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {paymentModes.length === 0 ? (
-                    <div className="flex items-center justify-center h-[320px] text-muted-foreground text-sm">No sales data in selected period</div>
-                  ) : (
-                    <ResponsiveContainer width="100%" height={320}>
-                      <PieChart>
-                        <Pie
-                          data={paymentModes}
-                          cx="50%"
-                          cy="45%"
-                          outerRadius={85}
-                          innerRadius={40}
-                          dataKey="amount"
-                          nameKey="mode"
-                          labelLine={false}
-                          label={renderCustomLabel}
-                        >
-                          {paymentModes.map((entry) => (
-                            <Cell key={entry.mode} fill={PAYMENT_COLORS[entry.mode] || COLORS[paymentModes.indexOf(entry) % COLORS.length]} />
-                          ))}
-                        </Pie>
                         <Tooltip
                           content={<ChartTooltip valuePrefix="₹" />}
-                          formatter={(value: number, name: string) => [formatCurrency(value), name]}
+                          formatter={(value: number, name: string) => {
+                            if (name === "amount") return [formatCurrency(value), "Revenue"];
+                            return [formatNumber(value), "Count"];
+                          }}
                         />
-                        <Legend verticalAlign="bottom" iconType="circle" iconSize={8} formatter={(v: string) => <span className="text-xs text-foreground">{v}</span>} />
-                      </PieChart>
+                        <Legend />
+                        <Bar dataKey="amount" radius={[4, 4, 0, 0]} barSize={40} name="Revenue (₹)">
+                          {paymentModes.map((entry) => (
+                            <Cell key={entry.mode} fill={PAYMENT_COLORS[entry.mode] || COLORS[0]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Daily Revenue Line Chart */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Daily Revenue ({format(parseISO(dateFrom), "dd MMM")} - {format(parseISO(dateTo), "dd MMM yyyy")})</CardTitle>
+                  <CardDescription>Daily revenue and transaction count</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {dailyRevenue.length === 0 ? (
+                    <div className="flex items-center justify-center h-[300px] text-muted-foreground text-sm">No sales data in selected period</div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <LineChart data={dailyRevenue} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                        <YAxis yAxisId="left" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+                        <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+                        <Tooltip
+                          content={<ChartTooltip valuePrefix="₹" />}
+                          formatter={(value: number, name: string) => {
+                            if (name === "revenue") return [formatCurrency(value), "Revenue"];
+                            return [formatNumber(value), "Orders"];
+                          }}
+                        />
+                        <Legend />
+                        <Line yAxisId="left" type="monotone" dataKey="revenue" stroke="#059669" strokeWidth={2} dot={false} activeDot={{ r: 5, fill: "#059669" }} name="Revenue" />
+                        <Line yAxisId="right" type="monotone" dataKey="orders" stroke="#34d399" strokeWidth={2} strokeDasharray="5 5" dot={false} activeDot={{ r: 5, fill: "#34d399" }} name="Orders" />
+                      </LineChart>
                     </ResponsiveContainer>
                   )}
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
 
-            {/* Payment Mode Bar Chart */}
-            {paymentModes.length > 0 && (
+          {/* ─── Products Tab ──────────────────────────────────────────── */}
+          <TabsContent value="products">
+            <div className="space-y-6">
+              {/* Product Performance by Category */}
+              {productPerf && productPerf.categoryData.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-base">Revenue by Category</CardTitle>
+                        <CardDescription>Total revenue and quantity by product category</CardDescription>
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        {formatCurrency(productPerf.totalRevenue)} total
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={Math.max(280, productPerf.categoryData.length * 40 + 20)}>
+                      <BarChart data={productPerf.categoryData} layout="vertical" margin={{ top: 5, right: 30, left: 100, bottom: 5 }}>
+                        <XAxis type="number" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+                        <YAxis type="category" dataKey="category" tick={{ fontSize: 11, fill: "#374151" }} axisLine={false} tickLine={false} width={95} />
+                        <Tooltip
+                          content={<ChartTooltip valuePrefix="₹" />}
+                          formatter={(value: number, name: string) => {
+                            if (name === "revenue") return [formatCurrency(value), "Revenue"];
+                            return [formatNumber(value), "Products"];
+                          }}
+                        />
+                        <Legend />
+                        <Bar dataKey="revenue" radius={[0, 4, 4, 0]} barSize={18} name="Revenue">
+                          {productPerf.categoryData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              )}
+
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Payment Mode Breakdown</CardTitle>
-                  <CardDescription>Transaction count and revenue by payment method</CardDescription>
+                  <CardTitle className="text-base">Top 10 Products by Revenue</CardTitle>
+                  <CardDescription>Highest revenue-generating products</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={280}>
-                    <BarChart data={paymentModes} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                      <XAxis dataKey="mode" tick={{ fontSize: 12, fill: "#6b7280" }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
-                      <Tooltip
-                        content={<ChartTooltip valuePrefix="₹" />}
-                        formatter={(value: number, name: string) => {
-                          if (name === "amount") return [formatCurrency(value), "Revenue"];
-                          return [formatNumber(value), "Count"];
-                        }}
-                      />
-                      <Legend />
-                      <Bar dataKey="amount" radius={[4, 4, 0, 0]} barSize={40} name="Revenue (₹)">
-                        {paymentModes.map((entry) => (
-                          <Cell key={entry.mode} fill={PAYMENT_COLORS[entry.mode] || COLORS[0]} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {topProductsByRevenue.length === 0 ? (
+                    <div className="flex items-center justify-center h-[400px] text-muted-foreground text-sm">No product sales data available</div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={Math.max(350, topProductsByRevenue.length * 38 + 20)}>
+                      <BarChart data={topProductsByRevenue} layout="vertical" margin={{ top: 5, right: 30, left: 120, bottom: 5 }}>
+                        <XAxis type="number" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+                        <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#374151" }} axisLine={false} tickLine={false} width={115} />
+                        <Tooltip
+                          content={<ChartTooltip valuePrefix="₹" />}
+                          formatter={(value: number, name: string) => {
+                            if (name === "revenue") return [formatCurrency(value), "Revenue"];
+                            return [formatNumber(value), "Qty Sold"];
+                          }}
+                        />
+                        <Legend />
+                        <Bar dataKey="revenue" fill="#059669" radius={[0, 4, 4, 0]} barSize={18} name="Revenue (₹)">
+                          {topProductsByRevenue.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
                 </CardContent>
               </Card>
-            )}
 
-            {/* Daily Revenue Line Chart */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Daily Revenue ({format(parseISO(dateFrom), "dd MMM")} - {format(parseISO(dateTo), "dd MMM yyyy")})</CardTitle>
-                <CardDescription>Daily revenue and transaction count</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {dailyRevenue.length === 0 ? (
-                  <div className="flex items-center justify-center h-[300px] text-muted-foreground text-sm">No sales data in selected period</div>
-                ) : (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={dailyRevenue} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-                      <YAxis yAxisId="left" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
-                      <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
-                      <Tooltip
-                        content={<ChartTooltip valuePrefix="₹" />}
-                        formatter={(value: number, name: string) => {
-                          if (name === "revenue") return [formatCurrency(value), "Revenue"];
-                          return [formatNumber(value), "Orders"];
-                        }}
-                      />
-                      <Legend />
-                      <Line yAxisId="left" type="monotone" dataKey="revenue" stroke="#059669" strokeWidth={2} dot={false} activeDot={{ r: 5, fill: "#059669" }} name="Revenue" />
-                      <Line yAxisId="right" type="monotone" dataKey="orders" stroke="#34d399" strokeWidth={2} strokeDasharray="5 5" dot={false} activeDot={{ r: 5, fill: "#34d399" }} name="Orders" />
-                    </LineChart>
-                  </ResponsiveContainer>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
+              {/* Full Product Performance Table */}
+              {productPerf && productPerf.productData.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Product Performance Details</CardTitle>
+                    <CardDescription>All products ranked by revenue with margin analysis</CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <div className="max-h-[500px] overflow-y-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>#</TableHead>
+                            <TableHead>Product Name</TableHead>
+                            <TableHead className="hidden sm:table-cell">Category</TableHead>
+                            <TableHead className="text-right">Qty Sold</TableHead>
+                            <TableHead className="text-right">Revenue</TableHead>
+                            <TableHead className="hidden md:table-cell text-right">Margin</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {productPerf.productData.slice(0, 30).map((p, i) => (
+                            <TableRow key={p.productId}>
+                              <TableCell className="text-muted-foreground font-mono text-xs">{i + 1}</TableCell>
+                              <TableCell className="font-medium text-sm">{p.name}</TableCell>
+                              <TableCell className="hidden sm:table-cell"><Badge variant="secondary" className="text-xs">{p.category}</Badge></TableCell>
+                              <TableCell className="text-right font-mono text-sm">{formatNumber(p.totalQtySold)}</TableCell>
+                              <TableCell className="text-right font-mono text-sm font-semibold">{formatCurrency(p.totalRevenue)}</TableCell>
+                              <TableCell className="hidden md:table-cell text-right">
+                                <Badge variant="outline" className={`text-xs ${p.profitMargin > 40 ? 'text-emerald-600' : p.profitMargin > 20 ? 'text-amber-600' : 'text-red-600'}`}>
+                                  {p.profitMargin}%
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
-        {/* ─── Products Tab ──────────────────────────────────────────── */}
-        <TabsContent value="products">
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Top 10 Products by Revenue</CardTitle>
-                <CardDescription>Highest revenue-generating products</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {topProductsByRevenue.length === 0 ? (
-                  <div className="flex items-center justify-center h-[400px] text-muted-foreground text-sm">No product sales data available</div>
-                ) : (
-                  <ResponsiveContainer width="100%" height={Math.max(350, topProductsByRevenue.length * 38 + 20)}>
-                    <BarChart data={topProductsByRevenue} layout="vertical" margin={{ top: 5, right: 30, left: 120, bottom: 5 }}>
-                      <XAxis type="number" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
-                      <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#374151" }} axisLine={false} tickLine={false} width={115} />
-                      <Tooltip
-                        content={<ChartTooltip valuePrefix="₹" />}
-                        formatter={(value: number, name: string) => {
-                          if (name === "revenue") return [formatCurrency(value), "Revenue"];
-                          return [formatNumber(value), "Qty Sold"];
-                        }}
-                      />
-                      <Legend />
-                      <Bar dataKey="revenue" fill="#059669" radius={[0, 4, 4, 0]} barSize={18} name="Revenue (₹)">
-                        {topProductsByRevenue.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </CardContent>
-            </Card>
+              {/* Product table */}
+              {topProductsByRevenue.length > 0 && !productPerf && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Product Revenue Details</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <div className="max-h-96 overflow-y-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>#</TableHead>
+                            <TableHead>Product Name</TableHead>
+                            <TableHead>Category</TableHead>
+                            <TableHead className="text-right">Qty Sold</TableHead>
+                            <TableHead className="text-right">Revenue</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {topProductsByRevenue.map((p, i) => (
+                            <TableRow key={i}>
+                              <TableCell className="text-muted-foreground font-mono text-xs">{i + 1}</TableCell>
+                              <TableCell className="font-medium text-sm">{p.name}</TableCell>
+                              <TableCell><Badge variant="secondary" className="text-xs">{p.category}</Badge></TableCell>
+                              <TableCell className="text-right font-mono text-sm">{formatNumber(p.quantity)}</TableCell>
+                              <TableCell className="text-right font-mono text-sm font-semibold">{formatCurrency(p.revenue)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
 
-            {/* Product table */}
-            {topProductsByRevenue.length > 0 && (
+          {/* ─── Customers Tab ────────────────────────────────────────── */}
+          <TabsContent value="customers">
+            <div className="space-y-6">
+              {/* Customer Acquisition Chart */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Product Revenue Details</CardTitle>
+                  <CardTitle className="text-base">Customer Acquisition</CardTitle>
+                  <CardDescription>New customers per day in the selected period</CardDescription>
                 </CardHeader>
-                <CardContent className="p-0">
-                  <div className="max-h-96 overflow-y-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>#</TableHead>
-                          <TableHead>Product Name</TableHead>
-                          <TableHead>Category</TableHead>
-                          <TableHead className="text-right">Qty Sold</TableHead>
-                          <TableHead className="text-right">Revenue</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {topProductsByRevenue.map((p, i) => (
-                          <TableRow key={i}>
-                            <TableCell className="text-muted-foreground font-mono text-xs">{i + 1}</TableCell>
-                            <TableCell className="font-medium text-sm">{p.name}</TableCell>
-                            <TableCell><Badge variant="secondary" className="text-xs">{p.category}</Badge></TableCell>
-                            <TableCell className="text-right font-mono text-sm">{formatNumber(p.quantity)}</TableCell>
-                            <TableCell className="text-right font-mono text-sm font-semibold">{formatCurrency(p.revenue)}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                <CardContent>
+                  {customerAcquisition.length === 0 ? (
+                    <div className="flex items-center justify-center h-[280px] text-muted-foreground text-sm">No customer acquisition data in selected period</div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={280}>
+                      <LineChart data={customerAcquisition} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                        <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                        <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+                        <Tooltip content={<ChartTooltip />} formatter={(value: number) => [formatNumber(value), "New Customers"]} />
+                        <Line type="monotone" dataKey="newCustomers" stroke="#059669" strokeWidth={2.5} dot={{ fill: "#059669", r: 4 }} activeDot={{ r: 6, fill: "#059669" }} name="New Customers" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  )}
                 </CardContent>
               </Card>
-            )}
-          </div>
-        </TabsContent>
 
-        {/* ─── Customers Tab ────────────────────────────────────────── */}
-        <TabsContent value="customers">
-          <div className="space-y-6">
-            {/* Customer Acquisition Chart */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Customer Acquisition</CardTitle>
-                <CardDescription>New customers per day in the selected period</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {customerAcquisition.length === 0 ? (
-                  <div className="flex items-center justify-center h-[280px] text-muted-foreground text-sm">No customer acquisition data in selected period</div>
-                ) : (
-                  <ResponsiveContainer width="100%" height={280}>
-                    <LineChart data={customerAcquisition} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                      <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-                      <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
-                      <Tooltip content={<ChartTooltip />} formatter={(value: number) => [formatNumber(value), "New Customers"]} />
-                      <Line type="monotone" dataKey="newCustomers" stroke="#059669" strokeWidth={2.5} dot={{ fill: "#059669", r: 4 }} activeDot={{ r: 6, fill: "#059669" }} name="New Customers" />
-                    </LineChart>
-                  </ResponsiveContainer>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Top Customers Table */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Top Customers by Total Spend</CardTitle>
-                <CardDescription>Highest spending customers in the selected period</CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                {topCustomers.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                    <Users className="h-10 w-10 mb-2 opacity-40" />
-                    <p className="text-sm">No customer data available</p>
-                  </div>
-                ) : (
-                  <div className="max-h-[480px] overflow-y-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>#</TableHead>
-                          <TableHead>Customer Name</TableHead>
-                          <TableHead className="hidden sm:table-cell">Phone</TableHead>
-                          <TableHead className="hidden md:table-cell">Group</TableHead>
-                          <TableHead className="text-right">Orders</TableHead>
-                          <TableHead className="text-right">Total Spent</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {topCustomers.map((c, i) => (
-                          <TableRow key={c.id}>
-                            <TableCell className="text-muted-foreground font-mono text-xs">{i + 1}</TableCell>
-                            <TableCell className="font-medium text-sm">{c.name}</TableCell>
-                            <TableCell className="hidden sm:table-cell text-xs text-muted-foreground">{c.phone || "—"}</TableCell>
-                            <TableCell className="hidden md:table-cell">
-                              <Badge variant="secondary" className="text-xs">{c.group || "New"}</Badge>
-                            </TableCell>
-                            <TableCell className="text-right font-mono text-sm">{c._count?.sales ?? 0}</TableCell>
-                            <TableCell className="text-right font-mono text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(c.totalSpent || 0)}</TableCell>
+              {/* Top Customers Table */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Top Customers by Total Spend</CardTitle>
+                  <CardDescription>Highest spending customers in the selected period</CardDescription>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {topCustomers.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                      <Users className="h-10 w-10 mb-2 opacity-40" />
+                      <p className="text-sm">No customer data available</p>
+                    </div>
+                  ) : (
+                    <div className="max-h-[480px] overflow-y-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>#</TableHead>
+                            <TableHead>Customer Name</TableHead>
+                            <TableHead className="hidden sm:table-cell">Phone</TableHead>
+                            <TableHead className="hidden md:table-cell">Group</TableHead>
+                            <TableHead className="text-right">Orders</TableHead>
+                            <TableHead className="text-right">Total Spent</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-      </Tabs>
+                        </TableHeader>
+                        <TableBody>
+                          {topCustomers.map((c, i) => (
+                            <TableRow key={c.id}>
+                              <TableCell className="text-muted-foreground font-mono text-xs">{i + 1}</TableCell>
+                              <TableCell className="font-medium text-sm">{c.name}</TableCell>
+                              <TableCell className="hidden sm:table-cell text-xs text-muted-foreground">{c.phone || "—"}</TableCell>
+                              <TableCell className="hidden md:table-cell">
+                                <Badge variant="secondary" className="text-xs">{c.group || "New"}</Badge>
+                              </TableCell>
+                              <TableCell className="text-right font-mono text-sm">{c._count?.sales ?? 0}</TableCell>
+                              <TableCell className="text-right font-mono text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(c.totalSpent || 0)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }

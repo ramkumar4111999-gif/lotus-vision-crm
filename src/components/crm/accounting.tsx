@@ -296,6 +296,13 @@ export default function Accounting() {
   // Deleting state
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
 
+  // GST state
+  const [gstData, setGstData] = useState<{ cgst: number; sgst: number; igst: number; total: number } | null>(null);
+  const [gstLoading, setGstLoading] = useState(false);
+
+  // Daily reconciliation state
+  const [reconDate, setReconDate] = useState(getTodayStr());
+
   // ─── Fetch Data ──────────────────────────────────────────────────────────
 
   const fetchExpenses = useCallback(async () => {
@@ -359,6 +366,86 @@ export default function Accounting() {
     }
   }, []);
 
+  // ─── GST Fetch ──────────────────────────────────────────────────────────
+
+  const fetchGST = useCallback(async () => {
+    setGstLoading(true);
+    try {
+      const res = await fetch('/api/reports?type=revenue-comparison');
+      if (res.ok) {
+        const json = await res.json();
+        const summary = json.summary?.thisMonth;
+        if (summary) {
+          setGstData({
+            cgst: summary.cgst || 0,
+            sgst: summary.sgst || 0,
+            igst: summary.igst || 0,
+            total: (summary.cgst || 0) + (summary.sgst || 0) + (summary.igst || 0),
+          });
+        }
+      }
+    } catch { /* ignore */ }
+    finally { setGstLoading(false); }
+  }, []);
+
+  // ─── Daily Cash Reconciliation ──────────────────────────────────────────
+
+  const dailyReconciliation = useMemo(() => {
+    const targetDate = startOfDay(parseISO(reconDate));
+    const nextDay = new Date(targetDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+
+    const daySales = sales.filter((s) => {
+      try {
+        const d = new Date(s.createdAt);
+        return d >= targetDate && d < nextDay;
+      } catch { return false; }
+    });
+
+    const dayExpenses = expenses.filter((e) => {
+      try {
+        const d = new Date(e.date);
+        return d >= targetDate && d < nextDay;
+      } catch { return false; }
+    });
+
+    const cashSales = daySales.filter((s) => (s.paymentMode || '').toLowerCase() === 'cash').reduce((s, x) => s + (x.total || 0), 0);
+    const upiSales = daySales.filter((s) => (s.paymentMode || '').toLowerCase() === 'upi').reduce((s, x) => s + (x.total || 0), 0);
+    const cardSales = daySales.filter((s) => (s.paymentMode || '').toLowerCase() === 'card').reduce((s, x) => s + (x.total || 0), 0);
+    const creditSales = daySales.filter((s) => (s.paymentMode || '').toLowerCase() === 'credit').reduce((s, x) => s + (x.total || 0), 0);
+    const otherSales = daySales.filter((s) => {
+      const m = (s.paymentMode || '').toLowerCase();
+      return !['cash', 'upi', 'card', 'credit'].includes(m);
+    }).reduce((s, x) => s + (x.total || 0), 0);
+
+    const totalDayIncome = daySales.reduce((s, x) => s + (x.total || 0), 0);
+    const totalDayExpenses = dayExpenses.reduce((s, x) => s + (x.amount || 0), 0);
+    const expectedCash = cashSales - totalDayExpenses;
+
+    const dayCGST = daySales.reduce((s, x) => s + ((x as Record<string, unknown>).cgst as number || 0), 0);
+    const daySGST = daySales.reduce((s, x) => s + ((x as Record<string, unknown>).sgst as number || 0), 0);
+    const dayIGST = daySales.reduce((s, x) => s + ((x as Record<string, unknown>).igst as number || 0), 0);
+
+    return {
+      date: reconDate,
+      totalTransactions: daySales.length,
+      totalIncome: totalDayIncome,
+      totalExpenses: totalDayExpenses,
+      cashSales,
+      upiSales,
+      cardSales,
+      creditSales,
+      otherSales,
+      expectedCash,
+      dayCGST,
+      daySGST,
+      dayIGST,
+      totalGST: dayCGST + daySGST + dayIGST,
+      sales: daySales,
+      expenses: dayExpenses,
+    };
+  }, [sales, expenses, reconDate]);
+
   // Load budget from localStorage
   useEffect(() => {
     try {
@@ -372,7 +459,8 @@ export default function Accounting() {
     fetchDues();
     fetchSales();
     fetchReturns();
-  }, [fetchExpenses, fetchDues, fetchSales, fetchReturns]);
+    fetchGST();
+  }, [fetchExpenses, fetchDues, fetchSales, fetchReturns, fetchGST]);
 
   // ─── Summary Calculations ────────────────────────────────────────────────
 
@@ -868,7 +956,8 @@ export default function Accounting() {
             </CardHeader>
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <CardContent className="pt-0">
+            <CardContent className="pt-0 space-y-4">
+              {/* P&L Header Row */}
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
                 <div className="rounded-lg border p-3">
                   <p className="text-xs text-muted-foreground">Revenue</p>
@@ -896,6 +985,52 @@ export default function Accounting() {
                   <p className="text-[10px] text-muted-foreground mt-0.5">Revenue - Expenses</p>
                 </div>
               </div>
+
+              {/* P&L Detail: Expense Category Breakdown */}
+              <Separator />
+              <div>
+                <h3 className="text-sm font-semibold mb-3">Expense Breakdown by Category</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {EXPENSE_CATEGORIES.map((cat) => {
+                    const catTotal = expenses
+                      .filter((e) => {
+                        if (e.category !== cat) return false;
+                        try { return new Date(e.date) >= startOfMonth(new Date()); } catch { return false; }
+                      })
+                      .reduce((s, e) => s + (e.amount || 0), 0);
+                    if (catTotal === 0) return null;
+                    const pct = monthlyExpensesTotal > 0 ? ((catTotal / monthlyExpensesTotal) * 100).toFixed(1) : '0.0';
+                    return (
+                      <div key={cat} className="rounded-lg border p-3">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-xs font-medium text-muted-foreground">{cat}</p>
+                          <span className="text-[10px] text-muted-foreground">{pct}%</span>
+                        </div>
+                        <p className="text-sm font-bold text-red-600 dark:text-red-400 font-mono">{formatINR(catTotal)}</p>
+                        <Progress value={parseFloat(pct)} className="mt-1.5 h-1" />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* P&L Bar Chart: Income vs Expenses by category */}
+              {categorySummary.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold mb-3">Income vs Expenses (This Month)</h3>
+                  <div className="h-[220px]">
+                    <ChartContainer config={BAR_CHART_CONFIG} className="h-full w-full">
+                      <BarChart data={categorySummary} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                        <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                        <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={28} fill="hsl(var(--chart-1))" />
+                      </BarChart>
+                    </ChartContainer>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </CollapsibleContent>
         </Card>
@@ -965,6 +1100,8 @@ export default function Accounting() {
         <TabsList className="flex-wrap">
           <TabsTrigger value="cashflow" className="gap-1.5"><Banknote className="h-4 w-4" /><span className="hidden sm:inline">Cash Flow</span></TabsTrigger>
           <TabsTrigger value="expenses" className="gap-1.5"><Receipt className="h-4 w-4" /><span className="hidden sm:inline">Expenses</span></TabsTrigger>
+          <TabsTrigger value="gst" className="gap-1.5"><Target className="h-4 w-4" /><span className="hidden sm:inline">GST</span></TabsTrigger>
+          <TabsTrigger value="reconciliation" className="gap-1.5"><CheckCircle2 className="h-4 w-4" /><span className="hidden sm:inline">Reconciliation</span></TabsTrigger>
           <TabsTrigger value="dues" className="gap-1.5"><CreditCard className="h-4 w-4" /><span className="hidden sm:inline">Dues</span></TabsTrigger>
           <TabsTrigger value="returns" className="gap-1.5"><RotateCcw className="h-4 w-4" /><span className="hidden sm:inline">Returns</span></TabsTrigger>
         </TabsList>
@@ -1196,6 +1333,261 @@ export default function Accounting() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* ─── GST Collection Tab ────────────────────────────────────────── */}
+        <TabsContent value="gst">
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Target className="h-5 w-5" />
+                      GST Collection Summary
+                    </CardTitle>
+                    <CardDescription>Current month GST collected on sales</CardDescription>
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    {format(new Date(), 'MMMM yyyy')}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {gstLoading ? (
+                  <TableSkeleton rows={3} cols={4} />
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="rounded-lg border p-4">
+                      <p className="text-xs text-muted-foreground font-medium">CGST Collected</p>
+                      <p className="text-xl font-bold text-blue-600 dark:text-blue-400 font-mono mt-1">{formatINR(gstData?.cgst || 0)}</p>
+                      <p className="text-[10px] text-muted-foreground mt-1">Central Goods & Services Tax</p>
+                    </div>
+                    <div className="rounded-lg border p-4">
+                      <p className="text-xs text-muted-foreground font-medium">SGST Collected</p>
+                      <p className="text-xl font-bold text-violet-600 dark:text-violet-400 font-mono mt-1">{formatINR(gstData?.sgst || 0)}</p>
+                      <p className="text-[10px] text-muted-foreground mt-1">State Goods & Services Tax</p>
+                    </div>
+                    <div className="rounded-lg border p-4">
+                      <p className="text-xs text-muted-foreground font-medium">IGST Collected</p>
+                      <p className="text-xl font-bold text-amber-600 dark:text-amber-400 font-mono mt-1">{formatINR(gstData?.igst || 0)}</p>
+                      <p className="text-[10px] text-muted-foreground mt-1">Integrated Goods & Services Tax</p>
+                    </div>
+                    <div className="rounded-lg border p-4 bg-emerald-50 dark:bg-emerald-950/30">
+                      <p className="text-xs text-muted-foreground font-medium">Total GST Payable</p>
+                      <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400 font-mono mt-1">{formatINR(gstData?.total || 0)}</p>
+                      <p className="text-[10px] text-muted-foreground mt-1">CGST + SGST + IGST</p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* GST Pie Chart */}
+            {gstData && gstData.total > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">GST Distribution</CardTitle>
+                  <CardDescription>Breakdown of GST components</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[250px]">
+                    <ChartContainer config={PIE_CHART_CONFIG} className="h-full w-full">
+                      <PieChart>
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Pie
+                          data={[
+                            { name: 'CGST', value: gstData.cgst },
+                            { name: 'SGST', value: gstData.sgst },
+                            ...(gstData.igst > 0 ? [{ name: 'IGST', value: gstData.igst }] : []),
+                          ]}
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={90}
+                          innerRadius={45}
+                          dataKey="value"
+                          nameKey="name"
+                        >
+                          <Cell fill="hsl(var(--chart-1))" />
+                          <Cell fill="hsl(var(--chart-2))" />
+                          {gstData.igst > 0 && <Cell fill="hsl(var(--chart-3))" />}
+                        </Pie>
+                      </PieChart>
+                    </ChartContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* ─── Daily Cash Reconciliation Tab ─────────────────────────────── */}
+        <TabsContent value="reconciliation">
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <CheckCircle2 className="h-5 w-5" />
+                      Daily Cash Reconciliation
+                    </CardTitle>
+                    <CardDescription>Verify daily cash balance against sales and expenses</CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="recon-date" className="text-xs whitespace-nowrap">Date:</Label>
+                    <Input id="recon-date" type="date" value={reconDate} onChange={(e) => setReconDate(e.target.value)} className="h-8 w-[150px] text-xs" />
+                    <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => setReconDate(getTodayStr())}>Today</Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loadingSales || loadingExpenses ? (
+                  <TableSkeleton rows={4} cols={3} />
+                ) : (
+                  <div className="space-y-4">
+                    {/* Reconciliation Summary Cards */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                      <div className="rounded-lg border p-3">
+                        <p className="text-[10px] text-muted-foreground">Total Sales</p>
+                        <p className="text-sm font-bold font-mono">{formatINR(dailyReconciliation.totalIncome)}</p>
+                        <p className="text-[10px] text-muted-foreground">{dailyReconciliation.totalTransactions} transactions</p>
+                      </div>
+                      <div className="rounded-lg border p-3">
+                        <p className="text-[10px] text-muted-foreground">Cash Sales</p>
+                        <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">{formatINR(dailyReconciliation.cashSales)}</p>
+                      </div>
+                      <div className="rounded-lg border p-3">
+                        <p className="text-[10px] text-muted-foreground">UPI Sales</p>
+                        <p className="text-sm font-bold text-violet-600 dark:text-violet-400 font-mono">{formatINR(dailyReconciliation.upiSales)}</p>
+                      </div>
+                      <div className="rounded-lg border p-3">
+                        <p className="text-[10px] text-muted-foreground">Card Sales</p>
+                        <p className="text-sm font-bold text-blue-600 dark:text-blue-400 font-mono">{formatINR(dailyReconciliation.cardSales)}</p>
+                      </div>
+                      <div className="rounded-lg border p-3">
+                        <p className="text-[10px] text-muted-foreground">Credit Sales</p>
+                        <p className="text-sm font-bold text-amber-600 dark:text-amber-400 font-mono">{formatINR(dailyReconciliation.creditSales)}</p>
+                      </div>
+                    </div>
+
+                    {/* Reconciliation Detail Table */}
+                    <div className="rounded-lg border overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="text-xs">Item</TableHead>
+                            <TableHead className="text-xs text-right">Amount</TableHead>
+                            <TableHead className="text-xs text-right hidden sm:table-cell">Notes</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          <TableRow>
+                            <TableCell className="text-sm font-medium">Total Income (All Modes)</TableCell>
+                            <TableCell className="text-sm font-mono text-emerald-600 dark:text-emerald-400 text-right">{formatINR(dailyReconciliation.totalIncome)}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">{dailyReconciliation.totalTransactions} sales</TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Cash Received</TableCell>
+                            <TableCell className="text-sm font-mono text-emerald-600 dark:text-emerald-400 text-right">+{formatINR(dailyReconciliation.cashSales)}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">Cash payments</TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="text-sm font-medium text-violet-600 dark:text-violet-400">UPI Received</TableCell>
+                            <TableCell className="text-sm font-mono text-violet-600 dark:text-violet-400 text-right">+{formatINR(dailyReconciliation.upiSales)}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">GPay/PhonePe/Paytm</TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="text-sm font-medium text-blue-600 dark:text-blue-400">Card Received</TableCell>
+                            <TableCell className="text-sm font-mono text-blue-600 dark:text-blue-400 text-right">+{formatINR(dailyReconciliation.cardSales)}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">Debit/Credit card</TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="text-sm font-medium text-amber-600 dark:text-amber-400">Credit Given</TableCell>
+                            <TableCell className="text-sm font-mono text-amber-600 dark:text-amber-400 text-right">{formatINR(dailyReconciliation.creditSales)}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">Outstanding dues</TableCell>
+                          </TableRow>
+                          {dailyReconciliation.otherSales > 0 && (
+                            <TableRow>
+                              <TableCell className="text-sm font-medium">Other Modes</TableCell>
+                              <TableCell className="text-sm font-mono text-right">{formatINR(dailyReconciliation.otherSales)}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">Mixed/Split</TableCell>
+                            </TableRow>
+                          )}
+                          <TableRow>
+                            <TableCell className="text-sm font-medium text-red-600 dark:text-red-400">Less: Expenses Paid (Cash)</TableCell>
+                            <TableCell className="text-sm font-mono text-red-600 dark:text-red-400 text-right">-{formatINR(dailyReconciliation.totalExpenses)}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">{dailyReconciliation.expenses.length} expenses</TableCell>
+                          </TableRow>
+                        </TableBody>
+                        <TableFooter>
+                          <TableRow className="bg-muted/50 font-bold">
+                            <TableCell className="text-sm">Expected Cash in Hand</TableCell>
+                            <TableCell className={`text-sm font-mono text-right ${dailyReconciliation.expectedCash >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                              {formatINR(dailyReconciliation.expectedCash)}
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">Cash In - Expenses</TableCell>
+                          </TableRow>
+                        </TableFooter>
+                      </Table>
+                    </div>
+
+                    {/* Day GST */}
+                    {dailyReconciliation.totalGST > 0 && (
+                      <div className="rounded-lg border p-3">
+                        <p className="text-xs font-medium text-muted-foreground mb-2">GST Collected on {formatDate(reconDate)}</p>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div>
+                            <p className="text-[10px] text-muted-foreground">CGST</p>
+                            <p className="text-sm font-mono font-semibold">{formatINR(dailyReconciliation.dayCGST)}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-muted-foreground">SGST</p>
+                            <p className="text-sm font-mono font-semibold">{formatINR(dailyReconciliation.daySGST)}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-muted-foreground">IGST</p>
+                            <p className="text-sm font-mono font-semibold">{formatINR(dailyReconciliation.dayIGST)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Transaction list for that day */}
+                    {dailyReconciliation.sales.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-semibold mb-2">Sales Transactions ({formatDate(reconDate)})</h3>
+                        <div className="max-h-60 overflow-y-auto rounded-md border">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="text-xs">Invoice</TableHead>
+                                <TableHead className="text-xs">Customer</TableHead>
+                                <TableHead className="text-xs">Mode</TableHead>
+                                <TableHead className="text-xs text-right">Amount</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {dailyReconciliation.sales.map((s) => (
+                                <TableRow key={s.id}>
+                                  <TableCell className="text-xs font-mono">{s.invoiceNo || '—'}</TableCell>
+                                  <TableCell className="text-xs">{s.customer?.name || s.customerName || 'Walk-in'}</TableCell>
+                                  <TableCell className="text-xs">
+                                    <Badge variant="outline" className="text-[10px]">{s.paymentMode || 'Cash'}</Badge>
+                                  </TableCell>
+                                  <TableCell className="text-xs font-mono text-right font-semibold">{formatINR(s.total)}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         {/* ─── Dues Tab ─────────────────────────────────────────────────── */}

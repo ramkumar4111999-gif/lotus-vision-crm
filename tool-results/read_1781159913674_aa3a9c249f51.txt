@@ -1,0 +1,983 @@
+     1→     1→"use client";
+     2→     2→
+     3→     3→import React, { useMemo, useState, useCallback, useEffect } from "react";
+     4→     4→import { useQuery } from "@tanstack/react-query";
+     5→     5→import {
+     6→     6→  AreaChart,
+     7→     7→  Area,
+     8→     8→  LineChart,
+     9→     9→  Line,
+    10→    10→  BarChart,
+    11→    11→  Bar,
+    12→    12→  PieChart,
+    13→    13→  Pie,
+    14→    14→  Cell,
+    15→    15→  XAxis,
+    16→    16→  YAxis,
+    17→    17→  Tooltip,
+    18→    18→  Legend,
+    19→    19→  ResponsiveContainer,
+    20→    20→} from "recharts";
+    21→    21→import {
+    22→    22→  TrendingUp,
+    23→    23→  DollarSign,
+    24→    24→  ShoppingCart,
+    25→    25→  Users,
+    26→    26→  IndianRupee,
+    27→    27→  ArrowUpRight,
+    28→    28→  ArrowDownRight,
+    29→    29→  CalendarDays,
+    30→    30→  BarChart3,
+    31→    31→  Download,
+    32→    32→  Loader2,
+    33→    33→} from "lucide-react";
+    34→    34→import { format, subDays, parseISO, isWithinInterval } from "date-fns";
+    35→    35→
+    36→    36→import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+    37→    37→import {
+    38→    38→  Card,
+    39→    39→  CardContent,
+    40→    40→  CardDescription,
+    41→    41→  CardHeader,
+    42→    42→  CardTitle,
+    43→    43→} from "@/components/ui/card";
+    44→    44→import {
+    45→    45→  Table,
+    46→    46→  TableBody,
+    47→    47→  TableCell,
+    48→    48→  TableHead,
+    49→    49→  TableHeader,
+    50→    50→  TableRow,
+    51→    51→} from "@/components/ui/table";
+    52→    52→import { Input } from "@/components/ui/input";
+    53→    53→import { Label } from "@/components/ui/label";
+    54→    54→import { Button } from "@/components/ui/button";
+    55→    55→import { Badge } from "@/components/ui/badge";
+    56→    56→import { Separator } from "@/components/ui/separator";
+    57→    57→import { Skeleton } from "@/components/ui/skeleton";
+    58→    58→import { toast } from "sonner";
+    59→    59→
+    60→    60→// ─── Color Palette ───────────────────────────────────────────────────────────
+    61→    61→
+    62→    62→const COLORS = [
+    63→    63→  "#059669",
+    64→    64→  "#10b981",
+    65→    65→  "#34d399",
+    66→    66→  "#6ee7b7",
+    67→    67→  "#a7f3d0",
+    68→    68→  "#047857",
+    69→    69→  "#065f46",
+    70→    70→  "#d1fae5",
+    71→    71→  "#16a34a",
+    72→    72→  "#22c55e",
+    73→    73→  "#4ade80",
+    74→    74→  "#86efac",
+    75→    75→];
+    76→    76→
+    77→    77→const PAYMENT_COLORS: Record<string, string> = {
+    78→    78→  Cash: "#059669",
+    79→    79→  UPI: "#7c3aed",
+    80→    80→  Card: "#2563eb",
+    81→    81→  Credit: "#dc2626",
+    82→    82→};
+    83→    83→
+    84→    84→const CHART_GRADIENT_ID = "emeraldGradient";
+    85→    85→
+    86→    86→// ─── Types ───────────────────────────────────────────────────────────────────
+    87→    87→
+    88→    88→interface SalesTrendPoint {
+    89→    89→  date: string;
+    90→    90→  revenue: number;
+    91→    91→  orders: number;
+    92→    92→}
+    93→    93→
+    94→    94→interface ProductSale {
+    95→    95→  productId: string;
+    96→    96→  name: string;
+    97→    97→  sku: string;
+    98→    98→  category: string;
+    99→    99→  brand: string;
+   100→   100→  price: number;
+   101→   101→  currentStock: number;
+   102→   102→  totalQtySold: number;
+   103→   103→  totalRevenue: number;
+   104→   104→}
+   105→   105→
+   106→   106→interface TopCustomer {
+   107→   107→  id: string;
+   108→   108→  name: string;
+   109→   109→  phone: string;
+   110→   110→  email: string | null;
+   111→   111→  group: string;
+   112→   112→  loyaltyPoints: number;
+   113→   113→  totalSpent: number;
+   114→   114→  _count: { sales: number; visits: number; prescriptions: number };
+   115→   115→}
+   116→   116→
+   117→   117→interface SaleRecord {
+   118→   118→  id: string;
+   119→   119→  total: number;
+   120→   120→  paymentMode: string;
+   121→   121→  createdAt: string;
+   122→   122→  customerName: string;
+   123→   123→  customer?: { name: string; phone: string } | null;
+   124→   124→}
+   125→   125→
+   126→   126→interface Product {
+   127→   127→  id: string;
+   128→   128→  name: string;
+   129→   129→  category: string;
+   130→   130→  stock: number;
+   131→   131→  minStock: number;
+   132→   132→  costPrice: number | null;
+   133→   133→  price: number;
+   134→   134→}
+   135→   135→
+   136→   136→// ─── Helpers ─────────────────────────────────────────────────────────────────
+   137→   137→
+   138→   138→function formatCurrency(value: number): string {
+   139→   139→  return new Intl.NumberFormat("en-IN", {
+   140→   140→    style: "currency",
+   141→   141→    currency: "INR",
+   142→   142→    minimumFractionDigits: 0,
+   143→   143→    maximumFractionDigits: 0,
+   144→   144→  }).format(value);
+   145→   145→}
+   146→   146→
+   147→   147→function formatNumber(value: number): string {
+   148→   148→  return new Intl.NumberFormat("en-IN").format(value);
+   149→   149→}
+   150→   150→
+   151→   151→const RADIAN = Math.PI / 180;
+   152→   152→
+   153→   153→function renderCustomLabel({
+   154→   154→  cx,
+   155→   155→  cy,
+   156→   156→  midAngle,
+   157→   157→  innerRadius,
+   158→   158→  outerRadius,
+   159→   159→  percent,
+   160→   160→}: {
+   161→   161→  cx: number;
+   162→   162→  cy: number;
+   163→   163→  midAngle: number;
+   164→   164→  innerRadius: number;
+   165→   165→  outerRadius: number;
+   166→   166→  percent: number;
+   167→   167→}) {
+   168→   168→  if (percent < 0.06) return null;
+   169→   169→  const radius = innerRadius + (outerRadius - innerRadius) * 1.35;
+   170→   170→  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+   171→   171→  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+   172→   172→  return (
+   173→   173→    <text x={x} y={y} fill="#374151" textAnchor={x > cx ? "start" : "end"} dominantBaseline="central" className="text-xs">
+   174→   174→      {`${(percent * 100).toFixed(0)}%`}
+   175→   175→    </text>
+   176→   176→  );
+   177→   177→}
+   178→   178→
+   179→   179→// ─── Chart Tooltip ───────────────────────────────────────────────────────────
+   180→   180→
+   181→   181→function ChartTooltip({
+   182→   182→  active,
+   183→   183→  payload,
+   184→   184→  label,
+   185→   185→  valuePrefix = "",
+   186→   186→}: {
+   187→   187→  active?: boolean;
+   188→   188→  payload?: Array<{ name: string; value: number; color: string }>;
+   189→   189→  label?: string;
+   190→   190→  valuePrefix?: string;
+   191→   191→}) {
+   192→   192→  if (!active || !payload?.length) return null;
+   193→   193→  return (
+   194→   194→    <div className="rounded-lg border bg-background px-3 py-2 shadow-md">
+   195→   195→      <p className="mb-1 text-sm font-medium text-foreground">{label}</p>
+   196→   196→      {payload.map((entry, i) => (
+   197→   197→        <div key={i} className="flex items-center gap-2 text-sm">
+   198→   198→          <span className="inline-block size-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
+   199→   199→          <span className="text-muted-foreground">{entry.name}:</span>
+   200→   200→          <span className="font-medium text-foreground">
+   201→   201→            {valuePrefix}{formatNumber(entry.value)}
+   202→   202→          </span>
+   203→   203→        </div>
+   204→   204→      ))}
+   205→   205→    </div>
+   206→   206→  );
+   207→   207→}
+   208→   208→
+   209→   209→// ─── Skeletons ────────────────────────────────────────────────────────────────
+   210→   210→
+   211→   211→function ChartSkeleton({ height = 300 }: { height?: number }) {
+   212→   212→  return (
+   213→   213→    <div className="flex flex-col items-center justify-center gap-3" style={{ height }}>
+   214→   214→      <Skeleton className="size-10 rounded-full" />
+   215→   215→      <Skeleton className="h-4 w-48" />
+   216→   216→      <Skeleton className="h-4 w-32" />
+   217→   217→      <div className="mt-4 flex w-full items-end justify-center gap-3">
+   218→   218→        {Array.from({ length: 8 }).map((_, i) => (
+   219→   219→          <Skeleton key={i} className="w-8 rounded-t" style={{ height: `${Math.max(40, 60 + Math.random() * 120)}px` }} />
+   220→   220→        ))}
+   221→   221→      </div>
+   222→   222→    </div>
+   223→   223→  );
+   224→   224→}
+   225→   225→
+   226→   226→// ─── Stat Card ────────────────────────────────────────────────────────────────
+   227→   227→
+   228→   228→interface StatCardProps {
+   229→   229→  title: string;
+   230→   230→  value: string;
+   231→   231→  change?: number;
+   232→   232→  icon: React.ReactNode;
+   233→   233→  iconBg: string;
+   234→   234→}
+   235→   235→
+   236→   236→function StatCard({ title, value, change, icon, iconBg }: StatCardProps) {
+   237→   237→  return (
+   238→   238→    <Card>
+   239→   239→      <CardContent className="p-4">
+   240→   240→        <div className="flex items-center justify-between">
+   241→   241→          <div className={`flex size-10 items-center justify-center rounded-lg ${iconBg}`}>{icon}</div>
+   242→   242→          {change !== undefined && (
+   243→   243→            <div className={`flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium ${
+   244→   244→              change >= 0 ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400" : "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-400"
+   245→   245→            }`}>
+   246→   246→              {change >= 0 ? <ArrowUpRight className="size-3" /> : <ArrowDownRight className="size-3" />}
+   247→   247→              {Math.abs(change).toFixed(1)}%
+   248→   248→            </div>
+   249→   249→          )}
+   250→   250→        </div>
+   251→   251→        <p className="mt-3 text-2xl font-bold tracking-tight">{value}</p>
+   252→   252→        <p className="mt-1 text-sm text-muted-foreground">{title}</p>
+   253→   253→      </CardContent>
+   254→   254→    </Card>
+   255→   255→  );
+   256→   256→}
+   257→   257→
+   258→   258→// ─── Data Hooks ───────────────────────────────────────────────────────────────
+   259→   259→
+   260→   260→function useReportsData<T>(type: string, fallbackData: T) {
+   261→   261→  return useQuery<T>({
+   262→   262→    queryKey: ["reports", type],
+   263→   263→    queryFn: () => fetch(`/api/reports?type=${type}`).then((r) => r.json()),
+   264→   264→    placeholderData: fallbackData,
+   265→   265→    staleTime: 60_000,
+   266→   266→  });
+   267→   267→}
+   268→   268→
+   269→   269→function useSalesData() {
+   270→   270→  return useQuery<{ data: SaleRecord[] }>({
+   271→   271→    queryKey: ["sales-all"],
+   272→   272→    queryFn: () => fetch("/api/sales?limit=1000").then((r) => r.json()),
+   273→   273→    staleTime: 60_000,
+   274→   274→  });
+   275→   275→}
+   276→   276→
+   277→   277→function useProductsData() {
+   278→   278→  return useQuery<{ data: Product[] }>({
+   279→   279→    queryKey: ["products"],
+   280→   280→    queryFn: () => fetch("/api/products").then((r) => r.json()),
+   281→   281→    staleTime: 60_000,
+   282→   282→  });
+   283→   283→}
+   284→   284→
+   285→   285→function useTopCustomers() {
+   286→   286→  return useQuery<{ data: TopCustomer[] }>({
+   287→   287→    queryKey: ["top-customers"],
+   288→   288→    queryFn: () => fetch("/api/reports?type=top-customers").then((r) => r.json()),
+   289→   289→    staleTime: 60_000,
+   290→   290→  });
+   291→   291→}
+   292→   292→
+   293→   293→// ─── Fallback Data ───────────────────────────────────────────────────────────
+   294→   294→
+   295→   295→const FALLBACK_SALES_TREND: SalesTrendPoint[] = [];
+   296→   296→const FALLBACK_PRODUCTS: ProductSale[] = [];
+   297→   297→const FALLBACK_CUSTOMERS: TopCustomer[] = [];
+   298→   298→
+   299→   299→// ─── Main Component ──────────────────────────────────────────────────────────
+   300→   300→
+   301→   301→export default function Reports() {
+   302→   302→  const today = new Date();
+   303→   303→  const defaultFrom = format(subDays(today, 30), "yyyy-MM-dd");
+   304→   304→  const defaultTo = format(today, "yyyy-MM-dd");
+   305→   305→
+   306→   306→  const [dateFrom, setDateFrom] = useState(defaultFrom);
+   307→   307→  const [dateTo, setDateTo] = useState(defaultTo);
+   308→   308→
+   309→   309→  // Fetch data
+   310→   310→  const salesTrendQuery = useReportsData<{ data: SalesTrendPoint[] }>("sales-trend", { data: FALLBACK_SALES_TREND });
+   311→   311→  const topProductsQuery = useReportsData<{ data: ProductSale[] }>("top-products", { data: FALLBACK_PRODUCTS });
+   312→   312→  const topCustomersQuery = useTopCustomers();
+   313→   313→  const salesQuery = useSalesData();
+   314→   314→  const productsQuery = useProductsData();
+   315→   315→
+   316→   316→  // Parse raw data with fallbacks
+   317→   317→  const salesTrendData = useMemo(() => {
+   318→   318→    const raw = salesTrendQuery.data;
+   319→   319→    if (raw && "data" in raw && Array.isArray(raw.data)) return raw.data;
+   320→   320→    if (Array.isArray(raw)) return raw;
+   321→   321→    return FALLBACK_SALES_TREND;
+   322→   322→  }, [salesTrendQuery.data]);
+   323→   323→
+   324→   324→  const topProducts = useMemo(() => {
+   325→   325→    const raw = topProductsQuery.data;
+   326→   326→    if (raw && "data" in raw && Array.isArray(raw.data)) return raw.data;
+   327→   327→    if (Array.isArray(raw)) return raw;
+   328→   328→    return FALLBACK_PRODUCTS;
+   329→   329→  }, [topProductsQuery.data]);
+   330→   330→
+   331→   331→  const topCustomers = useMemo(() => {
+   332→   332→    const raw = topCustomersQuery.data;
+   333→   333→    if (raw && "data" in raw && Array.isArray(raw.data)) return raw.data;
+   334→   334→    if (Array.isArray(raw)) return raw;
+   335→   335→    return FALLBACK_CUSTOMERS;
+   336→   336→  }, [topCustomersQuery.data]);
+   337→   337→
+   338→   338→  const allSales = useMemo(() => {
+   339→   339→    const raw = salesQuery.data;
+   340→   340→    if (raw && "sales" in raw && Array.isArray(raw.sales)) return raw.sales;
+   341→   341→    if (raw && "data" in raw && Array.isArray(raw.data)) return raw.data;
+   342→   342→    if (Array.isArray(raw)) return raw;
+   343→   343→    return [] as SaleRecord[];
+   344→   344→  }, [salesQuery.data]);
+   345→   345→
+   346→   346→  const allProducts = useMemo(() => {
+   347→   347→    const raw = productsQuery.data;
+   348→   348→    if (raw && "data" in raw && Array.isArray(raw.data)) return raw.data;
+   349→   349→    if (Array.isArray(raw)) return raw;
+   350→   350→    return [] as Product[];
+   351→   351→  }, [productsQuery.data]);
+   352→   352→
+   353→   353→  // ─── Revenue Summary from all sales ────────────────────────────────────
+   354→   354→
+   355→   355→  const revenueSummary = useMemo(() => {
+   356→   356→    const from = parseISO(dateFrom);
+   357→   357→    const to = new Date(dateTo + "T23:59:59");
+   358→   358→    const filtered = allSales.filter((s) => {
+   359→   359→      try { return isWithinInterval(new Date(s.createdAt), { start: from, end: to }); }
+   360→   360→      catch { return false; }
+   361→   361→    });
+   362→   362→    const totalRevenue = filtered.reduce((sum, s) => sum + (s.total || 0), 0);
+   363→   363→    const numTx = filtered.length;
+   364→   364→    const avgValue = numTx > 0 ? Math.round(totalRevenue / numTx) : 0;
+   365→   365→    return { totalRevenue, numTx, avgValue };
+   366→   366→  }, [allSales, dateFrom, dateTo]);
+   367→   367→
+   368→   368→  // ─── Payment Modes from real sales data ─────────────────────────────────
+   369→   369→
+   370→   370→  const paymentModes = useMemo(() => {
+   371→   371→    const from = parseISO(dateFrom);
+   372→   372→    const to = new Date(dateTo + "T23:59:59");
+   373→   373→    const filtered = allSales.filter((s) => {
+   374→   374→      try { return isWithinInterval(new Date(s.createdAt), { start: from, end: to }); }
+   375→   375→      catch { return false; }
+   376→   376→    });
+   377→   377→    const map: Record<string, { mode: string; count: number; amount: number }> = {};
+   378→   378→    filtered.forEach((s) => {
+   379→   379→      const mode = s.paymentMode || "Cash";
+   380→   380→      if (!map[mode]) map[mode] = { mode, count: 0, amount: 0 };
+   381→   381→      map[mode].count += 1;
+   382→   382→      map[mode].amount += s.total || 0;
+   383→   383→    });
+   384→   384→    return Object.values(map).sort((a, b) => b.amount - a.amount);
+   385→   385→  }, [allSales, dateFrom, dateTo]);
+   386→   386→
+   387→   387→  // ─── Daily revenue from real data ────────────────────────────────────────
+   388→   388→
+   389→   389→  const dailyRevenue = useMemo((): SalesTrendPoint[] => {
+   390→   390→    const from = parseISO(dateFrom);
+   391→   391→    const to = new Date(dateTo + "T23:59:59");
+   392→   392→    const filtered = allSales.filter((s) => {
+   393→   393→      try { return isWithinInterval(new Date(s.createdAt), { start: from, end: to }); }
+   394→   394→      catch { return false; }
+   395→   395→    });
+   396→   396→    const dayMap = new Map<string, { date: string; revenue: number; orders: number }>();
+   397→   397→    filtered.forEach((s) => {
+   398→   398→      const day = format(new Date(s.createdAt), "yyyy-MM-dd");
+   399→   399→      const existing = dayMap.get(day) || { date: day, revenue: 0, orders: 0 };
+   400→   400→      existing.revenue += s.total || 0;
+   401→   401→      existing.orders += 1;
+   402→   402→      dayMap.set(day, existing);
+   403→   403→    });
+   404→   404→    return Array.from(dayMap.values()).sort((a, b) => a.date.localeCompare(b.date)).map((d) => ({
+   405→   405→      ...d,
+   406→   406→      date: format(parseISO(d.date), "MMM dd"),
+   407→   407→    }));
+   408→   408→  }, [allSales, dateFrom, dateTo]);
+   409→   409→
+   410→   410→  // ─── Customer acquisition from real sales data ─────────────────────────
+   411→   411→
+   412→   412→  const customerAcquisition = useMemo(() => {
+   413→   413→    const seen = new Set<string>();
+   414→   414→    const dailyNew: Record<string, number> = {};
+   415→   415→    const from = parseISO(dateFrom);
+   416→   416→    const to = new Date(dateTo + "T23:59:59");
+   417→   417→    allSales
+   418→   418→      .filter((s) => {
+   419→   419→        try { return isWithinInterval(new Date(s.createdAt), { start: from, end: to }); }
+   420→   420→        catch { return false; }
+   421→   421→      })
+   422→   422→      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+   423→   423→      .forEach((s) => {
+   424→   424→        // Each unique customer's first sale counts as acquisition
+   425→   425→        const key = s.customer?.name || s.customerName || `anon-${s.id}`;
+   426→   426→        if (!seen.has(key)) {
+   427→   427→          seen.add(key);
+   428→   428→          const day = format(new Date(s.createdAt), "yyyy-MM-dd");
+   429→   429→          dailyNew[day] = (dailyNew[day] || 0) + 1;
+   430→   430→        }
+   431→   431→      });
+   432→   432→    return Object.entries(dailyNew)
+   433→   433→      .sort(([a], [b]) => a.localeCompare(b))
+   434→   434→      .slice(-14)
+   435→   435→      .map(([date, newCustomers]) => ({
+   436→   436→        date: format(parseISO(date), "MMM dd"),
+   437→   437→        newCustomers,
+   438→   438→      }));
+   439→   439→  }, [allSales, dateFrom, dateTo]);
+   440→   440→
+   441→   441→  // ─── Top products by revenue (from real API data) ─────────────────────
+   442→   442→
+   443→   443→  const topProductsByRevenue = useMemo(() => {
+   444→   444→    if (topProducts.length === 0) return [];
+   445→   445→    return [...topProducts]
+   446→   446→      .sort((a, b) => (b.totalRevenue || 0) - (a.totalRevenue || 0))
+   447→   447→      .slice(0, 10)
+   448→   448→      .map((p) => ({
+   449→   449→        name: p.name || "Unknown",
+   450→   450→        revenue: p.totalRevenue || 0,
+   451→   451→        quantity: p.totalQtySold || 0,
+   452→   452→        category: p.category || "",
+   453→   453→      }));
+   454→   454→  }, [topProducts]);
+   455→   455→
+   456→   456→  // ─── Monthly revenue for area chart ────────────────────────────────────
+   457→   457→
+   458→   458→  const monthlyRevenue = useMemo((): SalesTrendPoint[] => {
+   459→   459→    if (salesTrendData.length === 0) {
+   460→   460→      // Build from raw sales
+   461→   461→      const monthMap = new Map<string, { date: string; revenue: number; orders: number }>();
+   462→   462→      allSales.forEach((s) => {
+   463→   463→        const month = format(new Date(s.createdAt), "MMM yyyy");
+   464→   464→        const existing = monthMap.get(month) || { date: month, revenue: 0, orders: 0 };
+   465→   465→        existing.revenue += s.total || 0;
+   466→   466→        existing.orders += 1;
+   467→   467→        monthMap.set(month, existing);
+   468→   468→      });
+   469→   469→      return Array.from(monthMap.values()).slice(-12);
+   470→   470→    }
+   471→   471→    return salesTrendData.slice(0, 12).map((d) => ({
+   472→   472→      ...d,
+   473→   473→      date: format(parseISO(d.date), "MMM yyyy"),
+   474→   474→    }));
+   475→   475→  }, [salesTrendData, allSales]);
+   476→   476→
+   477→   477→  const totalMonthlyRevenue = monthlyRevenue.reduce((s, d) => s + d.revenue, 0);
+   478→   478→  const totalMonthlyOrders = monthlyRevenue.reduce((s, d) => s + d.orders, 0);
+   479→   479→  const avgMonthlySaleValue = totalMonthlyOrders > 0 ? Math.round(totalMonthlyRevenue / totalMonthlyOrders) : 0;
+   480→   480→
+   481→   481→  // ─── CSV Export ──────────────────────────────────────────────────────
+   482→   482→  const [exporting, setExporting] = useState(false);
+   483→   483→
+   484→   484→  const handleDownloadCSV = useCallback(async () => {
+   485→   485→    setExporting(true);
+   486→   486→    try {
+   487→   487→      const [salesRes, custRes, prodRes] = await Promise.allSettled([
+   488→   488→        fetch("/api/sales?limit=999"),
+   489→   489→        fetch("/api/customers?limit=999"),
+   490→   490→        fetch("/api/products?pageSize=999"),
+   491→   491→      ]);
+   492→   492→
+   493→   493→      // ─── Section 1: Sales Summary ───────────────────────────────────
+   494→   494→      let salesSheet = "SALES SUMMARY\n";
+   495→   495→      salesSheet += "Date,Invoice#,Customer,Items,Subtotal,Discount,Tax,Total,Mode,Status\n";
+   496→   496→      if (salesRes.status === "fulfilled" && salesRes.value.ok) {
+   497→   497→        const salesData = await salesRes.value.json();
+   498→   498→        const list: SaleRecord[] = Array.isArray(salesData.sales) ? salesData.sales : [];
+   499→   499→        for (const s of list) {
+   500→   500→          const dateStr = s.createdAt ? format(new Date(s.createdAt), "dd-MMM-yyyy") : "";
+   501→   501→          const items = (s as Record<string, unknown>).itemsCount || 0;
+   502→   502→          const disc = s.discount || 0;
+   503→   503→          const tax = ((s as Record<string, unknown>).cgst || 0) + ((s as Record<string, unknown>).sgst || 0);
+   504→   504→          const line = [
+   505→   505→            dateStr,
+   506→   506→            `"${s.invoiceNo || ""}"`,
+   507→   507→            `"${(s.customer?.name || s.customerName || "").replace(/"/g, '""')}"`,
+   508→   508→            items,
+   509→   509→            (s as Record<string, unknown>).subtotal || 0,
+   510→   510→            disc,
+   511→   511→            tax,
+   512→   512→            s.total || 0,
+   513→   513→            s.paymentMode || "",
+   514→   514→            s.status || "",
+   515→   515→          ].join(",");
+   516→   516→          salesSheet += line + "\n";
+   517→   517→        }
+   518→   518→      }
+   519→   519→
+   520→   520→      // ─── Section 2: Customer Summary ────────────────────────────────
+   521→   521→      let customerSheet = "\nCUSTOMER SUMMARY\n";
+   522→   522→      customerSheet += "Name,Phone,Group,Orders,Total Spent\n";
+   523→   523→      const customersMap = new Map<string, { orders: number; spent: number }>();
+   524→   524→      if (salesRes.status === "fulfilled" && salesRes.value.ok) {
+   525→   525→        const salesData = await salesRes.value.json();
+   526→   526→        const list: SaleRecord[] = Array.isArray(salesData.sales) ? salesData.sales : [];
+   527→   527→        for (const s of list) {
+   528→   528→          const name = s.customer?.name || s.customerName || "Walk-in";
+   529→   529→          const existing = customersMap.get(name) || { orders: 0, spent: 0 };
+   530→   530→          existing.orders += 1;
+   531→   531→          existing.spent += s.total || 0;
+   532→   532→          customersMap.set(name, existing);
+   533→   533→        }
+   534→   534→      }
+   535→   535→      if (custRes.status === "fulfilled" && custRes.value.ok) {
+   536→   536→        const custData = await custRes.value.json();
+   537→   537→        const custList = Array.isArray(custData.data) ? custData.data : [];
+   538→   538→        for (const c of custList) {
+   539→   539→          const r = c as Record<string, unknown>;
+   540→   540→          const stats = customersMap.get(r.name as string) || { orders: 0, spent: 0 };
+   541→   541→          const line = [
+   542→   542→            `"${(r.name || "").toString().replace(/"/g, '""')}"`,
+   543→   543→            `"${(r.phone || "").toString()}"`,
+   544→   544→            `"${(r.group || "New").toString()}"`,
+   545→   545→            stats.orders,
+   546→   546→            stats.spent,
+   547→   547→          ].join(",");
+   548→   548→          customerSheet += line + "\n";
+   549→   549→        }
+   550→   550→      }
+   551→   551→
+   552→   552→      // ─── Section 3: Product Performance ─────────────────────────────
+   553→   553→      let productSheet = "\nPRODUCT PERFORMANCE\n";
+   554→   554→      productSheet += "Name,Category,Price,Stock,Revenue\n";
+   555→   555→      const productSalesMap = new Map<string, { qty: number; revenue: number }>();
+   556→   556→      if (salesRes.status === "fulfilled" && salesRes.value.ok) {
+   557→   557→        // Fetch sale items from individual sale details for product performance
+   558→   558→        // We'll use the top products API for this
+   559→   559→      }
+   560→   560→      if (prodRes.status === "fulfilled" && prodRes.value.ok) {
+   561→   561→        const prodData = await prodRes.value.json();
+   562→   562→        const prodList = Array.isArray(prodData.products) ? prodData.products : [];
+   563→   563→        // Try to get product performance data from the reports API
+   564→   564→        try {
+   565→   565→          const perfRes = await fetch("/api/reports?type=top-products");
+   566→   566→          if (perfRes.ok) {
+   567→   567→            const perfData = await perfRes.json();
+   568→   568→            const perfList = Array.isArray(perfData.data) ? perfData.data : [];
+   569→   569→            const perfMap = new Map<string, { qty: number; revenue: number }>();
+   570→   570→            for (const p of perfList) {
+   571→   571→              const pr = p as Record<string, unknown>;
+   572→   572→              perfMap.set(pr.name as string, {
+   573→   573→                qty: (pr.totalQtySold as number) || 0,
+   574→   574→                revenue: (pr.totalRevenue as number) || 0,
+   575→   575→              });
+   576→   576→            }
+   577→   577→            for (const p of prodList) {
+   578→   578→              const pr = p as Record<string, unknown>;
+   579→   579→              const perf = perfMap.get(pr.name as string) || { qty: 0, revenue: 0 };
+   580→   580→              const line = [
+   581→   581→                `"${(pr.name || "").toString().replace(/"/g, '""')}"`,
+   582→   582→                `"${(pr.category || "").toString()}"`,
+   583→   583→                pr.price || 0,
+   584→   584→                pr.stock || 0,
+   585→   585→                perf.revenue,
+   586→   586→              ].join(",");
+   587→   587→              productSheet += line + "\n";
+   588→   588→            }
+   589→   589→          } else {
+   590→   590→            for (const p of prodList) {
+   591→   591→              const pr = p as Record<string, unknown>;
+   592→   592→              const line = [
+   593→   593→                `"${(pr.name || "").toString().replace(/"/g, '""')}"`,
+   594→   594→                `"${(pr.category || "").toString()}"`,
+   595→   595→                pr.price || 0,
+   596→   596→                pr.stock || 0,
+   597→   597→                0,
+   598→   598→              ].join(",");
+   599→   599→              productSheet += line + "\n";
+   600→   600→            }
+   601→   601→          }
+   602→   602→        } catch {
+   603→   603→          for (const p of prodList) {
+   604→   604→            const pr = p as Record<string, unknown>;
+   605→   605→            const line = [
+   606→   606→              `"${(pr.name || "").toString().replace(/"/g, '""')}"`,
+   607→   607→              `"${(pr.category || "").toString()}"`,
+   608→   608→              pr.price || 0,
+   609→   609→              pr.stock || 0,
+   610→   610→              0,
+   611→   611→            ].join(",");
+   612→   612→            productSheet += line + "\n";
+   613→   613→          }
+   614→   614→        }
+   615→   615→      }
+   616→   616→
+   617→   617→      const csvContent = salesSheet + "\n" + customerSheet + "\n" + productSheet;
+   618→   618→      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+   619→   619→      const url = URL.createObjectURL(blob);
+   620→   620→      const a = document.createElement("a");
+   621→   621→      a.href = url;
+   622→   622→      a.download = `crm-report-${format(new Date(), "yyyy-MM-dd")}.csv`;
+   623→   623→      document.body.appendChild(a);
+   624→   624→      a.click();
+   625→   625→      document.body.removeChild(a);
+   626→   626→      URL.revokeObjectURL(url);
+   627→   627→      toast.success("Report downloaded successfully!");
+   628→   628→    } catch {
+   629→   629→      toast.error("Failed to download report");
+   630→   630→    } finally {
+   631→   631→      setExporting(false);
+   632→   632→    }
+   633→   633→  }, []);
+   634→   634→
+   635→   635→  return (
+   636→   636→    <div className="space-y-6 p-4 md:p-6">
+   637→   637→      {/* Page Header */}
+   638→   638→      <div>
+   639→   639→        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+   640→   640→          <BarChart3 className="h-6 w-6" />
+   641→   641→          Reports & Analytics
+   642→   642→        </h1>
+   643→   643→        <p className="text-muted-foreground text-sm mt-1">
+   644→   644→          Business insights for Sankaran Kovil Opticals
+   645→   645→        </p>
+   646→   646→        <Button
+   647→   647→          variant="outline"
+   648→   648→          size="sm"
+   649→   649→          className="mt-2 gap-2"
+   650→   650→          onClick={handleDownloadCSV}
+   651→   651→          disabled={exporting}
+   652→   652→        >
+   653→   653→          {exporting ? (
+   654→   654→            <Loader2 className="h-4 w-4 animate-spin" />
+   655→   655→          ) : (
+   656→   656→            <Download className="h-4 w-4" />
+   657→   657→          )}
+   658→   658→          Download CSV Report
+   659→   659→        </Button>
+   660→   660→      </div>
+   661→   661→
+   662→   662→      {/* Date Range Picker */}
+   663→   663→      <Card>
+   664→   664→        <CardContent className="p-4">
+   665→   665→          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+   666→   666→            <div className="flex items-center gap-2">
+   667→   667→              <CalendarDays className="h-4 w-4 text-muted-foreground" />
+   668→   668→              <span className="text-sm font-medium">Date Range:</span>
+   669→   669→            </div>
+   670→   670→            <div className="flex items-center gap-2 flex-wrap">
+   671→   671→              <div className="flex items-center gap-1.5">
+   672→   672→                <Label htmlFor="rpt-from" className="text-xs">From</Label>
+   673→   673→                <Input id="rpt-from" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-8 w-[150px] text-xs" />
+   674→   674→              </div>
+   675→   675→              <div className="flex items-center gap-1.5">
+   676→   676→                <Label htmlFor="rpt-to" className="text-xs">To</Label>
+   677→   677→                <Input id="rpt-to" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-8 w-[150px] text-xs" />
+   678→   678→              </div>
+   679→   679→              <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => { setDateFrom(defaultFrom); setDateTo(defaultTo); }}>
+   680→   680→                Last 30 Days
+   681→   681→              </Button>
+   682→   682→              <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => { setDateFrom(format(subDays(today, 7), "yyyy-MM-dd")); setDateTo(defaultTo); }}>
+   683→   683→                Last 7 Days
+   684→   684→              </Button>
+   685→   685→            </div>
+   686→   686→          </div>
+   687→   687→        </CardContent>
+   688→   688→      </Card>
+   689→   689→
+   690→   690→      {/* Revenue Summary Cards */}
+   691→   691→      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+   692→   692→        <StatCard title="Total Revenue" value={formatCurrency(revenueSummary.totalRevenue)} icon={<DollarSign className="size-5 text-white" />} iconBg="bg-emerald-600" />
+   693→   693→        <StatCard title="Avg Sale Value" value={formatCurrency(revenueSummary.avgValue)} icon={<IndianRupee className="size-5 text-white" />} iconBg="bg-teal-600" />
+   694→   694→        <StatCard title="Transactions" value={formatNumber(revenueSummary.numTx)} icon={<ShoppingCart className="size-5 text-white" />} iconBg="bg-emerald-700" />
+   695→   695→      </div>
+   696→   696→
+   697→   697→      <Tabs defaultValue="overview" className="space-y-4">
+   698→   698→        <TabsList>
+   699→   699→          <TabsTrigger value="overview" className="gap-1.5"><TrendingUp className="h-4 w-4" /><span className="hidden sm:inline">Overview</span></TabsTrigger>
+   700→   700→          <TabsTrigger value="products" className="gap-1.5"><ShoppingCart className="h-4 w-4" /><span className="hidden sm:inline">Products</span></TabsTrigger>
+   701→   701→          <TabsTrigger value="customers" className="gap-1.5"><Users className="h-4 w-4" /><span className="hidden sm:inline">Customers</span></TabsTrigger>
+   702→   702→        </TabsList>
+   703→   703→
+   704→   704→        {/* ─── Overview Tab ──────────────────────────────────────────── */}
+   705→   705→        <TabsContent value="overview">
+   706→   706→          <div className="space-y-6">
+   707→   707→            {/* Revenue Trend + Payment Modes */}
+   708→   708→            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+   709→   709→              <Card className="lg:col-span-2">
+   710→   710→                <CardHeader>
+   711→   711→                  <CardTitle className="text-base">Monthly Revenue Trend</CardTitle>
+   712→   712→                  <CardDescription>Revenue over the past 12 months</CardDescription>
+   713→   713→                </CardHeader>
+   714→   714→                <CardContent>
+   715→   715→                  {monthlyRevenue.length === 0 ? (
+   716→   716→                    <ChartSkeleton height={320} />
+   717→   717→                  ) : (
+   718→   718→                    <ResponsiveContainer width="100%" height={320}>
+   719→   719→                      <AreaChart data={monthlyRevenue} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+   720→   720→                        <defs>
+   721→   721→                          <linearGradient id={CHART_GRADIENT_ID} x1="0" y1="0" x2="0" y2="1">
+   722→   722→                            <stop offset="5%" stopColor="#059669" stopOpacity={0.3} />
+   723→   723→                            <stop offset="95%" stopColor="#059669" stopOpacity={0.02} />
+   724→   724→                          </linearGradient>
+   725→   725→                        </defs>
+   726→   726→                        <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+   727→   727→                        <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+   728→   728→                        <Tooltip content={<ChartTooltip valuePrefix="₹" />} formatter={(value: number) => [formatCurrency(value), "Revenue"]} />
+   729→   729→                        <Area type="monotone" dataKey="revenue" stroke="#059669" strokeWidth={2} fill={`url(#${CHART_GRADIENT_ID})`} name="Revenue" />
+   730→   730→                      </AreaChart>
+   731→   731→                    </ResponsiveContainer>
+   732→   732→                  )}
+   733→   733→                </CardContent>
+   734→   734→              </Card>
+   735→   735→
+   736→   736→              {/* Payment Mode Pie Chart */}
+   737→   737→              <Card>
+   738→   738→                <CardHeader>
+   739→   739→                  <CardTitle className="text-base">Sales by Payment Mode</CardTitle>
+   740→   740→                  <CardDescription>UPI, Cash, Card distribution</CardDescription>
+   741→   741→                </CardHeader>
+   742→   742→                <CardContent>
+   743→   743→                  {paymentModes.length === 0 ? (
+   744→   744→                    <div className="flex items-center justify-center h-[320px] text-muted-foreground text-sm">No sales data in selected period</div>
+   745→   745→                  ) : (
+   746→   746→                    <ResponsiveContainer width="100%" height={320}>
+   747→   747→                      <PieChart>
+   748→   748→                        <Pie
+   749→   749→                          data={paymentModes}
+   750→   750→                          cx="50%"
+   751→   751→                          cy="45%"
+   752→   752→                          outerRadius={85}
+   753→   753→                          innerRadius={40}
+   754→   754→                          dataKey="amount"
+   755→   755→                          nameKey="mode"
+   756→   756→                          labelLine={false}
+   757→   757→                          label={renderCustomLabel}
+   758→   758→                        >
+   759→   759→                          {paymentModes.map((entry) => (
+   760→   760→                            <Cell key={entry.mode} fill={PAYMENT_COLORS[entry.mode] || COLORS[paymentModes.indexOf(entry) % COLORS.length]} />
+   761→   761→                          ))}
+   762→   762→                        </Pie>
+   763→   763→                        <Tooltip
+   764→   764→                          content={<ChartTooltip valuePrefix="₹" />}
+   765→   765→                          formatter={(value: number, name: string) => [formatCurrency(value), name]}
+   766→   766→                        />
+   767→   767→                        <Legend verticalAlign="bottom" iconType="circle" iconSize={8} formatter={(v: string) => <span className="text-xs text-foreground">{v}</span>} />
+   768→   768→                      </PieChart>
+   769→   769→                    </ResponsiveContainer>
+   770→   770→                  )}
+   771→   771→                </CardContent>
+   772→   772→              </Card>
+   773→   773→            </div>
+   774→   774→
+   775→   775→            {/* Payment Mode Bar Chart */}
+   776→   776→            {paymentModes.length > 0 && (
+   777→   777→              <Card>
+   778→   778→                <CardHeader>
+   779→   779→                  <CardTitle className="text-base">Payment Mode Breakdown</CardTitle>
+   780→   780→                  <CardDescription>Transaction count and revenue by payment method</CardDescription>
+   781→   781→                </CardHeader>
+   782→   782→                <CardContent>
+   783→   783→                  <ResponsiveContainer width="100%" height={280}>
+   784→   784→                    <BarChart data={paymentModes} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+   785→   785→                      <XAxis dataKey="mode" tick={{ fontSize: 12, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+   786→   786→                      <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+   787→   787→                      <Tooltip
+   788→   788→                        content={<ChartTooltip valuePrefix="₹" />}
+   789→   789→                        formatter={(value: number, name: string) => {
+   790→   790→                          if (name === "amount") return [formatCurrency(value), "Revenue"];
+   791→   791→                          return [formatNumber(value), "Count"];
+   792→   792→                        }}
+   793→   793→                      />
+   794→   794→                      <Legend />
+   795→   795→                      <Bar dataKey="amount" radius={[4, 4, 0, 0]} barSize={40} name="Revenue (₹)">
+   796→   796→                        {paymentModes.map((entry) => (
+   797→   797→                          <Cell key={entry.mode} fill={PAYMENT_COLORS[entry.mode] || COLORS[0]} />
+   798→   798→                        ))}
+   799→   799→                      </Bar>
+   800→   800→                    </BarChart>
+   801→   801→                  </ResponsiveContainer>
+   802→   802→                </CardContent>
+   803→   803→              </Card>
+   804→   804→            )}
+   805→   805→
+   806→   806→            {/* Daily Revenue Line Chart */}
+   807→   807→            <Card>
+   808→   808→              <CardHeader>
+   809→   809→                <CardTitle className="text-base">Daily Revenue ({format(parseISO(dateFrom), "dd MMM")} - {format(parseISO(dateTo), "dd MMM yyyy")})</CardTitle>
+   810→   810→                <CardDescription>Daily revenue and transaction count</CardDescription>
+   811→   811→              </CardHeader>
+   812→   812→              <CardContent>
+   813→   813→                {dailyRevenue.length === 0 ? (
+   814→   814→                  <div className="flex items-center justify-center h-[300px] text-muted-foreground text-sm">No sales data in selected period</div>
+   815→   815→                ) : (
+   816→   816→                  <ResponsiveContainer width="100%" height={300}>
+   817→   817→                    <LineChart data={dailyRevenue} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+   818→   818→                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+   819→   819→                      <YAxis yAxisId="left" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+   820→   820→                      <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+   821→   821→                      <Tooltip
+   822→   822→                        content={<ChartTooltip valuePrefix="₹" />}
+   823→   823→                        formatter={(value: number, name: string) => {
+   824→   824→                          if (name === "revenue") return [formatCurrency(value), "Revenue"];
+   825→   825→                          return [formatNumber(value), "Orders"];
+   826→   826→                        }}
+   827→   827→                      />
+   828→   828→                      <Legend />
+   829→   829→                      <Line yAxisId="left" type="monotone" dataKey="revenue" stroke="#059669" strokeWidth={2} dot={false} activeDot={{ r: 5, fill: "#059669" }} name="Revenue" />
+   830→   830→                      <Line yAxisId="right" type="monotone" dataKey="orders" stroke="#34d399" strokeWidth={2} strokeDasharray="5 5" dot={false} activeDot={{ r: 5, fill: "#34d399" }} name="Orders" />
+   831→   831→                    </LineChart>
+   832→   832→                  </ResponsiveContainer>
+   833→   833→                )}
+   834→   834→              </CardContent>
+   835→   835→            </Card>
+   836→   836→          </div>
+   837→   837→        </TabsContent>
+   838→   838→
+   839→   839→        {/* ─── Products Tab ──────────────────────────────────────────── */}
+   840→   840→        <TabsContent value="products">
+   841→   841→          <div className="space-y-6">
+   842→   842→            <Card>
+   843→   843→              <CardHeader>
+   844→   844→                <CardTitle className="text-base">Top 10 Products by Revenue</CardTitle>
+   845→   845→                <CardDescription>Highest revenue-generating products</CardDescription>
+   846→   846→              </CardHeader>
+   847→   847→              <CardContent>
+   848→   848→                {topProductsByRevenue.length === 0 ? (
+   849→   849→                  <div className="flex items-center justify-center h-[400px] text-muted-foreground text-sm">No product sales data available</div>
+   850→   850→                ) : (
+   851→   851→                  <ResponsiveContainer width="100%" height={Math.max(350, topProductsByRevenue.length * 38 + 20)}>
+   852→   852→                    <BarChart data={topProductsByRevenue} layout="vertical" margin={{ top: 5, right: 30, left: 120, bottom: 5 }}>
+   853→   853→                      <XAxis type="number" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+   854→   854→                      <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#374151" }} axisLine={false} tickLine={false} width={115} />
+   855→   855→                      <Tooltip
+   856→   856→                        content={<ChartTooltip valuePrefix="₹" />}
+   857→   857→                        formatter={(value: number, name: string) => {
+   858→   858→                          if (name === "revenue") return [formatCurrency(value), "Revenue"];
+   859→   859→                          return [formatNumber(value), "Qty Sold"];
+   860→   860→                        }}
+   861→   861→                      />
+   862→   862→                      <Legend />
+   863→   863→                      <Bar dataKey="revenue" fill="#059669" radius={[0, 4, 4, 0]} barSize={18} name="Revenue (₹)">
+   864→   864→                        {topProductsByRevenue.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+   865→   865→                      </Bar>
+   866→   866→                    </BarChart>
+   867→   867→                  </ResponsiveContainer>
+   868→   868→                )}
+   869→   869→              </CardContent>
+   870→   870→            </Card>
+   871→   871→
+   872→   872→            {/* Product table */}
+   873→   873→            {topProductsByRevenue.length > 0 && (
+   874→   874→              <Card>
+   875→   875→                <CardHeader>
+   876→   876→                  <CardTitle className="text-base">Product Revenue Details</CardTitle>
+   877→   877→                </CardHeader>
+   878→   878→                <CardContent className="p-0">
+   879→   879→                  <div className="max-h-96 overflow-y-auto">
+   880→   880→                    <Table>
+   881→   881→                      <TableHeader>
+   882→   882→                        <TableRow>
+   883→   883→                          <TableHead>#</TableHead>
+   884→   884→                          <TableHead>Product Name</TableHead>
+   885→   885→                          <TableHead>Category</TableHead>
+   886→   886→                          <TableHead className="text-right">Qty Sold</TableHead>
+   887→   887→                          <TableHead className="text-right">Revenue</TableHead>
+   888→   888→                        </TableRow>
+   889→   889→                      </TableHeader>
+   890→   890→                      <TableBody>
+   891→   891→                        {topProductsByRevenue.map((p, i) => (
+   892→   892→                          <TableRow key={i}>
+   893→   893→                            <TableCell className="text-muted-foreground font-mono text-xs">{i + 1}</TableCell>
+   894→   894→                            <TableCell className="font-medium text-sm">{p.name}</TableCell>
+   895→   895→                            <TableCell><Badge variant="secondary" className="text-xs">{p.category}</Badge></TableCell>
+   896→   896→                            <TableCell className="text-right font-mono text-sm">{formatNumber(p.quantity)}</TableCell>
+   897→   897→                            <TableCell className="text-right font-mono text-sm font-semibold">{formatCurrency(p.revenue)}</TableCell>
+   898→   898→                          </TableRow>
+   899→   899→                        ))}
+   900→   900→                      </TableBody>
+   901→   901→                    </Table>
+   902→   902→                  </div>
+   903→   903→                </CardContent>
+   904→   904→              </Card>
+   905→   905→            )}
+   906→   906→          </div>
+   907→   907→        </TabsContent>
+   908→   908→
+   909→   909→        {/* ─── Customers Tab ────────────────────────────────────────── */}
+   910→   910→        <TabsContent value="customers">
+   911→   911→          <div className="space-y-6">
+   912→   912→            {/* Customer Acquisition Chart */}
+   913→   913→            <Card>
+   914→   914→              <CardHeader>
+   915→   915→                <CardTitle className="text-base">Customer Acquisition</CardTitle>
+   916→   916→                <CardDescription>New customers per day in the selected period</CardDescription>
+   917→   917→              </CardHeader>
+   918→   918→              <CardContent>
+   919→   919→                {customerAcquisition.length === 0 ? (
+   920→   920→                  <div className="flex items-center justify-center h-[280px] text-muted-foreground text-sm">No customer acquisition data in selected period</div>
+   921→   921→                ) : (
+   922→   922→                  <ResponsiveContainer width="100%" height={280}>
+   923→   923→                    <LineChart data={customerAcquisition} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+   924→   924→                      <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+   925→   925→                      <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+   926→   926→                      <Tooltip content={<ChartTooltip />} formatter={(value: number) => [formatNumber(value), "New Customers"]} />
+   927→   927→                      <Line type="monotone" dataKey="newCustomers" stroke="#059669" strokeWidth={2.5} dot={{ fill: "#059669", r: 4 }} activeDot={{ r: 6, fill: "#059669" }} name="New Customers" />
+   928→   928→                    </LineChart>
+   929→   929→                  </ResponsiveContainer>
+   930→   930→                )}
+   931→   931→              </CardContent>
+   932→   932→            </Card>
+   933→   933→
+   934→   934→            {/* Top Customers Table */}
+   935→   935→            <Card>
+   936→   936→              <CardHeader>
+   937→   937→                <CardTitle className="text-base">Top Customers by Total Spend</CardTitle>
+   938→   938→                <CardDescription>Highest spending customers in the selected period</CardDescription>
+   939→   939→              </CardHeader>
+   940→   940→              <CardContent className="p-0">
+   941→   941→                {topCustomers.length === 0 ? (
+   942→   942→                  <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+   943→   943→                    <Users className="h-10 w-10 mb-2 opacity-40" />
+   944→   944→                    <p className="text-sm">No customer data available</p>
+   945→   945→                  </div>
+   946→   946→                ) : (
+   947→   947→                  <div className="max-h-[480px] overflow-y-auto">
+   948→   948→                    <Table>
+   949→   949→                      <TableHeader>
+   950→   950→                        <TableRow>
+   951→   951→                          <TableHead>#</TableHead>
+   952→   952→                          <TableHead>Customer Name</TableHead>
+   953→   953→                          <TableHead className="hidden sm:table-cell">Phone</TableHead>
+   954→   954→                          <TableHead className="hidden md:table-cell">Group</TableHead>
+   955→   955→                          <TableHead className="text-right">Orders</TableHead>
+   956→   956→                          <TableHead className="text-right">Total Spent</TableHead>
+   957→   957→                        </TableRow>
+   958→   958→                      </TableHeader>
+   959→   959→                      <TableBody>
+   960→   960→                        {topCustomers.map((c, i) => (
+   961→   961→                          <TableRow key={c.id}>
+   962→   962→                            <TableCell className="text-muted-foreground font-mono text-xs">{i + 1}</TableCell>
+   963→   963→                            <TableCell className="font-medium text-sm">{c.name}</TableCell>
+   964→   964→                            <TableCell className="hidden sm:table-cell text-xs text-muted-foreground">{c.phone || "—"}</TableCell>
+   965→   965→                            <TableCell className="hidden md:table-cell">
+   966→   966→                              <Badge variant="secondary" className="text-xs">{c.group || "New"}</Badge>
+   967→   967→                            </TableCell>
+   968→   968→                            <TableCell className="text-right font-mono text-sm">{c._count?.sales ?? 0}</TableCell>
+   969→   969→                            <TableCell className="text-right font-mono text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(c.totalSpent || 0)}</TableCell>
+   970→   970→                          </TableRow>
+   971→   971→                        ))}
+   972→   972→                      </TableBody>
+   973→   973→                    </Table>
+   974→   974→                  </div>
+   975→   975→                )}
+   976→   976→              </CardContent>
+   977→   977→            </Card>
+   978→   978→          </div>
+   979→   979→        </TabsContent>
+   980→   980→      </Tabs>
+   981→   981→    </div>
+   982→   982→  );
+   983→   983→}

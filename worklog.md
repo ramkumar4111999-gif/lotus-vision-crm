@@ -790,3 +790,37 @@ Work Log:
 Stage Summary:
 - SKIP: All Cycle B features already implemented in previous run (cycle-b-repeat)
 - Server: 200 OK, no rebuild needed
+
+---
+Task ID: cycle-d
+Agent: CRM Builder Bot
+Task: Cycle D — Accounting & Reports improvements
+
+Work Log:
+- Read worklog.md (Cycle B completed, C skipped in this session)
+- Checked server health: 200 OK on port 3000, Caddy on 81
+- Read accounting.tsx (1619 lines), reports.tsx (983 lines), api/reports/route.ts (213 lines)
+- Analyzed existing features: P&L basic, no GST, no reconciliation, no PDF export, no revenue comparison
+- Updated api/reports/route.ts: Added 3 new report types (revenue-comparison, product-performance, customer-acquisition)
+- Updated accounting.tsx: 
+  - Enhanced P&L view: Added expense category breakdown with progress bars, bar chart (ChartContainer)
+  - Added GST Collection tab: CGST/SGST/IGST cards fetched from revenue-comparison API, pie chart distribution
+  - Added Daily Cash Reconciliation tab: Date picker, payment mode breakdown (Cash/UPI/Card/Credit/Other), reconciliation table with expected cash, day GST summary, transaction list
+  - Added fetchGST callback and useEffect integration
+- Updated reports.tsx (full rewrite):
+  - Added PDF export via browser print (usePDFExport hook)
+  - Added Revenue Comparison section: This month vs last month dual-bar chart, change % badge, order count/avg value comparison cards
+  - Added Product Performance by Category chart (horizontal bar)
+  - Added full Product Performance table with margin analysis (top 30 products)
+  - Added "This Month" quick date filter button
+  - Added useRevenueComparison() and useProductPerformance() hooks
+  - Added new types: RevenueComparisonSummary, RevenueComparisonDay, ProductPerformanceCategory, ProductPerformanceItem
+- Build: npx next build — zero errors, all 32 routes compiled
+- Verify: Server 200 OK, /api/reports?type=revenue-comparison → 200, /api/reports?type=product-performance → 200
+
+Stage Summary:
+- ACCOUNTING: +P&L expense category breakdown with progress bars + bar chart, +GST Collection tab (CGST/SGST/IGST cards + pie chart), +Daily Cash Reconciliation tab (date picker, payment mode breakdown, recon table, GST, transaction list)
+- REPORTS: +PDF export button (browser print), +Revenue Comparison section (this vs last month dual-bar chart, change %, order stats), +Product Performance by Category chart, +Full product performance table with margin analysis, +"This Month" date filter button
+- API: /api/reports now supports revenue-comparison, product-performance, customer-acquisition
+- Files changed: accounting.tsx (1619→1920), reports.tsx (983→1080), api/reports/route.ts (213→350)
+- Build: Clean, zero errors
