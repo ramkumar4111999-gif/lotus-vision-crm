@@ -1812,6 +1812,7 @@ export default function Sales() {
   const [creditTotal, setCreditTotal] = React.useState(0);
   const [summaryPeriod, setSummaryPeriod] = React.useState<"today" | "week" | "month">("today");
   const [statusFilter, setStatusFilter] = React.useState<"" | "Completed" | "Pending" | "Return">("");
+  const [paymentModeFilter, setPaymentModeFilter] = React.useState<"" | "Cash" | "Card" | "UPI" | "Credit" | "Split">("");
 
   // -- Fetch Outstanding Credit Total --
   const fetchCreditTotal = React.useCallback(async () => {
@@ -1889,6 +1890,7 @@ export default function Sales() {
     if (toDate) params.set("toDate", toDate);
     if (creditFilter) params.set("paymentMode", "Credit");
     if (statusFilter) params.set("status", statusFilter);
+    if (paymentModeFilter) params.set("paymentMode", paymentModeFilter);
 
     try {
       const res = await fetch(`/api/sales?${params.toString()}`);
@@ -1908,7 +1910,7 @@ export default function Sales() {
       setLoading(false);
       fetchCreditTotal();
     }
-  }, [search, page, fromDate, toDate, creditFilter, statusFilter]);
+  }, [search, page, fromDate, toDate, creditFilter, statusFilter, paymentModeFilter]);
 
   const loadMockData = React.useCallback(async () => {
     // Simulate API delay
@@ -1933,6 +1935,9 @@ export default function Sales() {
     if (statusFilter) {
       filtered = filtered.filter((s) => s.status === statusFilter);
     }
+    if (paymentModeFilter) {
+      filtered = filtered.filter((s) => s.paymentMode === paymentModeFilter);
+    }
 
     const totalRecords = filtered.length;
     const start = (page - 1) * pageSize;
@@ -1942,7 +1947,7 @@ export default function Sales() {
     setSales(paged);
     setTotal(totalRecords);
     setUsingLocal(true);
-  }, [search, page, fromDate, toDate, creditFilter, statusFilter]);
+  }, [search, page, fromDate, toDate, creditFilter, statusFilter, paymentModeFilter]);
 
   React.useEffect(() => {
     fetchSales();
@@ -1963,6 +1968,10 @@ export default function Sales() {
   };
   const handleStatusFilterChange = (val: string) => {
     setStatusFilter(val as "" | "Completed" | "Pending" | "Return");
+    setPage(1);
+  };
+  const handlePaymentModeFilterChange = (val: string) => {
+    setPaymentModeFilter(val as "" | "Cash" | "Card" | "UPI" | "Credit" | "Split");
     setPage(1);
   };
 
@@ -2222,7 +2231,23 @@ export default function Sales() {
                     </SelectContent>
                   </Select>
                 </div>
-                {(search || fromDate || toDate || statusFilter) && (
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Payment</Label>
+                  <Select value={paymentModeFilter || ""} onValueChange={handlePaymentModeFilterChange}>
+                    <SelectTrigger className="w-full sm:w-36">
+                      <SelectValue placeholder="All Modes" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All</SelectItem>
+                      <SelectItem value="Cash">Cash</SelectItem>
+                      <SelectItem value="Card">Card</SelectItem>
+                      <SelectItem value="UPI">UPI</SelectItem>
+                      <SelectItem value="Credit">Credit</SelectItem>
+                      <SelectItem value="Split">Split</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {(search || fromDate || toDate || statusFilter || paymentModeFilter) && (
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground invisible">Action</Label>
                     <Button
@@ -2233,6 +2258,7 @@ export default function Sales() {
                         setFromDate("");
                         setToDate("");
                         setStatusFilter("");
+                        setPaymentModeFilter("");
                         setPage(1);
                       }}
                     >

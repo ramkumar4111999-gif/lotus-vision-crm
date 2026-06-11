@@ -373,6 +373,8 @@ export default function Customers() {
       const params = new URLSearchParams({ limit: '9999' });
       if (search) params.set('search', search);
       if (groupFilter !== 'all') params.set('group', groupFilter);
+      if (fromDate) params.set('fromDate', fromDate);
+      if (toDate) params.set('toDate', toDate);
       const res = await fetch(`/api/customers?${params}`);
       if (!res.ok) throw new Error('Failed to fetch');
       const json: PaginatedResponse<Customer> = await res.json();
@@ -1165,6 +1167,10 @@ export default function Customers() {
                 >
                   <Star className="mr-1.5 size-3.5" />
                   Redeem Points
+                </Button>
+                <Button size="sm" variant="outline" className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/50" onClick={() => openWhatsApp(selectedCustomer.phone, selectedCustomer.name)}>
+                  <MessageCircle className="mr-1.5 size-3.5" />
+                  WhatsApp
                 </Button>
                 <Button size="sm">
                   <ShoppingCart className="mr-1.5 size-3.5" />

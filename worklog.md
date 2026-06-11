@@ -963,3 +963,25 @@ Stage Summary:
 - Error boundary wraps SectionRenderer
 - Tunnel: https://arm-front-certain-diy.trycloudflare.com
 - Note: Sandbox aggressively kills background Node processes; keepalive.sh + respawn loop mitigates this
+
+---
+Task ID: crm-cycle-b-1781147800
+Agent: CRM Build Bot - Cycle B (Enhancement Pass)
+Task: Customers & Sales bug fixes and feature enhancements
+
+Work Log:
+- Verified all Cycle B features from previous runs already exist (WhatsApp, CSV, duplicate detection, invoice print, payment split, returns, summary cards)
+- Fixed bug: CSV export was not passing fromDate/toDate filter params — now respects date range
+- Added WhatsApp button to customer detail quick actions panel (alongside Add Prescription, Add Visit, Earn Points, Redeem Points, New Sale)
+- Added payment mode filter dropdown to Sales list (Cash, Card, UPI, Credit, Split options)
+- Wired paymentModeFilter into fetchSales, loadMockData, and Clear filters button
+- Rebuilt: npx next build — zero errors, zero warnings
+- Verified all 6 key endpoints return HTTP 200
+- Sales API correctly filters by paymentMode (Cash=results, UPI=results, Split=empty expected)
+
+Stage Summary:
+- BUG FIX: Customer CSV export now respects date range filters
+- CUSTOMERS: +WhatsApp button in detail panel quick actions
+- SALES: +Payment mode filter dropdown (Cash/Card/UPI/Credit/Split)
+- Build: Clean, zero errors
+- Tunnel: https://drops-bases-casting-damaged.trycloudflare.com
