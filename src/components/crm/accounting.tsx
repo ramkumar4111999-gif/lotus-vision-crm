@@ -310,6 +310,7 @@ function InvoiceGSTReport() {
               </CardContent>
             </Card>
           </div>
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -344,6 +345,7 @@ function InvoiceGSTReport() {
               </TableRow>
             </TableBody>
           </Table>
+          </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="rounded-lg border p-3 text-center">
               <p className="text-xs text-muted-foreground">CGST</p>
@@ -2194,7 +2196,7 @@ export default function Accounting() {
                   <p className="text-sm">No dues found</p>
                 </div>
               ) : (
-                <div className="max-h-[420px] overflow-y-auto rounded-md border">
+                <div className="max-h-[420px] overflow-x-auto overflow-y-auto rounded-md border">
                   <Table>
                     <TableHeader>
                       <TableRow>

@@ -1,0 +1,766 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useEffect, useCallback } from 'react';
+     4→import { toast } from 'sonner';
+     5→import {
+     6→  ShoppingCart,
+     7→  Plus,
+     8→  Search,
+     9→  ChevronLeft,
+    10→  ChevronRight,
+    11→  Pencil,
+    12→  Trash2,
+    13→  Eye,
+    14→  Loader2,
+    15→  IndianRupee,
+    16→  Package,
+    17→  Truck,
+    18→  CheckCircle2,
+    19→  XCircle,
+    20→  Clock,
+    21→  AlertCircle,
+    22→  X,
+    23→  FileText,
+    24→  Phone,
+    25→  ArrowUpDown,
+    26→  ArrowUp,
+    27→  ArrowDown,
+    28→} from 'lucide-react';
+    29→import { cn } from '@/lib/utils';
+    30→import { useCrmStore } from '@/components/crm/store';
+    31→import { Button } from '@/components/ui/button';
+    32→import { Input } from '@/components/ui/input';
+    33→import { Label } from '@/components/ui/label';
+    34→import { Textarea } from '@/components/ui/textarea';
+    35→import { Badge } from '@/components/ui/badge';
+    36→import { Separator } from '@/components/ui/separator';
+    37→import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+    38→import {
+    39→  Dialog,
+    40→  DialogContent,
+    41→  DialogDescription,
+    42→  DialogFooter,
+    43→  DialogHeader,
+    44→  DialogTitle,
+    45→} from '@/components/ui/dialog';
+    46→import {
+    47→  Table,
+    48→  TableBody,
+    49→  TableCell,
+    50→  TableHead,
+    51→  TableHeader,
+    52→  TableRow,
+    53→} from '@/components/ui/table';
+    54→import {
+    55→  Select,
+    56→  SelectContent,
+    57→  SelectItem,
+    58→  SelectTrigger,
+    59→  SelectValue,
+    60→} from '@/components/ui/select';
+    61→import { Skeleton } from '@/components/ui/skeleton';
+    62→
+    63→// ───────────────────────────────────────────────
+    64→// Types
+    65→// ───────────────────────────────────────────────
+    66→
+    67→interface POItem {
+    68→  productId: string;
+    69→  name: string;
+    70→  qty: number;
+    71→  costPrice: number;
+    72→}
+    73→
+    74→interface PurchaseOrder {
+    75→  id: string;
+    76→  poNumber: string;
+    77→  supplier: string;
+    78→  supplierPhone: string | null;
+    79→  status: string;
+    80→  items: string; // JSON
+    81→  totalAmount: number;
+    82→  receivedAt: string | null;
+    83→  notes: string | null;
+    84→  expectedDate: string | null;
+    85→  createdAt: string;
+    86→  updatedAt: string;
+    87→}
+    88→
+    89→interface Product {
+    90→  id: string;
+    91→  name: string;
+    92→  sku: string;
+    93→  category: string;
+    94→  stock: number;
+    95→  minStock: number;
+    96→  costPrice: number | null;
+    97→  supplier: string | null;
+    98→  supplierPhone: string | null;
+    99→}
+   100→
+   101→// ───────────────────────────────────────────────
+   102→// Constants
+   103→// ───────────────────────────────────────────────
+   104→
+   105→const STATUS_CONFIG: Record<string, { color: string; icon: React.ElementType; label: string }> = {
+   106→  Pending: { color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-400', icon: Clock, label: 'Pending' },
+   107→  Ordered: { color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-400', icon: Truck, label: 'Ordered' },
+   108→  PartiallyReceived: { color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-400', icon: Package, label: 'Partial' },
+   109→  Received: { color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400', icon: CheckCircle2, label: 'Received' },
+   110→  Cancelled: { color: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-400', icon: XCircle, label: 'Cancelled' },
+   111→};
+   112→
+   113→const EMPTY_ITEM: POItem = { productId: '', name: '', qty: 1, costPrice: 0 };
+   114→
+   115→function formatINR(amount: number): string {
+   116→  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 }).format(amount);
+   117→}
+   118→
+   119→function formatDate(dateStr: string | null): string {
+   120→  if (!dateStr) return '—';
+   121→  try {
+   122→    return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+   123→  } catch {
+   124→    return dateStr;
+   125→  }
+   126→}
+   127→
+   128→// ───────────────────────────────────────────────
+   129→// Component
+   130→// ───────────────────────────────────────────────
+   131→
+   132→export default function PurchaseOrders() {
+   133→  const { darkMode } = useCrmStore();
+   134→
+   135→  // List state
+   136→  const [orders, setOrders] = useState<PurchaseOrder[]>([]);
+   137→  const [loading, setLoading] = useState(true);
+   138→  const [search, setSearch] = useState('');
+   139→  const [statusFilter, setStatusFilter] = useState('all');
+   140→  const [page, setPage] = useState(1);
+   141→  const [totalPages, setTotalPages] = useState(1);
+   142→
+   143→  // Form dialog
+   144→  const [dialogOpen, setDialogOpen] = useState(false);
+   145→  const [editingOrder, setEditingOrder] = useState<PurchaseOrder | null>(null);
+   146→  const [submitting, setSubmitting] = useState(false);
+   147→
+   148→  // View dialog
+   149→  const [viewOrder, setViewOrder] = useState<PurchaseOrder | null>(null);
+   150→
+   151→  // Form state
+   152→  const [supplier, setSupplier] = useState('');
+   153→  const [supplierPhone, setSupplierPhone] = useState('');
+   154→  const [items, setItems] = useState<POItem[]>([{ ...EMPTY_ITEM }]);
+   155→  const [notes, setNotes] = useState('');
+   156→  const [expectedDate, setExpectedDate] = useState('');
+   157→
+   158→  // Status change dialog
+   159→  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+   160→  const [statusChangeOrder, setStatusChangeOrder] = useState<PurchaseOrder | null>(null);
+   161→  const [newStatus, setNewStatus] = useState('');
+   162→
+   163→  // Products for lookup
+   164→  const [products, setProducts] = useState<Product[]>([]);
+   165→  const [productSearch, setProductSearch] = useState('');
+   166→
+   167→  // ─── Fetch orders ─────────────────────────────
+   168→
+   169→  const fetchOrders = useCallback(async () => {
+   170→    setLoading(true);
+   171→    try {
+   172→      const params = new URLSearchParams({ page: String(page), limit: '20' });
+   173→      if (search) params.set('search', search);
+   174→      if (statusFilter !== 'all') params.set('status', statusFilter);
+   175→      const res = await fetch(`/api/purchase-orders?${params}`);
+   176→      if (!res.ok) throw new Error('Failed to fetch');
+   177→      const json = await res.json();
+   178→      setOrders(json.purchaseOrders || []);
+   179→      setTotalPages(json.totalPages || 1);
+   180→    } catch {
+   181→      toast.error('Failed to load purchase orders');
+   182→    } finally {
+   183→      setLoading(false);
+   184→    }
+   185→  }, [page, search, statusFilter]);
+   186→
+   187→  useEffect(() => { fetchOrders(); }, [fetchOrders]);
+   188→
+   189→  // Fetch products for autocomplete
+   190→  const fetchProducts = useCallback(async (query: string) => {
+   191→    if (!query || query.length < 2) { setProducts([]); return; }
+   192→    try {
+   193→      const res = await fetch(`/api/products?search=${encodeURIComponent(query)}&limit=10`);
+   194→      if (!res.ok) return;
+   195→      const json = await res.json();
+   196→      setProducts(Array.isArray(json.products) ? json.products : (Array.isArray(json.data) ? json.data : []));
+   197→    } catch {}
+   198→  }, []);
+   199→
+   200→  useEffect(() => {
+   201→    const timer = setTimeout(() => fetchProducts(productSearch), 300);
+   202→    return () => clearTimeout(timer);
+   203→  }, [productSearch, fetchProducts]);
+   204→
+   205→  // ─── Item handlers ────────────────────────────
+   206→
+   207→  const addItem = () => setItems([...items, { ...EMPTY_ITEM }]);
+   208→
+   209→  const removeItem = (index: number) => {
+   210→    if (items.length <= 1) return;
+   211→    setItems(items.filter((_, i) => i !== index));
+   212→  };
+   213→
+   214→  const updateItem = (index: number, field: keyof POItem, value: string | number) => {
+   215→    const updated = [...items];
+   216→    (updated[index] as Record<string, unknown>)[field] = value;
+   217→    // Auto-fill cost price from product
+   218→    if (field === 'productId') {
+   219→      const product = products.find((p) => p.id === value);
+   220→      if (product) {
+   221→        updated[index].name = product.name;
+   222→        updated[index].costPrice = product.costPrice || 0;
+   223→      }
+   224→    }
+   225→    setItems(updated);
+   226→  };
+   227→
+   228→  const totalAmount = items.reduce((sum, item) => sum + item.qty * item.costPrice, 0);
+   229→
+   230→  // ─── Dialog handlers ──────────────────────────
+   231→
+   232→  const openCreateDialog = () => {
+   233→    setEditingOrder(null);
+   234→    setSupplier(''); setSupplierPhone(''); setNotes(''); setExpectedDate('');
+   235→    setItems([{ ...EMPTY_ITEM }]);
+   236→    setDialogOpen(true);
+   237→  };
+   238→
+   239→  const openEditDialog = (order: PurchaseOrder) => {
+   240→    setEditingOrder(order);
+   241→    setSupplier(order.supplier);
+   242→    setSupplierPhone(order.supplierPhone || '');
+   243→    setNotes(order.notes || '');
+   244→    setExpectedDate(order.expectedDate ? order.expectedDate.split('T')[0] : '');
+   245→    try {
+   246→      const parsedItems = JSON.parse(order.items);
+   247→      setItems(Array.isArray(parsedItems) ? parsedItems : [{ ...EMPTY_ITEM }]);
+   248→    } catch {
+   249→      setItems([{ ...EMPTY_ITEM }]);
+   250→    }
+   251→    setDialogOpen(true);
+   252→  };
+   253→
+   254→  const openStatusDialog = (order: PurchaseOrder) => {
+   255→    setStatusChangeOrder(order);
+   256→    setNewStatus(order.status);
+   257→    setStatusDialogOpen(true);
+   258→  };
+   259→
+   260→  const handleSubmit = async () => {
+   261→    const validItems = items.filter((i) => i.name && i.qty > 0);
+   262→    if (!supplier.trim()) { toast.error('Supplier name is required'); return; }
+   263→    if (validItems.length === 0) { toast.error('Add at least one item'); return; }
+   264→
+   265→    setSubmitting(true);
+   266→    try {
+   267→      const url = editingOrder ? `/api/purchase-orders/${editingOrder.id}` : '/api/purchase-orders';
+   268→      const method = editingOrder ? 'PUT' : 'POST';
+   269→      const body: Record<string, unknown> = {
+   270→        supplier, supplierPhone, items: validItems, notes, expectedDate,
+   271→      };
+   272→      if (editingOrder) body.status = editingOrder.status;
+   273→
+   274→      const res = await fetch(url, {
+   275→        method,
+   276→        headers: { 'Content-Type': 'application/json' },
+   277→        body: JSON.stringify(body),
+   278→      });
+   279→
+   280→      if (!res.ok) throw new Error('Failed to save');
+   281→
+   282→      toast.success(editingOrder ? 'Purchase order updated' : 'Purchase order created');
+   283→      setDialogOpen(false);
+   284→      fetchOrders();
+   285→    } catch {
+   286→      toast.error('Failed to save purchase order');
+   287→    } finally {
+   288→      setSubmitting(false);
+   289→    }
+   290→  };
+   291→
+   292→  const handleStatusChange = async () => {
+   293→    if (!statusChangeOrder || !newStatus) return;
+   294→    setSubmitting(true);
+   295→    try {
+   296→      const res = await fetch(`/api/purchase-orders/${statusChangeOrder.id}`, {
+   297→        method: 'PUT',
+   298→        headers: { 'Content-Type': 'application/json' },
+   299→        body: JSON.stringify({ status: newStatus, items: JSON.parse(statusChangeOrder.items) }),
+   300→      });
+   301→      if (!res.ok) throw new Error('Failed');
+   302→      toast.success(`Order ${statusChangeOrder.poNumber} → ${newStatus}`);
+   303→      setStatusDialogOpen(false);
+   304→      fetchOrders();
+   305→    } catch {
+   306→      toast.error('Failed to update status');
+   307→    } finally {
+   308→      setSubmitting(false);
+   309→    }
+   310→  };
+   311→
+   312→  const handleDelete = async (order: PurchaseOrder) => {
+   313→    if (!confirm(`Delete ${order.poNumber}?`)) return;
+   314→    try {
+   315→      const res = await fetch(`/api/purchase-orders/${order.id}`, { method: 'DELETE' });
+   316→      if (!res.ok) throw new Error('Failed');
+   317→      toast.success('Purchase order deleted');
+   318→      fetchOrders();
+   319→    } catch {
+   320→      toast.error('Failed to delete');
+   321→    }
+   322→  };
+   323→
+   324→  // ─── Render ───────────────────────────────────
+   325→
+   326→  return (
+   327→    <div className="space-y-4">
+   328→      {/* Header */}
+   329→      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+   330→        <div className="flex items-center gap-2">
+   331→          <ShoppingCart className="h-5 w-5 text-emerald-600" />
+   332→          <h2 className="text-lg font-semibold">Purchase Orders</h2>
+   333→          {orders.length > 0 && (
+   334→            <Badge variant="secondary" className="text-xs">{orders.length}</Badge>
+   335→          )}
+   336→        </div>
+   337→        <Button onClick={openCreateDialog}>
+   338→          <Plus className="mr-1 h-4 w-4" /> New PO
+   339→        </Button>
+   340→      </div>
+   341→
+   342→      {/* Filters */}
+   343→      <div className="flex flex-col sm:flex-row gap-2">
+   344→        <div className="relative flex-1">
+   345→          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+   346→          <Input
+   347→            placeholder="Search by supplier, PO#..."
+   348→            className="pl-9"
+   349→            value={search}
+   350→            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+   351→          />
+   352→        </div>
+   353→        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
+   354→          <SelectTrigger className="w-full sm:w-44">
+   355→            <SelectValue placeholder="All Status" />
+   356→          </SelectTrigger>
+   357→          <SelectContent>
+   358→            <SelectItem value="all">All Status</SelectItem>
+   359→            {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+   360→              <SelectItem key={key} value={key}>{cfg.label}</SelectItem>
+   361→            ))}
+   362→          </SelectContent>
+   363→        </Select>
+   364→      </div>
+   365→
+   366→      {/* Summary Cards */}
+   367→      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+   368→        {Object.entries(STATUS_CONFIG).map(([status, cfg]) => {
+   369→          const count = orders.filter((o) => o.status === status).length;
+   370→          return (
+   371→            <Card key={status} className={darkMode ? 'border-gray-700 bg-gray-900' : ''}>
+   372→              <CardContent className="p-3 text-center">
+   373→                <div className="text-2xl font-bold">{count}</div>
+   374→                <div className="text-xs text-muted-foreground">{cfg.label}</div>
+   375→              </CardContent>
+   376→            </Card>
+   377→          );
+   378→        })}
+   379→      </div>
+   380→
+   381→      {/* Table */}
+   382→      {loading ? (
+   383→        <div className="space-y-2">
+   384→          {[...Array(5)].map((_, i) => (
+   385→            <Skeleton key={i} className="h-12 w-full" />
+   386→          ))}
+   387→        </div>
+   388→      ) : orders.length === 0 ? (
+   389→        <Card className={darkMode ? 'border-gray-700 bg-gray-900' : ''}>
+   390→          <CardContent className="py-12 text-center text-muted-foreground">
+   391→            <Package className="mx-auto h-10 w-10 mb-3 opacity-40" />
+   392→            <p>No purchase orders found</p>
+   393→            <p className="text-sm mt-1">Create your first purchase order to track supplier orders</p>
+   394→          </CardContent>
+   395→        </Card>
+   396→      ) : (
+   397→        <Card className={darkMode ? 'border-gray-700 bg-gray-900' : ''}>
+   398→          <CardContent className="p-0">
+   399→            <div className="overflow-x-auto">
+   400→              <Table>
+   401→                <TableHeader>
+   402→                  <TableRow>
+   403→                    <TableHead>PO #</TableHead>
+   404→                    <TableHead>Supplier</TableHead>
+   405→                    <TableHead className="text-right">Amount</TableHead>
+   406→                    <TableHead>Status</TableHead>
+   407→                    <TableHead>Expected</TableHead>
+   408→                    <TableHead>Created</TableHead>
+   409→                    <TableHead className="text-right">Actions</TableHead>
+   410→                  </TableRow>
+   411→                </TableHeader>
+   412→                <TableBody>
+   413→                  {orders.map((order) => {
+   414→                    const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.Pending;
+   415→                    const StatusIcon = cfg.icon;
+   416→                    return (
+   417→                      <TableRow key={order.id}>
+   418→                        <TableCell className="font-mono font-medium">{order.poNumber}</TableCell>
+   419→                        <TableCell>
+   420→                          <div>
+   421→                            <div className="font-medium">{order.supplier}</div>
+   422→                            {order.supplierPhone && (
+   423→                              <div className="text-xs text-muted-foreground">{order.supplierPhone}</div>
+   424→                            )}
+   425→                          </div>
+   426→                        </TableCell>
+   427→                        <TableCell className="text-right font-medium">
+   428→                          {formatINR(order.totalAmount)}
+   429→                        </TableCell>
+   430→                        <TableCell>
+   431→                          <button
+   432→                            onClick={() => openStatusDialog(order)}
+   433→                            className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium cursor-pointer hover:opacity-80', cfg.color)}
+   434→                          >
+   435→                            <StatusIcon className="h-3 w-3" />
+   436→                            {cfg.label}
+   437→                          </button>
+   438→                        </TableCell>
+   439→                        <TableCell className="text-sm">{formatDate(order.expectedDate)}</TableCell>
+   440→                        <TableCell className="text-sm text-muted-foreground">{formatDate(order.createdAt)}</TableCell>
+   441→                        <TableCell className="text-right">
+   442→                          <div className="flex items-center justify-end gap-1">
+   443→                            <Button variant="ghost" size="sm" onClick={() => setViewOrder(order)}>
+   444→                              <Eye className="h-4 w-4" />
+   445→                            </Button>
+   446→                            <Button variant="ghost" size="sm" onClick={() => openEditDialog(order)}>
+   447→                              <Pencil className="h-4 w-4" />
+   448→                            </Button>
+   449→                            <Button variant="ghost" size="sm" onClick={() => handleDelete(order)}>
+   450→                              <Trash2 className="h-4 w-4 text-red-500" />
+   451→                            </Button>
+   452→                          </div>
+   453→                        </TableCell>
+   454→                      </TableRow>
+   455→                    );
+   456→                  })}
+   457→                </TableBody>
+   458→              </Table>
+   459→            </div>
+   460→          </CardContent>
+   461→        </Card>
+   462→      )}
+   463→
+   464→      {/* Pagination */}
+   465→      {totalPages > 1 && (
+   466→        <div className="flex items-center justify-between">
+   467→          <p className="text-sm text-muted-foreground">Page {page} of {totalPages}</p>
+   468→          <div className="flex gap-1">
+   469→            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+   470→              <ChevronLeft className="h-4 w-4" />
+   471→            </Button>
+   472→            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
+   473→              <ChevronRight className="h-4 w-4" />
+   474→            </Button>
+   475→          </div>
+   476→        </div>
+   477→      )}
+   478→
+   479→      {/* ─── Create/Edit Dialog ─── */}
+   480→      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+   481→        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+   482→          <DialogHeader>
+   483→            <DialogTitle>{editingOrder ? `Edit ${editingOrder.poNumber}` : 'New Purchase Order'}</DialogTitle>
+   484→            <DialogDescription>
+   485→              {editingOrder ? 'Update purchase order details' : 'Create a new purchase order to your supplier'}
+   486→            </DialogDescription>
+   487→          </DialogHeader>
+   488→
+   489→          <div className="space-y-4">
+   490→            {/* Supplier Info */}
+   491→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   492→              <div>
+   493→                <Label>Supplier Name *</Label>
+   494→                <Input
+   495→                  placeholder="Supplier name"
+   496→                  value={supplier}
+   497→                  onChange={(e) => setSupplier(e.target.value)}
+   498→                />
+   499→              </div>
+   500→              <div>
+   501→                <Label>Supplier Phone</Label>
+   502→                <Input
+   503→                  placeholder="Phone number"
+   504→                  value={supplierPhone}
+   505→                  onChange={(e) => setSupplierPhone(e.target.value)}
+   506→                />
+   507→              </div>
+   508→            </div>
+   509→
+   510→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   511→              <div>
+   512→                <Label>Expected Delivery Date</Label>
+   513→                <Input
+   514→                  type="date"
+   515→                  value={expectedDate}
+   516→                  onChange={(e) => setExpectedDate(e.target.value)}
+   517→                />
+   518→              </div>
+   519→              <div className="flex items-end">
+   520→                <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+   521→                  Total: {formatINR(totalAmount)}
+   522→                </div>
+   523→              </div>
+   524→            </div>
+   525→
+   526→            <Separator />
+   527→
+   528→            {/* Items */}
+   529→            <div>
+   530→              <div className="flex items-center justify-between mb-2">
+   531→                <Label className="font-medium">Items</Label>
+   532→                <Button variant="outline" size="sm" onClick={addItem}>
+   533→                  <Plus className="mr-1 h-3 w-3" /> Add Item
+   534→                </Button>
+   535→              </div>
+   536→
+   537→              <div className="space-y-2">
+   538→                {items.map((item, index) => (
+   539→                  <div key={index} className="grid grid-cols-12 gap-2 items-end p-2 rounded-lg border dark:border-gray-700">
+   540→                    <div className="col-span-4">
+   541→                      {index === 0 && <Label className="text-xs text-muted-foreground">Product</Label>}
+   542→                      <Input
+   543→                        placeholder="Search product..."
+   544→                        value={item.productId ? item.name : productSearch}
+   545→                        onChange={(e) => {
+   546→                          if (!item.productId) setProductSearch(e.target.value);
+   547→                        }}
+   548→                        onFocus={() => { if (item.productId) { updateItem(index, 'productId', ''); setProductSearch(''); } }}
+   549→                      />
+   550→                      {productSearch && !item.productId && products.length > 0 && (
+   551→                        <div className="absolute z-10 bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-md shadow-lg mt-1 max-h-40 overflow-y-auto">
+   552→                          {products.map((p) => (
+   553→                            <button
+   554→                              key={p.id}
+   555→                              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+   556→                              onClick={() => {
+   557→                                updateItem(index, 'productId', p.id);
+   558→                                setProductSearch('');
+   559→                                setProducts([]);
+   560→                              }}
+   561→                            >
+   562→                              {p.name} <span className="text-muted-foreground">({p.sku})</span>
+   563→                            </button>
+   564→                          ))}
+   565→                        </div>
+   566→                      )}
+   567→                    </div>
+   568→                    <div className="col-span-3">
+   569→                      {index === 0 && <Label className="text-xs text-muted-foreground">Name</Label>}
+   570→                      <Input
+   571→                        placeholder="Item name"
+   572→                        value={item.name}
+   573→                        onChange={(e) => updateItem(index, 'name', e.target.value)}
+   574→                      />
+   575→                    </div>
+   576→                    <div className="col-span-2">
+   577→                      {index === 0 && <Label className="text-xs text-muted-foreground">Qty</Label>}
+   578→                      <Input
+   579→                        type="number"
+   580→                        min="1"
+   581→                        value={item.qty}
+   582→                        onChange={(e) => updateItem(index, 'qty', parseInt(e.target.value) || 0)}
+   583→                      />
+   584→                    </div>
+   585→                    <div className="col-span-2">
+   586→                      {index === 0 && <Label className="text-xs text-muted-foreground">Cost Price</Label>}
+   587→                      <Input
+   588→                        type="number"
+   589→                        min="0"
+   590→                        value={item.costPrice}
+   591→                        onChange={(e) => updateItem(index, 'costPrice', parseFloat(e.target.value) || 0)}
+   592→                      />
+   593→                    </div>
+   594→                    <div className="col-span-1 flex items-center justify-center">
+   595→                      {items.length > 1 && (
+   596→                        <Button variant="ghost" size="sm" onClick={() => removeItem(index)}>
+   597→                          <X className="h-4 w-4 text-red-500" />
+   598→                        </Button>
+   599→                      )}
+   600→                    </div>
+   601→                  </div>
+   602→                ))}
+   603→              </div>
+   604→            </div>
+   605→
+   606→            {/* Notes */}
+   607→            <div>
+   608→              <Label>Notes</Label>
+   609→              <Textarea
+   610→                placeholder="Order notes, payment terms..."
+   611→                value={notes}
+   612→                onChange={(e) => setNotes(e.target.value)}
+   613→                rows={2}
+   614→              />
+   615→            </div>
+   616→          </div>
+   617→
+   618→          <DialogFooter>
+   619→            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+   620→            <Button onClick={handleSubmit} disabled={submitting}>
+   621→              {submitting && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+   622→              {editingOrder ? 'Update PO' : 'Create PO'}
+   623→            </Button>
+   624→          </DialogFooter>
+   625→        </DialogContent>
+   626→      </Dialog>
+   627→
+   628→      {/* ─── View Dialog ─── */}
+   629→      <Dialog open={!!viewOrder} onOpenChange={() => setViewOrder(null)}>
+   630→        <DialogContent className="max-w-lg">
+   631→          <DialogHeader>
+   632→            <DialogTitle className="flex items-center gap-2">
+   633→              <FileText className="h-5 w-5" />
+   634→              {viewOrder?.poNumber}
+   635→            </DialogTitle>
+   636→          </DialogHeader>
+   637→          {viewOrder && (() => {
+   638→            const cfg = STATUS_CONFIG[viewOrder.status] || STATUS_CONFIG.Pending;
+   639→            const StatusIcon = cfg.icon;
+   640→            let parsedItems: POItem[] = [];
+   641→            try { parsedItems = JSON.parse(viewOrder.items); } catch {}
+   642→
+   643→            return (
+   644→              <div className="space-y-3">
+   645→                <div className="grid grid-cols-2 gap-3 text-sm">
+   646→                  <div>
+   647→                    <span className="text-muted-foreground">Supplier</span>
+   648→                    <p className="font-medium">{viewOrder.supplier}</p>
+   649→                  </div>
+   650→                  <div>
+   651→                    <span className="text-muted-foreground">Phone</span>
+   652→                    <p className="font-medium">{viewOrder.supplierPhone || '—'}</p>
+   653→                  </div>
+   654→                  <div>
+   655→                    <span className="text-muted-foreground">Status</span>
+   656→                    <p>
+   657→                      <Badge className={cfg.color}>
+   658→                        <StatusIcon className="mr-1 h-3 w-3" />{cfg.label}
+   659→                      </Badge>
+   660→                    </p>
+   661→                  </div>
+   662→                  <div>
+   663→                    <span className="text-muted-foreground">Total</span>
+   664→                    <p className="font-bold text-lg">{formatINR(viewOrder.totalAmount)}</p>
+   665→                  </div>
+   666→                  <div>
+   667→                    <span className="text-muted-foreground">Expected</span>
+   668→                    <p>{formatDate(viewOrder.expectedDate)}</p>
+   669→                  </div>
+   670→                  <div>
+   671→                    <span className="text-muted-foreground">Created</span>
+   672→                    <p>{formatDate(viewOrder.createdAt)}</p>
+   673→                  </div>
+   674→                  {viewOrder.receivedAt && (
+   675→                    <div>
+   676→                      <span className="text-muted-foreground">Received</span>
+   677→                      <p>{formatDate(viewOrder.receivedAt)}</p>
+   678→                    </div>
+   679→                  )}
+   680→                </div>
+   681→
+   682→                {parsedItems.length > 0 && (
+   683→                  <>
+   684→                    <Separator />
+   685→                    <div>
+   686→                      <Label className="font-medium mb-2 block">Items ({parsedItems.length})</Label>
+   687→                      <Table>
+   688→                        <TableHeader>
+   689→                          <TableRow>
+   690→                            <TableHead>Product</TableHead>
+   691→                            <TableHead className="text-right">Qty</TableHead>
+   692→                            <TableHead className="text-right">Cost</TableHead>
+   693→                            <TableHead className="text-right">Total</TableHead>
+   694→                          </TableRow>
+   695→                        </TableHeader>
+   696→                        <TableBody>
+   697→                          {parsedItems.map((item, i) => (
+   698→                            <TableRow key={i}>
+   699→                              <TableCell>{item.name}</TableCell>
+   700→                              <TableCell className="text-right">{item.qty}</TableCell>
+   701→                              <TableCell className="text-right">{formatINR(item.costPrice)}</TableCell>
+   702→                              <TableCell className="text-right font-medium">{formatINR(item.qty * item.costPrice)}</TableCell>
+   703→                            </TableRow>
+   704→                          ))}
+   705→                        </TableBody>
+   706→                      </Table>
+   707→                    </div>
+   708→                  </>
+   709→                )}
+   710→
+   711→                {viewOrder.notes && (
+   712→                  <>
+   713→                    <Separator />
+   714→                    <div>
+   715→                      <Label className="text-muted-foreground">Notes</Label>
+   716→                      <p className="text-sm mt-1">{viewOrder.notes}</p>
+   717→                    </div>
+   718→                  </>
+   719→                )}
+   720→              </div>
+   721→            );
+   722→          })()}
+   723→        </DialogContent>
+   724→      </Dialog>
+   725→
+   726→      {/* ─── Status Change Dialog ─── */}
+   727→      <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+   728→        <DialogContent className="max-w-sm">
+   729→          <DialogHeader>
+   730→            <DialogTitle>Change Status</DialogTitle>
+   731→            <DialogDescription>
+   732→              Update {statusChangeOrder?.poNumber} status
+   733→            </DialogDescription>
+   734→          </DialogHeader>
+   735→          <div className="space-y-3">
+   736→            <Select value={newStatus} onValueChange={setNewStatus}>
+   737→              <SelectTrigger>
+   738→                <SelectValue />
+   739→              </SelectTrigger>
+   740→              <SelectContent>
+   741→                {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+   742→                  <SelectItem key={key} value={key}>{cfg.label}</SelectItem>
+   743→                ))}
+   744→              </SelectContent>
+   745→            </Select>
+   746→            {newStatus === 'Received' && (
+   747→              <Alert className="border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/30">
+   748→                <AlertCircle className="h-4 w-4 text-emerald-600" />
+   749→                <AlertDescription className="text-sm">
+   750→                  Product stock will be automatically updated when marked as Received.
+   751→                </AlertDescription>
+   752→              </Alert>
+   753→            )}
+   754→          </div>
+   755→          <DialogFooter>
+   756→            <Button variant="outline" onClick={() => setStatusDialogOpen(false)}>Cancel</Button>
+   757→            <Button onClick={handleStatusChange} disabled={submitting || newStatus === statusChangeOrder?.status}>
+   758→              {submitting && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+   759→              Update Status
+   760→            </Button>
+   761→          </DialogFooter>
+   762→        </DialogContent>
+   763→      </Dialog>
+   764→    </div>
+   765→  );
+   766→}

@@ -340,6 +340,7 @@ function SalaryManagementSection({ staffList, performanceData }: { staffList: St
                 <XCircle className="size-3 mr-1" /> {pendingCount} Pending
               </Badge>
             </div>
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -376,6 +377,7 @@ function SalaryManagementSection({ staffList, performanceData }: { staffList: St
                 ))}
               </TableBody>
             </Table>
+            </div>
           </div>
         )}
       </CardContent>

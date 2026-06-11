@@ -1195,6 +1195,7 @@ export default function Campaigns() {
                 <CardTitle className="text-base">Campaign Performance</CardTitle>
               </CardHeader>
               <CardContent>
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -1234,6 +1235,7 @@ export default function Campaigns() {
                     )}
                   </TableBody>
                 </Table>
+                </div>
               </CardContent>
             </Card>
 

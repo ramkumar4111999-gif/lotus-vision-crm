@@ -529,7 +529,7 @@ function NewCustomerForm({ onSave, onCancel }: NewCustomerFormProps) {
     <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">New Customer</span>
-        <Button type="button" variant="ghost" size="icon" className="size-7" onClick={onCancel}>
+        <Button type="button" variant="ghost" size="icon" className="min-w-[44px] min-h-[44px] touch-manipulation" onClick={onCancel}>
           <X className="size-3.5" />
         </Button>
       </div>
@@ -703,7 +703,7 @@ function ItemRow({ row, index, products, onUpdate, onRemove, canRemove }: ItemRo
             type="button"
             variant="ghost"
             size="icon"
-            className="size-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+            className="min-w-[44px] min-h-[44px] touch-manipulation text-destructive hover:text-destructive hover:bg-destructive/10"
             onClick={() => onRemove(index)}
           >
             <Trash2 className="size-3.5" />

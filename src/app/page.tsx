@@ -905,7 +905,7 @@ function TopBar() {
       <Button
         variant="ghost"
         size="icon"
-        className="shrink-0 h-10 w-10 sm:h-9 sm:w-9 touch-manipulation"
+        className="shrink-0 h-11 w-11 sm:h-10 sm:w-10 min-w-[44px] min-h-[44px] touch-manipulation"
         onClick={() => setSettingsOpen(true)}
         aria-label="Settings"
       >
@@ -916,7 +916,7 @@ function TopBar() {
       <Button
         variant="ghost"
         size="icon"
-        className="shrink-0 h-10 w-10 sm:h-9 sm:w-9 touch-manipulation"
+        className="shrink-0 h-11 w-11 sm:h-10 sm:w-10 min-w-[44px] min-h-[44px] touch-manipulation"
         onClick={toggleDarkMode}
         aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
       >

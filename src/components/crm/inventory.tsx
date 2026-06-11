@@ -670,7 +670,7 @@ export default function Inventory() {
           <Button
             variant="outline"
             size="icon"
-            className="h-8 w-8"
+            className="min-w-[44px] min-h-[44px] touch-manipulation"
             disabled={currentPage === 1}
             onClick={() => goToPage(currentPage - 1)}
             aria-label="Previous page"
@@ -690,7 +690,7 @@ export default function Inventory() {
                 key={p}
                 variant={currentPage === p ? 'default' : 'outline'}
                 size="icon"
-                className="h-8 w-8"
+                className="min-w-[44px] min-h-[44px] touch-manipulation"
                 onClick={() => goToPage(p)}
                 aria-label={`Page ${p}`}
                 aria-current={currentPage === p ? 'page' : undefined}
@@ -702,7 +702,7 @@ export default function Inventory() {
           <Button
             variant="outline"
             size="icon"
-            className="h-8 w-8"
+            className="min-w-[44px] min-h-[44px] touch-manipulation"
             disabled={currentPage === totalPages}
             onClick={() => goToPage(currentPage + 1)}
             aria-label="Next page"
@@ -891,7 +891,7 @@ export default function Inventory() {
       {/* Products Table */}
       <Card>
         <CardContent className="p-0">
-          <div className="max-h-[600px] overflow-y-auto">
+          <div className="max-h-[600px] overflow-x-auto overflow-y-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -1020,7 +1020,7 @@ export default function Inventory() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/50"
+                            className="min-w-[44px] min-h-[44px] touch-manipulation text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/50"
                             onClick={() => openAdjustDialog(product)}
                             aria-label={`Adjust stock for ${product.name}`}
                             title="Quick Stock Adjust"
@@ -1030,7 +1030,7 @@ export default function Inventory() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8"
+                            className="min-w-[44px] min-h-[44px] touch-manipulation"
                             onClick={() => openEditDialog(product)}
                             aria-label={`Edit ${product.name}`}
                           >
@@ -1039,7 +1039,7 @@ export default function Inventory() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            className="min-w-[44px] min-h-[44px] touch-manipulation text-destructive hover:text-destructive"
                             onClick={() => confirmDelete(product)}
                             aria-label={`Delete ${product.name}`}
                           >

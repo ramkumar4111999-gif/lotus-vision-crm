@@ -32,7 +32,6 @@ import {
   BarChart3,
   Download,
   Loader2,
-  FileText,
   Printer,
   Package,
   AlertTriangle,
