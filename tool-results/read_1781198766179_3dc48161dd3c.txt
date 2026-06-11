@@ -1,0 +1,2002 @@
+     1→"use client";
+     2→
+     3→import * as React from "react";
+     4→import { toast } from "sonner";
+     5→import {
+     6→  Plus,
+     7→  Search,
+     8→  Eye,
+     9→  Printer,
+    10→  RotateCcw,
+    11→  X,
+    12→  ChevronLeft,
+    13→  ChevronRight,
+    14→  ChevronsLeft,
+    15→  ChevronsRight,
+    16→  Loader2,
+    17→  AlertCircle,
+    18→ ShoppingCart,
+    19→  FileText,
+    20→  UserPlus,
+    21→  Trash2,
+    22→  IndianRupee,
+    23→  Package,
+    24→  CreditCard,
+    25→  CalendarDays,
+    26→} from "lucide-react";
+    27→
+    28→import { cn } from "@/lib/utils";
+    29→import { useCrmStore } from "@/components/crm/store";
+    30→import { getSettings } from "@/lib/settings";
+    31→import { Button } from "@/components/ui/button";
+    32→import { Input } from "@/components/ui/input";
+    33→import { Label } from "@/components/ui/label";
+    34→import { Badge } from "@/components/ui/badge";
+    35→import { Separator } from "@/components/ui/separator";
+    36→import { Textarea } from "@/components/ui/textarea";
+    37→import { Skeleton } from "@/components/ui/skeleton";
+    38→import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+    39→import { Checkbox } from "@/components/ui/checkbox";
+    40→import {
+    41→  Dialog,
+    42→  DialogContent,
+    43→  DialogHeader,
+    44→  DialogTitle,
+    45→  DialogDescription,
+    46→  DialogFooter,
+    47→} from "@/components/ui/dialog";
+    48→import {
+    49→  Table,
+    50→  TableBody,
+    51→  TableCell,
+    52→  TableHead,
+    53→  TableHeader,
+    54→  TableRow,
+    55→  TableFooter,
+    56→} from "@/components/ui/table";
+    57→import {
+    58→  Select,
+    59→  SelectContent,
+    60→  SelectItem,
+    61→  SelectTrigger,
+    62→  SelectValue,
+    63→} from "@/components/ui/select";
+    64→import { Alert, AlertDescription } from "@/components/ui/alert";
+    65→
+    66→// ---------------------------------------------------------------------------
+    67→// Types
+    68→// ---------------------------------------------------------------------------
+    69→
+    70→interface Product {
+    71→  id: string;
+    72→  name: string;
+    73→  price: number;
+    74→  stock: number;
+    75→  sku?: string;
+    76→}
+    77→
+    78→interface Customer {
+    79→  id: string;
+    80→  name: string;
+    81→  phone: string;
+    82→  email?: string;
+    83→  address?: string;
+    84→}
+    85→
+    86→interface SaleItem {
+    87→  id: string;
+    88→  productId: string;
+    89→  productName: string;
+    90→  price: number;
+    91→  qty: number;
+    92→  lineTotal: number;
+    93→}
+    94→
+    95→interface Sale {
+    96→  id: string;
+    97→  invoiceNo: string;
+    98→  customerId: string;
+    99→  customerName: string;
+   100→  customerPhone?: string;
+   101→  customerEmail?: string;
+   102→  customerAddress?: string;
+   103→  items: SaleItem[];
+   104→  subtotal: number;
+   105→  discount: number;
+   106→  discountType: "percentage" | "flat";
+   107→  cgst: number;
+   108→  sgst: number;
+   109→  total: number;
+   110→  paymentMode: "Cash" | "Card" | "UPI" | "Credit" | "Split";
+   111→  status: "Completed" | "Pending" | "Return";
+   112→  notes?: string;
+   113→  createdAt: string;
+   114→}
+   115→
+   116→interface SaleListItem {
+   117→  id: string;
+   118→  invoiceNo: string;
+   119→  customerName: string;
+   120→  itemsCount: number;
+   121→  subtotal: number;
+   122→  discount: number;
+   123→  cgst: number;
+   124→  sgst: number;
+   125→  total: number;
+   126→  paymentMode: string;
+   127→  status: "Completed" | "Pending" | "Return";
+   128→  createdAt: string;
+   129→}
+   130→
+   131→interface SalesResponse {
+   132→  sales: SaleListItem[];
+   133→  total: number;
+   134→  page: number;
+   135→  pageSize: number;
+   136→}
+   137→
+   138→interface CreateSaleItem {
+   139→  productId: string;
+   140→  productName: string;
+   141→  price: number;
+   142→  qty: number;
+   143→}
+   144→
+   145→interface ReturnItem {
+   146→  saleItemId: string;
+   147→  productName: string;
+   148→  originalQty: number;
+   149→  returnQty: number;
+   150→  price: number;
+   151→}
+   152→
+   153→// ---------------------------------------------------------------------------
+   154→// Helpers
+   155→// ---------------------------------------------------------------------------
+   156→
+   157→const INR = (amount: number): string =>
+   158→  new Intl.NumberFormat("en-IN", {
+   159→    style: "currency",
+   160→    currency: "INR",
+   161→    minimumFractionDigits: 2,
+   162→    maximumFractionDigits: 2,
+   163→  }).format(amount);
+   164→
+   165→const CGST_RATE = 0.09;
+   166→const SGST_RATE = 0.09;
+   167→
+   168→function generateInvoiceNo(): string {
+   169→  const now = new Date();
+   170→  const y = now.getFullYear().toString().slice(-2);
+   171→  const m = (now.getMonth() + 1).toString().padStart(2, "0");
+   172→  const d = now.getDate().toString().padStart(2, "0");
+   173→  const rand = Math.floor(Math.random() * 9000) + 1000;
+   174→  return `INV-${y}${m}${d}-${rand}`;
+   175→}
+   176→
+   177→function uid(): string {
+   178→  return Math.random().toString(36).slice(2, 11);
+   179→}
+   180→
+   181→// ---------------------------------------------------------------------------
+   182→// Mock Data (used when API returns 404 / for demo purposes)
+   183→// ---------------------------------------------------------------------------
+   184→
+   185→const MOCK_PRODUCTS: Product[] = [
+   186→  { id: "p1", name: "CR-39 Clear Lens (1.50)", price: 150, stock: 120, sku: "CL-001" },
+   187→  { id: "p2", name: "CR-39 Photochromic Lens (1.50)", price: 350, stock: 80, sku: "CL-002" },
+   188→  { id: "p3", name: "Progressive Lens (1.56)", price: 1800, stock: 45, sku: "PL-001" },
+   189→  { id: "p4", name: "Bifocal Lens (1.50)", price: 650, stock: 60, sku: "BL-001" },
+   190→  { id: "p5", name: "Titanium Frame (Full Rim)", price: 2200, stock: 35, sku: "TF-001" },
+   191→  { id: "p6", name: "Acetate Frame (Wayfarer)", price: 1200, stock: 50, sku: "AF-001" },
+   192→  { id: "p7", name: "TR-90 Frame (Flexible)", price: 800, stock: 70, sku: "TR-001" },
+   193→  { id: "p8", name: "Metal Frame (Aviator)", price: 1500, stock: 40, sku: "MF-001" },
+   194→  { id: "p9", name: "Ray-Ban Original Wayfarer", price: 4500, stock: 20, sku: "RB-001" },
+   195→  { id: "p10", name: "Zero Power Lens (PC)", price: 200, stock: 100, sku: "ZP-001" },
+   196→  { id: "p11", name: "Blue Cut Coating (Add-on)", price: 300, stock: 200, sku: "BC-001" },
+   197→  { id: "p12", name: "Anti-Reflective Coating (Add-on)", price: 250, stock: 200, sku: "AR-001" },
+   198→];
+   199→
+   200→const MOCK_CUSTOMERS: Customer[] = [
+   201→  { id: "c1", name: "Murugan S", phone: "9443212345", email: "murugan@email.com", address: "12, Main Road, Sankarankovil" },
+   202→  { id: "c2", name: "Aishwarya R", phone: "9876501234", email: "aishwarya@email.com", address: "34, Nadar Street, Sankarankovil" },
+   203→  { id: "c3", name: "Karthik B", phone: "9789456789", email: "karthik@email.com", address: "56, Kovil Street, Sankarankovil" },
+   204→  { id: "c4", name: "Lakshmi P", phone: "9944012345", email: "lakshmi@email.com", address: "78, Bazaar Street, Sankarankovil" },
+   205→  { id: "c5", name: "Suresh K", phone: "8012345678", email: "suresh@email.com", address: "90, Bus Stand Road, Sankarankovil" },
+   206→  { id: "c6", name: "Priya M", phone: "9364456789", email: "priya.m@email.com", address: "15, Temple Road, Sankarankovil" },
+   207→  { id: "c7", name: "Rajesh D", phone: "9753214567", email: "rajesh.d@email.com", address: "22, Market Street, Sankarankovil" },
+   208→  { id: "c8", name: "Meena K", phone: "9865432100", email: "meena.k@email.com", address: "45, College Road, Sankarankovil" },
+   209→];
+   210→
+   211→const MOCK_SALES: SaleListItem[] = Array.from({ length: 23 }, (_, i) => {
+   212→  const statuses: Array<"Completed" | "Pending" | "Return"> = ["Completed", "Completed", "Completed", "Pending", "Return"];
+   213→  const modes = ["Cash", "Card", "UPI", "Credit"];
+   214→  const customers = MOCK_CUSTOMERS.map((c) => c.name);
+   215→  const day = 28 - (i % 28);
+   216→  const date = `2025-01-${day.toString().padStart(2, "0")}`;
+   217→
+   218→  const subtotal = Math.floor(Math.random() * 8000) + 500;
+   219→  const discount = i % 5 === 0 ? Math.floor(subtotal * 0.05) : 0;
+   220→  const taxable = subtotal - discount;
+   221→  const cgst = Math.round(taxable * CGST_RATE * 100) / 100;
+   222→  const sgst = Math.round(taxable * SGST_RATE * 100) / 100;
+   223→  const total = taxable + cgst + sgst;
+   224→  const itemsCount = Math.floor(Math.random() * 5) + 1;
+   225→
+   226→  return {
+   227→    id: `sale-${i + 1}`,
+   228→    invoiceNo: `INV-2501${day.toString().padStart(2, "0")}-${1000 + i}`,
+   229→    customerName: customers[i % customers.length],
+   230→    itemsCount,
+   231→    subtotal,
+   232→    discount,
+   233→    cgst,
+   234→    sgst,
+   235→    total: Math.round(total * 100) / 100,
+   236→    paymentMode: modes[i % modes.length],
+   237→    status: statuses[i % statuses.length],
+   238→    createdAt: date,
+   239→  };
+   240→});
+   241→
+   242→const MOCK_SALE_DETAIL: Record<string, Sale> = Object.fromEntries(
+   243→  MOCK_SALES.slice(0, 10).map((s, idx) => {
+   244→    const items: SaleItem[] = Array.from({ length: s.itemsCount }, (_, j) => {
+   245→      const p = MOCK_PRODUCTS[(idx + j) % MOCK_PRODUCTS.length];
+   246→      return {
+   247→        id: `si-${s.id}-${j}`,
+   248→        productId: p.id,
+   249→        productName: p.name,
+   250→        price: p.price,
+   251→        qty: Math.floor(Math.random() * 5) + 1,
+   252→        lineTotal: 0,
+   253→      };
+   254→    });
+   255→    items.forEach((item) => {
+   256→      item.lineTotal = item.price * item.qty;
+   257→    });
+   258→
+   259→    const sub = items.reduce((a, b) => a + b.lineTotal, 0);
+   260→    const disc = s.discount;
+   261→    const taxable = sub - disc;
+   262→    const cg = Math.round(taxable * CGST_RATE * 100) / 100;
+   263→    const sg = Math.round(taxable * SGST_RATE * 100) / 100;
+   264→    const tot = taxable + cg + sg;
+   265→
+   266→    const cust = MOCK_CUSTOMERS[idx % MOCK_CUSTOMERS.length];
+   267→
+   268→    return [
+   269→      s.id,
+   270→      {
+   271→        ...s,
+   272→        subtotal: sub,
+   273→        cgst: cg,
+   274→        sgst: sg,
+   275→        total: Math.round(tot * 100) / 100,
+   276→        discountType: "flat",
+   277→        items,
+   278→        customerId: cust.id,
+   279→        customerPhone: cust.phone,
+   280→        customerEmail: cust.email,
+   281→        customerAddress: cust.address,
+   282→        notes: idx % 3 === 0 ? "Customer requested express packaging." : undefined,
+   283→      },
+   284→    ];
+   285→  })
+   286→);
+   287→
+   288→// ---------------------------------------------------------------------------
+   289→// Component: Status Badge
+   290→// ---------------------------------------------------------------------------
+   291→
+   292→function StatusBadge({ status }: { status: string }) {
+   293→  switch (status) {
+   294→    case "Completed":
+   295→      return (
+   296→        <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-800">
+   297→          Completed
+   298→        </Badge>
+   299→      );
+   300→    case "Pending":
+   301→      return (
+   302→        <Badge className="bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-800">
+   303→          Pending
+   304→        </Badge>
+   305→      );
+   306→    case "Return":
+   307→      return (
+   308→        <Badge className="bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-100 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-800">
+   309→          Return
+   310→        </Badge>
+   311→      );
+   312→    default:
+   313→      return <Badge variant="outline">{status}</Badge>;
+   314→  }
+   315→}
+   316→
+   317→// ---------------------------------------------------------------------------
+   318→// Component: Customer Search/Select
+   319→// ---------------------------------------------------------------------------
+   320→
+   321→interface CustomerSelectProps {
+   322→  customers: Customer[];
+   323→  selectedCustomerId: string | null;
+   324→  onSelect: (customer: Customer | null) => void;
+   325→  onCreateNew: () => void;
+   326→}
+   327→
+   328→function CustomerSelect({
+   329→  customers,
+   330→  selectedCustomerId,
+   331→  onSelect,
+   332→  onCreateNew,
+   333→}: CustomerSelectProps) {
+   334→  const [query, setQuery] = React.useState("");
+   335→  const [open, setOpen] = React.useState(false);
+   336→  const containerRef = React.useRef<HTMLDivElement>(null);
+   337→
+   338→  const filtered = query
+   339→    ? customers.filter(
+   340→        (c) =>
+   341→          c.name.toLowerCase().includes(query.toLowerCase()) ||
+   342→          c.phone.includes(query)
+   343→      )
+   344→    : customers;
+   345→
+   346→  const selected = customers.find((c) => c.id === selectedCustomerId) ?? null;
+   347→
+   348→  React.useEffect(() => {
+   349→    function handleClickOutside(e: MouseEvent) {
+   350→      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+   351→        setOpen(false);
+   352→      }
+   353→    }
+   354→    document.addEventListener("mousedown", handleClickOutside);
+   355→    return () => document.removeEventListener("mousedown", handleClickOutside);
+   356→  }, []);
+   357→
+   358→  return (
+   359→    <div className="relative" ref={containerRef}>
+   360→      <Label className="mb-1.5">Customer</Label>
+   361→      <div className="relative">
+   362→        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+   363→        <Input
+   364→          placeholder="Search customer by name or phone..."
+   365→          value={selected ? selected.name : query}
+   366→          onChange={(e) => {
+   367→            if (selected) {
+   368→              onSelect(null);
+   369→            }
+   370→            setQuery(e.target.value);
+   371→            setOpen(true);
+   372→          }}
+   373→          onFocus={() => setOpen(true)}
+   374→          className="pl-9 pr-20"
+   375→        />
+   376→        {selected && (
+   377→          <Button
+   378→            type="button"
+   379→            variant="ghost"
+   380→            size="sm"
+   381→            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 text-xs"
+   382→            onClick={() => {
+   383→              onSelect(null);
+   384→              setQuery("");
+   385→            }}
+   386→          >
+   387→            <X className="size-3" />
+   388→          </Button>
+   389→        )}
+   390→        {!selected && (
+   391→          <Button
+   392→            type="button"
+   393→            variant="ghost"
+   394→            size="sm"
+   395→            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 text-xs"
+   396→            onClick={onCreateNew}
+   397→          >
+   398→            <UserPlus className="size-3 mr-1" />
+   399→            New
+   400→          </Button>
+   401→        )}
+   402→      </div>
+   403→
+   404→      {open && !selected && filtered.length > 0 && (
+   405→        <div className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto rounded-md border bg-popover shadow-md">
+   406→          {filtered.map((c) => (
+   407→            <button
+   408→              key={c.id}
+   409→              type="button"
+   410→              className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center justify-between gap-2"
+   411→              onClick={() => {
+   412→                onSelect(c);
+   413→                setQuery("");
+   414→                setOpen(false);
+   415→              }}
+   416→            >
+   417→              <div>
+   418→                <div className="font-medium">{c.name}</div>
+   419→                <div className="text-xs text-muted-foreground">{c.phone}</div>
+   420→              </div>
+   421→              {c.email && (
+   422→                <span className="text-xs text-muted-foreground truncate max-w-32">
+   423→                  {c.email}
+   424→                </span>
+   425→              )}
+   426→            </button>
+   427→          ))}
+   428→        </div>
+   429→      )}
+   430→
+   431→      {open && !selected && query && filtered.length === 0 && (
+   432→        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md p-3 text-sm text-muted-foreground text-center">
+   433→          No customers found.
+   434→          <Button
+   435→            type="button"
+   436→            variant="link"
+   437→            size="sm"
+   438→            className="ml-1 h-auto p-0 text-primary"
+   439→            onClick={onCreateNew}
+   440→          >
+   441→            Create new customer
+   442→          </Button>
+   443→        </div>
+   444→      )}
+   445→
+   446→      {selected && (
+   447→        <div className="mt-1.5 text-xs text-muted-foreground space-y-0.5">
+   448→          <div>
+   449→            {selected.phone}
+   450→            {selected.email && ` · ${selected.email}`}
+   451→          </div>
+   452→          {selected.address && <div>{selected.address}</div>}
+   453→        </div>
+   454→      )}
+   455→      <CustomerPurchaseHistory customerId={selected?.id ?? null} />
+   456→    </div>
+   457→  );
+   458→}
+   459→
+   460→// ---------------------------------------------------------------------------
+   461→// Component: Customer Purchase History (last 3 purchases)
+   462→// ---------------------------------------------------------------------------
+   463→
+   464→function CustomerPurchaseHistory({ customerId }: { customerId: string | null }) {
+   465→  const [purchases, setPurchases] = React.useState<{ date: string; total: number }[]>([]);
+   466→
+   467→  React.useEffect(() => {
+   468→    if (!customerId) {
+   469→      setPurchases([]);
+   470→      return;
+   471→    }
+   472→    let cancelled = false;
+   473→    (async () => {
+   474→      try {
+   475→        const res = await fetch(`/api/sales?customerId=${customerId}&limit=3`);
+   476→        if (cancelled) return;
+   477→        if (res.ok) {
+   478→          const data = await res.json();
+   479→          const list = Array.isArray(data.sales) ? data.sales : [];
+   480→          setPurchases(list.map(function(s) {
+   481→            const r = s as Record<string, unknown>;
+   482→            return { date: r.createdAt as string, total: r.total as number };
+   483→          }));
+   484→        }
+   485→      } catch {
+   486→        // silently ignore
+   487→      }
+   488→    })();
+   489→    return () => { cancelled = true; };
+   490→  }, [customerId]);
+   491→
+   492→  if (!customerId || purchases.length === 0) return null;
+   493→
+   494→  return (
+   495→    <div className="mt-2 rounded-md border bg-muted/30 p-2">
+   496→      <p className="text-xs font-medium text-muted-foreground mb-1.5">Recent Purchases</p>
+   497→      {purchases.map((p, i) => (
+   498→        <div key={i} className="flex items-center justify-between text-xs gap-2">
+   499→          <span className="text-muted-foreground">
+   500→            {new Date(p.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+   501→          </span>
+   502→          <span className="font-mono font-medium">{INR(p.total)}</span>
+   503→        </div>
+   504→      ))}
+   505→    </div>
+   506→  );
+   507→}
+   508→
+   509→// ---------------------------------------------------------------------------
+   510→// Component: New Customer Inline Form
+   511→// ---------------------------------------------------------------------------
+   512→
+   513→interface NewCustomerFormProps {
+   514→  onSave: (customer: Customer) => void;
+   515→  onCancel: () => void;
+   516→}
+   517→
+   518→function NewCustomerForm({ onSave, onCancel }: NewCustomerFormProps) {
+   519→  const [name, setName] = React.useState("");
+   520→  const [phone, setPhone] = React.useState("");
+   521→  const [email, setEmail] = React.useState("");
+   522→  const [address, setAddress] = React.useState("");
+   523→
+   524→  const valid = name.trim().length > 0 && phone.trim().length >= 10;
+   525→
+   526→  return (
+   527→    <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+   528→      <div className="flex items-center justify-between">
+   529→        <span className="text-sm font-medium">New Customer</span>
+   530→        <Button type="button" variant="ghost" size="icon" className="size-7" onClick={onCancel}>
+   531→          <X className="size-3.5" />
+   532→        </Button>
+   533→      </div>
+   534→      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   535→        <div>
+   536→          <Label className="mb-1">Name *</Label>
+   537→          <Input placeholder="Full name" value={name} onChange={(e) => setName(e.target.value)} />
+   538→        </div>
+   539→        <div>
+   540→          <Label className="mb-1">Phone *</Label>
+   541→          <Input placeholder="Phone number" value={phone} onChange={(e) => setPhone(e.target.value)} />
+   542→        </div>
+   543→        <div>
+   544→          <Label className="mb-1">Email</Label>
+   545→          <Input placeholder="Email (optional)" value={email} onChange={(e) => setEmail(e.target.value)} type="email" />
+   546→        </div>
+   547→        <div>
+   548→          <Label className="mb-1">Address</Label>
+   549→          <Input placeholder="Address (optional)" value={address} onChange={(e) => setAddress(e.target.value)} />
+   550→        </div>
+   551→      </div>
+   552→      <div className="flex justify-end gap-2">
+   553→        <Button type="button" variant="outline" size="sm" onClick={onCancel}>
+   554→          Cancel
+   555→        </Button>
+   556→        <Button
+   557→          type="button"
+   558→          size="sm"
+   559→          disabled={!valid}
+   560→          onClick={() => {
+   561→            if (!valid) return;
+   562→            onSave({
+   563→              id: `c-${uid()}`,
+   564→              name: name.trim(),
+   565→              phone: phone.trim(),
+   566→              email: email.trim() || undefined,
+   567→              address: address.trim() || undefined,
+   568→            });
+   569→          }}
+   570→        >
+   571→          Add Customer
+   572→        </Button>
+   573→      </div>
+   574→    </div>
+   575→  );
+   576→}
+   577→
+   578→// ---------------------------------------------------------------------------
+   579→// Component: Product Item Row (for Create Sale)
+   580→// ---------------------------------------------------------------------------
+   581→
+   582→interface ItemRowProps {
+   583→  row: CreateSaleItem;
+   584→  index: number;
+   585→  products: Product[];
+   586→  onUpdate: (index: number, data: Partial<CreateSaleItem>) => void;
+   587→  onRemove: (index: number) => void;
+   588→  canRemove: boolean;
+   589→}
+   590→
+   591→function ItemRow({ row, index, products, onUpdate, onRemove, canRemove }: ItemRowProps) {
+   592→  const [search, setSearch] = React.useState("");
+   593→  const [dropdownOpen, setDropdownOpen] = React.useState(false);
+   594→  const rowRef = React.useRef<HTMLTableRowElement>(null);
+   595→
+   596→  const filteredProducts = row.productId
+   597→    ? products.filter((p) => p.id === row.productId)
+   598→    : search
+   599→      ? products.filter(
+   600→          (p) =>
+   601→            p.name.toLowerCase().includes(search.toLowerCase()) ||
+   602→            p.sku?.toLowerCase().includes(search.toLowerCase())
+   603→        )
+   604→      : products;
+   605→
+   606→  React.useEffect(() => {
+   607→    function handleClick(e: MouseEvent) {
+   608→      if (rowRef.current && !rowRef.current.contains(e.target as Node)) {
+   609→        setDropdownOpen(false);
+   610→      }
+   611→    }
+   612→    document.addEventListener("mousedown", handleClick);
+   613→    return () => document.removeEventListener("mousedown", handleClick);
+   614→  }, []);
+   615→
+   616→  const selectedProduct = products.find((p) => p.id === row.productId);
+   617→
+   618→  return (
+   619→    <TableRow ref={rowRef}>
+   620→      <TableCell className="relative">
+   621→        {row.productId ? (
+   622→          <div className="flex items-center gap-2 min-w-0">
+   623→            <Package className="size-3.5 text-muted-foreground shrink-0" />
+   624→            <div className="min-w-0">
+   625→              <div className="font-medium text-sm truncate max-w-56">{row.productName}</div>
+   626→              {selectedProduct?.sku && (
+   627→                <div className="text-xs text-muted-foreground">{selectedProduct.sku}</div>
+   628→              )}
+   629→            </div>
+   630→          </div>
+   631→        ) : (
+   632→          <div className="relative">
+   633→            <div className="flex items-center gap-1">
+   634→              <Search className="size-3.5 text-muted-foreground shrink-0" />
+   635→              <Input
+   636→                placeholder="Search product..."
+   637→                value={search}
+   638→                onChange={(e) => {
+   639→                  setSearch(e.target.value);
+   640→                  setDropdownOpen(true);
+   641→                }}
+   642→                onFocus={() => setDropdownOpen(true)}
+   643→                className="h-8 text-sm min-w-[180px]"
+   644→              />
+   645→            </div>
+   646→            {dropdownOpen && filteredProducts.length > 0 && (
+   647→              <div className="absolute z-50 left-0 top-full mt-1 w-72 max-h-48 overflow-y-auto rounded-md border bg-popover shadow-md">
+   648→                {filteredProducts.map((p) => (
+   649→                  <button
+   650→                    key={p.id}
+   651→                    type="button"
+   652→                    className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center justify-between"
+   653→                    onClick={() => {
+   654→                      onUpdate(index, {
+   655→                        productId: p.id,
+   656→                        productName: p.name,
+   657→                        price: p.price,
+   658→                      });
+   659→                      setSearch("");
+   660→                      setDropdownOpen(false);
+   661→                    }}
+   662→                  >
+   663→                    <div>
+   664→                      <div className="font-medium">{p.name}</div>
+   665→                      <div className="text-xs text-muted-foreground">
+   666→                        {p.sku} · Stock: {p.stock}
+   667→                      </div>
+   668→                    </div>
+   669→                    <span className="text-sm font-medium shrink-0 ml-2">{INR(p.price)}</span>
+   670→                  </button>
+   671→                ))}
+   672→              </div>
+   673→            )}
+   674→          </div>
+   675→        )}
+   676→      </TableCell>
+   677→      <TableCell className="text-right font-mono text-sm">
+   678→        {row.price > 0 ? INR(row.price) : "—"}
+   679→      </TableCell>
+   680→      <TableCell>
+   681→        <Input
+   682→          type="number"
+   683→          min={1}
+   684→          value={row.qty}
+   685→          onChange={(e) => {
+   686→            const val = parseInt(e.target.value, 10);
+   687→            if (!isNaN(val) && val >= 1) {
+   688→              onUpdate(index, { qty: val });
+   689→            }
+   690→          }}
+   691→          disabled={!row.productId}
+   692→          className="h-8 w-20 text-right"
+   693→        />
+   694→      </TableCell>
+   695→      <TableCell className="text-right font-mono text-sm font-medium">
+   696→        {row.productId ? INR(row.price * row.qty) : "—"}
+   697→      </TableCell>
+   698→      <TableCell>
+   699→        {canRemove && (
+   700→          <Button
+   701→            type="button"
+   702→            variant="ghost"
+   703→            size="icon"
+   704→            className="size-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+   705→            onClick={() => onRemove(index)}
+   706→          >
+   707→            <Trash2 className="size-3.5" />
+   708→          </Button>
+   709→        )}
+   710→      </TableCell>
+   711→    </TableRow>
+   712→  );
+   713→}
+   714→
+   715→// ---------------------------------------------------------------------------
+   716→// Component: Create Sale Dialog
+   717→// ---------------------------------------------------------------------------
+   718→
+   719→interface CreateSaleDialogProps {
+   720→  open: boolean;
+   721→  onOpenChange: (open: boolean) => void;
+   722→  onCreated: () => void;
+   723→}
+   724→
+   725→function CreateSaleDialog({ open, onOpenChange, onCreated }: CreateSaleDialogProps) {
+   726→  const [customers, setCustomers] = React.useState<Customer[]>([]);
+   727→  const [products, setProducts] = React.useState<Product[]>([]);
+   728→  const [customersLoaded, setCustomersLoaded] = React.useState(false);
+   729→  const [productsLoaded, setProductsLoaded] = React.useState(false);
+   730→
+   731→  // Fetch real customers and products when dialog opens
+   732→  React.useEffect(() => {
+   733→    if (!open) return;
+   734→    let cancelled = false;
+   735→    (async () => {
+   736→      try {
+   737→        const [custRes, prodRes] = await Promise.all([
+   738→          fetch('/api/customers?limit=999'),
+   739→          fetch('/api/products?pageSize=999'),
+   740→        ]);
+   741→        if (cancelled) return;
+   742→        if (custRes.ok) {
+   743→          const data = await custRes.json();
+   744→          const list = Array.isArray(data.data) ? data.data : data || [];
+   745→          setCustomers(list);
+   746→        }
+   747→        if (prodRes.ok) {
+   748→          const data = await prodRes.json();
+   749→          const list = Array.isArray(data.products) ? data.products : data || [];
+   750→          setProducts(list);
+   751→        }
+   752→      } catch {
+   753→        // Fallback to mock data if API fails
+   754→        setCustomers(MOCK_CUSTOMERS);
+   755→        setProducts(MOCK_PRODUCTS);
+   756→      }
+   757→      setCustomersLoaded(true);
+   758→      setProductsLoaded(true);
+   759→    })();
+   760→    return () => { cancelled = true; };
+   761→  }, [open]);
+   762→  const [selectedCustomer, setSelectedCustomer] = React.useState<Customer | null>(null);
+   763→  const [showNewCustomer, setShowNewCustomer] = React.useState(false);
+   764→  const [items, setItems] = React.useState<CreateSaleItem[]>([
+   765→    { productId: "", productName: "", price: 0, qty: 1 },
+   766→  ]);
+   767→  const [discount, setDiscount] = React.useState(0);
+   768→  const [discountType, setDiscountType] = React.useState<"percentage" | "flat">("flat");
+   769→  const [paymentMode, setPaymentMode] = React.useState<"Cash" | "Card" | "UPI" | "Credit">("Cash");
+   770→  const [notes, setNotes] = React.useState("");
+   771→  const [submitting, setSubmitting] = React.useState(false);
+   772→  const [splitPayment, setSplitPayment] = React.useState(false);
+   773→  const [secondaryPaymentMode, setSecondaryPaymentMode] = React.useState<"Cash" | "Card" | "UPI">("UPI");
+   774→  const [secondaryAmount, setSecondaryAmount] = React.useState(0);
+   775→
+   776→  const handleItemUpdate = (index: number, data: Partial<CreateSaleItem>) => {
+   777→    setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...data } : item)));
+   778→  };
+   779→
+   780→  const handleItemRemove = (index: number) => {
+   781→    setItems((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
+   782→  };
+   783→
+   784→  const handleAddItem = () => {
+   785→    setItems((prev) => [...prev, { productId: "", productName: "", price: 0, qty: 1 }]);
+   786→  };
+   787→
+   788→  const subtotal = items.reduce((sum, item) => sum + item.price * item.qty, 0);
+   789→  const discountAmount =
+   790→    discountType === "percentage" ? Math.round((subtotal * discount) / 100) : discount;
+   791→  const taxable = Math.max(0, subtotal - discountAmount);
+   792→  const cgst = Math.round(taxable * CGST_RATE * 100) / 100;
+   793→  const sgst = Math.round(taxable * SGST_RATE * 100) / 100;
+   794→  const total = Math.round((taxable + cgst + sgst) * 100) / 100;
+   795→
+   796→  // Split payment derived values
+   797→  const canSplit = paymentMode !== "Credit";
+   798→  const primaryAmount = splitPayment ? Math.round((total - secondaryAmount) * 100) / 100 : total;
+   799→  const splitValid = !splitPayment || (secondaryAmount > 0 && secondaryAmount < total);
+   800→
+   801→  const totalQty = items.reduce((sum, item) => sum + (item.productId ? item.qty : 0), 0);
+   802→  const hasValidItems = items.some((item) => item.productId && item.qty > 0);
+   803→
+   804→  const handleCreate = async () => {
+   805→    if (!selectedCustomer) {
+   806→      toast.error("Please select a customer");
+   807→      return;
+   808→    }
+   809→    if (!hasValidItems) {
+   810→      toast.error("Please add at least one product");
+   811→      return;
+   812→    }
+   813→    if (splitPayment && (secondaryAmount <= 0 || secondaryAmount >= total)) {
+   814→      toast.error("Secondary amount must be greater than 0 and less than the total");
+   815→      return;
+   816→    }
+   817→
+   818→    setSubmitting(true);
+   819→    try {
+   820→      const invoiceNo = generateInvoiceNo();
+   821→      const validItems = items.filter((i) => i.productId && i.qty > 0);
+   822→
+   823→      const payload: Record<string, unknown> = {
+   824→        invoiceNo,
+   825→        customerId: selectedCustomer.id,
+   826→        customerName: selectedCustomer.name,
+   827→        customerPhone: selectedCustomer.phone,
+   828→        customerEmail: selectedCustomer.email,
+   829→        customerAddress: selectedCustomer.address,
+   830→        items: validItems.map((item, idx) => ({
+   831→          id: `si-${uid()}-${idx}`,
+   832→          productId: item.productId,
+   833→          productName: item.productName,
+   834→          price: item.price,
+   835→          qty: item.qty,
+   836→          lineTotal: item.price * item.qty,
+   837→        })),
+   838→        subtotal,
+   839→        discount: discountAmount,
+   840→        discountType,
+   841→        cgst,
+   842→        sgst,
+   843→        total,
+   844→        paymentMode: splitPayment ? "Split" : paymentMode,
+   845→        status: "Completed",
+   846→        notes: splitPayment
+   847→          ? `Split Payment: ${paymentMode} ${INR(primaryAmount)} + ${secondaryPaymentMode} ${INR(secondaryAmount)}${notes.trim() ? "\n" + notes.trim() : ""}`
+   848→          : (notes.trim() || undefined),
+   849→      };
+   850→
+   851→      if (splitPayment) {
+   852→        payload.paymentModeSplit = {
+   853→          primary: paymentMode,
+   854→          secondary: secondaryPaymentMode,
+   855→          secondaryAmount,
+   856→        };
+   857→      }
+   858→
+   859→      const res = await fetch("/api/sales", {
+   860→        method: "POST",
+   861→        headers: { "Content-Type": "application/json" },
+   862→        body: JSON.stringify(payload),
+   863→      });
+   864→
+   865→      if (res.ok) {
+   866→        const result = await res.json().catch(() => ({}));
+   867→        toast.success(`Invoice ${invoiceNo} created successfully!`);
+   868→        // Auto-earn loyalty points (1 point per ₹100 spent)
+   869→        if (selectedCustomer.id && selectedCustomer.id !== 'undefined' && selectedCustomer.id.startsWith('c')) {
+   870→          const earnedPoints = Math.floor(total / 100);
+   871→          if (earnedPoints > 0) {
+   872→            try {
+   873→              await fetch(`/api/customers/${selectedCustomer.id}/loyalty`, {
+   874→                method: "PATCH",
+   875→                headers: { "Content-Type": "application/json" },
+   876→                body: JSON.stringify({
+   877→                  points: earnedPoints,
+   878→                  reason: `Auto-earned from invoice ${invoiceNo}`,
+   879→                  type: "earn",
+   880→                }),
+   881→              });
+   882→            } catch {
+   883→              // silently ignore loyalty failure
+   884→            }
+   885→            toast.info(`+${earnedPoints} loyalty points earned!`);
+   886→          }
+   887→        }
+   888→        resetForm();
+   889→        onOpenChange(false);
+   890→        onCreated();
+   891→      } else {
+   892→        const err = await res.json().catch(() => ({}));
+   893→        toast.error(err.error || "Failed to create invoice");
+   894→      }
+   895→    } catch {
+   896→      toast.error("Network error. Please try again.");
+   897→    } finally {
+   898→      setSubmitting(false);
+   899→    }
+   900→  };
+   901→
+   902→  const resetForm = () => {
+   903→    setSelectedCustomer(null);
+   904→    setItems([{ productId: "", productName: "", price: 0, qty: 1 }]);
+   905→    setDiscount(0);
+   906→    setDiscountType("flat");
+   907→    setPaymentMode("Cash");
+   908→    setNotes("");
+   909→    setShowNewCustomer(false);
+   910→    setSplitPayment(false);
+   911→    setSecondaryPaymentMode("UPI");
+   912→    setSecondaryAmount(0);
+   913→  };
+   914→
+   915→  return (
+   916→    <Dialog
+   917→      open={open}
+   918→      onOpenChange={(o) => {
+   919→        if (!o) resetForm();
+   920→        onOpenChange(o);
+   921→      }}
+   922→    >
+   923→      <DialogContent className="sm:max-w-4xl max-h-[92vh] overflow-y-auto p-0">
+   924→        <div className="p-6 pb-0">
+   925→          <DialogHeader>
+   926→            <DialogTitle className="flex items-center gap-2">
+   927→              <ShoppingCart className="size-5" />
+   928→              Create New Invoice
+   929→            </DialogTitle>
+   930→            <DialogDescription>
+   931→              Add customer and products to generate a sales invoice.
+   932→            </DialogDescription>
+   933→          </DialogHeader>
+   934→        </div>
+   935→
+   936→        <div className="p-6 space-y-6">
+   937→          {/* Customer Selection */}
+   938→          {showNewCustomer ? (
+   939→            <NewCustomerForm
+   940→              onSave={(c) => {
+   941→                setCustomers((prev) => [c, ...prev]);
+   942→                setSelectedCustomer(c);
+   943→                setShowNewCustomer(false);
+   944→                toast.success(`Customer "${c.name}" added`);
+   945→              }}
+   946→              onCancel={() => setShowNewCustomer(false)}
+   947→            />
+   948→          ) : (
+   949→            <CustomerSelect
+   950→              customers={customers}
+   951→              selectedCustomerId={selectedCustomer?.id ?? null}
+   952→              onSelect={setSelectedCustomer}
+   953→              onCreateNew={() => setShowNewCustomer(true)}
+   954→            />
+   955→          )}
+   956→
+   957→          <Separator />
+   958→
+   959→          {/* Product Items */}
+   960→          <div className="space-y-3">
+   961→            <div className="flex items-center justify-between">
+   962→              <Label className="text-base font-semibold">Items</Label>
+   963→              <Button type="button" variant="outline" size="sm" onClick={handleAddItem}>
+   964→                <Plus className="size-3.5 mr-1" />
+   965→                Add Item
+   966→              </Button>
+   967→            </div>
+   968→
+   969→            <div className="rounded-lg border overflow-hidden">
+   970→              <Table>
+   971→                <TableHeader>
+   972→                  <TableRow className="bg-muted/50">
+   973→                    <TableHead className="w-[50%]">Product</TableHead>
+   974→                    <TableHead className="text-right w-[15%]">Price</TableHead>
+   975→                    <TableHead className="w-[15%]">Qty</TableHead>
+   976→                    <TableHead className="text-right w-[15%]">Total</TableHead>
+   977→                    <TableHead className="w-[5%]" />
+   978→                  </TableRow>
+   979→                </TableHeader>
+   980→                <TableBody>
+   981→                  {items.map((item, idx) => (
+   982→                    <ItemRow
+   983→                      key={idx}
+   984→                      row={item}
+   985→                      index={idx}
+   986→                      products={products}
+   987→                      onUpdate={handleItemUpdate}
+   988→                      onRemove={handleItemRemove}
+   989→                      canRemove={items.length > 1}
+   990→                    />
+   991→                  ))}
+   992→                </TableBody>
+   993→                {hasValidItems && (
+   994→                  <TableFooter>
+   995→                    <TableRow className="bg-muted/30">
+   996→                      <TableCell colSpan={2} className="font-medium text-sm">
+   997→                        Totals
+   998→                      </TableCell>
+   999→                      <TableCell className="text-sm">{totalQty} items</TableCell>
+  1000→                      <TableCell className="text-right font-mono font-semibold">
+  1001→                        {INR(subtotal)}
+  1002→                      </TableCell>
+  1003→                      <TableCell />
+  1004→                    </TableRow>
+  1005→                  </TableFooter>
+  1006→                )}
+  1007→              </Table>
+  1008→            </div>
+  1009→          </div>
+  1010→
+  1011→          <Separator />
+  1012→
+  1013→          {/* Summary */}
+  1014→          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+  1015→            <div className="space-y-4">
+  1016→              {/* Discount */}
+  1017→              <div className="space-y-2">
+  1018→                <Label>Discount</Label>
+  1019→                <div className="flex gap-2">
+  1020→                  <div className="relative flex-1">
+  1021→                    <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+  1022→                    <Input
+  1023→                      type="number"
+  1024→                      min={0}
+  1025→                      value={discount}
+  1026→                      onChange={(e) => setDiscount(Math.max(0, parseFloat(e.target.value) || 0))}
+  1027→                      className="pl-9"
+  1028→                      placeholder="0"
+  1029→                    />
+  1030→                  </div>
+  1031→                  <Select
+  1032→                    value={discountType}
+  1033→                    onValueChange={(v) => setDiscountType(v as "percentage" | "flat")}
+  1034→                  >
+  1035→                    <SelectTrigger className="w-24">
+  1036→                      <SelectValue />
+  1037→                    </SelectTrigger>
+  1038→                    <SelectContent>
+  1039→                      <SelectItem value="flat">Flat (₹)</SelectItem>
+  1040→                      <SelectItem value="percentage">Percentage (%)</SelectItem>
+  1041→                    </SelectContent>
+  1042→                  </Select>
+  1043→                </div>
+  1044→              </div>
+  1045→
+  1046→              {/* Payment Mode */}
+  1047→              <div className="space-y-2">
+  1048→                <Label>Payment Mode</Label>
+  1049→                <RadioGroup
+  1050→                  value={paymentMode}
+  1051→                  onValueChange={(v) => {
+  1052→                    setPaymentMode(v as typeof paymentMode);
+  1053→                    if (v === "Credit") setSplitPayment(false);
+  1054→                  }}
+  1055→                  className="flex flex-wrap gap-3"
+  1056→                >
+  1057→                  {(["Cash", "Card", "UPI", "Credit"] as const).map((mode) => (
+  1058→                    <div key={mode} className="flex items-center gap-2">
+  1059→                      <RadioGroupItem value={mode} id={`pm-${mode}`} />
+  1060→                      <Label htmlFor={`pm-${mode}`} className="font-normal cursor-pointer">
+  1061→                        {mode}
+  1062→                      </Label>
+  1063→                    </div>
+  1064→                  ))}
+  1065→                </RadioGroup>
+  1066→
+  1067→                {canSplit && (
+  1068→                  <div className="flex items-center gap-2 mt-2">
+  1069→                    <Checkbox
+  1070→                      id="split-payment"
+  1071→                      checked={splitPayment}
+  1072→                      onCheckedChange={(checked) => {
+  1073→                        setSplitPayment(!!checked);
+  1074→                        if (checked) setSecondaryAmount(total);
+  1075→                      }}
+  1076→                    />
+  1077→                    <Label htmlFor="split-payment" className="font-normal text-sm cursor-pointer">
+  1078→                      Split Payment?
+  1079→                    </Label>
+  1080→                  </div>
+  1081→                )}
+  1082→
+  1083→                {splitPayment && canSplit && (
+  1084→                  <div className="ml-6 mt-2 space-y-2 rounded-md border bg-muted/30 p-3">
+  1085→                    <p className="text-xs text-muted-foreground">
+  1086→                      Primary: {paymentMode} — {INR(primaryAmount)}
+  1087→                    </p>
+  1088→                    <div className="flex flex-wrap items-center gap-2">
+  1089→                      <div className="space-y-1">
+  1090→                        <Label className="text-xs">Secondary Mode</Label>
+  1091→                        <Select
+  1092→                          value={secondaryPaymentMode}
+  1093→                          onValueChange={(v) => setSecondaryPaymentMode(v as "Cash" | "Card" | "UPI")}
+  1094→                        >
+  1095→                          <SelectTrigger className="w-28 h-8 text-sm">
+  1096→                            <SelectValue />
+  1097→                          </SelectTrigger>
+  1098→                          <SelectContent>
+  1099→                            {(["Cash", "Card", "UPI"] as const)
+  1100→                              .filter((m) => m !== paymentMode)
+  1101→                              .map((m) => (
+  1102→                                <SelectItem key={m} value={m}>{m}</SelectItem>
+  1103→                              ))}
+  1104→                          </SelectContent>
+  1105→                        </Select>
+  1106→                      </div>
+  1107→                      <div className="space-y-1 flex-1 min-w-[120px]">
+  1108→                        <Label className="text-xs">Secondary Amount</Label>
+  1109→                        <div className="relative">
+  1110→                          <IndianRupee className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+  1111→                          <Input
+  1112→                            type="number"
+  1113→                            min={0}
+  1114→                            step={0.01}
+  1115→                            value={secondaryAmount || ""}
+  1116→                            onChange={(e) => setSecondaryAmount(parseFloat(e.target.value) || 0)}
+  1117→                            className="pl-8 h-8 text-sm"
+  1118→                            placeholder="0"
+  1119→                          />
+  1120→                        </div>
+  1121→                      </div>
+  1122→                    </div>
+  1123→                    {splitPayment && (secondaryAmount <= 0 || secondaryAmount >= total) && (
+  1124→                      <p className="text-xs text-destructive">
+  1125→                        Secondary amount must be between ₹0 and {INR(total)} (exclusive)
+  1126→                      </p>
+  1127→                    )}
+  1128→                  </div>
+  1129→                )}
+  1130→              </div>
+  1131→
+  1132→              {/* Notes */}
+  1133→              <div className="space-y-2">
+  1134→                <Label htmlFor="sale-notes">Notes</Label>
+  1135→                <Textarea
+  1136→                  id="sale-notes"
+  1137→                  placeholder="Add any notes for this invoice..."
+  1138→                  value={notes}
+  1139→                  onChange={(e) => setNotes(e.target.value)}
+  1140→                  className="min-h-16"
+  1141→                />
+  1142→              </div>
+  1143→            </div>
+  1144→
+  1145→            {/* Calculated Totals */}
+  1146→            <div className="rounded-lg border bg-muted/20 p-4 space-y-2.5 h-fit">
+  1147→              <div className="flex justify-between text-sm">
+  1148→                <span className="text-muted-foreground">Subtotal</span>
+  1149→                <span className="font-mono">{INR(subtotal)}</span>
+  1150→              </div>
+  1151→              <div className="flex justify-between text-sm">
+  1152→                <span className="text-muted-foreground">
+  1153→                  Discount
+  1154→                  {discountType === "percentage" && discount > 0 ? ` (${discount}%)` : ""}
+  1155→                </span>
+  1156→                <span className="font-mono text-destructive">- {INR(discountAmount)}</span>
+  1157→              </div>
+  1158→              <Separator />
+  1159→              <div className="flex justify-between text-sm">
+  1160→                <span className="text-muted-foreground">Taxable Amount</span>
+  1161→                <span className="font-mono">{INR(taxable)}</span>
+  1162→              </div>
+  1163→              <div className="flex justify-between text-sm">
+  1164→                <span className="text-muted-foreground">CGST @9%</span>
+  1165→                <span className="font-mono">{INR(cgst)}</span>
+  1166→              </div>
+  1167→              <div className="flex justify-between text-sm">
+  1168→                <span className="text-muted-foreground">SGST @9%</span>
+  1169→                <span className="font-mono">{INR(sgst)}</span>
+  1170→              </div>
+  1171→              <Separator />
+  1172→              <div className="flex justify-between text-base font-semibold">
+  1173→                <span>Total Amount</span>
+  1174→                <span className="font-mono text-lg">{INR(total)}</span>
+  1175→              </div>
+  1176→            </div>
+  1177→          </div>
+  1178→        </div>
+  1179→
+  1180→        {/* Footer */}
+  1181→        <div className="border-t px-6 py-4 bg-muted/20 flex flex-col-reverse sm:flex-row items-center justify-between gap-2 sticky bottom-0">
+  1182→          <div className="text-xs text-muted-foreground">
+  1183→            Tax calculated on subtotal minus discount
+  1184→          </div>
+  1185→          <DialogFooter className="gap-2 sm:gap-2">
+  1186→            <Button
+  1187→              type="button"
+  1188→              variant="outline"
+  1189→              onClick={() => {
+  1190→                resetForm();
+  1191→                onOpenChange(false);
+  1192→              }}
+  1193→            >
+  1194→              Cancel
+  1195→            </Button>
+  1196→            <Button
+  1197→              type="button"
+  1198→              onClick={handleCreate}
+  1199→              disabled={submitting || !selectedCustomer || !hasValidItems || !splitValid}
+  1200→            >
+  1201→              {submitting ? (
+  1202→                <Loader2 className="size-4 animate-spin" />
+  1203→              ) : (
+  1204→                <FileText className="size-4" />
+  1205→              )}
+  1206→              Create Invoice
+  1207→            </Button>
+  1208→          </DialogFooter>
+  1209→        </div>
+  1210→      </DialogContent>
+  1211→    </Dialog>
+  1212→  );
+  1213→}
+  1214→
+  1215→// ---------------------------------------------------------------------------
+  1216→// Component: Sale Detail Dialog
+  1217→// ---------------------------------------------------------------------------
+  1218→
+  1219→interface SaleDetailDialogProps {
+  1220→  sale: Sale | null;
+  1221→  open: boolean;
+  1222→  onOpenChange: (open: boolean) => void;
+  1223→  onReturn: (sale: Sale) => void;
+  1224→  onToggleStatus: (sale: Sale) => void;
+  1225→}
+  1226→
+  1227→function SaleDetailDialog({ sale, open, onOpenChange, onReturn, onToggleStatus }: SaleDetailDialogProps) {
+  1228→  if (!sale) return null;
+  1229→
+  1230→  // Get settings for print (SSR-safe with fallback)
+  1231→  let settings: { shopName: string; gstin: string; phone: string; address: string };
+  1232→  try {
+  1233→    settings = getSettings();
+  1234→  } catch {
+  1235→    settings = { shopName: 'Lotus Vision Opticals', gstin: '33BPKPS1234F1Z5', phone: '+91 94432 12345', address: 'Main Road, Sankarankovil - 627751' };
+  1236→  }
+  1237→
+  1238→  const handlePrint = () => {
+  1239→    window.print();
+  1240→  };
+  1241→
+  1242→  return (
+  1243→    <Dialog open={open} onOpenChange={onOpenChange}>
+  1244→      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0 print:max-w-none print:max-h-none print:shadow-none print:rounded-none print:border-0" showCloseButton={false}>
+  1245→        {/* Print-friendly header */}
+  1246→        <div className="p-6 pb-0 print:p-8 print:pb-2 print:bg-white">
+  1247→          <DialogHeader className="print:hidden">
+  1248→            <DialogTitle className="flex items-center gap-2">
+  1249→              <FileText className="size-5" />
+  1250→              Invoice {sale.invoiceNo}
+  1251→            </DialogTitle>
+  1252→            <DialogDescription>Full invoice details</DialogDescription>
+  1253→          </DialogHeader>
+  1254→
+  1255→          {/* Print Header */}
+  1256→          <div className="hidden print:block print:mb-4">
+  1257→            <div className="border-b-2 border-gray-800 pb-3 mb-4">
+  1258→              <h1 className="text-xl font-bold tracking-wide text-center">TAX INVOICE</h1>
+  1259→            </div>
+  1260→            <div className="flex justify-between text-sm">
+  1261→              <div>
+  1262→                <p className="font-bold text-base">{settings.shopName}</p>
+  1263→                <p className="text-gray-600 mt-0.5">{settings.address}</p>
+  1264→                <p className="text-gray-600">GSTIN: {settings.gstin}</p>
+  1265→                <p className="text-gray-600">Ph: {settings.phone}</p>
+  1266→              </div>
+  1267→              <div className="text-right">
+  1268→                <p className="font-bold text-base">{sale.invoiceNo}</p>
+  1269→                <p className="text-gray-600">
+  1270→                  Date: {new Date(sale.createdAt).toLocaleDateString("en-IN", {
+  1271→                    day: "2-digit",
+  1272→                    month: "short",
+  1273→                    year: "numeric",
+  1274→                  })}
+  1275→                </p>
+  1276→                <div className="mt-1">
+  1277→                  <StatusBadge status={sale.status} />
+  1278→                </div>
+  1279→              </div>
+  1280→            </div>
+  1281→          </div>
+  1282→        </div>
+  1283→
+  1284→        <div className="px-6 pb-6 space-y-6 print:px-8 print:pb-4 print:space-y-4">
+  1285→          {/* Invoice Header (screen only) */}
+  1286→          <div className="print:hidden flex items-start justify-between">
+  1287→            <div className="space-y-1">
+  1288→              <StatusBadge status={sale.status} />
+  1289→              <p className="text-sm text-muted-foreground">
+  1290→                {new Date(sale.createdAt).toLocaleDateString("en-IN", {
+  1291→                  day: "2-digit",
+  1292→                  month: "short",
+  1293→                  year: "numeric",
+  1294→                })}
+  1295→              </p>
+  1296→              <p className="text-sm text-muted-foreground">Payment: {sale.paymentMode}</p>
+  1297→            </div>
+  1298→            <div className="text-right">
+  1299→              <h2 className="text-xl font-bold">{sale.invoiceNo}</h2>
+  1300→            </div>
+  1301→          </div>
+  1302→
+  1303→          {/* Customer Info */}
+  1304→          <div className="rounded-lg border p-4 print:border print:p-4">
+  1305→            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+  1306→              Bill To
+  1307→            </p>
+  1308→            <p className="font-semibold">{sale.customerName}</p>
+  1309→            {sale.customerPhone && <p className="text-sm text-muted-foreground">{sale.customerPhone}</p>}
+  1310→            {sale.customerEmail && <p className="text-sm text-muted-foreground">{sale.customerEmail}</p>}
+  1311→            {sale.customerAddress && <p className="text-sm text-muted-foreground">{sale.customerAddress}</p>}
+  1312→          </div>
+  1313→
+  1314→          {/* Items Table */}
+  1315→          <div className="rounded-lg border overflow-hidden print:border">
+  1316→            <Table>
+  1317→              <TableHeader>
+  1318→                <TableRow className="bg-muted/50">
+  1319→                  <TableHead className="w-[10%]">#</TableHead>
+  1320→                  <TableHead>Product</TableHead>
+  1321→                  <TableHead className="text-right">Price</TableHead>
+  1322→                  <TableHead className="text-right">Qty</TableHead>
+  1323→                  <TableHead className="text-right">Total</TableHead>
+  1324→                </TableRow>
+  1325→              </TableHeader>
+  1326→              <TableBody>
+  1327→                {sale.items.map((item, idx) => (
+  1328→                  <TableRow key={item.id}>
+  1329→                    <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
+  1330→                    <TableCell className="font-medium">{item.productName}</TableCell>
+  1331→                    <TableCell className="text-right font-mono text-sm">{INR(item.price)}</TableCell>
+  1332→                    <TableCell className="text-right text-sm">{item.qty}</TableCell>
+  1333→                    <TableCell className="text-right font-mono text-sm font-medium">
+  1334→                      {INR(item.lineTotal)}
+  1335→                    </TableCell>
+  1336→                  </TableRow>
+  1337→                ))}
+  1338→              </TableBody>
+  1339→            </Table>
+  1340→          </div>
+  1341→
+  1342→          {/* Totals */}
+  1343→          <div className="flex justify-end">
+  1344→            <div className="w-72 space-y-2 rounded-lg border p-4 print:border print:p-4">
+  1345→              <div className="flex justify-between text-sm">
+  1346→                <span className="text-muted-foreground">Subtotal</span>
+  1347→                <span className="font-mono">{INR(sale.subtotal)}</span>
+  1348→              </div>
+  1349→              {sale.discount > 0 && (
+  1350→                <div className="flex justify-between text-sm">
+  1351→                  <span className="text-muted-foreground">Discount</span>
+  1352→                  <span className="font-mono text-destructive">- {INR(sale.discount)}</span>
+  1353→                </div>
+  1354→              )}
+  1355→              <Separator />
+  1356→              <div className="flex justify-between text-sm">
+  1357→                <span className="text-muted-foreground">CGST @9%</span>
+  1358→                <span className="font-mono">{INR(sale.cgst)}</span>
+  1359→              </div>
+  1360→              <div className="flex justify-between text-sm">
+  1361→                <span className="text-muted-foreground">SGST @9%</span>
+  1362→                <span className="font-mono">{INR(sale.sgst)}</span>
+  1363→              </div>
+  1364→              <Separator />
+  1365→              <div className="flex justify-between text-lg font-bold">
+  1366→                <span>Total</span>
+  1367→                <span className="font-mono">{INR(sale.total)}</span>
+  1368→              </div>
+  1369→              <div className="flex justify-between text-sm text-muted-foreground">
+  1370→                <span>Payment Mode</span>
+  1371→                <span>{sale.paymentMode}</span>
+  1372→              </div>
+  1373→            </div>
+  1374→          </div>
+  1375→
+  1376→          {sale.notes && (
+  1377→            <div className="rounded-lg border p-4 print:border print:p-4">
+  1378→              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+  1379→                Notes
+  1380→              </p>
+  1381→              <p className="text-sm">{sale.notes}</p>
+  1382→            </div>
+  1383→          )}
+  1384→
+  1385→          {/* Thank you (print only) */}
+  1386→          <div className="hidden print:block text-center pt-6 mt-4 border-t border-gray-200">
+  1387→            <p className="text-base font-semibold text-gray-800">Thank you for shopping with Lotus Vision Opticals!</p>
+  1388→            <p className="text-xs text-gray-500 mt-1">This is a computer-generated invoice.</p>
+  1389→            <p className="text-xs text-gray-500">Ph: {settings.phone} · GSTIN: {settings.gstin}</p>
+  1390→          </div>
+  1391→
+  1392→          {/* Actions (screen only) */}
+  1393→          <div className="print:hidden flex flex-wrap gap-2 pt-2">
+  1394→            <Button variant="outline" size="sm" onClick={handlePrint}>
+  1395→              <Printer className="size-3.5 mr-1.5" />
+  1396→              Print
+  1397→            </Button>
+  1398→            {sale.status === "Completed" && (
+  1399→              <Button
+  1400→                variant="outline"
+  1401→                size="sm"
+  1402→                onClick={() => onToggleStatus(sale)}
+  1403→              >
+  1404→                <AlertCircle className="size-3.5 mr-1.5 text-amber-500" />
+  1405→                Mark as Pending
+  1406→              </Button>
+  1407→            )}
+  1408→            {sale.status === "Pending" && (
+  1409→              <Button
+  1410→                variant="outline"
+  1411→                size="sm"
+  1412→                onClick={() => onToggleStatus(sale)}
+  1413→              >
+  1414→                <AlertCircle className="size-3.5 mr-1.5 text-emerald-500" />
+  1415→                Mark as Completed
+  1416→              </Button>
+  1417→            )}
+  1418→            {sale.status !== "Return" && (
+  1419→              <Button
+  1420→                variant="outline"
+  1421→                size="sm"
+  1422→                className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-950/50"
+  1423→                onClick={() => onReturn(sale)}
+  1424→              >
+  1425→                <RotateCcw className="size-3.5 mr-1.5" />
+  1426→                Process Return
+  1427→              </Button>
+  1428→            )}
+  1429→            <Button variant="ghost" size="sm" className="ml-auto" onClick={() => onOpenChange(false)}>
+  1430→              Close
+  1431→            </Button>
+  1432→          </div>
+  1433→        </div>
+  1434→      </DialogContent>
+  1435→    </Dialog>
+  1436→  );
+  1437→}
+  1438→
+  1439→// ---------------------------------------------------------------------------
+  1440→// Component: Return Dialog
+  1441→// ---------------------------------------------------------------------------
+  1442→
+  1443→interface ReturnDialogProps {
+  1444→  sale: Sale | null;
+  1445→  open: boolean;
+  1446→  onOpenChange: (open: boolean) => void;
+  1447→  onProcessed: () => void;
+  1448→}
+  1449→
+  1450→function ReturnDialog({ sale, open, onOpenChange, onProcessed }: ReturnDialogProps) {
+  1451→  const [returnItems, setReturnItems] = React.useState<ReturnItem[]>([]);
+  1452→  const [reason, setReason] = React.useState("");
+  1453→  const [submitting, setSubmitting] = React.useState(false);
+  1454→
+  1455→  React.useEffect(() => {
+  1456→    if (sale && open) {
+  1457→      setReturnItems(
+  1458→        sale.items.map((item) => ({
+  1459→          saleItemId: item.id,
+  1460→          productName: item.productName,
+  1461→          originalQty: item.qty,
+  1462→          returnQty: 0,
+  1463→          price: item.price,
+  1464→        }))
+  1465→      );
+  1466→      setReason("");
+  1467→    }
+  1468→  }, [sale, open]);
+  1469→
+  1470→  if (!sale) return null;
+  1471→
+  1472→  const handleReturnQtyChange = (index: number, qty: number) => {
+  1473→    setReturnItems((prev) =>
+  1474→      prev.map((item, i) =>
+  1475→        i === index ? { ...item, returnQty: Math.min(Math.max(0, qty), item.originalQty) } : item
+  1476→      )
+  1477→    );
+  1478→  };
+  1479→
+  1480→  const toggleSelectAll = (checked: boolean) => {
+  1481→    setReturnItems((prev) =>
+  1482→      prev.map((item) => ({
+  1483→        ...item,
+  1484→        returnQty: checked ? item.originalQty : 0,
+  1485→      }))
+  1486→    );
+  1487→  };
+  1488→
+  1489→  const totalRefund = returnItems.reduce((sum, item) => sum + item.price * item.returnQty, 0);
+  1490→  const taxRefund = Math.round(totalRefund * (CGST_RATE + SGST_RATE) * 100) / 100;
+  1491→  const grandRefund = Math.round((totalRefund + taxRefund) * 100) / 100;
+  1492→  const hasItems = returnItems.some((item) => item.returnQty > 0);
+  1493→
+  1494→  const handleProcessReturn = async () => {
+  1495→    if (!hasItems) {
+  1496→      toast.error("Select at least one item to return");
+  1497→      return;
+  1498→    }
+  1499→    if (!reason.trim()) {
+  1500→      toast.error("Please provide a reason for the return");
+  1501→      return;
+  1502→    }
+  1503→
+  1504→    setSubmitting(true);
+  1505→    try {
+  1506→      const res = await fetch("/api/returns", {
+  1507→        method: "POST",
+  1508→        headers: { "Content-Type": "application/json" },
+  1509→        body: JSON.stringify({
+  1510→          saleId: sale.id,
+  1511→          invoiceNo: sale.invoiceNo,
+  1512→          items: returnItems
+  1513→            .filter((item) => item.returnQty > 0)
+  1514→            .map((item) => ({
+  1515→              saleItemId: item.saleItemId,
+  1516→              productName: item.productName,
+  1517→              returnQty: item.returnQty,
+  1518→              price: item.price,
+  1519→            })),
+  1520→          reason: reason.trim(),
+  1521→          refundAmount: grandRefund,
+  1522→        }),
+  1523→      });
+  1524→
+  1525→      if (res.ok) {
+  1526→        toast.success(`Return processed for ${sale.invoiceNo}. Refund: ${INR(grandRefund)}`);
+  1527→        onOpenChange(false);
+  1528→        onProcessed();
+  1529→      } else {
+  1530→        const err = await res.json().catch(() => ({}));
+  1531→        toast.error(err.error || "Failed to process return");
+  1532→      }
+  1533→    } catch {
+  1534→      toast.error("Network error. Please try again.");
+  1535→    } finally {
+  1536→      setSubmitting(false);
+  1537→    }
+  1538→  };
+  1539→
+  1540→  return (
+  1541→    <Dialog open={open} onOpenChange={onOpenChange}>
+  1542→      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+  1543→        <DialogHeader>
+  1544→          <DialogTitle className="flex items-center gap-2">
+  1545→            <RotateCcw className="size-5" />
+  1546→            Process Return
+  1547→          </DialogTitle>
+  1548→          <DialogDescription>
+  1549→            Invoice {sale.invoiceNo} — {sale.customerName}
+  1550→          </DialogDescription>
+  1551→        </DialogHeader>
+  1552→
+  1553→        <div className="space-y-4">
+  1554→          {/* Items to return */}
+  1555→          <div className="rounded-lg border overflow-hidden">
+  1556→            <Table>
+  1557→              <TableHeader>
+  1558→                <TableRow className="bg-muted/50">
+  1559→                  <TableHead className="w-10">
+  1560→                    <Checkbox
+  1561→                      checked={returnItems.every((i) => i.returnQty > 0) && returnItems.length > 0}
+  1562→                      onCheckedChange={(checked) => toggleSelectAll(checked === true)}
+  1563→                    />
+  1564→                  </TableHead>
+  1565→                  <TableHead>Product</TableHead>
+  1566→                  <TableHead className="text-right">Sold</TableHead>
+  1567→                  <TableHead className="text-right">Return Qty</TableHead>
+  1568→                  <TableHead className="text-right">Refund</TableHead>
+  1569→                </TableRow>
+  1570→              </TableHeader>
+  1571→              <TableBody>
+  1572→                {returnItems.map((item, idx) => (
+  1573→                  <TableRow key={item.saleItemId}>
+  1574→                    <TableCell>
+  1575→                      <Checkbox
+  1576→                        checked={item.returnQty > 0}
+  1577→                        onCheckedChange={(checked) =>
+  1578→                          handleReturnQtyChange(idx, checked ? item.originalQty : 0)
+  1579→                        }
+  1580→                      />
+  1581→                    </TableCell>
+  1582→                    <TableCell className="text-sm font-medium max-w-40 truncate">
+  1583→                      {item.productName}
+  1584→                    </TableCell>
+  1585→                    <TableCell className="text-right text-sm">{item.originalQty}</TableCell>
+  1586→                    <TableCell className="text-right">
+  1587→                      <Input
+  1588→                        type="number"
+  1589→                        min={0}
+  1590→                        max={item.originalQty}
+  1591→                        value={item.returnQty || ""}
+  1592→                        onChange={(e) =>
+  1593→                          handleReturnQtyChange(idx, parseInt(e.target.value, 10) || 0)
+  1594→                        }
+  1595→                        className="h-8 w-16 text-right"
+  1596→                      />
+  1597→                    </TableCell>
+  1598→                    <TableCell className="text-right font-mono text-sm">
+  1599→                      {INR(item.price * item.returnQty)}
+  1600→                    </TableCell>
+  1601→                  </TableRow>
+  1602→                ))}
+  1603→              </TableBody>
+  1604→            </Table>
+  1605→          </div>
+  1606→
+  1607→          {/* Refund Summary */}
+  1608→          <div className="rounded-lg border bg-muted/20 p-4 space-y-1.5">
+  1609→            <div className="flex justify-between text-sm">
+  1610→              <span className="text-muted-foreground">Items Refund</span>
+  1611→              <span className="font-mono">{INR(totalRefund)}</span>
+  1612→            </div>
+  1613→            <div className="flex justify-between text-sm">
+  1614→              <span className="text-muted-foreground">Tax Refund (CGST+SGST)</span>
+  1615→              <span className="font-mono">{INR(taxRefund)}</span>
+  1616→            </div>
+  1617→            <Separator />
+  1618→            <div className="flex justify-between font-semibold">
+  1619→              <span>Total Refund</span>
+  1620→              <span className="font-mono text-lg">{INR(grandRefund)}</span>
+  1621→            </div>
+  1622→          </div>
+  1623→
+  1624→          {/* Reason */}
+  1625→          <div className="space-y-2">
+  1626→            <Label htmlFor="return-reason">Reason for Return *</Label>
+  1627→            <Textarea
+  1628→              id="return-reason"
+  1629→              placeholder="Describe the reason for this return..."
+  1630→              value={reason}
+  1631→              onChange={(e) => setReason(e.target.value)}
+  1632→              className="min-h-20"
+  1633→            />
+  1634→          </div>
+  1635→        </div>
+  1636→
+  1637→        <DialogFooter>
+  1638→          <Button variant="outline" onClick={() => onOpenChange(false)}>
+  1639→            Cancel
+  1640→          </Button>
+  1641→          <Button
+  1642→            variant="destructive"
+  1643→            onClick={handleProcessReturn}
+  1644→            disabled={submitting || !hasItems || !reason.trim()}
+  1645→          >
+  1646→            {submitting ? (
+  1647→              <Loader2 className="size-4 animate-spin" />
+  1648→            ) : (
+  1649→              <RotateCcw className="size-4" />
+  1650→            )}
+  1651→            Process Return
+  1652→          </Button>
+  1653→        </DialogFooter>
+  1654→      </DialogContent>
+  1655→    </Dialog>
+  1656→  );
+  1657→}
+  1658→
+  1659→// ---------------------------------------------------------------------------
+  1660→// Component: Pagination Controls
+  1661→// ---------------------------------------------------------------------------
+  1662→
+  1663→interface PaginationControlsProps {
+  1664→  page: number;
+  1665→  totalPages: number;
+  1666→  onPageChange: (page: number) => void;
+  1667→}
+  1668→
+  1669→function PaginationControls({ page, totalPages, onPageChange }: PaginationControlsProps) {
+  1670→  if (totalPages <= 1) return null;
+  1671→
+  1672→  const pages: (number | "ellipsis")[] = [];
+  1673→  if (totalPages <= 7) {
+  1674→    for (let i = 1; i <= totalPages; i++) pages.push(i);
+  1675→  } else {
+  1676→    pages.push(1);
+  1677→    if (page > 3) pages.push("ellipsis");
+  1678→    for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) {
+  1679→      pages.push(i);
+  1680→    }
+  1681→    if (page < totalPages - 2) pages.push("ellipsis");
+  1682→    pages.push(totalPages);
+  1683→  }
+  1684→
+  1685→  return (
+  1686→    <nav className="flex items-center justify-center gap-1" aria-label="Pagination">
+  1687→      <Button
+  1688→        variant="outline"
+  1689→        size="icon"
+  1690→        className="size-8"
+  1691→        disabled={page <= 1}
+  1692→        onClick={() => onPageChange(1)}
+  1693→        aria-label="First page"
+  1694→      >
+  1695→        <ChevronsLeft className="size-4" />
+  1696→      </Button>
+  1697→      <Button
+  1698→        variant="outline"
+  1699→        size="icon"
+  1700→        className="size-8"
+  1701→        disabled={page <= 1}
+  1702→        onClick={() => onPageChange(page - 1)}
+  1703→        aria-label="Previous page"
+  1704→      >
+  1705→        <ChevronLeft className="size-4" />
+  1706→      </Button>
+  1707→      {pages.map((p, idx) =>
+  1708→        p === "ellipsis" ? (
+  1709→          <span key={`el-${idx}`} className="px-2 text-muted-foreground">
+  1710→            ...
+  1711→          </span>
+  1712→        ) : (
+  1713→          <Button
+  1714→            key={p}
+  1715→            variant={p === page ? "default" : "outline"}
+  1716→            size="icon"
+  1717→            className="size-8"
+  1718→            onClick={() => onPageChange(p)}
+  1719→            aria-label={`Page ${p}`}
+  1720→            aria-current={p === page ? "page" : undefined}
+  1721→          >
+  1722→            {p}
+  1723→          </Button>
+  1724→        )
+  1725→      )}
+  1726→      <Button
+  1727→        variant="outline"
+  1728→        size="icon"
+  1729→        className="size-8"
+  1730→        disabled={page >= totalPages}
+  1731→        onClick={() => onPageChange(page + 1)}
+  1732→        aria-label="Next page"
+  1733→      >
+  1734→        <ChevronRight className="size-4" />
+  1735→      </Button>
+  1736→      <Button
+  1737→        variant="outline"
+  1738→        size="icon"
+  1739→        className="size-8"
+  1740→        disabled={page >= totalPages}
+  1741→        onClick={() => onPageChange(totalPages)}
+  1742→        aria-label="Last page"
+  1743→      >
+  1744→        <ChevronsRight className="size-4" />
+  1745→      </Button>
+  1746→    </nav>
+  1747→  );
+  1748→}
+  1749→
+  1750→// ---------------------------------------------------------------------------
+  1751→// Component: Sales Table Skeleton
+  1752→// ---------------------------------------------------------------------------
+  1753→
+  1754→function SalesTableSkeleton() {
+  1755→  return (
+  1756→    <div className="space-y-3">
+  1757→      {Array.from({ length: 8 }).map((_, i) => (
+  1758→        <div key={i} className="flex items-center gap-4 px-2">
+  1759→          <Skeleton className="h-4 w-28" />
+  1760→          <Skeleton className="h-4 w-32" />
+  1761→          <Skeleton className="h-4 w-12" />
+  1762→          <Skeleton className="h-4 w-20" />
+  1763→          <Skeleton className="h-4 w-16" />
+  1764→          <Skeleton className="h-4 w-16" />
+  1765→          <Skeleton className="h-4 w-24" />
+  1766→          <Skeleton className="h-4 w-16" />
+  1767→          <Skeleton className="h-4 w-20" />
+  1768→          <Skeleton className="h-6 w-20 rounded-full" />
+  1769→          <Skeleton className="size-8" />
+  1770→        </div>
+  1771→      ))}
+  1772→    </div>
+  1773→  );
+  1774→}
+  1775→
+  1776→// ---------------------------------------------------------------------------
+  1777→// Main Component: Sales
+  1778→// ---------------------------------------------------------------------------
+  1779→
+  1780→export default function Sales() {
+  1781→  // -- State --
+  1782→  const [sales, setSales] = React.useState<SaleListItem[]>([]);
+  1783→  const [total, setTotal] = React.useState(0);
+  1784→  const [page, setPage] = React.useState(1);
+  1785→  const [search, setSearch] = React.useState("");
+  1786→  const [fromDate, setFromDate] = React.useState("");
+  1787→  const [toDate, setToDate] = React.useState("");
+  1788→  const [loading, setLoading] = React.useState(true);
+  1789→  const [error, setError] = React.useState<string | null>(null);
+  1790→  const [todayCount, setTodayCount] = React.useState(0);
+  1791→  const [todayTotal, setTodayTotal] = React.useState(0);
+  1792→  const [todayLoading, setTodayLoading] = React.useState(true);
+  1793→
+  1794→  const [createOpen, setCreateOpen] = React.useState(false);
+  1795→  const { triggerNewSale } = useCrmStore();
+  1796→
+  1797→  // Listen for triggerNewSale signal from keyboard shortcuts
+  1798→  React.useEffect(() => {
+  1799→    if (triggerNewSale > 0) {
+  1800→      setCreateOpen(true);
+  1801→    }
+  1802→  }, [triggerNewSale]);
+  1803→  const [detailSale, setDetailSale] = React.useState<Sale | null>(null);
+  1804→  const [detailOpen, setDetailOpen] = React.useState(false);
+  1805→  const [returnSale, setReturnSale] = React.useState<Sale | null>(null);
+  1806→  const [returnOpen, setReturnOpen] = React.useState(false);
+  1807→
+  1808→  const [localSales, setLocalSales] = React.useState<SaleListItem[]>([]);
+  1809→  const [localDetails, setLocalDetails] = React.useState<Record<string, Sale>>({});
+  1810→  const [usingLocal, setUsingLocal] = React.useState(false);
+  1811→  const [creditFilter, setCreditFilter] = React.useState(false);
+  1812→  const [creditTotal, setCreditTotal] = React.useState(0);
+  1813→  const [summaryPeriod, setSummaryPeriod] = React.useState<"today" | "week" | "month">("today");
+  1814→  const [statusFilter, setStatusFilter] = React.useState<"" | "Completed" | "Pending" | "Return">("");
+  1815→  const [paymentModeFilter, setPaymentModeFilter] = React.useState<"" | "Cash" | "Card" | "UPI" | "Credit" | "Split">("");
+  1816→
+  1817→  // -- Fetch Outstanding Credit Total --
+  1818→  const fetchCreditTotal = React.useCallback(async () => {
+  1819→    try {
+  1820→      const res = await fetch('/api/sales?paymentMode=Credit&limit=9999');
+  1821→      if (res.ok) {
+  1822→        const data: SalesResponse = await res.json();
+  1823→        setCreditTotal(data.sales.reduce((sum, s) => sum + s.total, 0));
+  1824→      }
+  1825→    } catch {
+  1826→      // Silent fail
+  1827→    }
+  1828→  }, []);
+  1829→
+  1830→  React.useEffect(() => {
+  1831→    fetchCreditTotal();
+  1832→  }, [fetchCreditTotal]);
+  1833→
+  1834→  const pageSize = 10;
+  1835→
+  1836→  // -- Fetch Period Summary (Today / This Week / This Month) --
+  1837→  const fetchTodaySummary = React.useCallback(async () => {
+  1838→    setTodayLoading(true);
+  1839→    try {
+  1840→      const now = new Date();
+  1841→      let fromDate: string;
+  1842→      let periodLabel: string;
+  1843→
+  1844→      if (summaryPeriod === "week") {
+  1845→        const dayOfWeek = now.getDay();
+  1846→        const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Monday start
+  1847→        const monday = new Date(now);
+  1848→        monday.setDate(now.getDate() - diff);
+  1849→        fromDate = monday.toISOString().split('T')[0];
+  1850→        periodLabel = "This Week";
+  1851→      } else if (summaryPeriod === "month") {
+  1852→        fromDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  1853→        periodLabel = "This Month";
+  1854→      } else {
+  1855→        fromDate = now.toISOString().split('T')[0];
+  1856→        periodLabel = "Today";
+  1857→      }
+  1858→
+  1859→      const toDate = now.toISOString().split('T')[0];
+  1860→      const params = new URLSearchParams({
+  1861→        fromDate,
+  1862→        toDate,
+  1863→        limit: '999',
+  1864→      });
+  1865→      const res = await fetch(`/api/sales?${params.toString()}`);
+  1866→      if (res.ok) {
+  1867→        const data: SalesResponse = await res.json();
+  1868→        setTodayCount(data.sales.length);
+  1869→        setTodayTotal(data.sales.reduce((sum, s) => sum + s.total, 0));
+  1870→      }
+  1871→    } catch {
+  1872→      // Silent fail - summary is non-critical
+  1873→    } finally {
+  1874→      setTodayLoading(false);
+  1875→    }
+  1876→  }, [summaryPeriod]);
+  1877→
+  1878→  React.useEffect(() => {
+  1879→    fetchTodaySummary();
+  1880→  }, [fetchTodaySummary]);
+  1881→
+  1882→  // -- Fetch Sales --
+  1883→  const fetchSales = React.useCallback(async () => {
+  1884→    setLoading(true);
+  1885→    setError(null);
+  1886→    const params = new URLSearchParams();
+  1887→    if (search) params.set("search", search);
+  1888→    if (page) params.set("page", page.toString());
+  1889→    if (fromDate) params.set("fromDate", fromDate);
+  1890→    if (toDate) params.set("toDate", toDate);
+  1891→    if (creditFilter) params.set("paymentMode", "Credit");
+  1892→    if (statusFilter) params.set("status", statusFilter);
+  1893→    if (paymentModeFilter) params.set("paymentMode", paymentModeFilter);
+  1894→
+  1895→    try {
+  1896→      const res = await fetch(`/api/sales?${params.toString()}`);
+  1897→      if (res.ok) {
+  1898→        const data: SalesResponse = await res.json();
+  1899→        setSales(data.sales);
+  1900→        setTotal(data.total);
+  1901→        setUsingLocal(false);
+  1902→      } else {
+  1903→        // API not available — use mock data
+  1904→        await loadMockData();
+  1905→      }
+  1906→    } catch {
+  1907→      // Network error — use mock data
+  1908→      await loadMockData();
+  1909→    } finally {
+  1910→      setLoading(false);
+  1911→      fetchCreditTotal();
+  1912→    }
+  1913→  }, [search, page, fromDate, toDate, creditFilter, statusFilter, paymentModeFilter]);
+  1914→
+  1915→  const loadMockData = React.useCallback(async () => {
+  1916→    // Simulate API delay
+  1917→    await new Promise((r) => setTimeout(r, 400));
+  1918→
+  1919→    let filtered = [...MOCK_SALES];
+  1920→
+  1921→    if (search) {
+  1922→      const q = search.toLowerCase();
+  1923→      filtered = filtered.filter(
+  1924→        (s) =>
+  1925→          s.invoiceNo.toLowerCase().includes(q) ||
+  1926→          s.customerName.toLowerCase().includes(q)
+  1927→      );
+  1928→    }
+  1929→    if (fromDate) {
+  1930→      filtered = filtered.filter((s) => s.createdAt >= fromDate);
+  1931→    }
+  1932→    if (toDate) {
+  1933→      filtered = filtered.filter((s) => s.createdAt <= toDate);
+  1934→    }
+  1935→    if (statusFilter) {
+  1936→      filtered = filtered.filter((s) => s.status === statusFilter);
+  1937→    }
+  1938→    if (paymentModeFilter) {
+  1939→      filtered = filtered.filter((s) => s.paymentMode === paymentModeFilter);
+  1940→    }
+  1941→
+  1942→    const totalRecords = filtered.length;
+  1943→    const start = (page - 1) * pageSize;
+  1944→    const paged = filtered.slice(start, start + pageSize);
+  1945→
+  1946→    setLocalSales(filtered);
+  1947→    setSales(paged);
+  1948→    setTotal(totalRecords);
+  1949→    setUsingLocal(true);
+  1950→  }, [search, page, fromDate, toDate, creditFilter, statusFilter, paymentModeFilter]);
+  1951→
+  1952→  React.useEffect(() => {
+  1953→    fetchSales();
+  1954→  }, [fetchSales]);
+  1955→
+  1956→  // Reset to page 1 when filters change
+  1957→  const handleSearchChange = (val: string) => {
+  1958→    setSearch(val);
+  1959→    setPage(1);
+  1960→  };
+  1961→  const handleFromDateChange = (val: string) => {
+  1962→    setFromDate(val);
+  1963→    setPage(1);
+  1964→  };
+  1965→  const handleToDateChange = (val: string) => {
+  1966→    setToDate(val);
+  1967→    setPage(1);
+  1968→  };
+  1969→  const handleStatusFilterChange = (val: string) => {
+  1970→    setStatusFilter(val as "" | "Completed" | "Pending" | "Return");
+  1971→    setPage(1);
+  1972→  };
+  1973→  const handlePaymentModeFilterChange = (val: string) => {
+  1974→    setPaymentModeFilter(val as "" | "Cash" | "Card" | "UPI" | "Credit" | "Split");
+  1975→    setPage(1);
+  1976→  };
+  1977→
+  1978→  const periodLabels: Record<string, string> = {
+  1979→    today: "Today's Sales",
+  1980→    week: "This Week's Sales",
+  1981→    month: "This Month's Sales",
+  1982→  };
+  1983→  const periodInvoiceLabels: Record<string, string> = {
+  1984→    today: "invoices today",
+  1985→    week: "invoices this week",
+  1986→    month: "invoices this month",
+  1987→  };
+  1988→
+  1989→  const totalPages = Math.ceil(total / pageSize);
+  1990→
+  1991→  // -- Detail --
+  1992→  const handleViewDetail = async (saleItem: SaleListItem) => {
+  1993→    if (usingLocal) {
+  1994→      const detail = localDetails[saleItem.id] || MOCK_SALE_DETAIL[saleItem.id];
+  1995→      if (detail) {
+  1996→        setDetailSale(detail);
+  1997→      } else {
+  1998→        // Generate a synthetic detail from the list item
+  1999→        const cust = MOCK_CUSTOMERS.find((c) => c.name === saleItem.customerName);
+  2000→        const mockItems: SaleItem[] = Array.from({ length: saleItem.itemsCount }, (_, j) => {
+
+[showing lines 1-2000 of 2429; use offset=2001 with limit to continue reading]

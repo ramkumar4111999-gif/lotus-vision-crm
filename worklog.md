@@ -1090,3 +1090,28 @@ Stage Summary:
 - REPORTS: +Global date range picker, +Customer Acquisition bar chart, +Product Performance chart+table, +Top 5 Customers ranked list
 - Build: Clean, zero errors
 - Tunnel: https://finances-incoming-wesley-seed.trycloudflare.com
+---
+Task ID: crm-cycle-b-$(date +%s)
+Agent: CRM Build Bot - Cycle B
+Task: Customers & Sales mobile responsiveness + enhancements
+
+Work Log:
+- AUDIT: Read full customers.tsx (1961 lines) and sales.tsx (2435 lines)
+- FOUND: All Cycle B features already implemented in previous sessions (WhatsApp, CSV export, duplicate detection, group/sort/date filters, split payment, invoice print, return flow, daily/weekly/monthly summary cards)
+- BUG FIX: Customers table had no overflow-x-auto wrapper — added horizontal scroll for mobile
+- BUG FIX: WhatsApp button was size-7 (28px) — increased to min-w/min-h 44px with touch-manipulation
+- BUG FIX: Customer action buttons (View/Edit) were size-8 (32px) — increased to 44px with touch-manipulation
+- BUG FIX: Sales pagination buttons were size-8 (32px) — all 5 nav buttons increased to 44px with touch-manipulation
+- BUG FIX: Sales table view button was size-8 (32px) — increased to 44px with touch-manipulation
+- BUG FIX: Sales mock data dates were hardcoded to 2025-01 — changed to dynamic (last 28 days from today)
+- FEATURE: Added WhatsApp button to invoice detail dialog (sends invoice summary message with wa.me link)
+- ENHANCEMENT: All invoice detail action buttons (Print, Mark Pending/Completed, Process Return) now have min-h-[44px] + touch-manipulation
+- BUILD: Clean, zero errors
+- SERVER: Running on port 3000 with respawn loop
+
+Stage Summary:
+- All touch targets in customers and sales now meet 44px minimum for mobile
+- Customer table scrollable on mobile
+- Invoice detail has WhatsApp quick-share button
+- Mock dates are now realistic (current month)
+- Zero build errors

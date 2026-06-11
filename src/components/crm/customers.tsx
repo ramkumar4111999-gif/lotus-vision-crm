@@ -907,6 +907,7 @@ export default function Customers() {
       {/* ─── Customer Table ────────────────────────────────────────── */}
       <Card>
         <CardContent className="p-0">
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -976,11 +977,11 @@ export default function Customers() {
                             e.stopPropagation();
                             openWhatsApp(customer.phone, customer.name);
                           }}
-                          className="inline-flex items-center justify-center size-7 rounded-md text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-950/50 transition-colors shrink-0"
+                          className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-md text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-950/50 transition-colors shrink-0 touch-manipulation"
                           aria-label={`WhatsApp ${customer.name}`}
                           title="Chat on WhatsApp"
                         >
-                          <MessageCircle className="size-3.5" />
+                          <MessageCircle className="size-4" />
                         </button>
                       </div>
                     </TableCell>
@@ -996,7 +997,7 @@ export default function Customers() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="size-8"
+                          className="min-w-[44px] min-h-[44px] touch-manipulation"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleSelectCustomer(customer);
@@ -1008,7 +1009,7 @@ export default function Customers() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="size-8"
+                          className="min-w-[44px] min-h-[44px] touch-manipulation"
                           onClick={(e) => {
                             e.stopPropagation();
                             openEditCustomerDialog(customer);
@@ -1024,6 +1025,7 @@ export default function Customers() {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
 
         {/* ─── Pagination ──────────────────────────────────────────────── */}
