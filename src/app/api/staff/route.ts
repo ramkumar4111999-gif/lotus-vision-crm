@@ -8,8 +8,9 @@ export async function GET(request: NextRequest) {
 
     const search = searchParams.get('search') || '';
     const status = searchParams.get('status') || '';
+    const role = searchParams.get('role') || '';
     const page = parseInt(searchParams.get('page') || '1', 10);
-    const limit = parseInt(searchParams.get('limit') || '20', 10);
+    const limit = parseInt(searchParams.get('limit') || '100', 10);
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = {};
@@ -30,6 +31,10 @@ export async function GET(request: NextRequest) {
       where.isActive = false;
     }
 
+    if (role) {
+      where.role = role;
+    }
+
     const [staff, total] = await Promise.all([
       db.staff.findMany({
         where,
@@ -40,6 +45,7 @@ export async function GET(request: NextRequest) {
       db.staff.count({ where }),
     ]);
 
+    const headers = new Headers({ 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' });
     return NextResponse.json({
       data: staff,
       pagination: {
@@ -48,7 +54,7 @@ export async function GET(request: NextRequest) {
         total,
         totalPages: Math.ceil(total / limit),
       },
-    });
+    }, { headers });
   } catch (error) {
     console.error('Error fetching staff:', error);
     return NextResponse.json(
@@ -62,7 +68,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, phone, role, email, salary, commission, loginId } = body;
+    const { name, phone, role, email, salary, commission, joinDate, loginId } = body;
 
     // Validate required fields
     if (!name || !name.trim()) {
@@ -104,6 +110,7 @@ export async function POST(request: NextRequest) {
           commission !== undefined && commission !== null
             ? Number(commission)
             : 0,
+        joinDate: joinDate ? new Date(joinDate) : new Date(),
         loginId: loginId ? loginId.trim() : null,
         isActive: true,
       },

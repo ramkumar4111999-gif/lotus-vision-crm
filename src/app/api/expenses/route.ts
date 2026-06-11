@@ -193,3 +193,70 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+// PUT /api/expenses?id=xxx - Update an expense
+export async function PUT(request: NextRequest) {
+  try {
+    const { searchParams } = request.nextUrl;
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Expense ID is required (pass as ?id=xxx query param)' },
+        { status: 400 }
+      );
+    }
+
+    const body = await request.json();
+    const { category, description, amount, date, vendor } = body;
+
+    const existing = await db.expense.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: 'Expense not found' }, { status: 404 });
+    }
+
+    const updateData: Record<string, unknown> = {};
+    if (category) updateData.category = category.trim();
+    if (description) updateData.description = description.trim();
+    if (amount !== undefined && !isNaN(Number(amount)) && Number(amount) > 0) updateData.amount = Number(amount);
+    if (date) updateData.date = new Date(date);
+    if (vendor !== undefined) updateData.vendor = vendor ? vendor.trim() : null;
+
+    const updated = await db.expense.update({
+      where: { id },
+      data: updateData,
+    });
+
+    return NextResponse.json({ data: updated });
+  } catch (error) {
+    console.error('Error updating expense:', error);
+    return NextResponse.json(
+      { error: 'Failed to update expense' },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE /api/expenses?id=xxx - Delete an expense
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = request.nextUrl;
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Expense ID is required (pass as ?id=xxx query param)' },
+        { status: 400 }
+      );
+    }
+
+    await db.expense.delete({ where: { id } });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting expense:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete expense' },
+      { status: 500 }
+    );
+  }
+}

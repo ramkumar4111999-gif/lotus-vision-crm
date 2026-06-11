@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   AreaChart,
@@ -20,20 +20,18 @@ import {
 } from "recharts";
 import {
   TrendingUp,
-  TrendingDown,
   DollarSign,
   ShoppingCart,
-  Package,
   Users,
-  AlertTriangle,
   IndianRupee,
-  BarChart3,
-  Activity,
-  BoxIcon,
   ArrowUpRight,
   ArrowDownRight,
+  CalendarDays,
+  BarChart3,
+  Download,
+  Loader2,
 } from "lucide-react";
-import { format, subDays, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, eachMonthOfInterval } from "date-fns";
+import { format, subDays, parseISO, isWithinInterval } from "date-fns";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -51,33 +49,37 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 
-// ─── Color Palette (Emerald/Green) ───────────────────────────────────────────
+// ─── Color Palette ───────────────────────────────────────────────────────────
 
 const COLORS = [
-  "#059669", // emerald-600
-  "#10b981", // emerald-500
-  "#34d399", // emerald-400
-  "#6ee7b7", // emerald-300
-  "#a7f3d0", // emerald-200
-  "#047857", // emerald-700
-  "#065f46", // emerald-800
-  "#d1fae5", // emerald-100
-  "#16a34a", // green-600
-  "#22c55e", // green-500
-  "#4ade80", // green-400
-  "#86efac", // green-300
+  "#059669",
+  "#10b981",
+  "#34d399",
+  "#6ee7b7",
+  "#a7f3d0",
+  "#047857",
+  "#065f46",
+  "#d1fae5",
+  "#16a34a",
+  "#22c55e",
+  "#4ade80",
+  "#86efac",
 ];
+
+const PAYMENT_COLORS: Record<string, string> = {
+  Cash: "#059669",
+  UPI: "#7c3aed",
+  Card: "#2563eb",
+  Credit: "#dc2626",
+};
 
 const CHART_GRADIENT_ID = "emeraldGradient";
 
@@ -89,55 +91,46 @@ interface SalesTrendPoint {
   orders: number;
 }
 
-interface ProductSales {
+interface ProductSale {
+  productId: string;
   name: string;
-  quantity: number;
-  revenue: number;
-  category?: string;
+  sku: string;
+  category: string;
+  brand: string;
+  price: number;
+  currentStock: number;
+  totalQtySold: number;
+  totalRevenue: number;
 }
 
-interface CustomerSpend {
+interface TopCustomer {
+  id: string;
   name: string;
+  phone: string;
+  email: string | null;
+  group: string;
+  loyaltyPoints: number;
   totalSpent: number;
-  orderCount: number;
-  group?: string;
+  _count: { sales: number; visits: number; prescriptions: number };
 }
 
-interface InventoryItem {
+interface SaleRecord {
+  id: string;
+  total: number;
+  paymentMode: string;
+  createdAt: string;
+  customerName: string;
+  customer?: { name: string; phone: string } | null;
+}
+
+interface Product {
+  id: string;
   name: string;
   category: string;
   stock: number;
   minStock: number;
-  costPrice: number;
-  sellingPrice: number;
-  turnoverRate?: number;
-}
-
-interface CustomerAcquisition {
-  month: string;
-  newCustomers: number;
-}
-
-interface PaymentMode {
-  mode: string;
-  count: number;
-  amount: number;
-}
-
-interface CategorySales {
-  category: string;
-  sales: number;
-}
-
-interface CustomerGroup {
-  group: string;
-  count: number;
-}
-
-// ─── API Response Types ──────────────────────────────────────────────────────
-
-interface ApiResponse<T> {
-  data: T;
+  costPrice: number | null;
+  price: number;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -155,27 +148,9 @@ function formatNumber(value: number): string {
   return new Intl.NumberFormat("en-IN").format(value);
 }
 
-function getDateRange(period: string): { from: Date; to: Date } {
-  const now = new Date();
-  switch (period) {
-    case "7d":
-      return { from: subDays(now, 7), to: now };
-    case "30d":
-      return { from: subDays(now, 30), to: now };
-    case "3m":
-      return { from: subMonths(now, 3), to: now };
-    case "6m":
-      return { from: subMonths(now, 6), to: now };
-    case "1y":
-      return { from: subMonths(now, 12), to: now };
-    default:
-      return { from: subDays(now, 30), to: now };
-  }
-}
-
 const RADIAN = Math.PI / 180;
 
-function renderCustomizedLabel({
+function renderCustomLabel({
   cx,
   cy,
   midAngle,
@@ -190,39 +165,29 @@ function renderCustomizedLabel({
   outerRadius: number;
   percent: number;
 }) {
-  if (percent < 0.05) return null;
-  const radius = innerRadius + (outerRadius - innerRadius) * 1.3;
+  if (percent < 0.06) return null;
+  const radius = innerRadius + (outerRadius - innerRadius) * 1.35;
   const x = cx + radius * Math.cos(-midAngle * RADIAN);
   const y = cy + radius * Math.sin(-midAngle * RADIAN);
-
   return (
-    <text
-      x={x}
-      y={y}
-      fill="#374151"
-      textAnchor={x > cx ? "start" : "end"}
-      dominantBaseline="central"
-      className="text-xs"
-    >
+    <text x={x} y={y} fill="#374151" textAnchor={x > cx ? "start" : "end"} dominantBaseline="central" className="text-xs">
       {`${(percent * 100).toFixed(0)}%`}
     </text>
   );
 }
 
-// ─── Custom Tooltip ──────────────────────────────────────────────────────────
+// ─── Chart Tooltip ───────────────────────────────────────────────────────────
 
 function ChartTooltip({
   active,
   payload,
   label,
   valuePrefix = "",
-  valueSuffix = "",
 }: {
   active?: boolean;
   payload?: Array<{ name: string; value: number; color: string }>;
   label?: string;
   valuePrefix?: string;
-  valueSuffix?: string;
 }) {
   if (!active || !payload?.length) return null;
   return (
@@ -230,17 +195,10 @@ function ChartTooltip({
       <p className="mb-1 text-sm font-medium text-foreground">{label}</p>
       {payload.map((entry, i) => (
         <div key={i} className="flex items-center gap-2 text-sm">
-          <span
-            className="inline-block size-2.5 rounded-full"
-            style={{ backgroundColor: entry.color }}
-          />
+          <span className="inline-block size-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
           <span className="text-muted-foreground">{entry.name}:</span>
           <span className="font-medium text-foreground">
-            {valuePrefix}
-            {typeof entry.value === "number"
-              ? formatNumber(entry.value)
-              : entry.value}
-            {valueSuffix}
+            {valuePrefix}{formatNumber(entry.value)}
           </span>
         </div>
       ))}
@@ -248,7 +206,7 @@ function ChartTooltip({
   );
 }
 
-// ─── Skeleton Loaders ────────────────────────────────────────────────────────
+// ─── Skeletons ────────────────────────────────────────────────────────────────
 
 function ChartSkeleton({ height = 300 }: { height?: number }) {
   return (
@@ -258,194 +216,14 @@ function ChartSkeleton({ height = 300 }: { height?: number }) {
       <Skeleton className="h-4 w-32" />
       <div className="mt-4 flex w-full items-end justify-center gap-3">
         {Array.from({ length: 8 }).map((_, i) => (
-          <Skeleton
-            key={i}
-            className="w-8 rounded-t"
-            style={{ height: `${Math.max(40, 60 + Math.random() * 120)}px` }}
-          />
+          <Skeleton key={i} className="w-8 rounded-t" style={{ height: `${Math.max(40, 60 + Math.random() * 120)}px` }} />
         ))}
       </div>
     </div>
   );
 }
 
-function StatCardSkeleton() {
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <Skeleton className="size-10 rounded-lg" />
-          <Skeleton className="h-4 w-16" />
-        </div>
-        <Skeleton className="mt-3 h-7 w-28" />
-        <Skeleton className="mt-1 h-4 w-20" />
-      </CardContent>
-    </Card>
-  );
-}
-
-// ─── Data Fetching Hooks ─────────────────────────────────────────────────────
-
-function useReportsData<T>(type: string, fallbackData: T) {
-  return useQuery<ApiResponse<T>>({
-    queryKey: ["reports", type],
-    queryFn: () => fetch(`/api/reports?type=${type}`).then((r) => r.json()),
-    placeholderData: { data: fallbackData },
-    staleTime: 60_000,
-  });
-}
-
-function useSalesData() {
-  return useQuery<ApiResponse<SalesTrendPoint[]>>({
-    queryKey: ["sales"],
-    queryFn: () => fetch("/api/sales").then((r) => r.json()),
-    staleTime: 60_000,
-  });
-}
-
-function useProductsData() {
-  return useQuery<ApiResponse<InventoryItem[]>>({
-    queryKey: ["products"],
-    queryFn: () => fetch("/api/products").then((r) => r.json()),
-    staleTime: 60_000,
-  });
-}
-
-function useCustomersData() {
-  return useQuery<ApiResponse<CustomerSpend[]>>({
-    queryKey: ["customers"],
-    queryFn: () => fetch("/api/customers").then((r) => r.json()),
-    staleTime: 60_000,
-  });
-}
-
-// ─── Fallback / Demo Data ───────────────────────────────────────────────────
-
-const DEMO_MONTHLY_REVENUE: SalesTrendPoint[] = [
-  { date: "Jan 2025", revenue: 485000, orders: 142 },
-  { date: "Feb 2025", revenue: 512000, orders: 158 },
-  { date: "Mar 2025", revenue: 598000, orders: 175 },
-  { date: "Apr 2025", revenue: 475000, orders: 138 },
-  { date: "May 2025", revenue: 623000, orders: 189 },
-  { date: "Jun 2025", revenue: 689000, orders: 204 },
-  { date: "Jul 2025", revenue: 721000, orders: 218 },
-  { date: "Aug 2025", revenue: 654000, orders: 195 },
-  { date: "Sep 2025", revenue: 798000, orders: 237 },
-  { date: "Oct 2025", revenue: 845000, orders: 252 },
-  { date: "Nov 2025", revenue: 912000, orders: 271 },
-  { date: "Dec 2025", revenue: 1035000, orders: 305 },
-];
-
-const DEMO_DAILY_SALES_7D: SalesTrendPoint[] = [
-  { date: "Mon", revenue: 32500, orders: 9 },
-  { date: "Tue", revenue: 28900, orders: 8 },
-  { date: "Wed", revenue: 41200, orders: 12 },
-  { date: "Thu", revenue: 37800, orders: 11 },
-  { date: "Fri", revenue: 52300, orders: 15 },
-  { date: "Sat", revenue: 68400, orders: 20 },
-  { date: "Sun", revenue: 45600, orders: 13 },
-];
-
-const DEMO_DAILY_SALES_30D: SalesTrendPoint[] = Array.from({ length: 30 }, (_, i) => ({
-  date: format(subDays(new Date(), 29 - i), "MMM dd"),
-  revenue: 25000 + Math.floor(Math.random() * 50000),
-  orders: 7 + Math.floor(Math.random() * 18),
-}));
-
-const DEMO_DAILY_SALES_3M: SalesTrendPoint[] = Array.from({ length: 90 }, (_, i) => ({
-  date: format(subDays(new Date(), 89 - i), "MMM dd"),
-  revenue: 20000 + Math.floor(Math.random() * 60000),
-  orders: 5 + Math.floor(Math.random() * 22),
-}));
-
-const DEMO_PAYMENT_MODES: PaymentMode[] = [
-  { mode: "Cash", count: 245, amount: 1285000 },
-  { mode: "Card", count: 312, amount: 2156000 },
-  { mode: "UPI", count: 528, amount: 2890000 },
-  { mode: "Credit", count: 87, amount: 634000 },
-];
-
-const DEMO_TOP_PRODUCTS: ProductSales[] = [
-  { name: "Ray-Ban Aviator Classic", quantity: 156, revenue: 702000, category: "Sunglasses" },
-  { name: "Titan Eye+ Rectangle", quantity: 142, revenue: 497000, category: "Frames" },
-  { name: "Essilor Crizal Easy Pro", quantity: 238, revenue: 428400, category: "Lenses" },
-  { name: "Oakley Holbrook", quantity: 98, revenue: 490000, category: "Sunglasses" },
-  { name: "Vincent Chase Round", quantity: 134, revenue: 375200, category: "Frames" },
-  { name: "Zeiss BlueGuard", quantity: 189, revenue: 359100, category: "Lenses" },
-  { name: "Carrera Champion", quantity: 87, revenue: 313200, category: "Sunglasses" },
-  { name: "Tommy Hilfiger TH 1632", quantity: 112, revenue: 291200, category: "Frames" },
-  { name: "Hoya EnRoute", quantity: 167, revenue: 283900, category: "Lenses" },
-  { name: "Polaroid PLD 6014", quantity: 95, revenue: 237500, category: "Sunglasses" },
-];
-
-const DEMO_CATEGORY_SALES: CategorySales[] = [
-  { category: "Frames", sales: 35 },
-  { category: "Lenses", sales: 32 },
-  { category: "Sunglasses", sales: 25 },
-  { category: "Accessories", sales: 8 },
-];
-
-const DEMO_TOP_CUSTOMERS: CustomerSpend[] = [
-  { name: "Rajesh Kumar", totalSpent: 245000, orderCount: 18, group: "Premium" },
-  { name: "Priya Sharma", totalSpent: 198000, orderCount: 14, group: "Regular" },
-  { name: "Amit Patel", totalSpent: 176500, orderCount: 12, group: "Wholesale" },
-  { name: "Sunita Verma", totalSpent: 154200, orderCount: 11, group: "Premium" },
-  { name: "Vikram Singh", totalSpent: 138900, orderCount: 10, group: "Regular" },
-  { name: "Neha Gupta", totalSpent: 125400, orderCount: 9, group: "New" },
-  { name: "Deepak Joshi", totalSpent: 112000, orderCount: 8, group: "Regular" },
-  { name: "Anita Desai", totalSpent: 98700, orderCount: 7, group: "Wholesale" },
-  { name: "Rohit Mehta", totalSpent: 87600, orderCount: 6, group: "New" },
-  { name: "Kavita Reddy", totalSpent: 76500, orderCount: 5, group: "Regular" },
-];
-
-const DEMO_CUSTOMER_ACQUISITION: CustomerAcquisition[] = [
-  { month: "Jan", newCustomers: 18 },
-  { month: "Feb", newCustomers: 22 },
-  { month: "Mar", newCustomers: 28 },
-  { month: "Apr", newCustomers: 15 },
-  { month: "May", newCustomers: 32 },
-  { month: "Jun", newCustomers: 25 },
-  { month: "Jul", newCustomers: 38 },
-  { month: "Aug", newCustomers: 30 },
-  { month: "Sep", newCustomers: 42 },
-  { month: "Oct", newCustomers: 35 },
-  { month: "Nov", newCustomers: 48 },
-  { month: "Dec", newCustomers: 52 },
-];
-
-const DEMO_CUSTOMER_GROUPS: CustomerGroup[] = [
-  { group: "Regular", count: 312 },
-  { group: "Wholesale", count: 78 },
-  { group: "New", count: 145 },
-  { group: "Premium", count: 54 },
-];
-
-const DEMO_INVENTORY: InventoryItem[] = [
-  { name: "Ray-Ban Aviator Classic", category: "Sunglasses", stock: 24, minStock: 15, costPrice: 3200, sellingPrice: 4500, turnoverRate: 8.2 },
-  { name: "Titan Eye+ Rectangle", category: "Frames", stock: 38, minStock: 20, costPrice: 1800, sellingPrice: 3500, turnoverRate: 6.5 },
-  { name: "Essilor Crizal Easy Pro", category: "Lenses", stock: 12, minStock: 25, costPrice: 1200, sellingPrice: 1800, turnoverRate: 9.1 },
-  { name: "Oakley Holbrook", category: "Sunglasses", stock: 18, minStock: 10, costPrice: 3800, sellingPrice: 5000, turnoverRate: 7.4 },
-  { name: "Vincent Chase Round", category: "Frames", stock: 8, minStock: 15, costPrice: 900, sellingPrice: 2800, turnoverRate: 5.8 },
-  { name: "Zeiss BlueGuard", category: "Lenses", stock: 5, minStock: 20, costPrice: 1500, sellingPrice: 1900, turnoverRate: 10.2 },
-  { name: "Carrera Champion", category: "Sunglasses", stock: 15, minStock: 10, costPrice: 2800, sellingPrice: 3600, turnoverRate: 6.9 },
-  { name: "Tommy Hilfiger TH 1632", category: "Frames", stock: 22, minStock: 12, costPrice: 2200, sellingPrice: 2600, turnoverRate: 5.3 },
-  { name: "Hoya EnRoute", category: "Lenses", stock: 3, minStock: 15, costPrice: 1400, sellingPrice: 1700, turnoverRate: 8.7 },
-  { name: "Polaroid PLD 6014", category: "Sunglasses", stock: 20, minStock: 8, costPrice: 1800, sellingPrice: 2500, turnoverRate: 7.1 },
-  { name: "Bausch & Lomb Ultra", category: "Lenses", stock: 2, minStock: 10, costPrice: 2500, sellingPrice: 3500, turnoverRate: 4.5 },
-  { name: "Gucci GG 0061S", category: "Sunglasses", stock: 7, minStock: 5, costPrice: 12000, sellingPrice: 16500, turnoverRate: 3.2 },
-  { name: "Ray-Ban Wayfarer", category: "Sunglasses", stock: 30, minStock: 12, costPrice: 3500, sellingPrice: 4900, turnoverRate: 9.5 },
-  { name: "Lenskart Air Flex", category: "Frames", stock: 4, minStock: 20, costPrice: 600, sellingPrice: 1800, turnoverRate: 7.8 },
-  { name: "Seiko 1.67 Hi-Index", category: "Lenses", stock: 6, minStock: 12, costPrice: 2000, sellingPrice: 3200, turnoverRate: 6.1 },
-];
-
-const DEMO_INVENTORY_CATEGORIES: CategorySales[] = [
-  { category: "Frames", sales: 38 },
-  { category: "Lenses", sales: 28 },
-  { category: "Sunglasses", sales: 30 },
-  { category: "Accessories", sales: 4 },
-];
-
-// ─── Stat Card Component ─────────────────────────────────────────────────────
+// ─── Stat Card ────────────────────────────────────────────────────────────────
 
 interface StatCardProps {
   title: string;
@@ -460,22 +238,12 @@ function StatCard({ title, value, change, icon, iconBg }: StatCardProps) {
     <Card>
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
-          <div className={`flex size-10 items-center justify-center rounded-lg ${iconBg}`}>
-            {icon}
-          </div>
+          <div className={`flex size-10 items-center justify-center rounded-lg ${iconBg}`}>{icon}</div>
           {change !== undefined && (
-            <div
-              className={`flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium ${
-                change >= 0
-                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400"
-                  : "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-400"
-              }`}
-            >
-              {change >= 0 ? (
-                <ArrowUpRight className="size-3" />
-              ) : (
-                <ArrowDownRight className="size-3" />
-              )}
+            <div className={`flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium ${
+              change >= 0 ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400" : "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-400"
+            }`}>
+              {change >= 0 ? <ArrowUpRight className="size-3" /> : <ArrowDownRight className="size-3" />}
               {Math.abs(change).toFixed(1)}%
             </div>
           )}
@@ -487,822 +255,729 @@ function StatCard({ title, value, change, icon, iconBg }: StatCardProps) {
   );
 }
 
-// ─── Sales Tab ───────────────────────────────────────────────────────────────
+// ─── Data Hooks ───────────────────────────────────────────────────────────────
 
-function SalesTab() {
-  const [dateRange, setDateRange] = useState("30d");
-
-  const salesTrendQuery = useReportsData<SalesTrendPoint[]>("sales-trend", DEMO_MONTHLY_REVENUE);
-  const salesQuery = useSalesData();
-  const salesData = salesQuery.data?.data ?? [];
-
-  const dailySalesMap = useMemo(() => {
-    const map: Record<string, SalesTrendPoint[]> = {
-      "7d": DEMO_DAILY_SALES_7D,
-      "30d": DEMO_DAILY_SALES_30D,
-      "3m": DEMO_DAILY_SALES_3M,
-      "6m": DEMO_DAILY_SALES_3M,
-      "1y": DEMO_DAILY_SALES_3M,
-    };
-    return map[dateRange] ?? DEMO_DAILY_SALES_30D;
-  }, [dateRange]);
-
-  const monthlyRevenue = salesTrendQuery.data?.data ?? DEMO_MONTHLY_REVENUE;
-
-  const totalRevenue = useMemo(() => {
-    return dailySalesMap.reduce((sum, d) => sum + d.revenue, 0);
-  }, [dailySalesMap]);
-
-  const totalOrders = useMemo(() => {
-    return dailySalesMap.reduce((sum, d) => sum + d.orders, 0);
-  }, [dailySalesMap]);
-
-  const avgOrderValue = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
-
-  const revenueChange = 12.5;
-  const aovChange = 3.2;
-  const ordersChange = 8.7;
-
-  return (
-    <div className="space-y-6">
-      {/* Date Range Filter */}
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="text-sm font-medium text-muted-foreground">Period:</span>
-        <Select value={dateRange} onValueChange={setDateRange}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Select period" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="7d">Last 7 Days</SelectItem>
-            <SelectItem value="30d">Last 30 Days</SelectItem>
-            <SelectItem value="3m">Last 3 Months</SelectItem>
-            <SelectItem value="6m">Last 6 Months</SelectItem>
-            <SelectItem value="1y">Last Year</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Summary Stats */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard
-          title="Total Revenue"
-          value={formatCurrency(totalRevenue)}
-          change={revenueChange}
-          icon={<DollarSign className="size-5 text-white" />}
-          iconBg="bg-emerald-600"
-        />
-        <StatCard
-          title="Avg Order Value"
-          value={formatCurrency(avgOrderValue)}
-          change={aovChange}
-          icon={<TrendingUp className="size-5 text-white" />}
-          iconBg="bg-emerald-700"
-        />
-        <StatCard
-          title="Total Orders"
-          value={formatNumber(totalOrders)}
-          change={ordersChange}
-          icon={<ShoppingCart className="size-5 text-white" />}
-          iconBg="bg-emerald-500"
-        />
-      </div>
-
-      <Separator />
-
-      {/* Charts Grid */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Monthly Revenue Trend - Area Chart */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base">Monthly Revenue Trend</CardTitle>
-            <CardDescription>Revenue and order volume over the past 12 months</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {salesTrendQuery.isLoading ? (
-              <ChartSkeleton height={320} />
-            ) : (
-              <ResponsiveContainer width="100%" height={320}>
-                <AreaChart data={monthlyRevenue} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id={CHART_GRADIENT_ID} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#059669" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#059669" stopOpacity={0.02} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fontSize: 12, fill: "#6b7280" }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 12, fill: "#6b7280" }}
-                    axisLine={false}
-                    tickLine={false}
-                    tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`}
-                  />
-                  <Tooltip
-                    content={
-                      <ChartTooltip valuePrefix="₹" />
-                    }
-                    formatter={(value: number, name: string) => [
-                      formatCurrency(value),
-                      name === "revenue" ? "Revenue" : "Orders",
-                    ]}
-                  />
-                  <Legend />
-                  <Area
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="#059669"
-                    strokeWidth={2}
-                    fill={`url(#${CHART_GRADIENT_ID})`}
-                    name="Revenue"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Payment Mode Distribution - Pie Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Payment Modes</CardTitle>
-            <CardDescription>Distribution by payment method</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={320}>
-              <PieChart>
-                <Pie
-                  data={DEMO_PAYMENT_MODES}
-                  cx="50%"
-                  cy="45%"
-                  outerRadius={90}
-                  innerRadius={45}
-                  dataKey="amount"
-                  nameKey="mode"
-                  labelLine={false}
-                  label={renderCustomizedLabel}
-                >
-                  {DEMO_PAYMENT_MODES.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  content={<ChartTooltip valuePrefix="₹" />}
-                  formatter={(value: number) => [formatCurrency(value), "Amount"]}
-                />
-                <Legend
-                  verticalAlign="bottom"
-                  iconType="circle"
-                  iconSize={8}
-                  formatter={(value: string) => (
-                    <span className="text-xs text-foreground">{value}</span>
-                  )}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Daily Sales Line Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Daily Sales</CardTitle>
-          <CardDescription>
-            Daily revenue and orders for the selected period
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={dailySalesMap} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-              <XAxis
-                dataKey="date"
-                tick={{ fontSize: 11, fill: "#6b7280" }}
-                axisLine={false}
-                tickLine={false}
-                interval="preserveStartEnd"
-              />
-              <YAxis
-                yAxisId="left"
-                tick={{ fontSize: 12, fill: "#6b7280" }}
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`}
-              />
-              <YAxis
-                yAxisId="right"
-                orientation="right"
-                tick={{ fontSize: 12, fill: "#6b7280" }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <Tooltip
-                content={
-                  <ChartTooltip valuePrefix="₹" />
-                }
-                formatter={(value: number, name: string) => {
-                  if (name === "revenue") return [formatCurrency(value), "Revenue"];
-                  return [formatNumber(value), "Orders"];
-                }}
-              />
-              <Legend />
-              <Line
-                yAxisId="left"
-                type="monotone"
-                dataKey="revenue"
-                stroke="#059669"
-                strokeWidth={2}
-                dot={false}
-                activeDot={{ r: 5, fill: "#059669" }}
-                name="Revenue"
-              />
-              <Line
-                yAxisId="right"
-                type="monotone"
-                dataKey="orders"
-                stroke="#34d399"
-                strokeWidth={2}
-                strokeDasharray="5 5"
-                dot={false}
-                activeDot={{ r: 5, fill: "#34d399" }}
-                name="Orders"
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-    </div>
-  );
+function useReportsData<T>(type: string, fallbackData: T) {
+  return useQuery<T>({
+    queryKey: ["reports", type],
+    queryFn: () => fetch(`/api/reports?type=${type}`).then((r) => r.json()),
+    placeholderData: fallbackData,
+    staleTime: 60_000,
+  });
 }
 
-// ─── Products Tab ────────────────────────────────────────────────────────────
-
-function ProductsTab() {
-  const topProductsQuery = useReportsData<ProductSales[]>("top-products", DEMO_TOP_PRODUCTS);
-  const productsQuery = useProductsData();
-
-  const topProducts = topProductsQuery.data?.data ?? DEMO_TOP_PRODUCTS;
-  const allProducts = productsQuery.data?.data ?? DEMO_INVENTORY;
-
-  const lowStockProducts = useMemo(() => {
-    return allProducts
-      .filter((p) => p.stock < p.minStock)
-      .sort((a, b) => a.stock / a.minStock - b.stock / b.minStock);
-  }, [allProducts]);
-
-  const categorySales = DEMO_CATEGORY_SALES;
-
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Top 10 Best Selling - Horizontal Bar Chart */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base">Top 10 Best Selling Products</CardTitle>
-            <CardDescription>Ranked by quantity sold</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {topProductsQuery.isLoading ? (
-              <ChartSkeleton height={420} />
-            ) : (
-              <ResponsiveContainer width="100%" height={Math.max(400, topProducts.length * 40 + 20)}>
-                <BarChart
-                  data={topProducts}
-                  layout="vertical"
-                  margin={{ top: 5, right: 30, left: 120, bottom: 5 }}
-                >
-                  <XAxis
-                    type="number"
-                    tick={{ fontSize: 12, fill: "#6b7280" }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    tick={{ fontSize: 11, fill: "#374151" }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={115}
-                  />
-                  <Tooltip
-                    content={<ChartTooltip />}
-                    formatter={(value: number, name: string) => {
-                      if (name === "quantity") return [formatNumber(value), "Units Sold"];
-                      return [formatCurrency(value), "Revenue"];
-                    }}
-                  />
-                  <Legend />
-                  <Bar
-                    dataKey="quantity"
-                    fill="#059669"
-                    radius={[0, 4, 4, 0]}
-                    barSize={18}
-                    name="Units Sold"
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Category-wise Sales - Pie Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Category-wise Sales</CardTitle>
-            <CardDescription>Revenue share by product category</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={320}>
-              <PieChart>
-                <Pie
-                  data={categorySales}
-                  cx="50%"
-                  cy="45%"
-                  outerRadius={90}
-                  innerRadius={45}
-                  dataKey="sales"
-                  nameKey="category"
-                  labelLine={false}
-                  label={renderCustomizedLabel}
-                >
-                  {categorySales.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  content={<ChartTooltip valueSuffix="%" />}
-                  formatter={(value: number) => [`${value}%`, "Share"]}
-                />
-                <Legend
-                  verticalAlign="bottom"
-                  iconType="circle"
-                  iconSize={8}
-                  formatter={(value: string) => (
-                    <span className="text-xs text-foreground">{value}</span>
-                  )}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Low Stock Alert - Table */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="size-5 text-amber-500" />
-              <CardTitle className="text-base">Low Stock Alert</CardTitle>
-            </div>
-            <CardDescription>
-              Products below minimum stock level
-              {lowStockProducts.length > 0 && (
-                <Badge variant="destructive" className="ml-2">
-                  {lowStockProducts.length}
-                </Badge>
-              )}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="max-h-96 overflow-y-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead className="text-right">Stock</TableHead>
-                    <TableHead className="text-right">Min</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {lowStockProducts.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                        No low stock alerts
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    lowStockProducts.map((product) => {
-                      const ratio = product.stock / product.minStock;
-                      const isCritical = ratio < 0.3;
-                      return (
-                        <TableRow key={product.name}>
-                          <TableCell className="max-w-[180px] truncate font-medium">
-                            {product.name}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="secondary" className="text-xs">
-                              {product.category}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right font-mono text-sm">
-                            {product.stock}
-                          </TableCell>
-                          <TableCell className="text-right font-mono text-sm text-muted-foreground">
-                            {product.minStock}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={isCritical ? "destructive" : "outline"}
-                              className={
-                                isCritical
-                                  ? ""
-                                  : "border-amber-300 text-amber-700 dark:border-amber-600 dark:text-amber-400"
-                              }
-                            >
-                              {isCritical ? "Critical" : "Low"}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
+function useSalesData() {
+  return useQuery<{ data: SaleRecord[] }>({
+    queryKey: ["sales-all"],
+    queryFn: () => fetch("/api/sales?limit=1000").then((r) => r.json()),
+    staleTime: 60_000,
+  });
 }
 
-// ─── Customers Tab ───────────────────────────────────────────────────────────
-
-function CustomersTab() {
-  const topCustomersQuery = useReportsData<CustomerSpend[]>("top-customers", DEMO_TOP_CUSTOMERS);
-  const customersQuery = useCustomersData();
-
-  const topCustomers = topCustomersQuery.data?.data ?? DEMO_TOP_CUSTOMERS;
-  const customerAcquisition = DEMO_CUSTOMER_ACQUISITION;
-  const customerGroups = DEMO_CUSTOMER_GROUPS;
-
-  const totalCustomers = customerGroups.reduce((s, g) => s + g.count, 0);
-
-  const maxSpend = useMemo(() => {
-    return Math.max(...topCustomers.map((c) => c.totalSpent));
-  }, [topCustomers]);
-
-  return (
-    <div className="space-y-6">
-      {/* Top 10 Customers Bar Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Top 10 Customers by Spend</CardTitle>
-          <CardDescription>Highest spending customers in the selected period</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {topCustomersQuery.isLoading ? (
-            <ChartSkeleton height={380} />
-          ) : (
-            <ResponsiveContainer width="100%" height={380}>
-              <BarChart data={topCustomers} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
-                <XAxis
-                  dataKey="name"
-                  tick={{ fontSize: 10, fill: "#6b7280" }}
-                  axisLine={false}
-                  tickLine={false}
-                  interval={0}
-                  angle={-25}
-                  textAnchor="end"
-                  height={70}
-                />
-                <YAxis
-                  tick={{ fontSize: 12, fill: "#6b7280" }}
-                  axisLine={false}
-                  tickLine={false}
-                  tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`}
-                />
-                <Tooltip
-                  content={<ChartTooltip valuePrefix="₹" />}
-                  formatter={(value: number, name: string) => {
-                    if (name === "totalSpent") return [formatCurrency(value), "Total Spent"];
-                    return [formatNumber(value), "Orders"];
-                  }}
-                />
-                <Legend />
-                <Bar
-                  dataKey="totalSpent"
-                  fill="#059669"
-                  radius={[4, 4, 0, 0]}
-                  barSize={32}
-                  name="Total Spent"
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Customer Acquisition Line Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Customer Acquisition</CardTitle>
-            <CardDescription>New customers added each month</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart
-                data={customerAcquisition}
-                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-              >
-                <XAxis
-                  dataKey="month"
-                  tick={{ fontSize: 12, fill: "#6b7280" }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 12, fill: "#6b7280" }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip
-                  content={<ChartTooltip />}
-                  formatter={(value: number) => [formatNumber(value), "New Customers"]}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="newCustomers"
-                  stroke="#059669"
-                  strokeWidth={2.5}
-                  dot={{ fill: "#059669", r: 4 }}
-                  activeDot={{ r: 6, fill: "#059669" }}
-                  name="New Customers"
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Customer Group Distribution Pie */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base">Customer Groups</CardTitle>
-                <CardDescription>Distribution by customer type</CardDescription>
-              </div>
-              <Badge variant="secondary" className="text-sm">
-                {formatNumber(totalCustomers)} Total
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={customerGroups}
-                  cx="50%"
-                  cy="45%"
-                  outerRadius={85}
-                  innerRadius={42}
-                  dataKey="count"
-                  nameKey="group"
-                  labelLine={false}
-                  label={renderCustomizedLabel}
-                >
-                  {customerGroups.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  content={<ChartTooltip />}
-                  formatter={(value: number, name: string) => [
-                    `${formatNumber(value)} customers`,
-                    name,
-                  ]}
-                />
-                <Legend
-                  verticalAlign="bottom"
-                  iconType="circle"
-                  iconSize={8}
-                  formatter={(value: string) => (
-                    <span className="text-xs text-foreground">{value}</span>
-                  )}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
+function useProductsData() {
+  return useQuery<{ data: Product[] }>({
+    queryKey: ["products"],
+    queryFn: () => fetch("/api/products").then((r) => r.json()),
+    staleTime: 60_000,
+  });
 }
 
-// ─── Inventory Tab ───────────────────────────────────────────────────────────
-
-function InventoryTab() {
-  const turnoverQuery = useReportsData<InventoryItem[]>("inventory-turnover", DEMO_INVENTORY);
-  const productsQuery = useProductsData();
-
-  const inventory = turnoverQuery.data?.data ?? DEMO_INVENTORY;
-  const inventoryCategories = DEMO_INVENTORY_CATEGORIES;
-
-  const totalCostValue = useMemo(() => {
-    return inventory.reduce((sum, item) => sum + item.stock * item.costPrice, 0);
-  }, [inventory]);
-
-  const totalSellingValue = useMemo(() => {
-    return inventory.reduce((sum, item) => sum + item.stock * item.sellingPrice, 0);
-  }, [inventory]);
-
-  const potentialProfit = totalSellingValue - totalCostValue;
-  const profitMargin = totalCostValue > 0 ? ((potentialProfit / totalCostValue) * 100).toFixed(1) : "0";
-
-  const turnoverData = useMemo(() => {
-    return [...inventory]
-      .sort((a, b) => (b.turnoverRate ?? 0) - (a.turnoverRate ?? 0))
-      .slice(0, 10);
-  }, [inventory]);
-
-  return (
-    <div className="space-y-6">
-      {/* Stock Value Summary Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Total SKUs"
-          value={formatNumber(inventory.length)}
-          change={5.2}
-          icon={<Package className="size-5 text-white" />}
-          iconBg="bg-emerald-600"
-        />
-        <StatCard
-          title="Stock Value (Cost)"
-          value={formatCurrency(totalCostValue)}
-          icon={<IndianRupee className="size-5 text-white" />}
-          iconBg="bg-emerald-700"
-        />
-        <StatCard
-          title="Stock Value (Selling)"
-          value={formatCurrency(totalSellingValue)}
-          change={8.4}
-          icon={<TrendingUp className="size-5 text-white" />}
-          iconBg="bg-emerald-500"
-        />
-        <StatCard
-          title="Potential Profit"
-          value={formatCurrency(potentialProfit)}
-          change={parseFloat(profitMargin)}
-          icon={<BarChart3 className="size-5 text-white" />}
-          iconBg="bg-emerald-800"
-        />
-      </div>
-
-      <Separator />
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Inventory Turnover Bar Chart */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base">Inventory Turnover Rate</CardTitle>
-            <CardDescription>Products ranked by sales velocity</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {turnoverQuery.isLoading ? (
-              <ChartSkeleton height={380} />
-            ) : (
-              <ResponsiveContainer width="100%" height={380}>
-                <BarChart
-                  data={turnoverData}
-                  layout="vertical"
-                  margin={{ top: 5, right: 30, left: 120, bottom: 5 }}
-                >
-                  <XAxis
-                    type="number"
-                    tick={{ fontSize: 12, fill: "#6b7280" }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    tick={{ fontSize: 11, fill: "#374151" }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={115}
-                  />
-                  <Tooltip
-                    content={<ChartTooltip valueSuffix="x" />}
-                    formatter={(value: number) => [`${value.toFixed(1)}x`, "Turnover Rate"]}
-                  />
-                  <Bar
-                    dataKey="turnoverRate"
-                    radius={[0, 4, 4, 0]}
-                    barSize={18}
-                    name="Turnover Rate"
-                  >
-                    {turnoverData.map((_, i) => (
-                      <Cell
-                        key={i}
-                        fill={COLORS[i % COLORS.length]}
-                        opacity={1 - i * 0.06}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Category Distribution Pie */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Inventory by Category</CardTitle>
-            <CardDescription>Stock distribution across categories</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={380}>
-              <PieChart>
-                <Pie
-                  data={inventoryCategories}
-                  cx="50%"
-                  cy="45%"
-                  outerRadius={90}
-                  innerRadius={45}
-                  dataKey="sales"
-                  nameKey="category"
-                  labelLine={false}
-                  label={renderCustomizedLabel}
-                >
-                  {inventoryCategories.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  content={<ChartTooltip valueSuffix="%" />}
-                  formatter={(value: number) => [`${value}%`, "Share"]}
-                />
-                <Legend
-                  verticalAlign="bottom"
-                  iconType="circle"
-                  iconSize={8}
-                  formatter={(value: string) => (
-                    <span className="text-xs text-foreground">{value}</span>
-                  )}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
+function useTopCustomers() {
+  return useQuery<{ data: TopCustomer[] }>({
+    queryKey: ["top-customers"],
+    queryFn: () => fetch("/api/reports?type=top-customers").then((r) => r.json()),
+    staleTime: 60_000,
+  });
 }
 
-// ─── Main Reports Component ──────────────────────────────────────────────────
+// ─── Fallback Data ───────────────────────────────────────────────────────────
+
+const FALLBACK_SALES_TREND: SalesTrendPoint[] = [];
+const FALLBACK_PRODUCTS: ProductSale[] = [];
+const FALLBACK_CUSTOMERS: TopCustomer[] = [];
+
+// ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function Reports() {
+  const today = new Date();
+  const defaultFrom = format(subDays(today, 30), "yyyy-MM-dd");
+  const defaultTo = format(today, "yyyy-MM-dd");
+
+  const [dateFrom, setDateFrom] = useState(defaultFrom);
+  const [dateTo, setDateTo] = useState(defaultTo);
+
+  // Fetch data
+  const salesTrendQuery = useReportsData<{ data: SalesTrendPoint[] }>("sales-trend", { data: FALLBACK_SALES_TREND });
+  const topProductsQuery = useReportsData<{ data: ProductSale[] }>("top-products", { data: FALLBACK_PRODUCTS });
+  const topCustomersQuery = useTopCustomers();
+  const salesQuery = useSalesData();
+  const productsQuery = useProductsData();
+
+  // Parse raw data with fallbacks
+  const salesTrendData = useMemo(() => {
+    const raw = salesTrendQuery.data;
+    if (raw && "data" in raw && Array.isArray(raw.data)) return raw.data;
+    if (Array.isArray(raw)) return raw;
+    return FALLBACK_SALES_TREND;
+  }, [salesTrendQuery.data]);
+
+  const topProducts = useMemo(() => {
+    const raw = topProductsQuery.data;
+    if (raw && "data" in raw && Array.isArray(raw.data)) return raw.data;
+    if (Array.isArray(raw)) return raw;
+    return FALLBACK_PRODUCTS;
+  }, [topProductsQuery.data]);
+
+  const topCustomers = useMemo(() => {
+    const raw = topCustomersQuery.data;
+    if (raw && "data" in raw && Array.isArray(raw.data)) return raw.data;
+    if (Array.isArray(raw)) return raw;
+    return FALLBACK_CUSTOMERS;
+  }, [topCustomersQuery.data]);
+
+  const allSales = useMemo(() => {
+    const raw = salesQuery.data;
+    if (raw && "sales" in raw && Array.isArray(raw.sales)) return raw.sales;
+    if (raw && "data" in raw && Array.isArray(raw.data)) return raw.data;
+    if (Array.isArray(raw)) return raw;
+    return [] as SaleRecord[];
+  }, [salesQuery.data]);
+
+  const allProducts = useMemo(() => {
+    const raw = productsQuery.data;
+    if (raw && "data" in raw && Array.isArray(raw.data)) return raw.data;
+    if (Array.isArray(raw)) return raw;
+    return [] as Product[];
+  }, [productsQuery.data]);
+
+  // ─── Revenue Summary from all sales ────────────────────────────────────
+
+  const revenueSummary = useMemo(() => {
+    const from = parseISO(dateFrom);
+    const to = new Date(dateTo + "T23:59:59");
+    const filtered = allSales.filter((s) => {
+      try { return isWithinInterval(new Date(s.createdAt), { start: from, end: to }); }
+      catch { return false; }
+    });
+    const totalRevenue = filtered.reduce((sum, s) => sum + (s.total || 0), 0);
+    const numTx = filtered.length;
+    const avgValue = numTx > 0 ? Math.round(totalRevenue / numTx) : 0;
+    return { totalRevenue, numTx, avgValue };
+  }, [allSales, dateFrom, dateTo]);
+
+  // ─── Payment Modes from real sales data ─────────────────────────────────
+
+  const paymentModes = useMemo(() => {
+    const from = parseISO(dateFrom);
+    const to = new Date(dateTo + "T23:59:59");
+    const filtered = allSales.filter((s) => {
+      try { return isWithinInterval(new Date(s.createdAt), { start: from, end: to }); }
+      catch { return false; }
+    });
+    const map: Record<string, { mode: string; count: number; amount: number }> = {};
+    filtered.forEach((s) => {
+      const mode = s.paymentMode || "Cash";
+      if (!map[mode]) map[mode] = { mode, count: 0, amount: 0 };
+      map[mode].count += 1;
+      map[mode].amount += s.total || 0;
+    });
+    return Object.values(map).sort((a, b) => b.amount - a.amount);
+  }, [allSales, dateFrom, dateTo]);
+
+  // ─── Daily revenue from real data ────────────────────────────────────────
+
+  const dailyRevenue = useMemo((): SalesTrendPoint[] => {
+    const from = parseISO(dateFrom);
+    const to = new Date(dateTo + "T23:59:59");
+    const filtered = allSales.filter((s) => {
+      try { return isWithinInterval(new Date(s.createdAt), { start: from, end: to }); }
+      catch { return false; }
+    });
+    const dayMap = new Map<string, { date: string; revenue: number; orders: number }>();
+    filtered.forEach((s) => {
+      const day = format(new Date(s.createdAt), "yyyy-MM-dd");
+      const existing = dayMap.get(day) || { date: day, revenue: 0, orders: 0 };
+      existing.revenue += s.total || 0;
+      existing.orders += 1;
+      dayMap.set(day, existing);
+    });
+    return Array.from(dayMap.values()).sort((a, b) => a.date.localeCompare(b.date)).map((d) => ({
+      ...d,
+      date: format(parseISO(d.date), "MMM dd"),
+    }));
+  }, [allSales, dateFrom, dateTo]);
+
+  // ─── Customer acquisition from real sales data ─────────────────────────
+
+  const customerAcquisition = useMemo(() => {
+    const seen = new Set<string>();
+    const dailyNew: Record<string, number> = {};
+    const from = parseISO(dateFrom);
+    const to = new Date(dateTo + "T23:59:59");
+    allSales
+      .filter((s) => {
+        try { return isWithinInterval(new Date(s.createdAt), { start: from, end: to }); }
+        catch { return false; }
+      })
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+      .forEach((s) => {
+        // Each unique customer's first sale counts as acquisition
+        const key = s.customer?.name || s.customerName || `anon-${s.id}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          const day = format(new Date(s.createdAt), "yyyy-MM-dd");
+          dailyNew[day] = (dailyNew[day] || 0) + 1;
+        }
+      });
+    return Object.entries(dailyNew)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-14)
+      .map(([date, newCustomers]) => ({
+        date: format(parseISO(date), "MMM dd"),
+        newCustomers,
+      }));
+  }, [allSales, dateFrom, dateTo]);
+
+  // ─── Top products by revenue (from real API data) ─────────────────────
+
+  const topProductsByRevenue = useMemo(() => {
+    if (topProducts.length === 0) return [];
+    return [...topProducts]
+      .sort((a, b) => (b.totalRevenue || 0) - (a.totalRevenue || 0))
+      .slice(0, 10)
+      .map((p) => ({
+        name: p.name || "Unknown",
+        revenue: p.totalRevenue || 0,
+        quantity: p.totalQtySold || 0,
+        category: p.category || "",
+      }));
+  }, [topProducts]);
+
+  // ─── Monthly revenue for area chart ────────────────────────────────────
+
+  const monthlyRevenue = useMemo((): SalesTrendPoint[] => {
+    if (salesTrendData.length === 0) {
+      // Build from raw sales
+      const monthMap = new Map<string, { date: string; revenue: number; orders: number }>();
+      allSales.forEach((s) => {
+        const month = format(new Date(s.createdAt), "MMM yyyy");
+        const existing = monthMap.get(month) || { date: month, revenue: 0, orders: 0 };
+        existing.revenue += s.total || 0;
+        existing.orders += 1;
+        monthMap.set(month, existing);
+      });
+      return Array.from(monthMap.values()).slice(-12);
+    }
+    return salesTrendData.slice(0, 12).map((d) => ({
+      ...d,
+      date: format(parseISO(d.date), "MMM yyyy"),
+    }));
+  }, [salesTrendData, allSales]);
+
+  const totalMonthlyRevenue = monthlyRevenue.reduce((s, d) => s + d.revenue, 0);
+  const totalMonthlyOrders = monthlyRevenue.reduce((s, d) => s + d.orders, 0);
+  const avgMonthlySaleValue = totalMonthlyOrders > 0 ? Math.round(totalMonthlyRevenue / totalMonthlyOrders) : 0;
+
+  // ─── CSV Export ──────────────────────────────────────────────────────
+  const [exporting, setExporting] = useState(false);
+
+  const handleDownloadCSV = useCallback(async () => {
+    setExporting(true);
+    try {
+      const [salesRes, custRes, prodRes] = await Promise.allSettled([
+        fetch("/api/sales?limit=999"),
+        fetch("/api/customers?limit=999"),
+        fetch("/api/products?pageSize=999"),
+      ]);
+
+      // ─── Section 1: Sales Summary ───────────────────────────────────
+      let salesSheet = "SALES SUMMARY\n";
+      salesSheet += "Date,Invoice#,Customer,Items,Subtotal,Discount,Tax,Total,Mode,Status\n";
+      if (salesRes.status === "fulfilled" && salesRes.value.ok) {
+        const salesData = await salesRes.value.json();
+        const list: SaleRecord[] = Array.isArray(salesData.sales) ? salesData.sales : [];
+        for (const s of list) {
+          const dateStr = s.createdAt ? format(new Date(s.createdAt), "dd-MMM-yyyy") : "";
+          const items = (s as Record<string, unknown>).itemsCount || 0;
+          const disc = s.discount || 0;
+          const tax = ((s as Record<string, unknown>).cgst || 0) + ((s as Record<string, unknown>).sgst || 0);
+          const line = [
+            dateStr,
+            `"${s.invoiceNo || ""}"`,
+            `"${(s.customer?.name || s.customerName || "").replace(/"/g, '""')}"`,
+            items,
+            (s as Record<string, unknown>).subtotal || 0,
+            disc,
+            tax,
+            s.total || 0,
+            s.paymentMode || "",
+            s.status || "",
+          ].join(",");
+          salesSheet += line + "\n";
+        }
+      }
+
+      // ─── Section 2: Customer Summary ────────────────────────────────
+      let customerSheet = "\nCUSTOMER SUMMARY\n";
+      customerSheet += "Name,Phone,Group,Orders,Total Spent\n";
+      const customersMap = new Map<string, { orders: number; spent: number }>();
+      if (salesRes.status === "fulfilled" && salesRes.value.ok) {
+        const salesData = await salesRes.value.json();
+        const list: SaleRecord[] = Array.isArray(salesData.sales) ? salesData.sales : [];
+        for (const s of list) {
+          const name = s.customer?.name || s.customerName || "Walk-in";
+          const existing = customersMap.get(name) || { orders: 0, spent: 0 };
+          existing.orders += 1;
+          existing.spent += s.total || 0;
+          customersMap.set(name, existing);
+        }
+      }
+      if (custRes.status === "fulfilled" && custRes.value.ok) {
+        const custData = await custRes.value.json();
+        const custList = Array.isArray(custData.data) ? custData.data : [];
+        for (const c of custList) {
+          const r = c as Record<string, unknown>;
+          const stats = customersMap.get(r.name as string) || { orders: 0, spent: 0 };
+          const line = [
+            `"${(r.name || "").toString().replace(/"/g, '""')}"`,
+            `"${(r.phone || "").toString()}"`,
+            `"${(r.group || "New").toString()}"`,
+            stats.orders,
+            stats.spent,
+          ].join(",");
+          customerSheet += line + "\n";
+        }
+      }
+
+      // ─── Section 3: Product Performance ─────────────────────────────
+      let productSheet = "\nPRODUCT PERFORMANCE\n";
+      productSheet += "Name,Category,Price,Stock,Revenue\n";
+      const productSalesMap = new Map<string, { qty: number; revenue: number }>();
+      if (salesRes.status === "fulfilled" && salesRes.value.ok) {
+        // Fetch sale items from individual sale details for product performance
+        // We'll use the top products API for this
+      }
+      if (prodRes.status === "fulfilled" && prodRes.value.ok) {
+        const prodData = await prodRes.value.json();
+        const prodList = Array.isArray(prodData.products) ? prodData.products : [];
+        // Try to get product performance data from the reports API
+        try {
+          const perfRes = await fetch("/api/reports?type=top-products");
+          if (perfRes.ok) {
+            const perfData = await perfRes.json();
+            const perfList = Array.isArray(perfData.data) ? perfData.data : [];
+            const perfMap = new Map<string, { qty: number; revenue: number }>();
+            for (const p of perfList) {
+              const pr = p as Record<string, unknown>;
+              perfMap.set(pr.name as string, {
+                qty: (pr.totalQtySold as number) || 0,
+                revenue: (pr.totalRevenue as number) || 0,
+              });
+            }
+            for (const p of prodList) {
+              const pr = p as Record<string, unknown>;
+              const perf = perfMap.get(pr.name as string) || { qty: 0, revenue: 0 };
+              const line = [
+                `"${(pr.name || "").toString().replace(/"/g, '""')}"`,
+                `"${(pr.category || "").toString()}"`,
+                pr.price || 0,
+                pr.stock || 0,
+                perf.revenue,
+              ].join(",");
+              productSheet += line + "\n";
+            }
+          } else {
+            for (const p of prodList) {
+              const pr = p as Record<string, unknown>;
+              const line = [
+                `"${(pr.name || "").toString().replace(/"/g, '""')}"`,
+                `"${(pr.category || "").toString()}"`,
+                pr.price || 0,
+                pr.stock || 0,
+                0,
+              ].join(",");
+              productSheet += line + "\n";
+            }
+          }
+        } catch {
+          for (const p of prodList) {
+            const pr = p as Record<string, unknown>;
+            const line = [
+              `"${(pr.name || "").toString().replace(/"/g, '""')}"`,
+              `"${(pr.category || "").toString()}"`,
+              pr.price || 0,
+              pr.stock || 0,
+              0,
+            ].join(",");
+            productSheet += line + "\n";
+          }
+        }
+      }
+
+      const csvContent = salesSheet + "\n" + customerSheet + "\n" + productSheet;
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `crm-report-${format(new Date(), "yyyy-MM-dd")}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("Report downloaded successfully!");
+    } catch {
+      toast.error("Failed to download report");
+    } finally {
+      setExporting(false);
+    }
+  }, []);
+
   return (
-    <section className="w-full" aria-label="CRM Reports & Analytics">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+    <div className="space-y-6 p-4 md:p-6">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+          <BarChart3 className="h-6 w-6" />
           Reports & Analytics
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Comprehensive insights into your sales, products, customers, and inventory.
+        <p className="text-muted-foreground text-sm mt-1">
+          Business insights for Sankaran Kovil Opticals
         </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-2 gap-2"
+          onClick={handleDownloadCSV}
+          disabled={exporting}
+        >
+          {exporting ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4" />
+          )}
+          Download CSV Report
+        </Button>
       </div>
 
-      <Tabs defaultValue="sales" className="w-full">
-        <TabsList className="w-full sm:w-auto">
-          <TabsTrigger value="sales" className="gap-1.5">
-            <DollarSign className="size-4" />
-            <span className="hidden sm:inline">Sales</span>
-          </TabsTrigger>
-          <TabsTrigger value="products" className="gap-1.5">
-            <Package className="size-4" />
-            <span className="hidden sm:inline">Products</span>
-          </TabsTrigger>
-          <TabsTrigger value="customers" className="gap-1.5">
-            <Users className="size-4" />
-            <span className="hidden sm:inline">Customers</span>
-          </TabsTrigger>
-          <TabsTrigger value="inventory" className="gap-1.5">
-            <BoxIcon className="size-4" />
-            <span className="hidden sm:inline">Inventory</span>
-          </TabsTrigger>
+      {/* Date Range Picker */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Date Range:</span>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5">
+                <Label htmlFor="rpt-from" className="text-xs">From</Label>
+                <Input id="rpt-from" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-8 w-[150px] text-xs" />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Label htmlFor="rpt-to" className="text-xs">To</Label>
+                <Input id="rpt-to" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-8 w-[150px] text-xs" />
+              </div>
+              <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => { setDateFrom(defaultFrom); setDateTo(defaultTo); }}>
+                Last 30 Days
+              </Button>
+              <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => { setDateFrom(format(subDays(today, 7), "yyyy-MM-dd")); setDateTo(defaultTo); }}>
+                Last 7 Days
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Revenue Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatCard title="Total Revenue" value={formatCurrency(revenueSummary.totalRevenue)} icon={<DollarSign className="size-5 text-white" />} iconBg="bg-emerald-600" />
+        <StatCard title="Avg Sale Value" value={formatCurrency(revenueSummary.avgValue)} icon={<IndianRupee className="size-5 text-white" />} iconBg="bg-teal-600" />
+        <StatCard title="Transactions" value={formatNumber(revenueSummary.numTx)} icon={<ShoppingCart className="size-5 text-white" />} iconBg="bg-emerald-700" />
+      </div>
+
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="overview" className="gap-1.5"><TrendingUp className="h-4 w-4" /><span className="hidden sm:inline">Overview</span></TabsTrigger>
+          <TabsTrigger value="products" className="gap-1.5"><ShoppingCart className="h-4 w-4" /><span className="hidden sm:inline">Products</span></TabsTrigger>
+          <TabsTrigger value="customers" className="gap-1.5"><Users className="h-4 w-4" /><span className="hidden sm:inline">Customers</span></TabsTrigger>
         </TabsList>
 
-        <TabsContent value="sales">
-          <SalesTab />
+        {/* ─── Overview Tab ──────────────────────────────────────────── */}
+        <TabsContent value="overview">
+          <div className="space-y-6">
+            {/* Revenue Trend + Payment Modes */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+              <Card className="lg:col-span-2">
+                <CardHeader>
+                  <CardTitle className="text-base">Monthly Revenue Trend</CardTitle>
+                  <CardDescription>Revenue over the past 12 months</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {monthlyRevenue.length === 0 ? (
+                    <ChartSkeleton height={320} />
+                  ) : (
+                    <ResponsiveContainer width="100%" height={320}>
+                      <AreaChart data={monthlyRevenue} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id={CHART_GRADIENT_ID} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#059669" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#059669" stopOpacity={0.02} />
+                          </linearGradient>
+                        </defs>
+                        <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                        <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+                        <Tooltip content={<ChartTooltip valuePrefix="₹" />} formatter={(value: number) => [formatCurrency(value), "Revenue"]} />
+                        <Area type="monotone" dataKey="revenue" stroke="#059669" strokeWidth={2} fill={`url(#${CHART_GRADIENT_ID})`} name="Revenue" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Payment Mode Pie Chart */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Sales by Payment Mode</CardTitle>
+                  <CardDescription>UPI, Cash, Card distribution</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {paymentModes.length === 0 ? (
+                    <div className="flex items-center justify-center h-[320px] text-muted-foreground text-sm">No sales data in selected period</div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={320}>
+                      <PieChart>
+                        <Pie
+                          data={paymentModes}
+                          cx="50%"
+                          cy="45%"
+                          outerRadius={85}
+                          innerRadius={40}
+                          dataKey="amount"
+                          nameKey="mode"
+                          labelLine={false}
+                          label={renderCustomLabel}
+                        >
+                          {paymentModes.map((entry) => (
+                            <Cell key={entry.mode} fill={PAYMENT_COLORS[entry.mode] || COLORS[paymentModes.indexOf(entry) % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          content={<ChartTooltip valuePrefix="₹" />}
+                          formatter={(value: number, name: string) => [formatCurrency(value), name]}
+                        />
+                        <Legend verticalAlign="bottom" iconType="circle" iconSize={8} formatter={(v: string) => <span className="text-xs text-foreground">{v}</span>} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Payment Mode Bar Chart */}
+            {paymentModes.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Payment Mode Breakdown</CardTitle>
+                  <CardDescription>Transaction count and revenue by payment method</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={paymentModes} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                      <XAxis dataKey="mode" tick={{ fontSize: 12, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+                      <Tooltip
+                        content={<ChartTooltip valuePrefix="₹" />}
+                        formatter={(value: number, name: string) => {
+                          if (name === "amount") return [formatCurrency(value), "Revenue"];
+                          return [formatNumber(value), "Count"];
+                        }}
+                      />
+                      <Legend />
+                      <Bar dataKey="amount" radius={[4, 4, 0, 0]} barSize={40} name="Revenue (₹)">
+                        {paymentModes.map((entry) => (
+                          <Cell key={entry.mode} fill={PAYMENT_COLORS[entry.mode] || COLORS[0]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Daily Revenue Line Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Daily Revenue ({format(parseISO(dateFrom), "dd MMM")} - {format(parseISO(dateTo), "dd MMM yyyy")})</CardTitle>
+                <CardDescription>Daily revenue and transaction count</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {dailyRevenue.length === 0 ? (
+                  <div className="flex items-center justify-center h-[300px] text-muted-foreground text-sm">No sales data in selected period</div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={dailyRevenue} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                      <YAxis yAxisId="left" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+                      <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+                      <Tooltip
+                        content={<ChartTooltip valuePrefix="₹" />}
+                        formatter={(value: number, name: string) => {
+                          if (name === "revenue") return [formatCurrency(value), "Revenue"];
+                          return [formatNumber(value), "Orders"];
+                        }}
+                      />
+                      <Legend />
+                      <Line yAxisId="left" type="monotone" dataKey="revenue" stroke="#059669" strokeWidth={2} dot={false} activeDot={{ r: 5, fill: "#059669" }} name="Revenue" />
+                      <Line yAxisId="right" type="monotone" dataKey="orders" stroke="#34d399" strokeWidth={2} strokeDasharray="5 5" dot={false} activeDot={{ r: 5, fill: "#34d399" }} name="Orders" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
+
+        {/* ─── Products Tab ──────────────────────────────────────────── */}
         <TabsContent value="products">
-          <ProductsTab />
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Top 10 Products by Revenue</CardTitle>
+                <CardDescription>Highest revenue-generating products</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {topProductsByRevenue.length === 0 ? (
+                  <div className="flex items-center justify-center h-[400px] text-muted-foreground text-sm">No product sales data available</div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={Math.max(350, topProductsByRevenue.length * 38 + 20)}>
+                    <BarChart data={topProductsByRevenue} layout="vertical" margin={{ top: 5, right: 30, left: 120, bottom: 5 }}>
+                      <XAxis type="number" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+                      <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#374151" }} axisLine={false} tickLine={false} width={115} />
+                      <Tooltip
+                        content={<ChartTooltip valuePrefix="₹" />}
+                        formatter={(value: number, name: string) => {
+                          if (name === "revenue") return [formatCurrency(value), "Revenue"];
+                          return [formatNumber(value), "Qty Sold"];
+                        }}
+                      />
+                      <Legend />
+                      <Bar dataKey="revenue" fill="#059669" radius={[0, 4, 4, 0]} barSize={18} name="Revenue (₹)">
+                        {topProductsByRevenue.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Product table */}
+            {topProductsByRevenue.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Product Revenue Details</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="max-h-96 overflow-y-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>#</TableHead>
+                          <TableHead>Product Name</TableHead>
+                          <TableHead>Category</TableHead>
+                          <TableHead className="text-right">Qty Sold</TableHead>
+                          <TableHead className="text-right">Revenue</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {topProductsByRevenue.map((p, i) => (
+                          <TableRow key={i}>
+                            <TableCell className="text-muted-foreground font-mono text-xs">{i + 1}</TableCell>
+                            <TableCell className="font-medium text-sm">{p.name}</TableCell>
+                            <TableCell><Badge variant="secondary" className="text-xs">{p.category}</Badge></TableCell>
+                            <TableCell className="text-right font-mono text-sm">{formatNumber(p.quantity)}</TableCell>
+                            <TableCell className="text-right font-mono text-sm font-semibold">{formatCurrency(p.revenue)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         </TabsContent>
+
+        {/* ─── Customers Tab ────────────────────────────────────────── */}
         <TabsContent value="customers">
-          <CustomersTab />
-        </TabsContent>
-        <TabsContent value="inventory">
-          <InventoryTab />
+          <div className="space-y-6">
+            {/* Customer Acquisition Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Customer Acquisition</CardTitle>
+                <CardDescription>New customers per day in the selected period</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {customerAcquisition.length === 0 ? (
+                  <div className="flex items-center justify-center h-[280px] text-muted-foreground text-sm">No customer acquisition data in selected period</div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={280}>
+                    <LineChart data={customerAcquisition} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                      <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                      <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+                      <Tooltip content={<ChartTooltip />} formatter={(value: number) => [formatNumber(value), "New Customers"]} />
+                      <Line type="monotone" dataKey="newCustomers" stroke="#059669" strokeWidth={2.5} dot={{ fill: "#059669", r: 4 }} activeDot={{ r: 6, fill: "#059669" }} name="New Customers" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Top Customers Table */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Top Customers by Total Spend</CardTitle>
+                <CardDescription>Highest spending customers in the selected period</CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                {topCustomers.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                    <Users className="h-10 w-10 mb-2 opacity-40" />
+                    <p className="text-sm">No customer data available</p>
+                  </div>
+                ) : (
+                  <div className="max-h-[480px] overflow-y-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>#</TableHead>
+                          <TableHead>Customer Name</TableHead>
+                          <TableHead className="hidden sm:table-cell">Phone</TableHead>
+                          <TableHead className="hidden md:table-cell">Group</TableHead>
+                          <TableHead className="text-right">Orders</TableHead>
+                          <TableHead className="text-right">Total Spent</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {topCustomers.map((c, i) => (
+                          <TableRow key={c.id}>
+                            <TableCell className="text-muted-foreground font-mono text-xs">{i + 1}</TableCell>
+                            <TableCell className="font-medium text-sm">{c.name}</TableCell>
+                            <TableCell className="hidden sm:table-cell text-xs text-muted-foreground">{c.phone || "—"}</TableCell>
+                            <TableCell className="hidden md:table-cell">
+                              <Badge variant="secondary" className="text-xs">{c.group || "New"}</Badge>
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-sm">{c._count?.sales ?? 0}</TableCell>
+                            <TableCell className="text-right font-mono text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(c.totalSpent || 0)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
-    </section>
+    </div>
   );
 }

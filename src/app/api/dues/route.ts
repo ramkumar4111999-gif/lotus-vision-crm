@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       where.status = status;
     }
 
-    const [dues, total, totalDue, totalPaid] = await Promise.all([
+    const [dues, total, aggResult] = await Promise.all([
       db.due.findMany({
         where,
         include: {
@@ -54,10 +54,10 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil(total / limit),
       },
       summary: {
-        totalDue: totalDue._sum.amount || 0,
-        totalPaid: totalPaid._sum.paid || 0,
+        totalDue: aggResult._sum?.amount || 0,
+        totalPaid: aggResult._sum?.paid || 0,
         totalOutstanding:
-          (totalDue._sum.amount || 0) - (totalPaid._sum.paid || 0),
+          (aggResult._sum?.amount || 0) - (aggResult._sum?.paid || 0),
       },
     });
   } catch (error) {

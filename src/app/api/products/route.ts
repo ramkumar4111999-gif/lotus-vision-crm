@@ -10,6 +10,8 @@ export async function GET(req: NextRequest) {
     const pageSize = parseInt(searchParams.get('pageSize') || searchParams.get('limit') || '10', 10);
     const category = searchParams.get('category') || '';
     const lowStock = searchParams.get('lowStock') === 'true';
+    const sortField = searchParams.get('sort') || 'createdAt';
+    const sortOrder = searchParams.get('order') || 'desc';
 
     const skip = (page - 1) * pageSize;
 
@@ -52,12 +54,19 @@ export async function GET(req: NextRequest) {
         where.category = category;
       }
 
+      // Build orderBy
+      const validSortFields = ['createdAt', 'name', 'price', 'stock', 'category', 'brand', 'sku'];
+      const validOrders = ['asc', 'desc'];
+      const safeSort = validSortFields.includes(sortField) ? sortField : 'createdAt';
+      const safeOrder = validOrders.includes(sortOrder) ? sortOrder : 'desc';
+      const orderBy: Record<string, string> = { [safeSort]: safeOrder };
+
       const [resultProducts, resultTotal] = await Promise.all([
         db.product.findMany({
           where,
           skip,
           take: pageSize,
-          orderBy: { createdAt: 'desc' },
+          orderBy,
         }),
         db.product.count({ where }),
       ]);
@@ -73,6 +82,7 @@ export async function GET(req: NextRequest) {
     });
     const lowStockItems = allProducts.filter((p: { stock: number; minStock: number }) => p.stock < p.minStock);
 
+    const headers = new Headers({ 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' });
     return NextResponse.json({
       products,
       total,
@@ -81,7 +91,7 @@ export async function GET(req: NextRequest) {
       totalPages: Math.ceil(Number(total) / pageSize),
       lowStockCount: lowStockItems.length,
       lowStockItems: lowStockItems.slice(0, 20),
-    });
+    }, { headers });
   } catch (error) {
     console.error('Failed to fetch products:', error);
     return NextResponse.json(
@@ -103,10 +113,16 @@ export async function POST(req: NextRequest) {
       model,
       color,
       size,
+      frameWidth,
+      bridge,
+      temple,
       price,
       costPrice,
       stock,
       minStock,
+      supplier,
+      supplierPhone,
+      lastRestocked,
       sku,
       barcode,
       type,
@@ -139,15 +155,22 @@ export async function POST(req: NextRequest) {
         model: model || null,
         color: color || null,
         size: size || null,
+        frameWidth: frameWidth ? parseInt(frameWidth) : null,
+        bridge: bridge ? parseInt(bridge) : null,
+        temple: temple ? parseInt(temple) : null,
         price: parseFloat(price),
         costPrice: costPrice ? parseFloat(costPrice) : null,
         stock: typeof stock === 'number' ? stock : 0,
         minStock: typeof minStock === 'number' ? minStock : 5,
+        supplier: supplier || null,
+        supplierPhone: supplierPhone || null,
+        lastRestocked: lastRestocked ? new Date(lastRestocked) : null,
         sku,
         barcode: barcode || null,
         type: type || null,
         duration: duration || null,
         expiryDate: expiryDate ? new Date(expiryDate) : null,
+        description: description || null,
         isActive: isActive !== undefined ? isActive : true,
       },
     });

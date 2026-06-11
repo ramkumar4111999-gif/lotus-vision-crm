@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
-const VALID_STATUSES = ['Sent', 'In Progress', 'Ready', 'Delivered']
+const VALID_STATUSES = ['Received', 'Pending', 'In Lab', 'Ready', 'Delivered']
 
 export async function PUT(
   request: NextRequest,

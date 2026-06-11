@@ -11,7 +11,15 @@ import {
   Clock,
   Eye,
   EyeOff,
+  ShoppingCart,
+  UserPlus,
+  CalendarDays,
+  TestTube,
+  Target,
+  CheckCircle2,
+  TrendingUp as TrendingUpIcon,
 } from 'lucide-react';
+import { getSettings } from '@/lib/settings';
 import {
   Card,
   CardContent,
@@ -21,6 +29,9 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Table,
   TableBody,
@@ -38,6 +49,7 @@ import {
 } from '@/components/ui/chart';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { format, parseISO, isToday, startOfDay } from 'date-fns';
+import { useCrmStore } from '@/components/crm/store';
 
 // ───────────────────────────────────────────────
 // Types
@@ -50,6 +62,7 @@ interface DashboardStats {
   lowStockAlerts: number;
   pendingLabOrders: number;
   pendingDues: number;
+  overdueAppointments?: number;
 }
 
 interface SalesTrendPoint {
@@ -356,6 +369,13 @@ const appointmentStatusClass: Record<string, string> = {
 
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState(() => getSettings());
+  const DAILY_REVENUE_GOAL = settings.dailyRevenueGoal;
+
+  // Refresh settings on mount (for SSR hydration)
+  useEffect(() => {
+    setSettings(getSettings());
+  }, []);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [salesTrend, setSalesTrend] = useState<SalesTrendPoint[]>([]);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
@@ -363,6 +383,7 @@ export default function Dashboard() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [lowStock, setLowStock] = useState<LowStockProduct[]>([]);
   const [duesVisible, setDuesVisible] = useState(false);
+  const { setActiveSection } = useCrmStore();
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -406,15 +427,21 @@ export default function Dashboard() {
 
   // ─── Derived chart data ───
 
+  // API returns { date, total } but chart expects revenue as dataKey
   const trendChartData = salesTrend.map((point) => ({
-    ...point,
     date: format(parseISO(point.date), 'MMM dd'),
+    revenue: (point as { total?: number; revenue?: number }).revenue ?? (point as { total?: number }).total ?? 0,
   }));
 
-  const productsChartData = topProducts.map((p) => ({
-    name: p.name.length > 18 ? p.name.slice(0, 18) + '…' : p.name,
-    salesCount: p.salesCount,
-  }));
+  // API returns { name, totalQtySold } but chart uses salesCount
+  const productsChartData = topProducts.map((p) => {
+    const prod = p as { name: string; salesCount?: number; totalQtySold?: number };
+    const name = prod.name.length > 18 ? prod.name.slice(0, 18) + '…' : prod.name;
+    return {
+      name,
+      salesCount: prod.salesCount ?? prod.totalQtySold ?? 0,
+    };
+  });
 
   // ─── Render helpers ───
 
@@ -478,8 +505,23 @@ export default function Dashboard() {
               </LineChart>
             </ChartContainer>
           ) : (
-            <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
-              No sales trend data available
+            <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
+              <div className="rounded-full bg-emerald-100 dark:bg-emerald-900/30 p-3">
+                <TrendingUpIcon className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium">No sales trend data yet</p>
+                <p className="text-xs mt-1">Create your first sale to see trends here.</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-1"
+                onClick={() => setActiveSection('sales')}
+              >
+                <ShoppingCart className="h-3.5 w-3.5 mr-1.5" />
+                Create your first sale
+              </Button>
             </div>
           )}
         </CardContent>
@@ -635,8 +677,14 @@ export default function Dashboard() {
               ))}
             </div>
           ) : (
-            <div className="flex h-32 items-center justify-center text-muted-foreground text-sm">
-              No appointments today
+            <div className="flex h-32 flex-col items-center justify-center gap-2 text-muted-foreground">
+              <div className="rounded-full bg-emerald-100 dark:bg-emerald-900/30 p-2.5">
+                <CalendarDays className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium">No appointments scheduled</p>
+                <p className="text-xs mt-0.5">Enjoy your day!</p>
+              </div>
             </div>
           )}
         </CardContent>
@@ -702,10 +750,105 @@ export default function Dashboard() {
               ))}
             </div>
           ) : (
-            <div className="flex h-32 items-center justify-center text-muted-foreground text-sm">
-              All products are above minimum stock levels
+            <div className="flex h-32 flex-col items-center justify-center gap-2 text-muted-foreground">
+              <div className="rounded-full bg-emerald-100 dark:bg-emerald-900/30 p-2.5">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium">All products are well stocked!</p>
+                <p className="text-xs mt-0.5">Great job.</p>
+              </div>
             </div>
           )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // ─── Quick Action Buttons ───
+  const renderQuickActions = () => {
+    const actions = [
+      { label: 'New Sale', icon: ShoppingCart, section: 'sales' as const, color: 'bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-700 dark:hover:bg-emerald-800' },
+      { label: 'Add Customer', icon: UserPlus, section: 'customers' as const, color: 'bg-sky-600 hover:bg-sky-700 text-white dark:bg-sky-700 dark:hover:bg-sky-800' },
+      { label: 'New Appointment', icon: CalendarDays, section: 'appointments' as const, color: 'bg-purple-600 hover:bg-purple-700 text-white dark:bg-purple-700 dark:hover:bg-purple-800' },
+      { label: 'Create Lab Order', icon: TestTube, section: 'lab-orders' as const, color: 'bg-orange-600 hover:bg-orange-700 text-white dark:bg-orange-700 dark:hover:bg-orange-800' },
+    ];
+
+    return (
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {actions.map((action) => {
+          const Icon = action.icon;
+          return (
+            <Button
+              key={action.section}
+              onClick={() => setActiveSection(action.section)}
+              className={`${action.color} h-auto py-4 flex flex-col items-center gap-2 rounded-xl shadow-sm transition-all hover:shadow-md`}
+            >
+              <Icon className="size-5" />
+              <span className="text-sm font-medium">{action.label}</span>
+            </Button>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // ─── Overdue Appointments Alert ───
+  const renderOverdueAlert = () => {
+    const count = stats?.overdueAppointments ?? 0;
+    if (loading || count === 0) return null;
+
+    return (
+      <Alert className="border-red-200 bg-red-50 dark:border-red-900/50 dark:bg-red-950/20">
+        <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
+        <AlertDescription className="text-red-800 dark:text-red-300">
+          <span className="font-semibold">{count} overdue appointment{count > 1 ? 's' : ''}</span>
+          {' '}still pending from previous days. Please follow up with the customers.
+        </AlertDescription>
+        <Button
+          variant="outline"
+          size="sm"
+          className="ml-auto shrink-0 border-red-300 text-red-700 hover:bg-red-100 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950/50"
+          onClick={() => setActiveSection('appointments')}
+        >
+          View Appointments
+        </Button>
+      </Alert>
+    );
+  };
+
+  // ─── Today's Revenue Goal Progress ───
+  const renderRevenueGoal = () => {
+    const todaySalesAmount = stats?.todaySales ?? 0;
+    const percentage = Math.min(100, Math.round((todaySalesAmount / DAILY_REVENUE_GOAL) * 100));
+    const isGoalReached = percentage >= 100;
+
+    return (
+      <Card className="overflow-hidden">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <div className={`rounded-lg p-1.5 ${isGoalReached ? 'bg-emerald-100 dark:bg-emerald-900/40' : 'bg-amber-100 dark:bg-amber-900/40'}`}>
+                <Target className={`h-4 w-4 ${isGoalReached ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`} />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Today&apos;s Revenue Goal</p>
+                <p className="text-xs text-muted-foreground">
+                  Daily target: {formatCurrency(DAILY_REVENUE_GOAL)}
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className={`text-lg font-bold font-mono ${isGoalReached ? 'text-emerald-700 dark:text-emerald-400' : 'text-foreground'}`}>
+                {formatCurrency(todaySalesAmount)}
+              </p>
+              <p className="text-xs text-muted-foreground">{percentage}%</p>
+            </div>
+          </div>
+          <Progress
+            value={percentage}
+            className={`h-2.5 ${isGoalReached ? '[&>div]:bg-emerald-500' : '[&>div]:bg-amber-500'}`}
+          />
         </CardContent>
       </Card>
     );
@@ -728,11 +871,17 @@ export default function Dashboard() {
       {/* Stats Cards */}
       {renderStatsGrid()}
 
+      {/* Quick Action Buttons */}
+      {renderQuickActions()}
+
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {renderSalesTrendChart()}
         {renderTopProductsChart()}
       </div>
+
+      {/* Today's Revenue Goal */}
+      {renderRevenueGoal()}
 
       {/* Pending Dues Card */}
       {!loading && stats && stats.pendingDues > 0 && (
@@ -773,6 +922,9 @@ export default function Dashboard() {
         </Card>
       )}
 
+      {/* Overdue Appointments Alert */}
+      {renderOverdueAlert()}
+
       {/* Recent Activity Section */}
       <div>
         <h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
@@ -783,7 +935,6 @@ export default function Dashboard() {
           {/* Today's Appointments */}
           <div>{renderAppointments()}</div>
 
-          {/* Low Stock Products */}
           <div>{renderLowStock()}</div>
         </div>
       </div>

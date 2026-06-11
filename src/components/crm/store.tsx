@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from 'react';
 
 export type SectionKey =
   | 'dashboard'
@@ -19,32 +19,46 @@ interface CrmState {
   sidebarOpen: boolean;
   searchQuery: string;
   darkMode: boolean;
-  setActiveSection: (section: SectionKey) => void;
-  toggleSidebar: () => void;
-  setSidebarOpen: (open: boolean) => void;
-  setSearchQuery: (query: string) => void;
-  toggleDarkMode: () => void;
-  setDarkMode: (dark: boolean) => void;
+  settingsOpen: boolean;
+  loadingBar: boolean;
+  triggerNewSale: number; // increment to signal "open new sale dialog"
+  searchInputRef: React.RefObject<HTMLInputElement | null>;
 }
 
-const CrmContext = createContext<CrmState & {
+interface CrmContextValue extends CrmState {
   setActiveSection: (section: SectionKey) => void;
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
   setSearchQuery: (query: string) => void;
   toggleDarkMode: () => void;
   setDarkMode: (dark: boolean) => void;
-}>({
+  setSettingsOpen: (open: boolean) => void;
+  setLoadingBar: (loading: boolean) => void;
+  triggerNewSaleDialog: () => void;
+  focusSearchInput: () => void;
+  setSearchInputRef: (ref: React.RefObject<HTMLInputElement | null>) => void;
+}
+
+const CrmContext = createContext<CrmContextValue>({
   activeSection: 'dashboard',
   sidebarOpen: false,
   searchQuery: '',
   darkMode: false,
+  settingsOpen: false,
+  loadingBar: false,
+  triggerNewSale: 0,
+  searchInputRef: { current: null } as React.RefObject<HTMLInputElement | null>,
   setActiveSection: () => {},
   toggleSidebar: () => {},
   setSidebarOpen: () => {},
   setSearchQuery: () => {},
   toggleDarkMode: () => {},
   setDarkMode: () => {},
+  setSettingsOpen: () => {},
+  setLoadingBar: () => {},
+  triggerNewSaleDialog: () => {},
+  focusSearchInput: () => {},
+  setSearchInputRef: () => {},
 });
 
 export function CrmProvider({ children }: { children: ReactNode }) {
@@ -53,7 +67,13 @@ export function CrmProvider({ children }: { children: ReactNode }) {
     sidebarOpen: false,
     searchQuery: '',
     darkMode: false,
+    settingsOpen: false,
+    loadingBar: false,
+    triggerNewSale: 0,
+    searchInputRef: { current: null } as React.RefObject<HTMLInputElement | null>,
   });
+
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   const setActiveSection = useCallback((section: SectionKey) => {
     setState((prev) => ({ ...prev, activeSection: section, sidebarOpen: false }));
@@ -79,14 +99,44 @@ export function CrmProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, darkMode: dark }));
   }, []);
 
-  const store = {
+  const setSettingsOpen = useCallback((open: boolean) => {
+    setState((prev) => ({ ...prev, settingsOpen: open }));
+  }, []);
+
+  const setLoadingBar = useCallback((loading: boolean) => {
+    setState((prev) => ({ ...prev, loadingBar: loading }));
+  }, []);
+
+  const triggerNewSaleDialog = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      activeSection: 'sales',
+      triggerNewSale: prev.triggerNewSale + 1,
+    }));
+  }, []);
+
+  const focusSearchInput = useCallback(() => {
+    searchInputRef.current?.focus();
+  }, []);
+
+  const setSearchInputRef = useCallback((ref: React.RefObject<HTMLInputElement | null>) => {
+    (searchInputRef as React.MutableRefObject<HTMLInputElement | null>).current = ref.current;
+  }, []);
+
+  const store: CrmContextValue = {
     ...state,
+    searchInputRef: searchInputRef as unknown as React.RefObject<HTMLInputElement | null>,
     setActiveSection,
     toggleSidebar,
     setSidebarOpen,
     setSearchQuery,
     toggleDarkMode,
     setDarkMode,
+    setSettingsOpen,
+    setLoadingBar,
+    triggerNewSaleDialog,
+    focusSearchInput,
+    setSearchInputRef,
   };
 
   return (

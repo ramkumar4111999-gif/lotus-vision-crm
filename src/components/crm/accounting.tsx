@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { format, parseISO, startOfDay, isToday, isWithinInterval } from 'date-fns';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { format, parseISO, startOfDay, isToday, isWithinInterval, startOfMonth, endOfMonth, subMonths, isBefore } from 'date-fns';
 import {
   TrendingUp,
   TrendingDown,
@@ -17,6 +17,17 @@ import {
   CreditCard,
   PieChart as PieChartIcon,
   Banknote,
+  CheckCircle2,
+  Check,
+  RotateCcw,
+  MessageCircle,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  Target,
+  ArrowUpRight,
+  ArrowDownRight,
+  Search,
 } from 'lucide-react';
 import {
   Card,
@@ -45,7 +56,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -62,6 +72,17 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart';
+import { Progress } from '@/components/ui/progress';
+import {
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
+} from '@/components/ui/collapsible';
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from '@/components/ui/tooltip';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { toast } from 'sonner';
 
@@ -73,25 +94,30 @@ interface Expense {
   description: string;
   amount: number;
   date: string;
-  vendor: string;
+  vendor: string | null;
   createdAt: string;
 }
 
 interface Due {
   id: string;
-  customer: string;
-  totalAmount: number;
+  customer: { name: string; phone: string } | null;
+  amount: number;
   paid: number;
-  balance: number;
-  dueDate: string;
-  status: 'Pending' | 'Partial' | 'Paid';
+  status: string;
+  dueDate: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 interface Sale {
   id: string;
-  customer: string;
-  totalAmount: number;
-  date: string;
+  invoiceNo: string;
+  customerName: string;
+  customer?: { name: string; phone: string } | null;
+  total: number;
+  paymentMode: string;
+  createdAt: string;
 }
 
 interface CashFlowEntry {
@@ -102,15 +128,38 @@ interface CashFlowEntry {
   balance: number;
 }
 
+interface ReturnItem {
+  id: string;
+  saleId: string;
+  reason: string;
+  amount: number;
+  status: string;
+  createdAt: string;
+  sale?: {
+    id: string;
+    invoiceNo: string;
+    customer?: { id: string; name: string; phone: string } | null;
+  };
+}
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const EXPENSE_CATEGORIES = [
   'Rent',
   'Salary',
   'Electricity',
-  'Lab Bills',
+  'Supplies',
+  'Marketing',
   'Transport',
   'Maintenance',
+  'Other',
+] as const;
+
+const RETURN_REASONS = [
+  'Defective',
+  'Wrong Product',
+  'Customer Changed Mind',
+  'Warranty',
   'Other',
 ] as const;
 
@@ -121,26 +170,23 @@ const PIE_COLORS = [
   'hsl(var(--chart-4))',
   'hsl(var(--chart-5))',
   'hsl(var(--chart-6))',
-  'hsl(var(--chart-2) / 0.5)',
+  'hsl(var(--chart-1) / 0.6)',
+  'hsl(var(--chart-2) / 0.6)',
 ];
 
 const BAR_CHART_CONFIG: ChartConfig = {
-  amount: {
-    label: 'Amount',
-    color: 'hsl(var(--chart-1))',
-  },
+  amount: { label: 'Amount', color: 'hsl(var(--chart-1))' },
 };
 
 const PIE_CHART_CONFIG: ChartConfig = {
-  value: {
-    label: 'Amount',
-  },
+  value: { label: 'Amount' },
   Rent: { label: 'Rent', color: 'hsl(var(--chart-1))' },
   Salary: { label: 'Salary', color: 'hsl(var(--chart-2))' },
   Electricity: { label: 'Electricity', color: 'hsl(var(--chart-3))' },
-  'Lab Bills': { label: 'Lab Bills', color: 'hsl(var(--chart-4))' },
-  Transport: { label: 'Transport', color: 'hsl(var(--chart-5))' },
-  Maintenance: { label: 'Maintenance', color: 'hsl(var(--chart-6))' },
+  Supplies: { label: 'Supplies', color: 'hsl(var(--chart-4))' },
+  Marketing: { label: 'Marketing', color: 'hsl(var(--chart-5))' },
+  Transport: { label: 'Transport', color: 'hsl(var(--chart-6))' },
+  Maintenance: { label: 'Maintenance', color: 'hsl(var(--chart-1) / 0.6)' },
   Other: { label: 'Other', color: 'hsl(40, 80%, 55%)' },
 };
 
@@ -155,16 +201,31 @@ function formatINR(amount: number): string {
   }).format(amount);
 }
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string | Date): string {
   try {
-    return format(parseISO(dateStr), 'dd MMM yyyy');
+    const d = typeof dateStr === 'string' ? parseISO(dateStr) : dateStr;
+    return format(d, 'dd MMM yyyy');
   } catch {
-    return dateStr;
+    return String(dateStr);
+  }
+}
+
+function toDateString(dateStr: string | Date): string {
+  try {
+    const d = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
+    return format(d, 'yyyy-MM-dd');
+  } catch {
+    return String(dateStr);
   }
 }
 
 function getTodayStr(): string {
   return format(new Date(), 'yyyy-MM-dd');
+}
+
+function getBudgetKey(): string {
+  const now = new Date();
+  return `accounting_budget_${now.getFullYear()}_${now.getMonth() + 1}`;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -174,17 +235,22 @@ export default function Accounting() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [dues, setDues] = useState<Due[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
+  const [returns, setReturns] = useState<ReturnItem[]>([]);
 
   // Loading states
   const [loadingExpenses, setLoadingExpenses] = useState(true);
   const [loadingDues, setLoadingDues] = useState(true);
   const [loadingSales, setLoadingSales] = useState(true);
+  const [loadingReturns, setLoadingReturns] = useState(true);
 
   // Dialog states
   const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [payingDue, setPayingDue] = useState<Due | null>(null);
+  const [markPaidLoading, setMarkPaidLoading] = useState(false);
+  const [returnDialogOpen, setReturnDialogOpen] = useState(false);
+  const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
 
   // Expense form state
   const [expForm, setExpForm] = useState({
@@ -198,9 +264,31 @@ export default function Accounting() {
   // Payment form state
   const [paymentAmount, setPaymentAmount] = useState('');
 
+  // Return form state
+  const [returnForm, setReturnForm] = useState({
+    saleSearch: '',
+    saleId: '',
+    refundAmount: '',
+    reason: '',
+  });
+  const [saleSearchResults, setSaleSearchResults] = useState<Sale[]>([]);
+  const [selectedReturnSale, setSelectedReturnSale] = useState<Sale | null>(null);
+  const [creatingReturn, setCreatingReturn] = useState(false);
+  const saleSearchTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  // Budget state
+  const [monthlyBudget, setMonthlyBudget] = useState<number>(0);
+  const [budgetInput, setBudgetInput] = useState('');
+
+  // Expanded due row (payment history)
+  const [expandedDueId, setExpandedDueId] = useState<string | null>(null);
+
+  // P&L collapsible
+  const [plOpen, setPlOpen] = useState(false);
+
   // Filter states
   const [cashFlowFrom, setCashFlowFrom] = useState(
-    format(new Date(), 'yyyy-MM-01')
+    format(startOfMonth(new Date()), 'yyyy-MM-dd')
   );
   const [cashFlowTo, setCashFlowTo] = useState(getTodayStr());
   const [dueFilter, setDueFilter] = useState<string>('All');
@@ -213,10 +301,10 @@ export default function Accounting() {
   const fetchExpenses = useCallback(async () => {
     try {
       setLoadingExpenses(true);
-      const res = await fetch('/api/expenses');
+      const res = await fetch('/api/expenses?limit=200');
       if (res.ok) {
-        const data = await res.json();
-        setExpenses(Array.isArray(data) ? data : data.expenses ?? []);
+        const json = await res.json();
+        setExpenses(Array.isArray(json.data) ? json.data : Array.isArray(json) ? json : []);
       }
     } catch {
       toast.error('Failed to fetch expenses');
@@ -228,10 +316,10 @@ export default function Accounting() {
   const fetchDues = useCallback(async () => {
     try {
       setLoadingDues(true);
-      const res = await fetch('/api/dues');
+      const res = await fetch('/api/dues?limit=200');
       if (res.ok) {
-        const data = await res.json();
-        setDues(Array.isArray(data) ? data : data.dues ?? []);
+        const json = await res.json();
+        setDues(Array.isArray(json.data) ? json.data : Array.isArray(json) ? json : []);
       }
     } catch {
       toast.error('Failed to fetch dues');
@@ -243,10 +331,11 @@ export default function Accounting() {
   const fetchSales = useCallback(async () => {
     try {
       setLoadingSales(true);
-      const res = await fetch('/api/sales');
+      const res = await fetch('/api/sales?limit=500');
       if (res.ok) {
-        const data = await res.json();
-        setSales(Array.isArray(data) ? data : data.sales ?? []);
+        const json = await res.json();
+        const arr = Array.isArray(json.sales) ? json.sales : Array.isArray(json.data) ? json.data : [];
+        setSales(arr);
       }
     } catch {
       toast.error('Failed to fetch sales');
@@ -255,45 +344,122 @@ export default function Accounting() {
     }
   }, []);
 
+  const fetchReturns = useCallback(async () => {
+    try {
+      setLoadingReturns(true);
+      const res = await fetch('/api/returns?limit=50');
+      if (res.ok) {
+        const json = await res.json();
+        setReturns(Array.isArray(json.returns) ? json.returns : Array.isArray(json.data) ? json.data : []);
+      }
+    } catch {
+      toast.error('Failed to fetch returns');
+    } finally {
+      setLoadingReturns(false);
+    }
+  }, []);
+
+  // Load budget from localStorage
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(getBudgetKey());
+      if (stored) setMonthlyBudget(parseFloat(stored) || 0);
+    } catch { /* ignore */ }
+  }, []);
+
   useEffect(() => {
     fetchExpenses();
     fetchDues();
     fetchSales();
-  }, [fetchExpenses, fetchDues, fetchSales]);
+    fetchReturns();
+  }, [fetchExpenses, fetchDues, fetchSales, fetchReturns]);
 
   // ─── Summary Calculations ────────────────────────────────────────────────
 
   const todayIncome = useMemo(() => {
     return sales
       .filter((s) => {
-        try {
-          return isToday(parseISO(s.date));
-        } catch {
-          return false;
-        }
+        try { return isToday(new Date(s.createdAt)); } catch { return false; }
       })
-      .reduce((sum, s) => sum + (s.totalAmount || 0), 0);
+      .reduce((sum, s) => sum + (s.total || 0), 0);
   }, [sales]);
 
-  const todayExpenses = useMemo(() => {
+  const monthlyIncome = useMemo(() => {
+    const mStart = startOfMonth(new Date());
+    return sales
+      .filter((s) => {
+        try { return new Date(s.createdAt) >= mStart; } catch { return false; }
+      })
+      .reduce((sum, s) => sum + (s.total || 0), 0);
+  }, [sales]);
+
+  const lastMonthIncome = useMemo(() => {
+    const lastMStart = startOfMonth(subMonths(new Date(), 1));
+    const lastMEnd = endOfMonth(subMonths(new Date(), 1));
+    return sales
+      .filter((s) => {
+        try {
+          const d = new Date(s.createdAt);
+          return d >= lastMStart && d <= lastMEnd;
+        } catch { return false; }
+      })
+      .reduce((sum, s) => sum + (s.total || 0), 0);
+  }, [sales]);
+
+  const monthlyExpensesTotal = useMemo(() => {
+    const mStart = startOfMonth(new Date());
     return expenses
       .filter((e) => {
-        try {
-          return isToday(parseISO(e.date));
-        } catch {
-          return false;
-        }
+        try { return new Date(e.date) >= mStart; } catch { return false; }
       })
       .reduce((sum, e) => sum + (e.amount || 0), 0);
   }, [expenses]);
 
-  const netCashFlow = todayIncome - todayExpenses;
+  const totalExpenses = useMemo(() => {
+    return expenses.reduce((s, e) => s + (e.amount || 0), 0);
+  }, [expenses]);
+
+  const todayExpenses = useMemo(() => {
+    return expenses
+      .filter((e) => {
+        try { return isToday(new Date(e.date)); } catch { return false; }
+      })
+      .reduce((sum, e) => sum + (e.amount || 0), 0);
+  }, [expenses]);
 
   const totalPendingDues = useMemo(() => {
     return dues
       .filter((d) => d.status !== 'Paid')
-      .reduce((sum, d) => sum + (d.balance || 0), 0);
+      .reduce((sum, d) => sum + ((d.amount || 0) - (d.paid || 0)), 0);
   }, [dues]);
+
+  // ─── Returns Summary ────────────────────────────────────────────────────
+
+  const totalReturnRefund = useMemo(() => {
+    return returns.reduce((s, r) => s + (r.amount || 0), 0);
+  }, [returns]);
+
+  const thisMonthReturns = useMemo(() => {
+    const mStart = startOfMonth(new Date());
+    return returns.filter((r) => {
+      try { return new Date(r.createdAt) >= mStart; } catch { return false; }
+    });
+  }, [returns]);
+
+  const thisMonthReturnAmount = useMemo(() => {
+    return thisMonthReturns.reduce((s, r) => s + (r.amount || 0), 0);
+  }, [thisMonthReturns]);
+
+  // ─── P&L Calculations ───────────────────────────────────────────────────
+
+  const netProfit = useMemo(() => {
+    return monthlyIncome - monthlyExpensesTotal;
+  }, [monthlyIncome, monthlyExpensesTotal]);
+
+  const momChangePercent = useMemo(() => {
+    if (lastMonthIncome === 0) return monthlyIncome > 0 ? 100 : 0;
+    return Math.round(((monthlyIncome - lastMonthIncome) / lastMonthIncome) * 100);
+  }, [monthlyIncome, lastMonthIncome]);
 
   // ─── Cash Flow Calculations ──────────────────────────────────────────────
 
@@ -304,63 +470,50 @@ export default function Accounting() {
     const incomeEntries: CashFlowEntry[] = sales
       .filter((s) => {
         try {
-          const d = parseISO(s.date);
-          return isWithinInterval(d, { start: fromDate, end: toDate });
-        } catch {
-          return false;
-        }
+          const d = new Date(s.createdAt);
+          return isWithinInterval(d, { start: fromDate, end: new Date(cashFlowTo + 'T23:59:59') });
+        } catch { return false; }
       })
       .map((s) => ({
-        date: s.date,
-        description: `Sale - ${s.customer || 'Customer'}`,
+        date: toDateString(s.createdAt),
+        description: `Sale - ${s.customer?.name || s.customerName || 'Customer'} (${s.invoiceNo || ''})`,
         type: 'Income' as const,
-        amount: s.totalAmount,
+        amount: s.total || 0,
         balance: 0,
       }));
 
     const expenseEntries: CashFlowEntry[] = expenses
       .filter((e) => {
         try {
-          const d = parseISO(e.date);
-          return isWithinInterval(d, { start: fromDate, end: toDate });
-        } catch {
-          return false;
-        }
+          const d = new Date(e.date);
+          return isWithinInterval(d, { start: fromDate, end: new Date(cashFlowTo + 'T23:59:59') });
+        } catch { return false; }
       })
       .map((e) => ({
-        date: e.date,
+        date: toDateString(e.date),
         description: `${e.category} - ${e.description || e.vendor || 'Expense'}`,
         type: 'Expense' as const,
         amount: e.amount,
         balance: 0,
       }));
 
-    const allEntries = [...incomeEntries, ...expenseEntries].sort(
-      (a, b) => {
-        const dateCompare = a.date.localeCompare(b.date);
-        if (dateCompare !== 0) return dateCompare;
-        return a.type === 'Income' ? -1 : 1;
-      }
-    );
+    const allEntries = [...incomeEntries, ...expenseEntries].sort((a, b) => {
+      const dc = a.date.localeCompare(b.date);
+      if (dc !== 0) return dc;
+      return a.type === 'Income' ? -1 : 1;
+    });
 
     let runningBalance = 0;
     return allEntries.map((entry) => {
-      if (entry.type === 'Income') {
-        runningBalance += entry.amount;
-      } else {
-        runningBalance -= entry.amount;
-      }
+      if (entry.type === 'Income') runningBalance += entry.amount;
+      else runningBalance -= entry.amount;
       return { ...entry, balance: runningBalance };
     });
   }, [sales, expenses, cashFlowFrom, cashFlowTo]);
 
   const cashFlowSummary = useMemo(() => {
-    const totalIncome = cashFlowData
-      .filter((e) => e.type === 'Income')
-      .reduce((s, e) => s + e.amount, 0);
-    const totalExpense = cashFlowData
-      .filter((e) => e.type === 'Expense')
-      .reduce((s, e) => s + e.amount, 0);
+    const totalIncome = cashFlowData.filter((e) => e.type === 'Income').reduce((s, e) => s + e.amount, 0);
+    const totalExpense = cashFlowData.filter((e) => e.type === 'Expense').reduce((s, e) => s + e.amount, 0);
     return { totalIncome, totalExpense, net: totalIncome - totalExpense };
   }, [cashFlowData]);
 
@@ -378,34 +531,45 @@ export default function Accounting() {
     })).filter((c) => c.value > 0);
   }, [expenses]);
 
-  const totalExpenses = useMemo(() => {
-    return expenses.reduce((s, e) => s + (e.amount || 0), 0);
-  }, [expenses]);
-
-  // ─── Filtered Dues ───────────────────────────────────────────────────────
+  // ─── Filtered Dues (with overdue detection) ──────────────────────────────
 
   const filteredDues = useMemo(() => {
-    if (dueFilter === 'All') return dues;
-    return dues.filter((d) => d.status === dueFilter);
+    let filtered = dues;
+    if (dueFilter === 'All') {
+      // no filter
+    } else if (dueFilter === 'Overdue') {
+      const todayStr = getTodayStr();
+      filtered = dues.filter((d) => {
+        if (d.status === 'Paid') return false;
+        if (!d.dueDate) return false;
+        try {
+          return isBefore(parseISO(toDateString(d.dueDate)), parseISO(todayStr));
+        } catch { return false; }
+      });
+    } else {
+      filtered = dues.filter((d) => d.status === dueFilter);
+    }
+    return filtered;
   }, [dues, dueFilter]);
+
+  // ─── Overdue check helper ────────────────────────────────────────────────
+
+  const isDueOverdue = useCallback((due: Due): boolean => {
+    if (due.status === 'Paid') return false;
+    if (!due.dueDate) return false;
+    try {
+      return isBefore(parseISO(toDateString(due.dueDate)), parseISO(getTodayStr()));
+    } catch { return false; }
+  }, []);
 
   // ─── Expense Form Handlers ───────────────────────────────────────────────
 
   const resetExpForm = () => {
-    setExpForm({
-      category: '',
-      description: '',
-      amount: '',
-      date: getTodayStr(),
-      vendor: '',
-    });
+    setExpForm({ category: '', description: '', amount: '', date: getTodayStr(), vendor: '' });
     setEditingExpense(null);
   };
 
-  const openAddExpense = () => {
-    resetExpForm();
-    setExpenseDialogOpen(true);
-  };
+  const openAddExpense = () => { resetExpForm(); setExpenseDialogOpen(true); };
 
   const openEditExpense = (expense: Expense) => {
     setEditingExpense(expense);
@@ -413,7 +577,7 @@ export default function Accounting() {
       category: expense.category || '',
       description: expense.description || '',
       amount: String(expense.amount || ''),
-      date: expense.date || getTodayStr(),
+      date: toDateString(expense.date),
       vendor: expense.vendor || '',
     });
     setExpenseDialogOpen(true);
@@ -425,52 +589,40 @@ export default function Accounting() {
       toast.error('Please fill in all required fields with valid data');
       return;
     }
-
     try {
       const isEdit = !!editingExpense;
       const url = editingExpense ? `/api/expenses?id=${editingExpense.id}` : '/api/expenses';
-      const method = isEdit ? 'PUT' : 'POST';
-
       const res = await fetch(url, {
-        method,
+        method: isEdit ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           category: expForm.category,
           description: expForm.description,
           amount,
           date: expForm.date,
-          vendor: expForm.vendor,
+          vendor: expForm.vendor || null,
         }),
       });
-
       if (res.ok) {
         toast.success(isEdit ? 'Expense updated' : 'Expense added');
         setExpenseDialogOpen(false);
         resetExpForm();
         fetchExpenses();
       } else {
-        toast.error('Failed to save expense');
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || 'Failed to save expense');
       }
-    } catch {
-      toast.error('Network error');
-    }
+    } catch { toast.error('Network error'); }
   };
 
   const handleDeleteExpense = async (id: string) => {
     setDeletingExpenseId(id);
     try {
       const res = await fetch(`/api/expenses?id=${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        toast.success('Expense deleted');
-        fetchExpenses();
-      } else {
-        toast.error('Failed to delete expense');
-      }
-    } catch {
-      toast.error('Network error');
-    } finally {
-      setDeletingExpenseId(null);
-    }
+      if (res.ok) { toast.success('Expense deleted'); fetchExpenses(); }
+      else toast.error('Failed to delete expense');
+    } catch { toast.error('Network error'); }
+    finally { setDeletingExpenseId(null); }
   };
 
   // ─── Payment Handlers ────────────────────────────────────────────────────
@@ -484,81 +636,181 @@ export default function Accounting() {
   const handleRecordPayment = async () => {
     if (!payingDue) return;
     const amount = parseFloat(paymentAmount);
-    if (isNaN(amount) || amount <= 0) {
-      toast.error('Please enter a valid amount');
-      return;
-    }
-    if (amount > payingDue.balance) {
-      toast.error('Amount exceeds pending balance');
-      return;
-    }
+    const balance = (payingDue.amount || 0) - (payingDue.paid || 0);
+    if (isNaN(amount) || amount <= 0) { toast.error('Please enter a valid amount'); return; }
+    if (amount > balance) { toast.error('Amount exceeds pending balance'); return; }
 
+    setMarkPaidLoading(true);
     try {
-      const newPaid = payingDue.paid + amount;
-      const newBalance = payingDue.totalAmount - newPaid;
-      const newStatus = newBalance <= 0 ? 'Paid' : 'Partial';
-
       const res = await fetch(`/api/dues?id=${payingDue.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          paid: newPaid,
-          balance: Math.max(0, newBalance),
-          status: newStatus,
-        }),
+        body: JSON.stringify({ paidAmount: amount }),
       });
-
       if (res.ok) {
         toast.success(`Payment of ${formatINR(amount)} recorded`);
         setPaymentDialogOpen(false);
         setPayingDue(null);
         fetchDues();
-      } else {
-        toast.error('Failed to record payment');
-      }
-    } catch {
-      toast.error('Network error');
-    }
+      } else toast.error('Failed to record payment');
+    } catch { toast.error('Network error'); }
+    finally { setMarkPaidLoading(false); }
   };
 
-  // ─── Status Badge ────────────────────────────────────────────────────────
+  const handleMarkPaid = async (due: Due) => {
+    setMarkPaidLoading(true);
+    try {
+      const res = await fetch(`/api/dues?id=${due.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'Paid' }),
+      });
+      if (res.ok) { toast.success(`${due.customer?.name || 'Customer'} marked as paid`); fetchDues(); }
+      else toast.error('Failed to update');
+    } catch { toast.error('Network error'); }
+    finally { setMarkPaidLoading(false); }
+  };
+
+  // ─── Return Handlers ─────────────────────────────────────────────────────
+
+  const openCreateReturn = () => {
+    setReturnForm({ saleSearch: '', saleId: '', refundAmount: '', reason: '' });
+    setSaleSearchResults([]);
+    setSelectedReturnSale(null);
+    setReturnDialogOpen(true);
+  };
+
+  const handleSaleSearch = (query: string) => {
+    setReturnForm((f) => ({ ...f, saleSearch: query }));
+    if (saleSearchTimeout.current) clearTimeout(saleSearchTimeout.current);
+    if (!query.trim()) { setSaleSearchResults([]); return; }
+    saleSearchTimeout.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/sales?search=${encodeURIComponent(query)}&limit=10`);
+        if (res.ok) {
+          const json = await res.json();
+          const arr = Array.isArray(json.sales) ? json.sales : Array.isArray(json.data) ? json.data : [];
+          setSaleSearchResults(arr);
+        }
+      } catch { /* ignore */ }
+    }, 300);
+  };
+
+  const selectReturnSale = (sale: Sale) => {
+    setSelectedReturnSale(sale);
+    setReturnForm((f) => ({ ...f, saleId: sale.id, refundAmount: String(sale.total || 0) }));
+    setSaleSearchResults([]);
+  };
+
+  const handleCreateReturn = async () => {
+    if (!returnForm.saleId || !returnForm.reason) {
+      toast.error('Please select a sale and a reason');
+      return;
+    }
+    const amount = parseFloat(returnForm.refundAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error('Please enter a valid refund amount');
+      return;
+    }
+    setCreatingReturn(true);
+    try {
+      const res = await fetch('/api/returns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          saleId: returnForm.saleId,
+          reason: returnForm.reason,
+          refundAmount: amount,
+        }),
+      });
+      if (res.ok) {
+        toast.success('Return created successfully');
+        setReturnDialogOpen(false);
+        fetchReturns();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || 'Failed to create return');
+      }
+    } catch { toast.error('Network error'); }
+    finally { setCreatingReturn(false); }
+  };
+
+  // ─── CSV Export ──────────────────────────────────────────────────────────
+
+  const handleExportCSV = () => {
+    const rows = expenses.map((e) => [
+      formatDate(e.date),
+      e.category,
+      `"${(e.description || '').replace(/"/g, '""')}"`,
+      e.amount,
+      `"${(e.vendor || '').replace(/"/g, '""')}"`,
+    ]);
+    const csv = ['Date,Category,Description,Amount,Vendor', ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `expenses_${getTodayStr()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('CSV exported successfully');
+  };
+
+  // ─── Budget Handlers ─────────────────────────────────────────────────────
+
+  const handleSetBudget = () => {
+    const val = parseFloat(budgetInput);
+    if (isNaN(val) || val <= 0) {
+      toast.error('Please enter a valid budget amount');
+      return;
+    }
+    setMonthlyBudget(val);
+    localStorage.setItem(getBudgetKey(), String(val));
+    setBudgetDialogOpen(false);
+    setBudgetInput('');
+    toast.success('Monthly budget set to ' + formatINR(val));
+  };
+
+  const budgetPercent = monthlyBudget > 0 ? Math.min((monthlyExpensesTotal / monthlyBudget) * 100, 100) : 0;
+  const budgetRemaining = monthlyBudget - monthlyExpensesTotal;
+
+  // ─── Status Badges ───────────────────────────────────────────────────────
 
   const DueStatusBadge = ({ status }: { status: string }) => {
-    switch (status) {
-      case 'Pending':
-        return (
-          <Badge className="bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800">
-            Pending
-          </Badge>
-        );
-      case 'Partial':
-        return (
-          <Badge className="bg-sky-100 text-sky-800 border-sky-200 hover:bg-sky-100 dark:bg-sky-950 dark:text-sky-300 dark:border-sky-800">
-            Partial
-          </Badge>
-        );
-      case 'Paid':
-        return (
-          <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800">
-            Paid
-          </Badge>
-        );
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
+    const styles: Record<string, string> = {
+      Pending: 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800',
+      Partial: 'bg-sky-100 text-sky-800 border-sky-200 hover:bg-sky-100 dark:bg-sky-950 dark:text-sky-300 dark:border-sky-800',
+      Paid: 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800',
+      Overdue: 'bg-red-100 text-red-800 border-red-200 hover:bg-red-100 dark:bg-red-950 dark:text-red-300 dark:border-red-800',
+    };
+    return (
+      <Badge className={styles[status] || 'border'}>
+        {status}
+      </Badge>
+    );
   };
 
-  // ─── Skeleton Loader ─────────────────────────────────────────────────────
+  const ReturnStatusBadge = ({ status }: { status: string }) => {
+    const styles: Record<string, string> = {
+      Completed: 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800',
+      Pending: 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800',
+      Rejected: 'bg-red-100 text-red-800 border-red-200 hover:bg-red-100 dark:bg-red-950 dark:text-red-300 dark:border-red-800',
+    };
+    return (
+      <Badge className={styles[status] || 'border'}>
+        {status}
+      </Badge>
+    );
+  };
+
+  // ─── Skeleton ─────────────────────────────────────────────────────────────
 
   const TableSkeleton = ({ rows = 5, cols = 6 }: { rows?: number; cols?: number }) => (
     <div className="space-y-2 p-4">
       {Array.from({ length: rows }).map((_, i) => (
         <div key={i} className="flex gap-4">
           {Array.from({ length: cols }).map((_, j) => (
-            <div
-              key={j}
-              className="h-8 bg-muted rounded animate-pulse flex-1"
-            />
+            <div key={j} className="h-8 bg-muted rounded animate-pulse flex-1" />
           ))}
         </div>
       ))}
@@ -580,7 +832,74 @@ export default function Accounting() {
             Track income, expenses, and pending dues
           </p>
         </div>
+        <Button onClick={openAddExpense} size="sm" className="gap-1.5 w-fit">
+          <Plus className="h-4 w-4" />
+          Add Expense
+        </Button>
       </div>
+
+      {/* ─── Profit & Loss Card ─────────────────────────────────────────── */}
+      <Collapsible open={plOpen} onOpenChange={setPlOpen}>
+        <Card>
+          <CollapsibleTrigger className="w-full">
+            <CardHeader className="pb-2 cursor-pointer">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-950">
+                    <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base">Profit &amp; Loss Summary</CardTitle>
+                    <CardDescription className="text-xs">
+                      {format(new Date(), 'MMMM yyyy')} &bull; Net: <span className={netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-red-600 dark:text-red-400 font-semibold'}>{formatINR(netProfit)}</span>
+                    </CardDescription>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  {lastMonthIncome > 0 && (
+                    <div className={`flex items-center gap-0.5 text-xs font-medium ${momChangePercent >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {momChangePercent >= 0 ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
+                      {Math.abs(momChangePercent)}% vs last month
+                    </div>
+                  )}
+                  {plOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                </div>
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Revenue</p>
+                  <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">{formatINR(monthlyIncome)}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Monthly collections</p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Cost of Goods</p>
+                  <p className="text-sm font-bold text-muted-foreground font-mono">Not tracked</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Enable product costing</p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Gross Profit</p>
+                  <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">{formatINR(monthlyIncome)}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Revenue (COGS not tracked)</p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Total Expenses</p>
+                  <p className="text-sm font-bold text-red-600 dark:text-red-400 font-mono">{formatINR(monthlyExpensesTotal)}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">This month</p>
+                </div>
+                <div className={`rounded-lg border p-3 ${netProfit >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-red-50 dark:bg-red-950/30'}`}>
+                  <p className="text-xs text-muted-foreground">Net Profit</p>
+                  <p className={`text-sm font-bold font-mono ${netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{formatINR(netProfit)}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Revenue - Expenses</p>
+                </div>
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -591,10 +910,8 @@ export default function Accounting() {
                 <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs text-muted-foreground font-medium">Today&apos;s Income</p>
-                <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 truncate">
-                  {formatINR(todayIncome)}
-                </p>
+                <p className="text-xs text-muted-foreground font-medium">Today&apos;s Collections</p>
+                <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 truncate">{formatINR(todayIncome)}</p>
               </div>
             </div>
           </CardContent>
@@ -603,49 +920,12 @@ export default function Accounting() {
         <Card className="py-4">
           <CardContent className="px-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-100 dark:bg-red-950">
-                <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-100 dark:bg-teal-950">
+                <Wallet className="h-5 w-5 text-teal-600 dark:text-teal-400" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs text-muted-foreground font-medium">Today&apos;s Expenses</p>
-                <p className="text-lg font-bold text-red-600 dark:text-red-400 truncate">
-                  {formatINR(todayExpenses)}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="py-4">
-          <CardContent className="px-4">
-            <div className="flex items-center gap-3">
-              <div
-                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
-                  netCashFlow >= 0
-                    ? 'bg-emerald-100 dark:bg-emerald-950'
-                    : 'bg-red-100 dark:bg-red-950'
-                }`}
-              >
-                <Wallet
-                  className={`h-5 w-5 ${
-                    netCashFlow >= 0
-                      ? 'text-emerald-600 dark:text-emerald-400'
-                      : 'text-red-600 dark:text-red-400'
-                  }`}
-                />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground font-medium">Net Cash Flow</p>
-                <p
-                  className={`text-lg font-bold truncate ${
-                    netCashFlow >= 0
-                      ? 'text-emerald-600 dark:text-emerald-400'
-                      : 'text-red-600 dark:text-red-400'
-                  }`}
-                >
-                  {netCashFlow >= 0 ? '+' : ''}
-                  {formatINR(netCashFlow)}
-                </p>
+                <p className="text-xs text-muted-foreground font-medium">Monthly Collections</p>
+                <p className="text-lg font-bold text-teal-600 dark:text-teal-400 truncate">{formatINR(monthlyIncome)}</p>
               </div>
             </div>
           </CardContent>
@@ -658,10 +938,22 @@ export default function Accounting() {
                 <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs text-muted-foreground font-medium">Pending Dues</p>
-                <p className="text-lg font-bold text-amber-600 dark:text-amber-400 truncate">
-                  {formatINR(totalPendingDues)}
-                </p>
+                <p className="text-xs text-muted-foreground font-medium">Outstanding Dues</p>
+                <p className="text-lg font-bold text-amber-600 dark:text-amber-400 truncate">{formatINR(totalPendingDues)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="py-4">
+          <CardContent className="px-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-100 dark:bg-red-950">
+                <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground font-medium">Total Expenses</p>
+                <p className="text-lg font-bold text-red-600 dark:text-red-400 truncate">{formatINR(totalExpenses)}</p>
               </div>
             </div>
           </CardContent>
@@ -670,19 +962,11 @@ export default function Accounting() {
 
       {/* Tabs */}
       <Tabs defaultValue="cashflow" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="cashflow" className="gap-1.5">
-            <Banknote className="h-4 w-4" />
-            <span className="hidden sm:inline">Cash Flow</span>
-          </TabsTrigger>
-          <TabsTrigger value="expenses" className="gap-1.5">
-            <Receipt className="h-4 w-4" />
-            <span className="hidden sm:inline">Expenses</span>
-          </TabsTrigger>
-          <TabsTrigger value="dues" className="gap-1.5">
-            <CreditCard className="h-4 w-4" />
-            <span className="hidden sm:inline">Dues</span>
-          </TabsTrigger>
+        <TabsList className="flex-wrap">
+          <TabsTrigger value="cashflow" className="gap-1.5"><Banknote className="h-4 w-4" /><span className="hidden sm:inline">Cash Flow</span></TabsTrigger>
+          <TabsTrigger value="expenses" className="gap-1.5"><Receipt className="h-4 w-4" /><span className="hidden sm:inline">Expenses</span></TabsTrigger>
+          <TabsTrigger value="dues" className="gap-1.5"><CreditCard className="h-4 w-4" /><span className="hidden sm:inline">Dues</span></TabsTrigger>
+          <TabsTrigger value="returns" className="gap-1.5"><RotateCcw className="h-4 w-4" /><span className="hidden sm:inline">Returns</span></TabsTrigger>
         </TabsList>
 
         {/* ─── Cash Flow Tab ────────────────────────────────────────────── */}
@@ -696,29 +980,12 @@ export default function Accounting() {
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <div className="flex items-center gap-1.5">
-                    <Label htmlFor="cf-from" className="text-xs whitespace-nowrap">
-                      <CalendarDays className="h-3.5 w-3.5 inline mr-1" />
-                      From
-                    </Label>
-                    <Input
-                      id="cf-from"
-                      type="date"
-                      value={cashFlowFrom}
-                      onChange={(e) => setCashFlowFrom(e.target.value)}
-                      className="h-8 w-[140px] text-xs"
-                    />
+                    <Label htmlFor="cf-from" className="text-xs whitespace-nowrap"><CalendarDays className="h-3.5 w-3.5 inline mr-1" />From</Label>
+                    <Input id="cf-from" type="date" value={cashFlowFrom} onChange={(e) => setCashFlowFrom(e.target.value)} className="h-8 w-[140px] text-xs" />
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <Label htmlFor="cf-to" className="text-xs whitespace-nowrap">
-                      To
-                    </Label>
-                    <Input
-                      id="cf-to"
-                      type="date"
-                      value={cashFlowTo}
-                      onChange={(e) => setCashFlowTo(e.target.value)}
-                      className="h-8 w-[140px] text-xs"
-                    />
+                    <Label htmlFor="cf-to" className="text-xs whitespace-nowrap">To</Label>
+                    <Input id="cf-to" type="date" value={cashFlowTo} onChange={(e) => setCashFlowTo(e.target.value)} className="h-8 w-[140px] text-xs" />
                   </div>
                 </div>
               </div>
@@ -746,39 +1013,20 @@ export default function Accounting() {
                       </TableHeader>
                       <TableBody>
                         {cashFlowData.map((entry, i) => (
-                          <TableRow key={`cf-${entry.date}-${entry.description}-${i}`}>
+                          <TableRow key={`cf-${i}`}>
                             <TableCell className="text-xs">{formatDate(entry.date)}</TableCell>
-                            <TableCell className="text-xs max-w-[200px] truncate">
-                              {entry.description}
-                            </TableCell>
+                            <TableCell className="text-xs max-w-[200px] truncate">{entry.description}</TableCell>
                             <TableCell>
                               {entry.type === 'Income' ? (
-                                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800">
-                                  Income
-                                </Badge>
+                                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800">Income</Badge>
                               ) : (
-                                <Badge className="bg-red-100 text-red-700 border-red-200 text-xs dark:bg-red-950 dark:text-red-300 dark:border-red-800">
-                                  Expense
-                                </Badge>
+                                <Badge className="bg-red-100 text-red-700 border-red-200 text-xs dark:bg-red-950 dark:text-red-300 dark:border-red-800">Expense</Badge>
                               )}
                             </TableCell>
-                            <TableCell
-                              className={`text-xs text-right font-mono font-medium ${
-                                entry.type === 'Income'
-                                  ? 'text-emerald-600 dark:text-emerald-400'
-                                  : 'text-red-600 dark:text-red-400'
-                              }`}
-                            >
-                              {entry.type === 'Income' ? '+' : '-'}
-                              {formatINR(entry.amount)}
+                            <TableCell className={`text-xs text-right font-mono font-medium ${entry.type === 'Income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                              {entry.type === 'Income' ? '+' : '-'}{formatINR(entry.amount)}
                             </TableCell>
-                            <TableCell
-                              className={`text-xs text-right font-mono font-medium ${
-                                entry.balance >= 0
-                                  ? 'text-foreground'
-                                  : 'text-red-600 dark:text-red-400'
-                              }`}
-                            >
+                            <TableCell className={`text-xs text-right font-mono font-medium ${entry.balance >= 0 ? 'text-foreground' : 'text-red-600 dark:text-red-400'}`}>
                               {formatINR(entry.balance)}
                             </TableCell>
                           </TableRow>
@@ -786,65 +1034,33 @@ export default function Accounting() {
                       </TableBody>
                       <TableFooter>
                         <TableRow>
-                          <TableCell colSpan={3} className="text-xs font-semibold">
-                            Summary
-                          </TableCell>
+                          <TableCell colSpan={3} className="text-xs font-semibold">Summary</TableCell>
                           <TableCell className="text-xs text-right">
                             <div className="space-y-0.5">
-                              <span className="block text-emerald-600 dark:text-emerald-400 font-mono">
-                                +{formatINR(cashFlowSummary.totalIncome)}
-                              </span>
-                              <span className="block text-red-600 dark:text-red-400 font-mono">
-                                -{formatINR(cashFlowSummary.totalExpense)}
-                              </span>
+                              <span className="block text-emerald-600 dark:text-emerald-400 font-mono">+{formatINR(cashFlowSummary.totalIncome)}</span>
+                              <span className="block text-red-600 dark:text-red-400 font-mono">-{formatINR(cashFlowSummary.totalExpense)}</span>
                             </div>
                           </TableCell>
-                          <TableCell
-                            className={`text-xs text-right font-mono font-bold ${
-                              cashFlowSummary.net >= 0
-                                ? 'text-emerald-600 dark:text-emerald-400'
-                                : 'text-red-600 dark:text-red-400'
-                            }`}
-                          >
-                            {cashFlowSummary.net >= 0 ? '+' : ''}
-                            {formatINR(cashFlowSummary.net)}
+                          <TableCell className={`text-xs text-right font-mono font-bold ${cashFlowSummary.net >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                            {cashFlowSummary.net >= 0 ? '+' : ''}{formatINR(cashFlowSummary.net)}
                           </TableCell>
                         </TableRow>
                       </TableFooter>
                     </Table>
                   </div>
-
-                  {/* Bottom Summary Cards */}
                   <div className="grid grid-cols-3 gap-3 mt-4">
                     <div className="rounded-lg border bg-emerald-50 dark:bg-emerald-950/30 p-3 text-center">
                       <p className="text-xs text-muted-foreground">Total Income</p>
-                      <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">
-                        {formatINR(cashFlowSummary.totalIncome)}
-                      </p>
+                      <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">{formatINR(cashFlowSummary.totalIncome)}</p>
                     </div>
                     <div className="rounded-lg border bg-red-50 dark:bg-red-950/30 p-3 text-center">
                       <p className="text-xs text-muted-foreground">Total Expense</p>
-                      <p className="text-sm font-bold text-red-600 dark:text-red-400 font-mono">
-                        {formatINR(cashFlowSummary.totalExpense)}
-                      </p>
+                      <p className="text-sm font-bold text-red-600 dark:text-red-400 font-mono">{formatINR(cashFlowSummary.totalExpense)}</p>
                     </div>
-                    <div
-                      className={`rounded-lg border p-3 text-center ${
-                        cashFlowSummary.net >= 0
-                          ? 'bg-emerald-50 dark:bg-emerald-950/30'
-                          : 'bg-red-50 dark:bg-red-950/30'
-                      }`}
-                    >
+                    <div className={`rounded-lg border p-3 text-center ${cashFlowSummary.net >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-red-50 dark:bg-red-950/30'}`}>
                       <p className="text-xs text-muted-foreground">Net</p>
-                      <p
-                        className={`text-sm font-bold font-mono ${
-                          cashFlowSummary.net >= 0
-                            ? 'text-emerald-600 dark:text-emerald-400'
-                            : 'text-red-600 dark:text-red-400'
-                        }`}
-                      >
-                        {cashFlowSummary.net >= 0 ? '+' : ''}
-                        {formatINR(cashFlowSummary.net)}
+                      <p className={`text-sm font-bold font-mono ${cashFlowSummary.net >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {cashFlowSummary.net >= 0 ? '+' : ''}{formatINR(cashFlowSummary.net)}
                       </p>
                     </div>
                   </div>
@@ -860,41 +1076,56 @@ export default function Accounting() {
             <CardHeader>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Receipt className="h-5 w-5" />
-                    Expense Management
-                  </CardTitle>
-                  <CardDescription>
-                    {expenses.length} expense{expenses.length !== 1 ? 's' : ''} totaling{' '}
-                    {formatINR(totalExpenses)}
-                  </CardDescription>
+                  <CardTitle className="text-lg flex items-center gap-2"><Receipt className="h-5 w-5" />Expense Management</CardTitle>
+                  <CardDescription>{expenses.length} expense{expenses.length !== 1 ? 's' : ''} totaling {formatINR(totalExpenses)}</CardDescription>
                 </div>
-                <Button onClick={openAddExpense} size="sm" className="gap-1.5">
-                  <Plus className="h-4 w-4" />
-                  Add Expense
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { setBudgetInput(monthlyBudget > 0 ? String(monthlyBudget) : ''); setBudgetDialogOpen(true); }}>
+                    <Target className="h-3.5 w-3.5" />Set Budget
+                  </Button>
+                  <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExportCSV} disabled={expenses.length === 0}>
+                    <Download className="h-3.5 w-3.5" />CSV
+                  </Button>
+                  <Button onClick={openAddExpense} size="sm" className="gap-1.5"><Plus className="h-4 w-4" />Add Expense</Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
+              {/* Monthly Budget Tracking */}
+              {monthlyBudget > 0 && (
+                <div className="mb-4 rounded-lg border p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Target className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-xs font-medium">Monthly Budget: {formatINR(monthlyBudget)}</span>
+                    </div>
+                    <span className={`text-xs font-semibold ${budgetRemaining >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {budgetRemaining >= 0 ? `${formatINR(budgetRemaining)} remaining` : `${formatINR(Math.abs(budgetRemaining))} over budget`}
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <Progress
+                      value={budgetPercent}
+                      className={`h-3 ${budgetPercent < 75 ? '[&>div]:bg-emerald-500' : budgetPercent < 100 ? '[&>div]:bg-amber-500' : '[&>div]:bg-red-500'}`}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between mt-1.5">
+                    <span className="text-[11px] text-muted-foreground">{formatINR(monthlyExpensesTotal)} spent this month</span>
+                    <span className="text-[11px] text-muted-foreground">{Math.round(budgetPercent)}% used</span>
+                  </div>
+                </div>
+              )}
+
               {loadingExpenses ? (
                 <TableSkeleton rows={6} cols={6} />
               ) : expenses.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                   <Receipt className="h-10 w-10 mb-2 opacity-40" />
                   <p className="text-sm">No expenses recorded yet</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-3 gap-1.5"
-                    onClick={openAddExpense}
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    Add your first expense
-                  </Button>
+                  <Button variant="outline" size="sm" className="mt-3 gap-1.5" onClick={openAddExpense}><Plus className="h-3.5 w-3.5" />Add your first expense</Button>
                 </div>
               ) : (
                 <>
-                  {/* Expense Table */}
                   <div className="max-h-[360px] overflow-y-auto rounded-md border">
                     <Table>
                       <TableHeader>
@@ -911,43 +1142,15 @@ export default function Accounting() {
                         {expenses.map((exp) => (
                           <TableRow key={exp.id}>
                             <TableCell className="text-xs">{formatDate(exp.date)}</TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="text-xs">
-                                {exp.category}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-xs max-w-[180px] truncate">
-                              {exp.description}
-                            </TableCell>
-                            <TableCell className="text-xs text-right font-mono font-medium text-red-600 dark:text-red-400">
-                              {formatINR(exp.amount)}
-                            </TableCell>
-                            <TableCell className="text-xs hidden sm:table-cell max-w-[120px] truncate">
-                              {exp.vendor || '—'}
-                            </TableCell>
+                            <TableCell><Badge variant="outline" className="text-xs">{exp.category}</Badge></TableCell>
+                            <TableCell className="text-xs max-w-[180px] truncate">{exp.description}</TableCell>
+                            <TableCell className="text-xs text-right font-mono font-medium text-red-600 dark:text-red-400">{formatINR(exp.amount)}</TableCell>
+                            <TableCell className="text-xs hidden sm:table-cell max-w-[120px] truncate">{exp.vendor || '—'}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 w-7 p-0"
-                                  onClick={() => openEditExpense(exp)}
-                                >
-                                  <Pencil className="h-3.5 w-3.5" />
-                                  <span className="sr-only">Edit</span>
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
-                                  onClick={() => handleDeleteExpense(exp.id)}
-                                  disabled={deletingExpenseId === exp.id}
-                                >
-                                  {deletingExpenseId === exp.id ? (
-                                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                                  ) : (
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  )}
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openEditExpense(exp)}><Pencil className="h-3.5 w-3.5" /><span className="sr-only">Edit</span></Button>
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950" onClick={() => handleDeleteExpense(exp.id)} disabled={deletingExpenseId === exp.id}>
+                                  {deletingExpenseId === exp.id ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <Trash2 className="h-3.5 w-3.5" />}
                                   <span className="sr-only">Delete</span>
                                 </Button>
                               </div>
@@ -958,60 +1161,30 @@ export default function Accounting() {
                     </Table>
                   </div>
 
-                  {/* Category Summary */}
                   {categorySummary.length > 0 && (
                     <div className="mt-6">
                       <Separator className="mb-4" />
-                      <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-                        <PieChartIcon className="h-4 w-4" />
-                        Expense Distribution by Category
-                      </h3>
+                      <h3 className="text-sm font-semibold mb-4 flex items-center gap-2"><PieChartIcon className="h-4 w-4" />Expense Distribution by Category</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Pie Chart */}
                         <div className="flex items-center justify-center">
                           <ChartContainer config={PIE_CHART_CONFIG} className="h-[250px] w-full max-w-[250px]">
                             <PieChart>
                               <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-                              <Pie
-                                data={categorySummary}
-                                dataKey="value"
-                                nameKey="name"
-                                cx="50%"
-                                cy="50%"
-                                innerRadius={50}
-                                outerRadius={90}
-                                paddingAngle={2}
-                                strokeWidth={2}
-                              >
-                                {categorySummary.map((_, index) => (
-                                  <Cell
-                                    key={`cell-${index}`}
-                                    fill={PIE_COLORS[index % PIE_COLORS.length]}
-                                  />
-                                ))}
+                              <Pie data={categorySummary} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2} strokeWidth={2}>
+                                {categorySummary.map((_, index) => <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
                               </Pie>
                             </PieChart>
                           </ChartContainer>
                         </div>
-                        {/* Bar Chart + Legend */}
                         <div className="space-y-3">
                           <ChartContainer config={BAR_CHART_CONFIG} className="h-[200px] w-full">
-                            <BarChart
-                              data={categorySummary}
-                              layout="vertical"
-                              margin={{ top: 0, right: 20, bottom: 0, left: 60 }}
-                            >
+                            <BarChart data={categorySummary} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 60 }}>
                               <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                               <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
-                              <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} width={55} />
+                              <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} width={65} />
                               <ChartTooltip content={<ChartTooltipContent />} />
                               <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                                {categorySummary.map((_, index) => (
-                                  <Cell
-                                    key={`bar-${index}`}
-                                    fill={PIE_COLORS[index % PIE_COLORS.length]}
-                                  />
-                                ))}
+                                {categorySummary.map((_, index) => <Cell key={`bar-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
                               </Bar>
                             </BarChart>
                           </ChartContainer>
@@ -1031,26 +1204,21 @@ export default function Accounting() {
             <CardHeader>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <CreditCard className="h-5 w-5" />
-                    Customer Dues
-                  </CardTitle>
+                  <CardTitle className="text-lg flex items-center gap-2"><CreditCard className="h-5 w-5" />Customer Dues</CardTitle>
                   <CardDescription>
-                    {filteredDues.length} due{filteredDues.length !== 1 ? 's' : ''} •{' '}
-                    Pending total: {formatINR(totalPendingDues)}
+                    {filteredDues.length} due{filteredDues.length !== 1 ? 's' : ''} &bull; Pending total: {formatINR(totalPendingDues)}
                   </CardDescription>
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2">
                   <Filter className="h-4 w-4 text-muted-foreground" />
                   <Select value={dueFilter} onValueChange={setDueFilter}>
-                    <SelectTrigger className="h-8 w-[120px] text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
+                    <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="All">All</SelectItem>
+                      <SelectItem value="All">All Status</SelectItem>
                       <SelectItem value="Pending">Pending</SelectItem>
                       <SelectItem value="Partial">Partial</SelectItem>
                       <SelectItem value="Paid">Paid</SelectItem>
+                      <SelectItem value="Overdue">Overdue</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1058,15 +1226,11 @@ export default function Accounting() {
             </CardHeader>
             <CardContent>
               {loadingDues ? (
-                <TableSkeleton rows={6} cols={7} />
+                <TableSkeleton rows={5} cols={6} />
               ) : filteredDues.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                   <CreditCard className="h-10 w-10 mb-2 opacity-40" />
-                  <p className="text-sm">
-                    {dueFilter !== 'All'
-                      ? `No ${dueFilter.toLowerCase()} dues found`
-                      : 'No dues recorded yet'}
-                  </p>
+                  <p className="text-sm">No dues found</p>
                 </div>
               ) : (
                 <div className="max-h-[420px] overflow-y-auto rounded-md border">
@@ -1074,68 +1238,171 @@ export default function Accounting() {
                     <TableHeader>
                       <TableRow>
                         <TableHead className="text-xs">Customer</TableHead>
+                        <TableHead className="text-xs">Phone</TableHead>
                         <TableHead className="text-xs text-right">Total</TableHead>
-                        <TableHead className="text-xs text-right hidden sm:table-cell">Paid</TableHead>
+                        <TableHead className="text-xs text-right">Paid</TableHead>
                         <TableHead className="text-xs text-right">Balance</TableHead>
-                        <TableHead className="text-xs hidden md:table-cell">Due Date</TableHead>
                         <TableHead className="text-xs">Status</TableHead>
-                        <TableHead className="text-xs text-right">Actions</TableHead>
+                        <TableHead className="text-xs">Due Date</TableHead>
+                        <TableHead className="text-xs text-right">Action</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredDues.map((due) => (
-                        <TableRow key={due.id}>
-                          <TableCell className="text-xs font-medium">
-                            {due.customer}
-                          </TableCell>
-                          <TableCell className="text-xs text-right font-mono">
-                            {formatINR(due.totalAmount)}
-                          </TableCell>
-                          <TableCell className="text-xs text-right font-mono hidden sm:table-cell text-emerald-600 dark:text-emerald-400">
-                            {formatINR(due.paid)}
-                          </TableCell>
-                          <TableCell className="text-xs text-right font-mono font-medium text-red-600 dark:text-red-400">
-                            {formatINR(due.balance)}
-                          </TableCell>
-                          <TableCell className="text-xs hidden md:table-cell">
-                            {formatDate(due.dueDate)}
-                          </TableCell>
-                          <TableCell>
-                            <DueStatusBadge status={due.status} />
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {due.status !== 'Paid' && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 gap-1 text-xs"
-                                onClick={() => openPaymentDialog(due)}
-                              >
-                                <IndianRupee className="h-3 w-3" />
-                                Pay
-                              </Button>
+                      {filteredDues.map((due) => {
+                        const balance = (due.amount || 0) - (due.paid || 0);
+                        const overdue = isDueOverdue(due);
+                        const expanded = expandedDueId === due.id;
+                        const partialPayments = due.paid > 0 && due.paid < due.amount ? 1 : 0;
+                        return (
+                          <React.Fragment key={due.id}>
+                            <TableRow
+                              className="cursor-pointer"
+                              onClick={() => setExpandedDueId(expanded ? null : due.id)}
+                            >
+                              <TableCell className="text-xs font-medium">
+                                <div className="flex items-center gap-1.5">
+                                  {overdue && (
+                                    <span className="inline-block h-2 w-2 rounded-full bg-red-500 shrink-0" />
+                                  )}
+                                  {due.customer?.name || 'Unknown'}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-xs text-muted-foreground">{due.customer?.phone || '—'}</TableCell>
+                              <TableCell className="text-xs text-right font-mono">{formatINR(due.amount || 0)}</TableCell>
+                              <TableCell className="text-xs text-right font-mono text-emerald-600 dark:text-emerald-400">{formatINR(due.paid || 0)}</TableCell>
+                              <TableCell className="text-xs text-right font-mono font-semibold text-red-600 dark:text-red-400">{formatINR(balance)}</TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-1.5">
+                                  <DueStatusBadge status={due.status} />
+                                  {overdue && (
+                                    <Badge className="bg-red-100 text-red-700 border-red-200 text-[10px] px-1.5 py-0 dark:bg-red-950 dark:text-red-300 dark:border-red-800">OVERDUE</Badge>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-xs">{due.dueDate ? formatDate(due.dueDate) : '—'}</TableCell>
+                              <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                                {due.status !== 'Paid' ? (
+                                  <div className="flex items-center justify-end gap-1">
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <a
+                                          href={`https://wa.me/91${due.customer?.phone || ''}?text=${encodeURIComponent(
+                                            `Dear ${due.customer?.name || 'Customer'},\n\nThis is a friendly reminder from Sankaran Kovil Opticals regarding your pending payment of ${formatINR(balance)}.\n${due.dueDate ? `Due date: ${formatDate(due.dueDate)}\n` : ''}Please clear the balance at your earliest convenience.\n\nThank you!`
+                                          )}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                        >
+                                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950">
+                                            <MessageCircle className="h-3.5 w-3.5" />
+                                            <span className="sr-only">WhatsApp Reminder</span>
+                                          </Button>
+                                        </a>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Send WhatsApp Reminder</TooltipContent>
+                                    </Tooltip>
+                                    <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => openPaymentDialog(due)}>
+                                      <IndianRupee className="h-3 w-3" /> Pay
+                                    </Button>
+                                    <Button variant="ghost" size="sm" className="h-7 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950 gap-1" onClick={() => handleMarkPaid(due)} disabled={markPaidLoading}>
+                                      <CheckCircle2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">Mark Paid</span>
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <Check className="h-4 w-4 text-emerald-500 mx-auto" />
+                                )}
+                              </TableCell>
+                            </TableRow>
+                            {/* Payment History Expansion Row */}
+                            {expanded && (
+                              <TableRow>
+                                <TableCell colSpan={8} className="bg-muted/30 px-6 py-3">
+                                  <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
+                                    <span>Created: <strong className="text-foreground">{formatDate(due.createdAt)}</strong></span>
+                                    {due.updatedAt && due.paid > 0 && (
+                                      <span>Last payment: <strong className="text-foreground">{formatDate(due.updatedAt)}</strong></span>
+                                    )}
+                                    <span>Total paid: <strong className="text-emerald-600 dark:text-emerald-400">{formatINR(due.paid)}</strong> of {formatINR(due.amount)}</span>
+                                    {due.paid > 0 && due.paid < due.amount && (
+                                      <span>Partial payments made: <strong className="text-foreground">{partialPayments}+</strong> (amount tracked)</span>
+                                    )}
+                                    {due.notes && <span>Notes: {due.notes}</span>}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
                             )}
-                          </TableCell>
+                          </React.Fragment>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ─── Returns Tab ──────────────────────────────────────────────── */}
+        <TabsContent value="returns">
+          <Card>
+            <CardHeader>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2"><RotateCcw className="h-5 w-5" />Returns Management</CardTitle>
+                  <CardDescription>Track product returns and refunds</CardDescription>
+                </div>
+                <Button onClick={openCreateReturn} size="sm" className="gap-1.5"><Plus className="h-4 w-4" />Create Return</Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {/* Returns Summary Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Total Returns</p>
+                  <p className="text-lg font-bold font-mono">{returns.length}</p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Total Refund Amount</p>
+                  <p className="text-lg font-bold font-mono text-red-600 dark:text-red-400">{formatINR(totalReturnRefund)}</p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">This Month Returns</p>
+                  <p className="text-lg font-bold font-mono">{thisMonthReturns.length} <span className="text-sm text-muted-foreground font-normal">({formatINR(thisMonthReturnAmount)})</span></p>
+                </div>
+              </div>
+
+              {loadingReturns ? (
+                <TableSkeleton rows={5} cols={6} />
+              ) : returns.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                  <RotateCcw className="h-10 w-10 mb-2 opacity-40" />
+                  <p className="text-sm">No returns recorded yet</p>
+                  <Button variant="outline" size="sm" className="mt-3 gap-1.5" onClick={openCreateReturn}><Plus className="h-3.5 w-3.5" />Create your first return</Button>
+                </div>
+              ) : (
+                <div className="max-h-[420px] overflow-y-auto rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-xs">Invoice #</TableHead>
+                        <TableHead className="text-xs">Customer</TableHead>
+                        <TableHead className="text-xs">Reason</TableHead>
+                        <TableHead className="text-xs text-right">Refund Amount</TableHead>
+                        <TableHead className="text-xs">Status</TableHead>
+                        <TableHead className="text-xs">Date</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {returns.map((ret) => (
+                        <TableRow key={ret.id}>
+                          <TableCell className="text-xs font-mono">{ret.sale?.invoiceNo || '—'}</TableCell>
+                          <TableCell className="text-xs">{ret.sale?.customer?.name || 'Walk-in'}</TableCell>
+                          <TableCell className="text-xs max-w-[160px] truncate">{ret.reason}</TableCell>
+                          <TableCell className="text-xs text-right font-mono font-medium text-red-600 dark:text-red-400">{formatINR(ret.amount || 0)}</TableCell>
+                          <TableCell><ReturnStatusBadge status={ret.status} /></TableCell>
+                          <TableCell className="text-xs">{formatDate(ret.createdAt)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
-                    <TableFooter>
-                      <TableRow>
-                        <TableCell className="text-xs font-semibold" colSpan={1}>
-                          Total ({filteredDues.length})
-                        </TableCell>
-                        <TableCell className="text-xs text-right font-mono font-semibold">
-                          {formatINR(filteredDues.reduce((s, d) => s + d.totalAmount, 0))}
-                        </TableCell>
-                        <TableCell className="text-xs text-right font-mono font-semibold hidden sm:table-cell text-emerald-600 dark:text-emerald-400">
-                          {formatINR(filteredDues.reduce((s, d) => s + d.paid, 0))}
-                        </TableCell>
-                        <TableCell className="text-xs text-right font-mono font-semibold text-red-600 dark:text-red-400">
-                          {formatINR(filteredDues.reduce((s, d) => s + d.balance, 0))}
-                        </TableCell>
-                        <TableCell colSpan={3} />
-                      </TableRow>
-                    </TableFooter>
                   </Table>
                 </div>
               )}
@@ -1144,190 +1411,206 @@ export default function Accounting() {
         </TabsContent>
       </Tabs>
 
-      {/* ─── Expense Dialog ─────────────────────────────────────────────── */}
-      <Dialog open={expenseDialogOpen} onOpenChange={(open) => {
-        if (!open) resetExpForm();
-        setExpenseDialogOpen(open);
-      }}>
-        <DialogContent className="sm:max-w-md">
+      {/* ─── Expense Dialog ──────────────────────────────────────────────── */}
+      <Dialog open={expenseDialogOpen} onOpenChange={setExpenseDialogOpen}>
+        <DialogContent className="sm:max-w-[440px]">
           <DialogHeader>
-            <DialogTitle>
-              {editingExpense ? 'Edit Expense' : 'Add New Expense'}
-            </DialogTitle>
+            <DialogTitle>{editingExpense ? 'Edit Expense' : 'Add New Expense'}</DialogTitle>
             <DialogDescription>
-              {editingExpense
-                ? 'Update the expense details below.'
-                : 'Fill in the details to record a new expense.'}
+              {editingExpense ? 'Update the expense details below' : 'Record a new expense transaction'}
             </DialogDescription>
           </DialogHeader>
-
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
               <Label htmlFor="exp-category">Category *</Label>
-              <Select
-                value={expForm.category}
-                onValueChange={(v) => setExpForm((f) => ({ ...f, category: v }))}
-              >
-                <SelectTrigger id="exp-category" className="w-full">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
+              <Select value={expForm.category} onValueChange={(v) => setExpForm((f) => ({ ...f, category: v }))}>
+                <SelectTrigger id="exp-category"><SelectValue placeholder="Select category" /></SelectTrigger>
                 <SelectContent>
-                  {EXPENSE_CATEGORIES.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
-                    </SelectItem>
-                  ))}
+                  {EXPENSE_CATEGORIES.map((cat) => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
-
             <div className="grid gap-2">
-              <Label htmlFor="exp-description">Description *</Label>
-              <Textarea
-                id="exp-description"
-                value={expForm.description}
-                onChange={(e) => setExpForm((f) => ({ ...f, description: e.target.value }))}
-                placeholder="Brief description of the expense"
-                rows={2}
-              />
+              <Label htmlFor="exp-desc">Description *</Label>
+              <Input id="exp-desc" placeholder="What was the expense for?" value={expForm.description} onChange={(e) => setExpForm((f) => ({ ...f, description: e.target.value }))} />
             </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="exp-amount">Amount (₹) *</Label>
-                <Input
-                  id="exp-amount"
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={expForm.amount}
-                  onChange={(e) => setExpForm((f) => ({ ...f, amount: e.target.value }))}
-                  placeholder="0"
-                  className="font-mono"
-                />
+                <Input id="exp-amount" type="number" min="1" placeholder="0" value={expForm.amount} onChange={(e) => setExpForm((f) => ({ ...f, amount: e.target.value }))} />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="exp-date">Date *</Label>
-                <Input
-                  id="exp-date"
-                  type="date"
-                  value={expForm.date}
-                  onChange={(e) => setExpForm((f) => ({ ...f, date: e.target.value }))}
-                />
+                <Input id="exp-date" type="date" value={expForm.date} onChange={(e) => setExpForm((f) => ({ ...f, date: e.target.value }))} />
               </div>
             </div>
-
             <div className="grid gap-2">
-              <Label htmlFor="exp-vendor">Vendor / Payee</Label>
-              <Input
-                id="exp-vendor"
-                type="text"
-                value={expForm.vendor}
-                onChange={(e) => setExpForm((f) => ({ ...f, vendor: e.target.value }))}
-                placeholder="Vendor name (optional)"
-              />
+              <Label htmlFor="exp-vendor">Vendor (optional)</Label>
+              <Input id="exp-vendor" placeholder="Vendor or payee name" value={expForm.vendor} onChange={(e) => setExpForm((f) => ({ ...f, vendor: e.target.value }))} />
             </div>
           </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setExpenseDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveExpense}>{editingExpense ? 'Update Expense' : 'Add Expense'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                resetExpForm();
-                setExpenseDialogOpen(false);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleSaveExpense}>
-              {editingExpense ? 'Update' : 'Save'} Expense
+      {/* ─── Payment Dialog ──────────────────────────────────────────────── */}
+      <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Record Payment</DialogTitle>
+            <DialogDescription>
+              Collect payment from {payingDue?.customer?.name || 'customer'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="rounded-lg border p-3">
+                <p className="text-xs text-muted-foreground">Total Amount</p>
+                <p className="text-sm font-bold font-mono">{formatINR(payingDue?.amount || 0)}</p>
+              </div>
+              <div className="rounded-lg border p-3">
+                <p className="text-xs text-muted-foreground">Pending Balance</p>
+                <p className="text-sm font-bold font-mono text-red-600">{formatINR((payingDue?.amount || 0) - (payingDue?.paid || 0))}</p>
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="pay-amount">Payment Amount (₹) *</Label>
+              <Input id="pay-amount" type="number" min="1" placeholder="Enter amount" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} />
+              <p className="text-xs text-muted-foreground">
+                Already paid: {formatINR(payingDue?.paid || 0)}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setPaymentAmount(String((payingDue?.amount || 0) - (payingDue?.paid || 0)))}>
+                Set Full Amount
+              </Button>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleRecordPayment} disabled={markPaidLoading}>
+              {markPaidLoading ? 'Recording...' : 'Record Payment'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* ─── Record Payment Dialog ──────────────────────────────────────── */}
-      <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
-        <DialogContent className="sm:max-w-sm">
+      {/* ─── Create Return Dialog ───────────────────────────────────────── */}
+      <Dialog open={returnDialogOpen} onOpenChange={setReturnDialogOpen}>
+        <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
-            <DialogTitle>Record Payment</DialogTitle>
-            <DialogDescription>
-              {payingDue && (
-                <>
-                  Record a payment for{' '}
-                  <span className="font-semibold text-foreground">{payingDue.customer}</span>.
-                  <br />
-                  Pending balance:{' '}
-                  <span className="font-semibold text-red-600 dark:text-red-400">
-                    {formatINR(payingDue.balance)}
-                  </span>
-                </>
-              )}
-            </DialogDescription>
+            <DialogTitle>Create Return</DialogTitle>
+            <DialogDescription>Search for a sale and create a return record</DialogDescription>
           </DialogHeader>
-
           <div className="grid gap-4 py-2">
-            <div className="grid gap-2">
-              <Label htmlFor="payment-amount">Payment Amount (₹)</Label>
-              <Input
-                id="payment-amount"
-                type="number"
-                min="1"
-                max={payingDue?.balance || 0}
-                step="1"
-                value={paymentAmount}
-                onChange={(e) => setPaymentAmount(e.target.value)}
-                placeholder="Enter amount"
-                className="font-mono text-lg"
-                autoFocus
-              />
-              {payingDue && (
-                <p className="text-xs text-muted-foreground">
-                  Max: {formatINR(payingDue.balance)}
-                </p>
+            {/* Sale Search */}
+            <div className="grid gap-2 relative">
+              <Label htmlFor="return-sale-search">Search Sale by Invoice #</Label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="return-sale-search"
+                  placeholder="Type invoice number..."
+                  value={returnForm.saleSearch}
+                  onChange={(e) => handleSaleSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              {/* Search Results Dropdown */}
+              {saleSearchResults.length > 0 && !selectedReturnSale && (
+                <div className="absolute z-50 top-full mt-1 left-0 right-0 rounded-md border bg-background shadow-lg max-h-48 overflow-y-auto">
+                  {saleSearchResults.map((s) => (
+                    <button
+                      key={s.id}
+                      className="w-full text-left px-3 py-2 text-xs hover:bg-muted flex items-center justify-between gap-2"
+                      onClick={() => selectReturnSale(s)}
+                    >
+                      <span className="font-mono">{s.invoiceNo}</span>
+                      <span className="text-muted-foreground">{s.customer?.name || s.customerName}</span>
+                      <span className="font-mono font-medium">{formatINR(s.total)}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {/* Selected Sale */}
+              {selectedReturnSale && (
+                <div className="rounded-lg border bg-muted/50 p-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-mono font-medium">{selectedReturnSale.invoiceNo}</p>
+                    <p className="text-xs text-muted-foreground">{selectedReturnSale.customer?.name || selectedReturnSale.customerName}</p>
+                  </div>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setSelectedReturnSale(null); setReturnForm((f) => ({ ...f, saleId: '', saleSearch: '' })); }}>
+                    <span className="sr-only">Clear</span>
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
               )}
             </div>
 
-            {payingDue && paymentAmount && !isNaN(parseFloat(paymentAmount)) && parseFloat(paymentAmount) > 0 && (
-              <div className="rounded-lg border bg-muted/50 p-3 text-sm space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Current Paid</span>
-                  <span className="font-mono">{formatINR(payingDue.paid)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">+ This Payment</span>
-                  <span className="font-mono text-emerald-600 dark:text-emerald-400">
-                    +{formatINR(parseFloat(paymentAmount))}
-                  </span>
-                </div>
-                <Separator />
-                <div className="flex justify-between font-semibold">
-                  <span>New Balance</span>
-                  <span className="font-mono">
-                    {formatINR(
-                      Math.max(0, payingDue.balance - parseFloat(paymentAmount))
-                    )}
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
+            {/* Reason */}
+            <div className="grid gap-2">
+              <Label>Return Reason *</Label>
+              <Select value={returnForm.reason} onValueChange={(v) => setReturnForm((f) => ({ ...f, reason: v }))}>
+                <SelectTrigger><SelectValue placeholder="Select reason" /></SelectTrigger>
+                <SelectContent>
+                  {RETURN_REASONS.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>
-              Cancel
+            {/* Refund Amount */}
+            <div className="grid gap-2">
+              <Label htmlFor="return-amount">Refund Amount (₹) *</Label>
+              <Input
+                id="return-amount"
+                type="number"
+                min="1"
+                placeholder="0"
+                value={returnForm.refundAmount}
+                onChange={(e) => setReturnForm((f) => ({ ...f, refundAmount: e.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setReturnDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreateReturn} disabled={creatingReturn}>
+              {creatingReturn ? 'Creating...' : 'Create Return'}
             </Button>
-            <Button
-              onClick={handleRecordPayment}
-              disabled={
-                !paymentAmount ||
-                isNaN(parseFloat(paymentAmount)) ||
-                parseFloat(paymentAmount) <= 0
-              }
-            >
-              <IndianRupee className="h-4 w-4 mr-1" />
-              Record Payment
-            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Set Budget Dialog ──────────────────────────────────────────── */}
+      <Dialog open={budgetDialogOpen} onOpenChange={setBudgetDialogOpen}>
+        <DialogContent className="sm:max-w-[360px]">
+          <DialogHeader>
+            <DialogTitle>Set Monthly Budget</DialogTitle>
+            <DialogDescription>Set a spending limit for {format(new Date(), 'MMMM yyyy')}</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label htmlFor="budget-amount">Budget Amount (₹)</Label>
+              <Input
+                id="budget-amount"
+                type="number"
+                min="1"
+                placeholder="Enter budget"
+                value={budgetInput}
+                onChange={(e) => setBudgetInput(e.target.value)}
+              />
+              {monthlyBudget > 0 && (
+                <p className="text-xs text-muted-foreground">Current budget: {formatINR(monthlyBudget)}</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            {monthlyBudget > 0 && (
+              <Button variant="outline" onClick={() => { setMonthlyBudget(0); localStorage.removeItem(getBudgetKey()); setBudgetDialogOpen(false); toast.success('Budget cleared'); }}>Clear Budget</Button>
+            )}
+            <Button onClick={handleSetBudget}>Save Budget</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

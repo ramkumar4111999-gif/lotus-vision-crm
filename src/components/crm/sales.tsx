@@ -15,15 +15,19 @@ import {
   ChevronsRight,
   Loader2,
   AlertCircle,
-  ShoppingCart,
+ ShoppingCart,
   FileText,
   UserPlus,
   Trash2,
   IndianRupee,
   Package,
+  CreditCard,
+  CalendarDays,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useCrmStore } from "@/components/crm/store";
+import { getSettings } from "@/lib/settings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -103,7 +107,7 @@ interface Sale {
   cgst: number;
   sgst: number;
   total: number;
-  paymentMode: "Cash" | "Card" | "UPI" | "Credit";
+  paymentMode: "Cash" | "Card" | "UPI" | "Credit" | "Split";
   status: "Completed" | "Pending" | "Return";
   notes?: string;
   createdAt: string;
@@ -179,24 +183,29 @@ function uid(): string {
 // ---------------------------------------------------------------------------
 
 const MOCK_PRODUCTS: Product[] = [
-  { id: "p1", name: "Premium Basmati Rice (5kg)", price: 450, stock: 120, sku: "RICE-001" },
-  { id: "p2", name: "Organic Toor Dal (1kg)", price: 180, stock: 200, sku: "DAL-001" },
-  { id: "p3", name: "Cold Pressed Coconut Oil (1L)", price: 320, stock: 85, sku: "OIL-001" },
-  { id: "p4", name: "Assam Tea (250g)", price: 210, stock: 150, sku: "TEA-001" },
-  { id: "p5", name: "Jaggery Powder (500g)", price: 95, stock: 300, sku: "JAG-001" },
-  { id: "p6", name: "Almond Butter (350g)", price: 550, stock: 60, sku: "BUT-001" },
-  { id: "p7", name: "Quinoa (500g)", price: 420, stock: 90, sku: "QUI-001" },
-  { id: "p8", name: "Raw Honey (500ml)", price: 380, stock: 70, sku: "HON-001" },
-  { id: "p9", name: "Chia Seeds (250g)", price: 290, stock: 110, sku: "CHI-001" },
-  { id: "p10", name: "A2 Ghee (500ml)", price: 680, stock: 45, sku: "GHE-001" },
+  { id: "p1", name: "CR-39 Clear Lens (1.50)", price: 150, stock: 120, sku: "CL-001" },
+  { id: "p2", name: "CR-39 Photochromic Lens (1.50)", price: 350, stock: 80, sku: "CL-002" },
+  { id: "p3", name: "Progressive Lens (1.56)", price: 1800, stock: 45, sku: "PL-001" },
+  { id: "p4", name: "Bifocal Lens (1.50)", price: 650, stock: 60, sku: "BL-001" },
+  { id: "p5", name: "Titanium Frame (Full Rim)", price: 2200, stock: 35, sku: "TF-001" },
+  { id: "p6", name: "Acetate Frame (Wayfarer)", price: 1200, stock: 50, sku: "AF-001" },
+  { id: "p7", name: "TR-90 Frame (Flexible)", price: 800, stock: 70, sku: "TR-001" },
+  { id: "p8", name: "Metal Frame (Aviator)", price: 1500, stock: 40, sku: "MF-001" },
+  { id: "p9", name: "Ray-Ban Original Wayfarer", price: 4500, stock: 20, sku: "RB-001" },
+  { id: "p10", name: "Zero Power Lens (PC)", price: 200, stock: 100, sku: "ZP-001" },
+  { id: "p11", name: "Blue Cut Coating (Add-on)", price: 300, stock: 200, sku: "BC-001" },
+  { id: "p12", name: "Anti-Reflective Coating (Add-on)", price: 250, stock: 200, sku: "AR-001" },
 ];
 
 const MOCK_CUSTOMERS: Customer[] = [
-  { id: "c1", name: "Rajesh Kumar", phone: "9876543210", email: "rajesh@email.com", address: "12, MG Road, Bengaluru" },
-  { id: "c2", name: "Priya Sharma", phone: "9876543211", email: "priya@email.com", address: "34, Park Street, Kolkata" },
-  { id: "c3", name: "Amit Patel", phone: "9876543212", email: "amit@email.com", address: "56, CG Road, Ahmedabad" },
-  { id: "c4", name: "Sunita Devi", phone: "9876543213", email: "sunita@email.com", address: "78, Civil Lines, Delhi" },
-  { id: "c5", name: "Vikram Reddy", phone: "9876543214", email: "vikram@email.com", address: "90, Jubilee Hills, Hyderabad" },
+  { id: "c1", name: "Murugan S", phone: "9443212345", email: "murugan@email.com", address: "12, Main Road, Sankarankovil" },
+  { id: "c2", name: "Aishwarya R", phone: "9876501234", email: "aishwarya@email.com", address: "34, Nadar Street, Sankarankovil" },
+  { id: "c3", name: "Karthik B", phone: "9789456789", email: "karthik@email.com", address: "56, Kovil Street, Sankarankovil" },
+  { id: "c4", name: "Lakshmi P", phone: "9944012345", email: "lakshmi@email.com", address: "78, Bazaar Street, Sankarankovil" },
+  { id: "c5", name: "Suresh K", phone: "8012345678", email: "suresh@email.com", address: "90, Bus Stand Road, Sankarankovil" },
+  { id: "c6", name: "Priya M", phone: "9364456789", email: "priya.m@email.com", address: "15, Temple Road, Sankarankovil" },
+  { id: "c7", name: "Rajesh D", phone: "9753214567", email: "rajesh.d@email.com", address: "22, Market Street, Sankarankovil" },
+  { id: "c8", name: "Meena K", phone: "9865432100", email: "meena.k@email.com", address: "45, College Road, Sankarankovil" },
 ];
 
 const MOCK_SALES: SaleListItem[] = Array.from({ length: 23 }, (_, i) => {
@@ -443,6 +452,56 @@ function CustomerSelect({
           {selected.address && <div>{selected.address}</div>}
         </div>
       )}
+      <CustomerPurchaseHistory customerId={selected?.id ?? null} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Component: Customer Purchase History (last 3 purchases)
+// ---------------------------------------------------------------------------
+
+function CustomerPurchaseHistory({ customerId }: { customerId: string | null }) {
+  const [purchases, setPurchases] = React.useState<{ date: string; total: number }[]>([]);
+
+  React.useEffect(() => {
+    if (!customerId) {
+      setPurchases([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/sales?customerId=${customerId}&limit=3`);
+        if (cancelled) return;
+        if (res.ok) {
+          const data = await res.json();
+          const list = Array.isArray(data.sales) ? data.sales : [];
+          setPurchases(list.map(function(s) {
+            const r = s as Record<string, unknown>;
+            return { date: r.createdAt as string, total: r.total as number };
+          }));
+        }
+      } catch {
+        // silently ignore
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [customerId]);
+
+  if (!customerId || purchases.length === 0) return null;
+
+  return (
+    <div className="mt-2 rounded-md border bg-muted/30 p-2">
+      <p className="text-xs font-medium text-muted-foreground mb-1.5">Recent Purchases</p>
+      {purchases.map((p, i) => (
+        <div key={i} className="flex items-center justify-between text-xs gap-2">
+          <span className="text-muted-foreground">
+            {new Date(p.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+          </span>
+          <span className="font-mono font-medium">{INR(p.total)}</span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -664,8 +723,42 @@ interface CreateSaleDialogProps {
 }
 
 function CreateSaleDialog({ open, onOpenChange, onCreated }: CreateSaleDialogProps) {
-  const [customers, setCustomers] = React.useState<Customer[]>(MOCK_CUSTOMERS);
-  const [products] = React.useState<Product[]>(MOCK_PRODUCTS);
+  const [customers, setCustomers] = React.useState<Customer[]>([]);
+  const [products, setProducts] = React.useState<Product[]>([]);
+  const [customersLoaded, setCustomersLoaded] = React.useState(false);
+  const [productsLoaded, setProductsLoaded] = React.useState(false);
+
+  // Fetch real customers and products when dialog opens
+  React.useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [custRes, prodRes] = await Promise.all([
+          fetch('/api/customers?limit=999'),
+          fetch('/api/products?pageSize=999'),
+        ]);
+        if (cancelled) return;
+        if (custRes.ok) {
+          const data = await custRes.json();
+          const list = Array.isArray(data.data) ? data.data : data || [];
+          setCustomers(list);
+        }
+        if (prodRes.ok) {
+          const data = await prodRes.json();
+          const list = Array.isArray(data.products) ? data.products : data || [];
+          setProducts(list);
+        }
+      } catch {
+        // Fallback to mock data if API fails
+        setCustomers(MOCK_CUSTOMERS);
+        setProducts(MOCK_PRODUCTS);
+      }
+      setCustomersLoaded(true);
+      setProductsLoaded(true);
+    })();
+    return () => { cancelled = true; };
+  }, [open]);
   const [selectedCustomer, setSelectedCustomer] = React.useState<Customer | null>(null);
   const [showNewCustomer, setShowNewCustomer] = React.useState(false);
   const [items, setItems] = React.useState<CreateSaleItem[]>([
@@ -676,6 +769,9 @@ function CreateSaleDialog({ open, onOpenChange, onCreated }: CreateSaleDialogPro
   const [paymentMode, setPaymentMode] = React.useState<"Cash" | "Card" | "UPI" | "Credit">("Cash");
   const [notes, setNotes] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
+  const [splitPayment, setSplitPayment] = React.useState(false);
+  const [secondaryPaymentMode, setSecondaryPaymentMode] = React.useState<"Cash" | "Card" | "UPI">("UPI");
+  const [secondaryAmount, setSecondaryAmount] = React.useState(0);
 
   const handleItemUpdate = (index: number, data: Partial<CreateSaleItem>) => {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...data } : item)));
@@ -697,6 +793,11 @@ function CreateSaleDialog({ open, onOpenChange, onCreated }: CreateSaleDialogPro
   const sgst = Math.round(taxable * SGST_RATE * 100) / 100;
   const total = Math.round((taxable + cgst + sgst) * 100) / 100;
 
+  // Split payment derived values
+  const canSplit = paymentMode !== "Credit";
+  const primaryAmount = splitPayment ? Math.round((total - secondaryAmount) * 100) / 100 : total;
+  const splitValid = !splitPayment || (secondaryAmount > 0 && secondaryAmount < total);
+
   const totalQty = items.reduce((sum, item) => sum + (item.productId ? item.qty : 0), 0);
   const hasValidItems = items.some((item) => item.productId && item.qty > 0);
 
@@ -709,13 +810,17 @@ function CreateSaleDialog({ open, onOpenChange, onCreated }: CreateSaleDialogPro
       toast.error("Please add at least one product");
       return;
     }
+    if (splitPayment && (secondaryAmount <= 0 || secondaryAmount >= total)) {
+      toast.error("Secondary amount must be greater than 0 and less than the total");
+      return;
+    }
 
     setSubmitting(true);
     try {
       const invoiceNo = generateInvoiceNo();
       const validItems = items.filter((i) => i.productId && i.qty > 0);
 
-      const payload = {
+      const payload: Record<string, unknown> = {
         invoiceNo,
         customerId: selectedCustomer.id,
         customerName: selectedCustomer.name,
@@ -736,10 +841,20 @@ function CreateSaleDialog({ open, onOpenChange, onCreated }: CreateSaleDialogPro
         cgst,
         sgst,
         total,
-        paymentMode,
-        status: "Completed" as const,
-        notes: notes.trim() || undefined,
+        paymentMode: splitPayment ? "Split" : paymentMode,
+        status: "Completed",
+        notes: splitPayment
+          ? `Split Payment: ${paymentMode} ${INR(primaryAmount)} + ${secondaryPaymentMode} ${INR(secondaryAmount)}${notes.trim() ? "\n" + notes.trim() : ""}`
+          : (notes.trim() || undefined),
       };
+
+      if (splitPayment) {
+        payload.paymentModeSplit = {
+          primary: paymentMode,
+          secondary: secondaryPaymentMode,
+          secondaryAmount,
+        };
+      }
 
       const res = await fetch("/api/sales", {
         method: "POST",
@@ -748,7 +863,28 @@ function CreateSaleDialog({ open, onOpenChange, onCreated }: CreateSaleDialogPro
       });
 
       if (res.ok) {
+        const result = await res.json().catch(() => ({}));
         toast.success(`Invoice ${invoiceNo} created successfully!`);
+        // Auto-earn loyalty points (1 point per ₹100 spent)
+        if (selectedCustomer.id && selectedCustomer.id !== 'undefined' && selectedCustomer.id.startsWith('c')) {
+          const earnedPoints = Math.floor(total / 100);
+          if (earnedPoints > 0) {
+            try {
+              await fetch(`/api/customers/${selectedCustomer.id}/loyalty`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  points: earnedPoints,
+                  reason: `Auto-earned from invoice ${invoiceNo}`,
+                  type: "earn",
+                }),
+              });
+            } catch {
+              // silently ignore loyalty failure
+            }
+            toast.info(`+${earnedPoints} loyalty points earned!`);
+          }
+        }
         resetForm();
         onOpenChange(false);
         onCreated();
@@ -771,6 +907,9 @@ function CreateSaleDialog({ open, onOpenChange, onCreated }: CreateSaleDialogPro
     setPaymentMode("Cash");
     setNotes("");
     setShowNewCustomer(false);
+    setSplitPayment(false);
+    setSecondaryPaymentMode("UPI");
+    setSecondaryAmount(0);
   };
 
   return (
@@ -909,7 +1048,10 @@ function CreateSaleDialog({ open, onOpenChange, onCreated }: CreateSaleDialogPro
                 <Label>Payment Mode</Label>
                 <RadioGroup
                   value={paymentMode}
-                  onValueChange={(v) => setPaymentMode(v as typeof paymentMode)}
+                  onValueChange={(v) => {
+                    setPaymentMode(v as typeof paymentMode);
+                    if (v === "Credit") setSplitPayment(false);
+                  }}
                   className="flex flex-wrap gap-3"
                 >
                   {(["Cash", "Card", "UPI", "Credit"] as const).map((mode) => (
@@ -921,6 +1063,70 @@ function CreateSaleDialog({ open, onOpenChange, onCreated }: CreateSaleDialogPro
                     </div>
                   ))}
                 </RadioGroup>
+
+                {canSplit && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <Checkbox
+                      id="split-payment"
+                      checked={splitPayment}
+                      onCheckedChange={(checked) => {
+                        setSplitPayment(!!checked);
+                        if (checked) setSecondaryAmount(total);
+                      }}
+                    />
+                    <Label htmlFor="split-payment" className="font-normal text-sm cursor-pointer">
+                      Split Payment?
+                    </Label>
+                  </div>
+                )}
+
+                {splitPayment && canSplit && (
+                  <div className="ml-6 mt-2 space-y-2 rounded-md border bg-muted/30 p-3">
+                    <p className="text-xs text-muted-foreground">
+                      Primary: {paymentMode} — {INR(primaryAmount)}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Secondary Mode</Label>
+                        <Select
+                          value={secondaryPaymentMode}
+                          onValueChange={(v) => setSecondaryPaymentMode(v as "Cash" | "Card" | "UPI")}
+                        >
+                          <SelectTrigger className="w-28 h-8 text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(["Cash", "Card", "UPI"] as const)
+                              .filter((m) => m !== paymentMode)
+                              .map((m) => (
+                                <SelectItem key={m} value={m}>{m}</SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1 flex-1 min-w-[120px]">
+                        <Label className="text-xs">Secondary Amount</Label>
+                        <div className="relative">
+                          <IndianRupee className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+                          <Input
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            value={secondaryAmount || ""}
+                            onChange={(e) => setSecondaryAmount(parseFloat(e.target.value) || 0)}
+                            className="pl-8 h-8 text-sm"
+                            placeholder="0"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    {splitPayment && (secondaryAmount <= 0 || secondaryAmount >= total) && (
+                      <p className="text-xs text-destructive">
+                        Secondary amount must be between ₹0 and {INR(total)} (exclusive)
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Notes */}
@@ -990,7 +1196,7 @@ function CreateSaleDialog({ open, onOpenChange, onCreated }: CreateSaleDialogPro
             <Button
               type="button"
               onClick={handleCreate}
-              disabled={submitting || !selectedCustomer || !hasValidItems}
+              disabled={submitting || !selectedCustomer || !hasValidItems || !splitValid}
             >
               {submitting ? (
                 <Loader2 className="size-4 animate-spin" />
@@ -1021,15 +1227,23 @@ interface SaleDetailDialogProps {
 function SaleDetailDialog({ sale, open, onOpenChange, onReturn, onToggleStatus }: SaleDetailDialogProps) {
   if (!sale) return null;
 
+  // Get settings for print (SSR-safe with fallback)
+  let settings: { shopName: string; gstin: string; phone: string; address: string };
+  try {
+    settings = getSettings();
+  } catch {
+    settings = { shopName: 'Sankaran Kovil Opticals', gstin: '33BPKPS1234F1Z5', phone: '+91 94432 12345', address: 'Main Road, Sankarankovil - 627751' };
+  }
+
   const handlePrint = () => {
     window.print();
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0" showCloseButton={false}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0 print:max-w-none print:max-h-none print:shadow-none print:rounded-none print:border-0" showCloseButton={false}>
         {/* Print-friendly header */}
-        <div className="p-6 pb-0 print:p-6 print:pb-4">
+        <div className="p-6 pb-0 print:p-8 print:pb-2 print:bg-white">
           <DialogHeader className="print:hidden">
             <DialogTitle className="flex items-center gap-2">
               <FileText className="size-5" />
@@ -1039,31 +1253,35 @@ function SaleDetailDialog({ sale, open, onOpenChange, onReturn, onToggleStatus }
           </DialogHeader>
 
           {/* Print Header */}
-          <div className="hidden print:block mb-6">
-            <h1 className="text-2xl font-bold">TAX INVOICE</h1>
-            <div className="flex justify-between mt-4">
+          <div className="hidden print:block print:mb-4">
+            <div className="border-b-2 border-gray-800 pb-3 mb-4">
+              <h1 className="text-xl font-bold tracking-wide text-center">TAX INVOICE</h1>
+            </div>
+            <div className="flex justify-between text-sm">
               <div>
-                <p className="font-semibold text-lg">Your Store Name</p>
-                <p className="text-sm text-gray-600">Store Address, City - 560001</p>
-                <p className="text-sm text-gray-600">GSTIN: 29XXXXX1234X1ZX</p>
-                <p className="text-sm text-gray-600">Ph: +91 98765 43210</p>
+                <p className="font-bold text-base">{settings.shopName}</p>
+                <p className="text-gray-600 mt-0.5">{settings.address}</p>
+                <p className="text-gray-600">GSTIN: {settings.gstin}</p>
+                <p className="text-gray-600">Ph: {settings.phone}</p>
               </div>
               <div className="text-right">
-                <p className="font-bold text-lg">{sale.invoiceNo}</p>
-                <p className="text-sm text-gray-600">
+                <p className="font-bold text-base">{sale.invoiceNo}</p>
+                <p className="text-gray-600">
                   Date: {new Date(sale.createdAt).toLocaleDateString("en-IN", {
                     day: "2-digit",
                     month: "short",
                     year: "numeric",
                   })}
                 </p>
-                <StatusBadge status={sale.status} />
+                <div className="mt-1">
+                  <StatusBadge status={sale.status} />
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="px-6 pb-6 space-y-6 print:px-6 print:pb-6">
+        <div className="px-6 pb-6 space-y-6 print:px-8 print:pb-4 print:space-y-4">
           {/* Invoice Header (screen only) */}
           <div className="print:hidden flex items-start justify-between">
             <div className="space-y-1">
@@ -1165,9 +1383,10 @@ function SaleDetailDialog({ sale, open, onOpenChange, onReturn, onToggleStatus }
           )}
 
           {/* Thank you (print only) */}
-          <div className="hidden print:block text-center pt-8">
-            <p className="text-lg font-semibold">Thank you for your purchase!</p>
-            <p className="text-sm text-gray-500 mt-1">This is a computer-generated invoice.</p>
+          <div className="hidden print:block text-center pt-6 mt-4 border-t border-gray-200">
+            <p className="text-base font-semibold text-gray-800">Thank you for shopping with Sankaran Kovil Opticals!</p>
+            <p className="text-xs text-gray-500 mt-1">This is a computer-generated invoice.</p>
+            <p className="text-xs text-gray-500">Ph: {settings.phone} · GSTIN: {settings.gstin}</p>
           </div>
 
           {/* Actions (screen only) */}
@@ -1568,8 +1787,19 @@ export default function Sales() {
   const [toDate, setToDate] = React.useState("");
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [todayCount, setTodayCount] = React.useState(0);
+  const [todayTotal, setTodayTotal] = React.useState(0);
+  const [todayLoading, setTodayLoading] = React.useState(true);
 
   const [createOpen, setCreateOpen] = React.useState(false);
+  const { triggerNewSale } = useCrmStore();
+
+  // Listen for triggerNewSale signal from keyboard shortcuts
+  React.useEffect(() => {
+    if (triggerNewSale > 0) {
+      setCreateOpen(true);
+    }
+  }, [triggerNewSale]);
   const [detailSale, setDetailSale] = React.useState<Sale | null>(null);
   const [detailOpen, setDetailOpen] = React.useState(false);
   const [returnSale, setReturnSale] = React.useState<Sale | null>(null);
@@ -1578,8 +1808,75 @@ export default function Sales() {
   const [localSales, setLocalSales] = React.useState<SaleListItem[]>([]);
   const [localDetails, setLocalDetails] = React.useState<Record<string, Sale>>({});
   const [usingLocal, setUsingLocal] = React.useState(false);
+  const [creditFilter, setCreditFilter] = React.useState(false);
+  const [creditTotal, setCreditTotal] = React.useState(0);
+  const [summaryPeriod, setSummaryPeriod] = React.useState<"today" | "week" | "month">("today");
+  const [statusFilter, setStatusFilter] = React.useState<"" | "Completed" | "Pending" | "Return">("");
+
+  // -- Fetch Outstanding Credit Total --
+  const fetchCreditTotal = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/sales?paymentMode=Credit&limit=9999');
+      if (res.ok) {
+        const data: SalesResponse = await res.json();
+        setCreditTotal(data.sales.reduce((sum, s) => sum + s.total, 0));
+      }
+    } catch {
+      // Silent fail
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchCreditTotal();
+  }, [fetchCreditTotal]);
 
   const pageSize = 10;
+
+  // -- Fetch Period Summary (Today / This Week / This Month) --
+  const fetchTodaySummary = React.useCallback(async () => {
+    setTodayLoading(true);
+    try {
+      const now = new Date();
+      let fromDate: string;
+      let periodLabel: string;
+
+      if (summaryPeriod === "week") {
+        const dayOfWeek = now.getDay();
+        const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Monday start
+        const monday = new Date(now);
+        monday.setDate(now.getDate() - diff);
+        fromDate = monday.toISOString().split('T')[0];
+        periodLabel = "This Week";
+      } else if (summaryPeriod === "month") {
+        fromDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+        periodLabel = "This Month";
+      } else {
+        fromDate = now.toISOString().split('T')[0];
+        periodLabel = "Today";
+      }
+
+      const toDate = now.toISOString().split('T')[0];
+      const params = new URLSearchParams({
+        fromDate,
+        toDate,
+        limit: '999',
+      });
+      const res = await fetch(`/api/sales?${params.toString()}`);
+      if (res.ok) {
+        const data: SalesResponse = await res.json();
+        setTodayCount(data.sales.length);
+        setTodayTotal(data.sales.reduce((sum, s) => sum + s.total, 0));
+      }
+    } catch {
+      // Silent fail - summary is non-critical
+    } finally {
+      setTodayLoading(false);
+    }
+  }, [summaryPeriod]);
+
+  React.useEffect(() => {
+    fetchTodaySummary();
+  }, [fetchTodaySummary]);
 
   // -- Fetch Sales --
   const fetchSales = React.useCallback(async () => {
@@ -1590,6 +1887,8 @@ export default function Sales() {
     if (page) params.set("page", page.toString());
     if (fromDate) params.set("fromDate", fromDate);
     if (toDate) params.set("toDate", toDate);
+    if (creditFilter) params.set("paymentMode", "Credit");
+    if (statusFilter) params.set("status", statusFilter);
 
     try {
       const res = await fetch(`/api/sales?${params.toString()}`);
@@ -1607,8 +1906,9 @@ export default function Sales() {
       await loadMockData();
     } finally {
       setLoading(false);
+      fetchCreditTotal();
     }
-  }, [search, page, fromDate, toDate]);
+  }, [search, page, fromDate, toDate, creditFilter, statusFilter]);
 
   const loadMockData = React.useCallback(async () => {
     // Simulate API delay
@@ -1630,6 +1930,9 @@ export default function Sales() {
     if (toDate) {
       filtered = filtered.filter((s) => s.createdAt <= toDate);
     }
+    if (statusFilter) {
+      filtered = filtered.filter((s) => s.status === statusFilter);
+    }
 
     const totalRecords = filtered.length;
     const start = (page - 1) * pageSize;
@@ -1639,7 +1942,7 @@ export default function Sales() {
     setSales(paged);
     setTotal(totalRecords);
     setUsingLocal(true);
-  }, [search, page, fromDate, toDate]);
+  }, [search, page, fromDate, toDate, creditFilter, statusFilter]);
 
   React.useEffect(() => {
     fetchSales();
@@ -1657,6 +1960,21 @@ export default function Sales() {
   const handleToDateChange = (val: string) => {
     setToDate(val);
     setPage(1);
+  };
+  const handleStatusFilterChange = (val: string) => {
+    setStatusFilter(val as "" | "Completed" | "Pending" | "Return");
+    setPage(1);
+  };
+
+  const periodLabels: Record<string, string> = {
+    today: "Today's Sales",
+    week: "This Week's Sales",
+    month: "This Month's Sales",
+  };
+  const periodInvoiceLabels: Record<string, string> = {
+    today: "invoices today",
+    week: "invoices this week",
+    month: "invoices this month",
   };
 
   const totalPages = Math.ceil(total / pageSize);
@@ -1775,14 +2093,72 @@ export default function Sales() {
               Manage invoices, track payments, and process returns.
             </p>
           </div>
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="size-4" />
-            New Invoice
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="size-4" />
+              New Invoice
+            </Button>
+            <Button
+              variant={creditFilter ? "default" : "outline"}
+              className={cn(
+                "shrink-0",
+                creditFilter && "bg-red-600 hover:bg-red-700 text-white dark:bg-red-700 dark:hover:bg-red-800"
+              )}
+              onClick={() => setCreditFilter((f) => !f)}
+            >
+              <CreditCard className="size-3.5 mr-1" />
+              {creditFilter ? "Showing Credit Only" : "Credit Sales"}
+            </Button>
+          </div>
         </div>
 
+        {/* Outstanding Credit Alert */}
+        {creditTotal > 0 && (
+          <div className="rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20 p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg p-2 bg-red-100 dark:bg-red-950/60">
+                <CreditCard className="h-5 w-5 text-red-600 dark:text-red-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-red-800 dark:text-red-300">
+                  Outstanding Credit
+                </p>
+                <p className="text-xs text-red-600/80 dark:text-red-400/80">
+                  Total credit amount pending from customers
+                </p>
+              </div>
+            </div>
+            <span className="text-lg font-bold text-red-700 dark:text-red-300 font-mono">
+              {INR(creditTotal)}
+            </span>
+          </div>
+        )}
+
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+          <div className="rounded-lg border bg-card p-4 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <CalendarDays className="size-4 text-muted-foreground" />
+                <p className="text-sm font-medium text-muted-foreground">{periodLabels[summaryPeriod]}</p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                {todayLoading && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
+                <Select value={summaryPeriod} onValueChange={(v) => setSummaryPeriod(v as typeof summaryPeriod)}>
+                  <SelectTrigger className="h-7 w-[110px] text-xs" aria-label="Select period">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="today">Today</SelectItem>
+                    <SelectItem value="week">This Week</SelectItem>
+                    <SelectItem value="month">This Month</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <p className="text-2xl font-bold mt-1 font-mono">{INR(todayTotal)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{todayCount} invoice{todayCount !== 1 ? 's' : ''} {periodInvoiceLabels[summaryPeriod]}</p>
+          </div>
           <div className="rounded-lg border bg-card p-4 shadow-sm">
             <p className="text-sm font-medium text-muted-foreground">This Page Revenue</p>
             <p className="text-2xl font-bold mt-1 font-mono">{INR(totalRevenue)}</p>
@@ -1832,7 +2208,21 @@ export default function Sales() {
                     className="w-full sm:w-44"
                   />
                 </div>
-                {(search || fromDate || toDate) && (
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Status</Label>
+                  <Select value={statusFilter || ""} onValueChange={handleStatusFilterChange}>
+                    <SelectTrigger className="w-full sm:w-36">
+                      <SelectValue placeholder="All Statuses" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All</SelectItem>
+                      <SelectItem value="Completed">Completed</SelectItem>
+                      <SelectItem value="Pending">Pending</SelectItem>
+                      <SelectItem value="Return">Return</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {(search || fromDate || toDate || statusFilter) && (
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground invisible">Action</Label>
                     <Button
@@ -1842,6 +2232,7 @@ export default function Sales() {
                         setSearch("");
                         setFromDate("");
                         setToDate("");
+                        setStatusFilter("");
                         setPage(1);
                       }}
                     >
@@ -1928,9 +2319,16 @@ export default function Sales() {
                             {INR(sale.total)}
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline" className="text-xs">
-                              {sale.paymentMode}
-                            </Badge>
+                            <div className="flex items-center gap-1.5">
+                              <Badge variant="outline" className="text-xs">
+                                {sale.paymentMode}
+                              </Badge>
+                              {sale.paymentMode === "Credit" && (
+                                <Badge className="bg-red-100 text-red-700 border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-800 text-[10px] px-1.5 py-0">
+                                  CREDIT
+                                </Badge>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             {new Date(sale.createdAt).toLocaleDateString("en-IN", {

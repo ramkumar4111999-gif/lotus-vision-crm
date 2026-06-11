@@ -560,12 +560,21 @@ export async function seedCRMData() {
       return { subtotal, discount, cgst, sgst, igst: 0, totalAmount: total };
     }
 
+    // Helper to get a date N days ago at a specific hour
+    function daysAgo(days: number, hour = 11) {
+      const d = new Date();
+      d.setDate(d.getDate() - days);
+      d.setHours(hour, Math.floor(Math.random() * 60), 0, 0);
+      return d;
+    }
+
     const salesData = [
-      // Sale 1: Murugan - Frame + Lenses + Cleaning kit
+      // Sale 1: Murugan - Frame + Lenses + Cleaning kit (today)
       {
         id: 'sale_001',
         invoiceNo: 'INV-2025-001',
         customerId: customerMap.get('cust_001')!,
+        createdAt: daysAgo(0, 10),
         ...calcGST(3200 + 2500 + 120, 200),
         paymentMode: 'Cash',
         status: 'Completed',
@@ -575,11 +584,12 @@ export async function seedCRMData() {
           { productId: productMap.get('prod_027')!, qty: 1, price: 120, total: 120 },
         ],
       },
-      // Sale 2: Aishwarya - Contact lenses + Solution
+      // Sale 2: Aishwarya - Contact lenses + Solution (yesterday)
       {
         id: 'sale_002',
         invoiceNo: 'INV-2025-002',
         customerId: customerMap.get('cust_002')!,
+        createdAt: daysAgo(1, 14),
         ...calcGST(1800 * 2 + 350),
         paymentMode: 'UPI',
         status: 'Completed',
@@ -588,11 +598,12 @@ export async function seedCRMData() {
           { productId: productMap.get('prod_026')!, qty: 1, price: 350, total: 350 },
         ],
       },
-      // Sale 3: Kumaravel (Wholesale) - Bulk frames
+      // Sale 3: Kumaravel (Wholesale) - Bulk frames (3 days ago)
       {
         id: 'sale_003',
         invoiceNo: 'INV-2025-003',
         customerId: customerMap.get('cust_003')!,
+        createdAt: daysAgo(3, 11),
         ...calcGST(1200 * 10 + 950 * 10, 3000),
         paymentMode: 'Bank Transfer',
         status: 'Completed',
@@ -601,11 +612,12 @@ export async function seedCRMData() {
           { productId: productMap.get('prod_006')!, qty: 10, price: 950, total: 9500 },
         ],
       },
-      // Sale 4: Priya Dharshini - Premium Ray-Ban + Zeiss lens
+      // Sale 4: Priya Dharshini - Premium Ray-Ban + Zeiss lens (5 days ago)
       {
         id: 'sale_004',
         invoiceNo: 'INV-2025-004',
         customerId: customerMap.get('cust_004')!,
+        createdAt: daysAgo(5, 15),
         ...calcGST(3500 + 3800, 500),
         paymentMode: 'Card',
         status: 'Completed',
@@ -614,11 +626,12 @@ export async function seedCRMData() {
           { productId: productMap.get('prod_012')!, qty: 1, price: 3800, total: 3800 },
         ],
       },
-      // Sale 5: Senthil Kumar - Computer glasses
+      // Sale 5: Senthil Kumar - Computer glasses (8 days ago)
       {
         id: 'sale_005',
         invoiceNo: 'INV-2025-005',
         customerId: customerMap.get('cust_005')!,
+        createdAt: daysAgo(8, 12),
         ...calcGST(2500 + 1800, 150),
         paymentMode: 'Cash',
         status: 'Completed',
@@ -627,11 +640,12 @@ export async function seedCRMData() {
           { productId: productMap.get('prod_009')!, qty: 1, price: 2500, total: 2500 },
         ],
       },
-      // Sale 6: Lakshmi Narayanan - Progressive + Titanium frame
+      // Sale 6: Lakshmi Narayanan - Progressive + Titanium frame (12 days ago)
       {
         id: 'sale_006',
         invoiceNo: 'INV-2025-006',
         customerId: customerMap.get('cust_006')!,
+        createdAt: daysAgo(12, 10),
         ...calcGST(4200 + 5500),
         paymentMode: 'Card',
         status: 'Completed',
@@ -640,11 +654,12 @@ export async function seedCRMData() {
           { productId: productMap.get('prod_011')!, qty: 1, price: 5500, total: 5500 },
         ],
       },
-      // Sale 7: Deepak Raj - Sunglasses (gift)
+      // Sale 7: Deepak Raj - Sunglasses (gift) (18 days ago)
       {
         id: 'sale_007',
         invoiceNo: 'INV-2025-007',
         customerId: customerMap.get('cust_010')!,
+        createdAt: daysAgo(18, 16),
         ...calcGST(4800 + 150),
         paymentMode: 'UPI',
         status: 'Completed',
@@ -653,11 +668,12 @@ export async function seedCRMData() {
           { productId: productMap.get('prod_028')!, qty: 1, price: 150, total: 150 },
         ],
       },
-      // Sale 8: Ganesh Moorthy - Acuvue + Solution + Cleaning kit
+      // Sale 8: Ganesh Moorthy - Acuvue + Solution + Cleaning kit (25 days ago)
       {
         id: 'sale_008',
         invoiceNo: 'INV-2025-008',
         customerId: customerMap.get('cust_014')!,
+        createdAt: daysAgo(25, 13),
         ...calcGST(1500 * 3 + 280 + 120),
         paymentMode: 'Cash',
         status: 'Completed',
@@ -795,11 +811,20 @@ export async function seedCRMData() {
 
     // ─── APPOINTMENTS (5) ─────────────────────────────────────────────
     const now = new Date();
+    // Set a fixed time for today's appointments (10:00 AM and 2:30 PM)
+    const today10am = new Date(now);
+    today10am.setHours(10, 0, 0, 0);
+    const today230pm = new Date(now);
+    today230pm.setHours(14, 30, 0, 0);
+    const today4pm = new Date(now);
+    today4pm.setHours(16, 0, 0, 0);
+
     const appointmentsData = [
+      // TODAY appointments
       {
         id: 'appt_001',
         customerId: customerMap.get('cust_013')!,
-        date: new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000),
+        date: today10am,
         purpose: 'Eye Check-up',
         status: 'Scheduled',
         notes: 'New patient - walk-in enquiry last week',
@@ -807,23 +832,24 @@ export async function seedCRMData() {
       {
         id: 'appt_002',
         customerId: customerMap.get('cust_007')!,
-        date: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000),
+        date: today230pm,
         purpose: 'Contact Lens Trial',
-        status: 'Scheduled',
+        status: 'Confirmed',
         notes: 'Wants to switch from glasses to contact lenses',
       },
       {
         id: 'appt_003',
         customerId: customerMap.get('cust_010')!,
-        date: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000),
+        date: today4pm,
         purpose: 'Follow-up',
-        status: 'Completed',
+        status: 'Scheduled',
         notes: 'Post-delivery follow-up for progressive lenses',
       },
+      // Future appointments
       {
         id: 'appt_004',
         customerId: customerMap.get('cust_015')!,
-        date: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000),
+        date: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000),
         purpose: 'Annual Eye Exam',
         status: 'Scheduled',
         notes: 'Regular annual check-up customer',
@@ -831,9 +857,9 @@ export async function seedCRMData() {
       {
         id: 'appt_005',
         customerId: customerMap.get('cust_009')!,
-        date: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
+        date: new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000),
         purpose: 'Bifocal Consultation',
-        status: 'Completed',
+        status: 'Scheduled',
         notes: 'Patient prescribed bifocals. Lab order placed.',
       },
     ];

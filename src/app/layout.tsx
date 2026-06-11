@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
@@ -15,11 +15,17 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CRM Dashboard",
-  description: "Comprehensive CRM system for managing customers, inventory, sales, lab orders, appointments, accounting, and more.",
+  title: "Sankaran Kovil Opticals — CRM",
+  description: "Complete Customer Relationship Management system for Sankaran Kovil Opticals",
   icons: {
     icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#059669',
+  width: 'device-width',
+  initialScale: 1,
 };
 
 export default function RootLayout({

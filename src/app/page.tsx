@@ -1,20 +1,43 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   LayoutDashboard, Users, Package, Receipt, FlaskConical, CalendarDays, Wallet,
-  BarChart3, UserCog, Megaphone, Menu, Moon, Sun, LogOut, Bell, X, Eye,
+  BarChart3, UserCog, Megaphone, Menu, Moon, Sun, LogOut, Bell, X, Search,
+  Database, CheckCircle2, PackageX, UserPlus, Clock, AlertTriangle, Settings,
+  Loader2, Download, Upload, AlertOctagon, IndianRupee, TrendingUp, PackageSearch, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import {
   Tooltip, TooltipContent, TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { CrmProvider, useCrmStore, type SectionKey } from '@/components/crm/store';
+import { getSettings, saveSettings, type CrmSettings } from '@/lib/settings';
+import { toast } from 'sonner';
+import { ErrorBoundary } from '@/components/error-boundary';
 import Dashboard from '@/components/crm/dashboard';
 import Customers from '@/components/crm/customers';
 import Inventory from '@/components/crm/inventory';
@@ -47,10 +70,60 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'campaigns', label: 'Campaigns', icon: Megaphone },
 ];
 
-// ─── Section renderer ──────────────────────────────────────────────────
+// ─── Mock notifications ────────────────────────────────────────────────
+
+const MOCK_NOTIFICATIONS = [
+  {
+    id: '1',
+    title: '3 Lab Orders Pending',
+    description: 'Lens orders from Sankaran and Priya are due today.',
+    time: '10 min ago',
+    icon: FlaskConical,
+    color: 'text-amber-600 dark:text-amber-400',
+    bg: 'bg-amber-50 dark:bg-amber-900/30',
+  },
+  {
+    id: '2',
+    title: 'Low Stock Alert',
+    description: '5 products are below minimum stock level.',
+    time: '1 hour ago',
+    icon: PackageX,
+    color: 'text-red-600 dark:text-red-400',
+    bg: 'bg-red-50 dark:bg-red-900/30',
+  },
+  {
+    id: '3',
+    title: 'New Customer Registered',
+    description: 'Meena Devi was added to the CRM.',
+    time: '3 hours ago',
+    icon: UserPlus,
+    color: 'text-emerald-600 dark:text-emerald-400',
+    bg: 'bg-emerald-50 dark:bg-emerald-900/30',
+  },
+  {
+    id: '4',
+    title: 'Appointment Reminder',
+    description: 'Dr. Vikram has an eye check-up at 4:00 PM.',
+    time: '5 hours ago',
+    icon: Clock,
+    color: 'text-sky-600 dark:text-sky-400',
+    bg: 'bg-sky-50 dark:bg-sky-900/30',
+  },
+  {
+    id: '5',
+    title: 'Overdue Payment',
+    description: 'Customer Rajan has ₹2,500 overdue for 15 days.',
+    time: 'Yesterday',
+    icon: AlertTriangle,
+    color: 'text-orange-600 dark:text-orange-400',
+    bg: 'bg-orange-50 dark:bg-orange-900/30',
+  },
+];
+
+// ─── Section renderer with transition ─────────────────────────────────
 
 function SectionRenderer() {
-  const { activeSection } = useCrmStore();
+  const { activeSection, setLoadingBar } = useCrmStore();
 
   const sectionMap: Record<SectionKey, React.ComponentType> = {
     dashboard: Dashboard,
@@ -65,21 +138,99 @@ function SectionRenderer() {
     campaigns: Campaigns,
   };
 
-  const Component = sectionMap[activeSection];
-  if (!Component) return <Dashboard />;
-  return <Component />;
+  const Component = sectionMap[activeSection] ?? Dashboard;
+
+  useEffect(() => {
+    setLoadingBar(true);
+    const timer = setTimeout(() => setLoadingBar(false), 800);
+    return () => clearTimeout(timer);
+  }, [activeSection, setLoadingBar]);
+
+  return (
+    <div key={activeSection} className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+      <Component />
+    </div>
+  );
 }
 
 // ─── Sidebar (Desktop) ─────────────────────────────────────────────────
 
 function Sidebar({ onNav }: { onNav?: () => void }) {
   const { activeSection, setActiveSection, darkMode, toggleDarkMode } = useCrmStore();
+  const [isSeeding, setIsSeeding] = useState(false);
+  const [seedDone, setSeedDone] = useState(false);
+
+  // Quick stats for mobile sidebar
+  const [quickStats, setQuickStats] = useState({ todaySales: 0, pendingLab: 0, lowStock: 0, dueAmount: 0 });
+  const [statsLoaded, setStatsLoaded] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const [salesRes, labRes, lowStockRes, duesRes] = await Promise.allSettled([
+          fetch(`/api/sales?fromDate=${today}&toDate=${today}&limit=999`),
+          fetch('/api/lab-orders?status=Pending'),
+          fetch('/api/products/low-stock'),
+          fetch('/api/dues'),
+        ]);
+        if (cancelled) return;
+
+        let todaySales = 0;
+        if (salesRes.status === 'fulfilled' && salesRes.value.ok) {
+          const data = await salesRes.value.json();
+          const list = Array.isArray(data.sales) ? data.sales : [];
+          todaySales = list.reduce((sum: number, s: { total: number }) => sum + (s.total || 0), 0);
+        }
+
+        let pendingLab = 0;
+        if (labRes.status === 'fulfilled' && labRes.value.ok) {
+          const data = await labRes.value.json();
+          pendingLab = Array.isArray(data.data) ? data.data.length : Array.isArray(data) ? data.length : 0;
+        }
+
+        let lowStock = 0;
+        if (lowStockRes.status === 'fulfilled' && lowStockRes.value.ok) {
+          const data = await lowStockRes.value.json();
+          lowStock = Array.isArray(data.products) ? data.products.length : Array.isArray(data) ? data.length : 0;
+        }
+
+        let dueAmount = 0;
+        if (duesRes.status === 'fulfilled' && duesRes.value.ok) {
+          const data = await duesRes.value.json();
+          const list = Array.isArray(data.data) ? data.data : [];
+          dueAmount = list.reduce((sum: number, d: { amount: number; paid: number }) => sum + ((d.amount || 0) - (d.paid || 0)), 0);
+        }
+
+        if (!cancelled) {
+          setQuickStats({ todaySales, pendingLab, lowStock, dueAmount });
+          setStatsLoaded(true);
+        }
+      } catch {
+        // silent
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleSeed = useCallback(async () => {
+    setIsSeeding(true);
+    try {
+      const res = await fetch('/api/seed', { method: 'POST' });
+      if (res.ok) {
+        setSeedDone(true);
+        setTimeout(() => setSeedDone(false), 3000);
+      }
+    } catch { /* ignore */ }
+    setIsSeeding(false);
+  }, []);
 
   return (
     <div className="flex h-full flex-col bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800">
       {/* Brand */}
       <div className="flex items-center gap-3 px-5 py-5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white font-bold text-sm shadow-lg shadow-indigo-200 dark:shadow-indigo-900/40">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white font-bold text-sm shadow-lg shadow-emerald-200 dark:shadow-emerald-900/40">
           SKO
         </div>
         <div className="flex flex-col">
@@ -96,6 +247,51 @@ function Sidebar({ onNav }: { onNav?: () => void }) {
 
       {/* Nav items */}
       <ScrollArea className="flex-1 px-3 py-3">
+        {/* Quick Stats - visible on mobile sidebar */}
+        {statsLoaded && (
+          <div className="mb-3 lg:hidden">
+            <button
+              className="w-full flex items-center justify-between rounded-lg bg-emerald-50 dark:bg-emerald-950/30 px-3 py-2 text-xs font-medium text-emerald-700 dark:text-emerald-400"
+              onClick={(e) => {
+                const el = e.currentTarget.nextElementSibling;
+                if (el) el.classList.toggle('hidden');
+              }}
+            >
+              <span className="flex items-center gap-1.5">
+                <TrendingUp className="h-3.5 w-3.5" />
+                Quick Stats
+              </span>
+              <ChevronDown className="h-3.5 w-3.5" />
+            </button>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <div className="rounded-md bg-white dark:bg-slate-800 border dark:border-slate-700 p-2.5">
+                <p className="text-[10px] text-muted-foreground leading-tight">Today&apos;s Sales</p>
+                <p className="text-sm font-bold font-mono text-emerald-600 dark:text-emerald-400">
+                  ₹{quickStats.todaySales.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                </p>
+              </div>
+              <div className="rounded-md bg-white dark:bg-slate-800 border dark:border-slate-700 p-2.5">
+                <p className="text-[10px] text-muted-foreground leading-tight">Pending Lab</p>
+                <p className="text-sm font-bold font-mono text-amber-600 dark:text-amber-400">
+                  {quickStats.pendingLab}
+                </p>
+              </div>
+              <div className="rounded-md bg-white dark:bg-slate-800 border dark:border-slate-700 p-2.5">
+                <p className="text-[10px] text-muted-foreground leading-tight">Low Stock</p>
+                <p className="text-sm font-bold font-mono text-red-600 dark:text-red-400">
+                  {quickStats.lowStock}
+                </p>
+              </div>
+              <div className="rounded-md bg-white dark:bg-slate-800 border dark:border-slate-700 p-2.5">
+                <p className="text-[10px] text-muted-foreground leading-tight">Due Amount</p>
+                <p className="text-sm font-bold font-mono text-orange-600 dark:text-orange-400">
+                  ₹{quickStats.dueAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <nav className="flex flex-col gap-1">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
@@ -109,9 +305,9 @@ function Sidebar({ onNav }: { onNav?: () => void }) {
                       onNav?.();
                     }}
                     className={`
-                      flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all
+                      flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150
                       ${isActive
-                        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 dark:shadow-indigo-900/40'
+                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200 dark:shadow-emerald-900/40'
                         : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
                       }
                     `}
@@ -138,6 +334,24 @@ function Sidebar({ onNav }: { onNav?: () => void }) {
 
       {/* Footer */}
       <div className="p-3 space-y-1">
+        {/* Seed Database button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleSeed}
+          disabled={isSeeding}
+          className="w-full justify-start gap-2 px-3 text-xs text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+        >
+          {isSeeding ? (
+            <Database className="h-3.5 w-3.5 animate-pulse" />
+          ) : seedDone ? (
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+          ) : (
+            <Database className="h-3.5 w-3.5" />
+          )}
+          {isSeeding ? 'Seeding...' : seedDone ? 'Database Seeded!' : 'Seed Database'}
+        </Button>
+
         <button
           onClick={toggleDarkMode}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
@@ -147,7 +361,7 @@ function Sidebar({ onNav }: { onNav?: () => void }) {
         </button>
         <div className="flex items-center gap-3 px-3 py-2">
           <Avatar className="h-8 w-8">
-            <AvatarFallback className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300 text-xs font-semibold">
+            <AvatarFallback className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 text-xs font-semibold">
               RK
             </AvatarFallback>
           </Avatar>
@@ -155,7 +369,7 @@ function Sidebar({ onNav }: { onNav?: () => void }) {
             <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">Ram Kumar</p>
             <p className="text-xs text-slate-500 dark:text-slate-400 truncate">Owner</p>
           </div>
-          <button className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+          <button className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
             <LogOut className="h-4 w-4" />
           </button>
         </div>
@@ -164,10 +378,546 @@ function Sidebar({ onNav }: { onNav?: () => void }) {
   );
 }
 
+// ─── Global Search ─────────────────────────────────────────────────────
+
+interface SearchResult {
+  type: 'customer' | 'product' | 'sale';
+  id: string;
+  primary: string;
+  secondary: string;
+  tertiary?: string;
+}
+
+function GlobalSearch() {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [open, setOpen] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [mobileExpanded, setMobileExpanded] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { setActiveSection } = useCrmStore();
+
+  // Expose the ref to the store for keyboard shortcut focus
+  const { setSearchInputRef } = useCrmStore();
+  useEffect(() => {
+    setSearchInputRef(inputRef);
+  }, [inputRef, setSearchInputRef]);
+
+  const doSearch = useCallback(async (q: string) => {
+    if (q.length < 2) {
+      setResults([]);
+      setOpen(false);
+      return;
+    }
+    setSearching(true);
+    try {
+      const [custRes, prodRes, saleRes] = await Promise.allSettled([
+        fetch(`/api/customers?search=${encodeURIComponent(q)}&limit=5`),
+        fetch(`/api/products?search=${encodeURIComponent(q)}&pageSize=5`),
+        fetch(`/api/sales?search=${encodeURIComponent(q)}&limit=5`),
+      ]);
+
+      const found: SearchResult[] = [];
+
+      if (custRes.status === 'fulfilled' && custRes.value.ok) {
+        const data = await custRes.value.json();
+        const list = Array.isArray(data.data) ? data.data : [];
+        list.forEach((c: { id: string; name: string; phone: string }) => {
+          found.push({ type: 'customer', id: c.id, primary: c.name, secondary: c.phone });
+        });
+      }
+
+      if (prodRes.status === 'fulfilled' && prodRes.value.ok) {
+        const data = await prodRes.value.json();
+        const list = Array.isArray(data.products) ? data.products : [];
+        list.forEach((p: { id: string; name: string; price: number; stock: number }) => {
+          found.push({
+            type: 'product',
+            id: p.id,
+            primary: p.name,
+            secondary: `₹${p.price.toLocaleString('en-IN')}`,
+            tertiary: `Stock: ${p.stock}`,
+          });
+        });
+      }
+
+      if (saleRes.status === 'fulfilled' && saleRes.value.ok) {
+        const data = await saleRes.value.json();
+        const list = Array.isArray(data.sales) ? data.sales : [];
+        list.forEach((s: { id: string; invoiceNo: string; customerName: string; total: number }) => {
+          found.push({
+            type: 'sale',
+            id: s.id,
+            primary: s.invoiceNo,
+            secondary: s.customerName,
+            tertiary: `₹${s.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+          });
+        });
+      }
+
+      setResults(found);
+      setOpen(found.length > 0);
+    } catch {
+      // ignore
+    } finally {
+      setSearching(false);
+    }
+  }, []);
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setQuery(val);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => doSearch(val), 300);
+  }, [doSearch]);
+
+  const handleSelect = useCallback((result: SearchResult) => {
+    const sectionMap: Record<string, SectionKey> = {
+      customer: 'customers',
+      product: 'inventory',
+      sale: 'sales',
+    };
+    setActiveSection(sectionMap[result.type] ?? 'dashboard');
+    setQuery('');
+    setOpen(false);
+    setMobileExpanded(false);
+  }, [setActiveSection]);
+
+  // Close on click outside
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setMobileExpanded(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  // Close on Escape
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setOpen(false);
+        setMobileExpanded(false);
+        inputRef.current?.blur();
+      }
+    }
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, []);
+
+  const customers = results.filter((r) => r.type === 'customer');
+  const products = results.filter((r) => r.type === 'product');
+  const sales = results.filter((r) => r.type === 'sale');
+  const hasResults = customers.length > 0 || products.length > 0 || sales.length > 0;
+
+  const typeIcon = (type: string) => {
+    switch (type) {
+      case 'customer': return <Users className="h-3.5 w-3.5 text-emerald-500" />;
+      case 'product': return <Package className="h-3.5 w-3.5 text-sky-500" />;
+      case 'sale': return <Receipt className="h-3.5 w-3.5 text-amber-500" />;
+    }
+  };
+
+  const typeLabel = (type: string) => {
+    switch (type) {
+      case 'customer': return 'Customers';
+      case 'product': return 'Products';
+      case 'sale': return 'Sales';
+    }
+  };
+
+  return (
+    <div ref={containerRef} className="relative">
+      {/* Mobile: icon-only, expandable */}
+      <div className="sm:hidden">
+        {mobileExpanded ? (
+          <div className="flex items-center gap-1">
+            <Input
+              ref={inputRef}
+              placeholder="Search..."
+              value={query}
+              onChange={handleChange}
+              autoFocus
+              className="h-9 w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-sm"
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="shrink-0"
+              onClick={() => { setMobileExpanded(false); setQuery(''); setOpen(false); }}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="shrink-0"
+                onClick={() => setMobileExpanded(true)}
+              >
+                <Search className="h-4.5 w-4.5 text-slate-600 dark:text-slate-400" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Search (Ctrl+K)</TooltipContent>
+          </Tooltip>
+        )}
+      </div>
+
+      {/* Desktop: full search input */}
+      <div className="hidden sm:block">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="relative w-64">
+              <Input
+                ref={inputRef}
+                placeholder="Search... (Ctrl+K)"
+                value={query}
+                onChange={handleChange}
+                onFocus={() => { if (results.length > 0) setOpen(true); }}
+                className="h-9 pl-9 pr-8 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-sm"
+              />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+              {searching && (
+                <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 animate-spin" />
+              )}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>Ctrl+K to search</TooltipContent>
+        </Tooltip>
+      </div>
+
+      {/* Dropdown */}
+      {open && hasResults && (
+        <div className="absolute right-0 sm:right-auto sm:left-0 top-full mt-1.5 w-[340px] sm:w-80 z-50 rounded-lg border bg-popover shadow-lg max-h-80 overflow-y-auto">
+          {/* Customers group */}
+          {customers.length > 0 && (
+            <div>
+              <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                <Users className="h-3 w-3" /> Customers
+              </div>
+              {customers.map((r) => (
+                <button
+                  key={`cust-${r.id}`}
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center gap-2.5 transition-colors"
+                  onClick={() => handleSelect(r)}
+                >
+                  <div className="rounded-full bg-emerald-100 dark:bg-emerald-900/40 p-1.5 shrink-0">
+                    {typeIcon(r.type)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium truncate">{r.primary}</p>
+                    <p className="text-xs text-muted-foreground truncate">{r.secondary}</p>
+                  </div>
+                </button>
+              ))}
+              {products.length > 0 && <Separator />}
+            </div>
+          )}
+
+          {/* Products group */}
+          {products.length > 0 && (
+            <div>
+              <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                <Package className="h-3 w-3" /> Products
+              </div>
+              {products.map((r) => (
+                <button
+                  key={`prod-${r.id}`}
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center gap-2.5 transition-colors"
+                  onClick={() => handleSelect(r)}
+                >
+                  <div className="rounded-full bg-sky-100 dark:bg-sky-900/40 p-1.5 shrink-0">
+                    {typeIcon(r.type)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium truncate">{r.primary}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {r.secondary} {r.tertiary ? `· ${r.tertiary}` : ''}
+                    </p>
+                  </div>
+                </button>
+              ))}
+              {sales.length > 0 && <Separator />}
+            </div>
+          )}
+
+          {/* Sales group */}
+          {sales.length > 0 && (
+            <div>
+              <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                <Receipt className="h-3 w-3" /> Sales
+              </div>
+              {sales.map((r) => (
+                <button
+                  key={`sale-${r.id}`}
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center gap-2.5 transition-colors"
+                  onClick={() => handleSelect(r)}
+                >
+                  <div className="rounded-full bg-amber-100 dark:bg-amber-900/40 p-1.5 shrink-0">
+                    {typeIcon(r.type)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium truncate">{r.primary}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {r.secondary} {r.tertiary ? `· ${r.tertiary}` : ''}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* No results message */}
+      {open && query.length >= 2 && !searching && !hasResults && (
+        <div className="absolute right-0 sm:right-auto sm:left-0 top-full mt-1.5 w-[340px] sm:w-80 z-50 rounded-lg border bg-popover shadow-lg p-4 text-center">
+          <p className="text-sm text-muted-foreground">No results found for &ldquo;{query}&rdquo;</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Settings Dialog ───────────────────────────────────────────────────
+
+function SettingsDialog() {
+  const { settingsOpen, setSettingsOpen } = useCrmStore();
+  const [form, setForm] = useState<CrmSettings>(getSettings());
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (settingsOpen) {
+      setForm(getSettings());
+    }
+  }, [settingsOpen]);
+
+  const handleSave = useCallback(() => {
+    setSaving(true);
+    // Simulate a tiny delay for UX
+    setTimeout(() => {
+      saveSettings(form);
+      setSaving(false);
+      setSettingsOpen(false);
+      toast.success('Settings saved successfully');
+    }, 200);
+  }, [form, setSettingsOpen]);
+
+  const updateField = <K extends keyof CrmSettings>(key: K, value: CrmSettings[K]) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  return (
+    <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Settings className="h-5 w-5" />
+            Settings
+          </DialogTitle>
+          <DialogDescription>
+            Configure your shop details and preferences. These are used across invoices and reports.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          <div className="space-y-2">
+            <Label htmlFor="setting-shop-name">Shop Name</Label>
+            <Input
+              id="setting-shop-name"
+              value={form.shopName}
+              onChange={(e) => updateField('shopName', e.target.value)}
+              placeholder="Shop name"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="setting-revenue-goal">Daily Revenue Goal (₹)</Label>
+            <Input
+              id="setting-revenue-goal"
+              type="number"
+              min={0}
+              value={form.dailyRevenueGoal}
+              onChange={(e) => updateField('dailyRevenueGoal', parseFloat(e.target.value) || 0)}
+              placeholder="25000"
+            />
+            <p className="text-xs text-muted-foreground">Used by the Dashboard&apos;s revenue goal progress bar.</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="setting-gstin">GSTIN</Label>
+            <Input
+              id="setting-gstin"
+              value={form.gstin}
+              onChange={(e) => updateField('gstin', e.target.value)}
+              placeholder="GST identification number"
+            />
+            <p className="text-xs text-muted-foreground">Displayed on printed invoices.</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="setting-phone">Phone</Label>
+            <Input
+              id="setting-phone"
+              value={form.phone}
+              onChange={(e) => updateField('phone', e.target.value)}
+              placeholder="+91 94432 12345"
+            />
+            <p className="text-xs text-muted-foreground">Displayed on printed invoices.</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="setting-address">Address</Label>
+            <Input
+              id="setting-address"
+              value={form.address}
+              onChange={(e) => updateField('address', e.target.value)}
+              placeholder="Full shop address"
+            />
+            <p className="text-xs text-muted-foreground">Displayed on printed invoices.</p>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Data Management Section */}
+        <div className="space-y-3">
+          <Label className="text-sm font-semibold flex items-center gap-2">
+            <Database className="h-4 w-4" />
+            Data Management
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            Export or import your entire CRM database as a JSON backup file.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={async () => {
+                try {
+                  const res = await fetch('/api/backup');
+                  if (!res.ok) throw new Error('Export failed');
+                  const blob = await res.json();
+                  const dataStr = JSON.stringify(blob, null, 2);
+                  const fileBlob = new Blob([dataStr], { type: 'application/json' });
+                  const url = URL.createObjectURL(fileBlob);
+                  const a = document.createElement('a');
+                  const today = new Date().toISOString().split('T')[0];
+                  a.href = url;
+                  a.download = `sko-crm-backup-${today}.json`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                  toast.success('Backup exported successfully!');
+                } catch {
+                  toast.error('Failed to export backup');
+                }
+              }}
+            >
+              <Download className="h-4 w-4" />
+              Export Backup
+            </Button>
+
+            <label className="cursor-pointer">
+              <input
+                type="file"
+                accept=".json"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    const text = await file.text();
+                    const data = JSON.parse(text);
+                    if (!data.version || !data.data) {
+                      toast.error('Invalid backup file format');
+                      return;
+                    }
+                    const res = await fetch('/api/restore', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(data),
+                    });
+                    if (res.ok) {
+                      const result = await res.json().catch(() => ({}));
+                      const counts = result.restored;
+                      const parts = Object.entries(counts || {}).map(([k, v]) => `${k}: ${v}`).join(', ');
+                      toast.success(`Data restored successfully! ${parts ? '(' + parts + ')' : ''} Refreshing...`);
+                      setTimeout(() => window.location.reload(), 1500);
+                    } else {
+                      const err = await res.json().catch(() => ({}));
+                      toast.error(err.error || 'Failed to restore backup');
+                    }
+                  } catch {
+                    toast.error('Failed to read or restore backup file');
+                  }
+                  // Reset input
+                  e.target.value = '';
+                }}
+              />
+              <span
+                role="button"
+                tabIndex={0}
+                className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <Upload className="h-4 w-4" />
+                Import Backup
+              </span>
+            </label>
+          </div>
+          <div className="flex items-start gap-2 rounded-md border border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20 p-2.5">
+            <AlertOctagon className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-800 dark:text-amber-300">
+              <span className="font-semibold">Warning:</span> Importing a backup will REPLACE all current data.
+              This action cannot be undone.
+            </p>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setSettingsOpen(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
+            Save Settings
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Loading Bar ───────────────────────────────────────────────────────
+
+function LoadingBar() {
+  const { loadingBar } = useCrmStore();
+
+  return (
+    <div
+      className={`h-0.5 bg-emerald-500 transition-all duration-500 ease-out ${
+        loadingBar ? 'w-full opacity-100' : 'w-0 opacity-0'
+      }`}
+      role="progressbar"
+      aria-label="Loading"
+    />
+  );
+}
+
 // ─── Top Bar ────────────────────────────────────────────────────────────
 
 function TopBar() {
-  const { activeSection, sidebarOpen, setSidebarOpen, searchQuery, setSearchQuery } = useCrmStore();
+  const { activeSection, setSidebarOpen, darkMode, toggleDarkMode, setSettingsOpen } = useCrmStore();
 
   const currentLabel = NAV_ITEMS.find((n) => n.key === activeSection)?.label ?? 'Dashboard';
 
@@ -177,63 +927,147 @@ function TopBar() {
       <Button
         variant="ghost"
         size="icon"
-        className="lg:hidden"
+        className="lg:hidden shrink-0"
         onClick={() => setSidebarOpen(true)}
       >
         <Menu className="h-5 w-5" />
       </Button>
 
-      <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+      <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100 truncate">
         {currentLabel}
       </h1>
 
       <div className="flex-1" />
 
-      {/* Search */}
-      <div className="relative hidden sm:block w-64">
-        <Input
-          placeholder="Search..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="h-9 pl-8 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
-        />
-        <Eye className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-      </div>
+      {/* Global Search */}
+      <GlobalSearch />
 
-      {/* Notifications */}
-      <Button variant="ghost" size="icon" className="relative">
-        <Bell className="h-4.5 w-4.5 text-slate-600 dark:text-slate-400" />
-        <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
-          2
-        </span>
-      </Button>
+      {/* Settings */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0"
+            onClick={() => setSettingsOpen(true)}
+          >
+            <Settings className="h-4.5 w-4.5 text-slate-600 dark:text-slate-400" />
+            <span className="sr-only">Settings</span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Settings</TooltipContent>
+      </Tooltip>
+
+      {/* Dark Mode Toggle */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0"
+            onClick={toggleDarkMode}
+          >
+            {darkMode ? (
+              <Sun className="h-4.5 w-4.5 text-amber-500" />
+            ) : (
+              <Moon className="h-4.5 w-4.5 text-slate-600 dark:text-slate-400" />
+            )}
+            <span className="sr-only">Toggle dark mode</span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{darkMode ? 'Light mode' : 'Dark mode'}</TooltipContent>
+      </Tooltip>
+
+      {/* Notifications Dropdown */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="relative shrink-0">
+            <Bell className="h-4.5 w-4.5 text-slate-600 dark:text-slate-400" />
+            <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-white dark:ring-slate-950">
+              {MOCK_NOTIFICATIONS.length}
+            </span>
+            <span className="sr-only">Notifications</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-80 p-0">
+          <DropdownMenuLabel className="flex items-center justify-between px-4 py-3">
+            <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">Notifications</span>
+            <Badge variant="secondary" className="text-[10px]">
+              {MOCK_NOTIFICATIONS.length} new
+            </Badge>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuGroup className="max-h-72 overflow-y-auto">
+            {MOCK_NOTIFICATIONS.map((n) => {
+              const Icon = n.icon;
+              return (
+                <DropdownMenuItem
+                  key={n.id}
+                  className="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                >
+                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${n.bg}`}>
+                    <Icon className={`h-4 w-4 ${n.color}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-900 dark:text-slate-100 leading-snug">
+                      {n.title}
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug mt-0.5">
+                      {n.description}
+                    </p>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
+                      {n.time}
+                    </p>
+                  </div>
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuGroup>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem className="flex items-center justify-center px-4 py-2.5 text-sm text-emerald-600 dark:text-emerald-400 font-medium cursor-pointer hover:bg-emerald-50 dark:hover:bg-emerald-900/20">
+            View all notifications
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </header>
   );
 }
 
-// ─── Mobile Sidebar Overlay ─────────────────────────────────────────────
+// ─── Mobile Sidebar Overlay with transitions ────────────────────────────
 
 function MobileSidebar() {
   const { sidebarOpen, setSidebarOpen } = useCrmStore();
 
-  if (!sidebarOpen) return null;
+  const handleClose = useCallback(() => {
+    setSidebarOpen(false);
+  }, [setSidebarOpen]);
 
   return (
-    <div className="fixed inset-0 z-50 lg:hidden">
-      {/* Backdrop */}
+    <div
+      className={`fixed inset-0 z-50 lg:hidden pointer-events-none transition-[visibility,opacity] duration-200 ${
+        sidebarOpen ? 'pointer-events-auto !visible opacity-100' : 'invisible opacity-0'
+      }`}
+    >
+      {/* Backdrop with fade */}
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={() => setSidebarOpen(false)}
+        className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-200 ${
+          sidebarOpen ? 'opacity-100' : 'opacity-0'
+        }`}
+        onClick={handleClose}
       />
-      {/* Sidebar panel */}
-      <div className="relative z-10 h-full w-72">
+      {/* Sidebar panel with slide */}
+      <div
+        className={`relative z-10 h-full w-72 transition-transform duration-200 ease-out ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
         <button
-          onClick={() => setSidebarOpen(false)}
-          className="absolute top-3 right-3 z-20 rounded-md bg-white/80 dark:bg-slate-800/80 p-1 shadow"
+          onClick={handleClose}
+          className="absolute top-3 right-3 z-20 rounded-md bg-white/80 dark:bg-slate-800/80 p-1.5 shadow-sm transition-colors hover:bg-white dark:hover:bg-slate-800"
         >
           <X className="h-4 w-4 text-slate-600 dark:text-slate-400" />
         </button>
-        <Sidebar onNav={() => setSidebarOpen(false)} />
+        <Sidebar onNav={handleClose} />
       </div>
     </div>
   );
@@ -251,12 +1085,48 @@ function DarkModeEffect() {
   return null;
 }
 
+// ─── Keyboard Shortcuts ────────────────────────────────────────────────
+
+function KeyboardShortcuts() {
+  const { focusSearchInput, triggerNewSaleDialog, setSettingsOpen, settingsOpen } = useCrmStore();
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      // Ctrl+K or Cmd+K: Focus search
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        focusSearchInput();
+        return;
+      }
+
+      // Ctrl+N: New Sale
+      if (e.ctrlKey && e.key === 'n') {
+        e.preventDefault();
+        triggerNewSaleDialog();
+        return;
+      }
+
+      // Escape: Close settings dialog
+      if (e.key === 'Escape' && settingsOpen) {
+        setSettingsOpen(false);
+        return;
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [focusSearchInput, triggerNewSaleDialog, setSettingsOpen, settingsOpen]);
+
+  return null;
+}
+
 // ─── Main Layout ────────────────────────────────────────────────────────
 
 function CrmLayout() {
   return (
     <div className="flex h-screen overflow-hidden bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
       <DarkModeEffect />
+      <KeyboardShortcuts />
 
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex lg:w-64 lg:shrink-0">
@@ -269,10 +1139,16 @@ function CrmLayout() {
       {/* Main content area */}
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar />
+        <LoadingBar />
         <main className="flex-1 overflow-y-auto">
-          <SectionRenderer />
+          <ErrorBoundary>
+            <SectionRenderer />
+          </ErrorBoundary>
         </main>
       </div>
+
+      {/* Settings Dialog */}
+      <SettingsDialog />
     </div>
   );
 }

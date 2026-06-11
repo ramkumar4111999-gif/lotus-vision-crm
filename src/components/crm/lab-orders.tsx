@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
-import { format } from 'date-fns'
+import { format, differenceInDays } from 'date-fns'
 import {
   Plus,
   Search,
@@ -14,6 +14,16 @@ import {
   IndianRupee,
   User,
   Package,
+  CheckCircle2,
+  Clock,
+  Truck,
+  ClipboardCheck,
+  LayoutGrid,
+  LayoutList,
+  Inbox,
+  Copy,
+  Ruler,
+  History,
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -50,18 +60,28 @@ import {
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type LabOrderStatus = 'Sent' | 'In Progress' | 'Ready' | 'Delivered'
+type LabOrderStatus = 'Received' | 'Pending' | 'In Lab' | 'Ready' | 'Delivered'
 
 interface LensPower {
   sph: string
   cyl: string
   axis: string
+  pd: string
 }
 
 interface CustomerOption {
   id: string
   name: string
   phone: string
+  lastPrescription: {
+    leftSPH: number | null
+    leftCYL: number | null
+    leftAXIS: number | null
+    rightSPH: number | null
+    rightCYL: number | null
+    rightAXIS: number | null
+    date: string
+  } | null
 }
 
 interface FrameOption {
@@ -69,6 +89,23 @@ interface FrameOption {
   name: string
   brand: string | null
   price: number
+  frameWidth: number | null
+  bridge: number | null
+  temple: number | null
+}
+
+interface PrescriptionRecord {
+  id: string
+  date: string
+  leftSPH: number | null
+  leftCYL: number | null
+  leftAXIS: number | null
+  leftPD: number | null
+  rightSPH: number | null
+  rightCYL: number | null
+  rightAXIS: number | null
+  rightPD: number | null
+  notes: string | null
 }
 
 interface LabOrder {
@@ -80,9 +117,11 @@ interface LabOrder {
   leftSPH: number | null
   leftCYL: number | null
   leftAXIS: number | null
+  leftPD: number | null
   rightSPH: number | null
   rightCYL: number | null
   rightAXIS: number | null
+  rightPD: number | null
   frameId: string | null
   frameName: string | null
   status: LabOrderStatus
@@ -96,13 +135,30 @@ interface LabOrder {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const STATUS_FLOW: LabOrderStatus[] = ['Sent', 'In Progress', 'Ready', 'Delivered']
+const STATUS_FLOW: LabOrderStatus[] = ['Received', 'Pending', 'In Lab', 'Ready', 'Delivered']
 
 const STATUS_BADGE_CLASS: Record<LabOrderStatus, string> = {
-  Sent: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-200 dark:border-blue-800',
-  'In Progress': 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800',
-  Ready: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border-green-200 dark:border-green-800',
-  Delivered: 'bg-gray-100 text-gray-800 dark:bg-gray-900/40 dark:text-gray-300 border-gray-200 dark:border-gray-800',
+  Received: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800',
+  Pending: 'bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300 border-slate-200 dark:border-slate-700',
+  'In Lab': 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800',
+  Ready: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+  Delivered: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-200 dark:border-blue-800',
+}
+
+const STATUS_ICON: Record<LabOrderStatus, typeof Clock> = {
+  Received: Inbox,
+  Pending: Clock,
+  'In Lab': FlaskConical,
+  Ready: CheckCircle2,
+  Delivered: Truck,
+}
+
+const STATUS_COLOR: Record<LabOrderStatus, string> = {
+  Received: 'border-indigo-300 dark:border-indigo-800',
+  Pending: 'border-slate-300 dark:border-slate-700',
+  'In Lab': 'border-amber-300 dark:border-amber-800',
+  Ready: 'border-emerald-300 dark:border-emerald-800',
+  Delivered: 'border-blue-300 dark:border-blue-800',
 }
 
 const LENS_TYPES = [
@@ -116,15 +172,15 @@ const LENS_TYPES = [
 function formatPower(sph: number | null, cyl: number | null, axis: number | null): string {
   const parts: string[] = []
   if (sph !== null && sph !== undefined) parts.push(`${sph > 0 ? '+' : ''}${sph}`)
-  else parts.push('—')
+  else parts.push('--')
   if (cyl !== null && cyl !== undefined && cyl !== 0) parts.push(`${cyl > 0 ? '+' : ''}${cyl}`)
-  else parts.push('—')
-  if (axis !== null && axis !== undefined) parts.push(`×${axis}°`)
+  else parts.push('--')
+  if (axis !== null && axis !== undefined) parts.push(`x${axis}`)
   return parts.join(' / ')
 }
 
 function formatCurrency(value: number): string {
-  return `₹${value.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+  return `${'\u20B9'}${value.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
 }
 
 function getNextStatus(current: LabOrderStatus): LabOrderStatus | null {
@@ -133,16 +189,24 @@ function getNextStatus(current: LabOrderStatus): LabOrderStatus | null {
   return STATUS_FLOW[idx + 1]
 }
 
+function getDaysUntilDue(dueDate: string): number {
+  const now = new Date()
+  const due = new Date(dueDate)
+  const diff = due.getTime() - now.getTime()
+  return Math.ceil(diff / (1000 * 60 * 60 * 24))
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function LabOrders() {
-  // ── State ──
+  // State
   const [orders, setOrders] = useState<LabOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [activeStatus, setActiveStatus] = useState<string>('all')
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<'table' | 'timeline'>('table')
 
   // Dialog
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -152,8 +216,8 @@ export default function LabOrders() {
 
   // Form
   const [formLensType, setFormLensType] = useState<string>('Single Vision')
-  const [formLeft, setFormLeft] = useState<LensPower>({ sph: '', cyl: '', axis: '' })
-  const [formRight, setFormRight] = useState<LensPower>({ sph: '', cyl: '', axis: '' })
+  const [formLeft, setFormLeft] = useState<LensPower>({ sph: '', cyl: '', axis: '', pd: '' })
+  const [formRight, setFormRight] = useState<LensPower>({ sph: '', cyl: '', axis: '', pd: '' })
   const [formCostPrice, setFormCostPrice] = useState('')
   const [formSellingPrice, setFormSellingPrice] = useState('')
   const [formDueDate, setFormDueDate] = useState('')
@@ -172,10 +236,14 @@ export default function LabOrders() {
   const [frameSearching, setFrameSearching] = useState(false)
   const [selectedFrame, setSelectedFrame] = useState<FrameOption | null>(null)
 
+  // Prescription auto-fill
+  const [prescriptions, setPrescriptions] = useState<PrescriptionRecord[]>([])
+  const [loadingRx, setLoadingRx] = useState(false)
+
   const customerSearchRef = useRef<HTMLDivElement>(null)
   const frameSearchRef = useRef<HTMLDivElement>(null)
 
-  // ── Fetch orders ──
+  // Fetch orders
   const fetchOrders = useCallback(async () => {
     setLoading(true)
     try {
@@ -195,32 +263,20 @@ export default function LabOrders() {
     }
   }, [activeStatus, page])
 
-  useEffect(() => {
-    fetchOrders()
-  }, [fetchOrders])
+  useEffect(() => { fetchOrders() }, [fetchOrders])
+  useEffect(() => { setPage(1) }, [activeStatus])
 
-  // Reset page when tab changes
-  useEffect(() => {
-    setPage(1)
-  }, [activeStatus])
-
-  // ── Customer search ──
+  // Customer search
   const searchCustomers = useCallback(async (query: string) => {
-    if (query.length < 1) {
-      setCustomerResults([])
-      return
-    }
+    if (query.length < 1) { setCustomerResults([]); return }
     setCustomerSearching(true)
     try {
       const res = await fetch(`/api/lab-orders?searchType=customers&q=${encodeURIComponent(query)}`)
-      if (!res.ok) throw new Error('Failed to search customers')
+      if (!res.ok) throw new Error()
       const data = await res.json()
       setCustomerResults(data.results ?? [])
-    } catch {
-      setCustomerResults([])
-    } finally {
-      setCustomerSearching(false)
-    }
+    } catch { setCustomerResults([]) }
+    finally { setCustomerSearching(false) }
   }, [])
 
   useEffect(() => {
@@ -228,23 +284,17 @@ export default function LabOrders() {
     return () => clearTimeout(timer)
   }, [customerSearch, searchCustomers])
 
-  // ── Frame search ──
+  // Frame search
   const searchFrames = useCallback(async (query: string) => {
-    if (query.length < 1) {
-      setFrameResults([])
-      return
-    }
+    if (query.length < 1) { setFrameResults([]); return }
     setFrameSearching(true)
     try {
       const res = await fetch(`/api/lab-orders?searchType=frames&q=${encodeURIComponent(query)}`)
-      if (!res.ok) throw new Error('Failed to search frames')
+      if (!res.ok) throw new Error()
       const data = await res.json()
       setFrameResults(data.results ?? [])
-    } catch {
-      setFrameResults([])
-    } finally {
-      setFrameSearching(false)
-    }
+    } catch { setFrameResults([]) }
+    finally { setFrameSearching(false) }
   }, [])
 
   useEffect(() => {
@@ -252,21 +302,68 @@ export default function LabOrders() {
     return () => clearTimeout(timer)
   }, [frameSearch, searchFrames])
 
-  // ── Close dropdowns on outside click ──
+  // Close dropdowns on outside click
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (customerSearchRef.current && !customerSearchRef.current.contains(e.target as Node)) {
-        setCustomerResults([])
-      }
-      if (frameSearchRef.current && !frameSearchRef.current.contains(e.target as Node)) {
-        setFrameResults([])
-      }
+      if (customerSearchRef.current && !customerSearchRef.current.contains(e.target as Node)) setCustomerResults([])
+      if (frameSearchRef.current && !frameSearchRef.current.contains(e.target as Node)) setFrameResults([])
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  // ── Sorted orders (by due date, soonest first, nulls last) ──
+  // Fetch prescription history when customer is selected
+  const fetchPrescriptions = useCallback(async (customerId: string) => {
+    setLoadingRx(true)
+    try {
+      const res = await fetch(`/api/prescriptions?customerId=${customerId}`)
+      if (!res.ok) return
+      const data = await res.json()
+      setPrescriptions(data.prescriptions ?? [])
+    } catch { setPrescriptions([]) }
+    finally { setLoadingRx(false) }
+  }, [])
+
+  const handleSelectCustomer = (customer: CustomerOption) => {
+    setSelectedCustomer(customer)
+    setFormCustomerId(customer.id)
+    setCustomerSearch('')
+    setCustomerResults([])
+    fetchPrescriptions(customer.id)
+    // Instant auto-fill from last prescription embedded in search results
+    if (customer.lastPrescription) {
+      setFormLeft({
+        sph: customer.lastPrescription.leftSPH != null ? String(customer.lastPrescription.leftSPH) : '',
+        cyl: customer.lastPrescription.leftCYL != null ? String(customer.lastPrescription.leftCYL) : '',
+        axis: customer.lastPrescription.leftAXIS != null ? String(customer.lastPrescription.leftAXIS) : '',
+        pd: '',
+      })
+      setFormRight({
+        sph: customer.lastPrescription.rightSPH != null ? String(customer.lastPrescription.rightSPH) : '',
+        cyl: customer.lastPrescription.rightCYL != null ? String(customer.lastPrescription.rightCYL) : '',
+        axis: customer.lastPrescription.rightAXIS != null ? String(customer.lastPrescription.rightAXIS) : '',
+        pd: '',
+      })
+    }
+  }
+
+  const handleAutoFillRx = (rx: PrescriptionRecord) => {
+    setFormLeft({
+      sph: rx.leftSPH != null ? String(rx.leftSPH) : '',
+      cyl: rx.leftCYL != null ? String(rx.leftCYL) : '',
+      axis: rx.leftAXIS != null ? String(rx.leftAXIS) : '',
+      pd: rx.leftPD != null ? String(rx.leftPD) : '',
+    })
+    setFormRight({
+      sph: rx.rightSPH != null ? String(rx.rightSPH) : '',
+      cyl: rx.rightCYL != null ? String(rx.rightCYL) : '',
+      axis: rx.rightAXIS != null ? String(rx.rightAXIS) : '',
+      pd: rx.rightPD != null ? String(rx.rightPD) : '',
+    })
+    toast.success('Prescription auto-filled from history')
+  }
+
+  // Sorted orders
   const sortedOrders = useMemo(() => {
     return [...orders].sort((a, b) => {
       if (!a.dueDate && !b.dueDate) return 0
@@ -276,11 +373,11 @@ export default function LabOrders() {
     })
   }, [orders])
 
-  // ── Reset form ──
+  // Reset form
   const resetForm = useCallback(() => {
     setFormLensType('Single Vision')
-    setFormLeft({ sph: '', cyl: '', axis: '' })
-    setFormRight({ sph: '', cyl: '', axis: '' })
+    setFormLeft({ sph: '', cyl: '', axis: '', pd: '' })
+    setFormRight({ sph: '', cyl: '', axis: '', pd: '' })
     setFormCostPrice('')
     setFormSellingPrice('')
     setFormDueDate('')
@@ -293,22 +390,14 @@ export default function LabOrders() {
     setSelectedFrame(null)
     setCustomerResults([])
     setFrameResults([])
+    setPrescriptions([])
   }, [])
 
-  // ── Submit ──
+  // Submit
   const handleSubmit = async () => {
-    if (!formCustomerId) {
-      toast.error('Please select a customer')
-      return
-    }
-    if (!formCostPrice || Number(formCostPrice) < 0) {
-      toast.error('Please enter a valid cost price')
-      return
-    }
-    if (!formSellingPrice || Number(formSellingPrice) < 0) {
-      toast.error('Please enter a valid selling price')
-      return
-    }
+    if (!formCustomerId) { toast.error('Please select a customer'); return }
+    if (!formCostPrice || Number(formCostPrice) < 0) { toast.error('Please enter a valid cost price'); return }
+    if (!formSellingPrice || Number(formSellingPrice) < 0) { toast.error('Please enter a valid selling price'); return }
 
     setSubmitting(true)
     try {
@@ -318,9 +407,11 @@ export default function LabOrders() {
         leftSPH: formLeft.sph ? parseFloat(formLeft.sph) : null,
         leftCYL: formLeft.cyl ? parseFloat(formLeft.cyl) : null,
         leftAXIS: formLeft.axis ? parseFloat(formLeft.axis) : null,
+        leftPD: formLeft.pd ? parseFloat(formLeft.pd) : null,
         rightSPH: formRight.sph ? parseFloat(formRight.sph) : null,
         rightCYL: formRight.cyl ? parseFloat(formRight.cyl) : null,
         rightAXIS: formRight.axis ? parseFloat(formRight.axis) : null,
+        rightPD: formRight.pd ? parseFloat(formRight.pd) : null,
         frameId: formFrameId || null,
         costPrice: parseFloat(formCostPrice),
         sellingPrice: parseFloat(formSellingPrice),
@@ -350,9 +441,9 @@ export default function LabOrders() {
     }
   }
 
-  // ── Update status ──
-  const handleUpdateStatus = async (order: LabOrder) => {
-    const next = getNextStatus(order.status)
+  // Update status
+  const handleUpdateStatus = async (order: LabOrder, targetStatus?: LabOrderStatus) => {
+    const next = targetStatus || getNextStatus(order.status)
     if (!next) return
 
     setUpdatingId(order.id)
@@ -364,579 +455,545 @@ export default function LabOrders() {
       })
       if (!res.ok) throw new Error('Failed to update status')
 
-      if (next === 'Delivered') {
-        toast.success(`Order ${order.id.slice(-6).toUpperCase()} has been delivered!`)
-      } else {
-        toast.success(`Status updated to "${next}"`)
-      }
+      if (next === 'Delivered') toast.success(`Order ${order.id.slice(-6).toUpperCase()} delivered!`)
+      else if (next === 'Ready') toast.success(`Order ${order.id.slice(-6).toUpperCase()} ready for pickup!`)
+      else toast.success(`Status updated to "${next}"`)
       fetchOrders()
-    } catch {
-      toast.error('Failed to update order status')
-    } finally {
-      setUpdatingId(null)
-    }
+    } catch { toast.error('Failed to update order status') }
+    finally { setUpdatingId(null) }
   }
 
-  // ── Tab counts ──
+  const handleMarkReady = async (order: LabOrder) => {
+    if (order.status === 'Ready' || order.status === 'Delivered') return
+    await handleUpdateStatus(order, 'Ready')
+  }
+
+  // Tab counts
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = { all: orders.length }
-    for (const o of orders) {
-      counts[o.status] = (counts[o.status] || 0) + 1
-    }
+    for (const o of orders) counts[o.status] = (counts[o.status] || 0) + 1
     return counts
   }, [orders])
 
-  // ── Render power input group ──
-  const renderPowerInputs = (
-    label: string,
-    power: LensPower,
-    onChange: (p: LensPower) => void
-  ) => (
+  // Summary stats
+  const summaryStats = useMemo(() => {
+    const received = orders.filter(o => o.status === 'Received').length
+    const pending = orders.filter(o => o.status === 'Pending').length
+    const inLab = orders.filter(o => o.status === 'In Lab').length
+    const ready = orders.filter(o => o.status === 'Ready').length
+    const overdue = orders.filter(o =>
+      o.dueDate && new Date(o.dueDate) < new Date() && o.status !== 'Delivered'
+    ).length
+    return { received, pending, inLab, ready, overdue, total: orders.length }
+  }, [orders])
+
+  // Power input group
+  const renderPowerInputs = (label: string, power: LensPower, onChange: (p: LensPower) => void) => (
     <div className="space-y-2">
       <Label className="text-sm font-medium">{label}</Label>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-4 gap-2">
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">SPH</Label>
-          <Input
-            type="number"
-            step="0.25"
-            placeholder="0.00"
-            value={power.sph}
-            onChange={(e) => onChange({ ...power, sph: e.target.value })}
-            className="h-9 text-sm"
-          />
+          <Input type="number" step="0.25" placeholder="0.00" value={power.sph} onChange={(e) => onChange({ ...power, sph: e.target.value })} className="h-9 text-sm" />
         </div>
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">CYL</Label>
-          <Input
-            type="number"
-            step="0.25"
-            placeholder="0.00"
-            value={power.cyl}
-            onChange={(e) => onChange({ ...power, cyl: e.target.value })}
-            className="h-9 text-sm"
-          />
+          <Input type="number" step="0.25" placeholder="0.00" value={power.cyl} onChange={(e) => onChange({ ...power, cyl: e.target.value })} className="h-9 text-sm" />
         </div>
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">AXIS</Label>
-          <Input
-            type="number"
-            step="1"
-            min="0"
-            max="180"
-            placeholder="0"
-            value={power.axis}
-            onChange={(e) => onChange({ ...power, axis: e.target.value })}
-            className="h-9 text-sm"
-          />
+          <Input type="number" step="1" min="0" max="180" placeholder="0" value={power.axis} onChange={(e) => onChange({ ...power, axis: e.target.value })} className="h-9 text-sm" />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">PD</Label>
+          <Input type="number" step="0.5" placeholder="mm" value={power.pd} onChange={(e) => onChange({ ...power, pd: e.target.value })} className="h-9 text-sm" />
         </div>
       </div>
     </div>
   )
 
-  // ── Tab config ──
+  // Kanban card component
+  const renderKanbanCard = (order: LabOrder) => {
+    const margin = order.sellingPrice - order.costPrice
+    const isOverdue = order.dueDate && new Date(order.dueDate) < new Date() && order.status !== 'Delivered'
+    const next = getNextStatus(order.status)
+    const StatusIcon = STATUS_ICON[order.status]
+
+    return (
+      <div
+        key={order.id}
+        className={cn(
+          'rounded-lg border p-3 bg-card space-y-2 hover:shadow-md transition-shadow cursor-pointer',
+          STATUS_COLOR[order.status]
+        )}
+        onClick={() => { setSelectedOrder(order); setDetailOpen(true) }}
+      >
+        <div className="flex items-center justify-between">
+          <span className="font-mono text-xs text-muted-foreground">#{order.id.slice(-6).toUpperCase()}</span>
+          <Badge variant="outline" className={cn('text-[10px] gap-1', STATUS_BADGE_CLASS[order.status])}>
+            <StatusIcon className="h-2.5 w-2.5" />
+            {order.status}
+          </Badge>
+        </div>
+        <div>
+          <p className="font-medium text-sm">{order.customerName || 'Unknown'}</p>
+          {order.customerPhone && <p className="text-xs text-muted-foreground">{order.customerPhone}</p>}
+        </div>
+        <div className="flex items-center justify-between text-xs">
+          <Badge variant="outline" className="text-[10px]">{order.lensType}</Badge>
+          <span className="font-medium">{formatCurrency(order.sellingPrice)}</span>
+        </div>
+        {order.dueDate && (
+          <div className={cn('text-[10px]', isOverdue ? 'text-red-600 dark:text-red-400 font-medium' : 'text-muted-foreground')}>
+            {isOverdue ? 'Overdue' : `Due in ${getDaysUntilDue(order.dueDate)}d`} &middot; {format(new Date(order.dueDate), 'dd MMM')}
+          </div>
+        )}
+        {next && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full h-7 text-xs gap-1 mt-1"
+            disabled={updatingId === order.id}
+            onClick={(e) => { e.stopPropagation(); handleUpdateStatus(order) }}
+          >
+            {updatingId === order.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <>{next} <ChevronRight className="h-3 w-3" /></>}
+          </Button>
+        )}
+      </div>
+    )
+  }
+
+  // Tab config
   const tabs = [
     { value: 'all', label: 'All' },
-    { value: 'Sent', label: 'Sent' },
-    { value: 'In Progress', label: 'In Progress' },
+    { value: 'Received', label: 'Received' },
+    { value: 'Pending', label: 'Pending' },
+    { value: 'In Lab', label: 'In Lab' },
     { value: 'Ready', label: 'Ready' },
     { value: 'Delivered', label: 'Delivered' },
   ] as const
 
   return (
     <div className="space-y-6">
-      {/* ── Header ── */}
+      {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
             <FlaskConical className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Lab Orders</h1>
+            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+              Lab Orders
+              {summaryStats.ready > 0 && (
+                <Badge className="bg-emerald-600 text-white border-transparent text-xs">{summaryStats.ready} Ready</Badge>
+              )}
+              {summaryStats.overdue > 0 && (
+                <Badge variant="destructive" className="text-xs">{summaryStats.overdue} Overdue</Badge>
+              )}
+            </h1>
             <p className="text-sm text-muted-foreground">
-              Manage lens orders and track delivery status
+              Track lens orders: Received &rarr; Pending &rarr; In Lab &rarr; Ready &rarr; Delivered
             </p>
           </div>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={(open) => {
-          if (open) resetForm()
-          setDialogOpen(open)
-        }}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              New Lab Order
+        <div className="flex gap-2">
+          <div className="flex rounded-lg border overflow-hidden">
+            <Button
+              variant={viewMode === 'table' ? 'default' : 'ghost'}
+              size="sm"
+              className="rounded-none gap-1.5"
+              onClick={() => setViewMode('table')}
+            >
+              <LayoutList className="h-4 w-4" />
+              <span className="hidden sm:inline">Table</span>
             </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Create Lab Order</DialogTitle>
-              <DialogDescription>
-                Enter the lens prescription details and submit to the lab.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="grid gap-5 py-2">
-              {/* Customer Selection */}
-              <div className="space-y-2" ref={customerSearchRef}>
-                <Label className="flex items-center gap-2">
-                  <User className="h-3.5 w-3.5" />
-                  Customer <span className="text-destructive">*</span>
-                </Label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="Search by name or phone..."
-                    value={selectedCustomer ? `${selectedCustomer.name} (${selectedCustomer.phone})` : customerSearch}
-                    onChange={(e) => {
-                      if (selectedCustomer) {
-                        setSelectedCustomer(null)
-                        setFormCustomerId('')
-                      }
-                      setCustomerSearch(e.target.value)
-                    }}
-                    className="pl-9"
-                  />
-                  {customerSearching && (
-                    <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
-                  )}
-                  {customerResults.length > 0 && !selectedCustomer && (
-                    <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-48 overflow-y-auto">
-                      {customerResults.map((c) => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          className="flex w-full items-center gap-3 px-3 py-2 text-sm hover:bg-accent transition-colors text-left"
-                          onClick={() => {
-                            setSelectedCustomer(c)
-                            setFormCustomerId(c.id)
-                            setCustomerSearch('')
-                            setCustomerResults([])
-                          }}
-                        >
-                          <User className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <span className="font-medium">{c.name}</span>
-                          <span className="text-muted-foreground">{c.phone}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Lens Type */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <FlaskConical className="h-3.5 w-3.5" />
-                  Lens Type <span className="text-destructive">*</span>
-                </Label>
-                <Select value={formLensType} onValueChange={setFormLensType}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select lens type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LENS_TYPES.map((lt) => (
-                      <SelectItem key={lt} value={lt}>
-                        {lt}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Eye Power */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                {renderPowerInputs('Left Eye (OD)', formLeft, setFormLeft)}
-                {renderPowerInputs('Right Eye (OS)', formRight, setFormRight)}
-              </div>
-
-              {/* Frame Selection (optional) */}
-              <div className="space-y-2" ref={frameSearchRef}>
-                <Label className="flex items-center gap-2">
-                  <Package className="h-3.5 w-3.5" />
-                  Frame <span className="text-muted-foreground font-normal">(optional)</span>
-                </Label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="Search frames by name or brand..."
-                    value={selectedFrame ? `${selectedFrame.name}${selectedFrame.brand ? ` (${selectedFrame.brand})` : ''}` : frameSearch}
-                    onChange={(e) => {
-                      if (selectedFrame) {
-                        setSelectedFrame(null)
-                        setFormFrameId('')
-                      }
-                      setFrameSearch(e.target.value)
-                    }}
-                    className="pl-9"
-                  />
-                  {frameSearching && (
-                    <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
-                  )}
-                  {frameResults.length > 0 && !selectedFrame && (
-                    <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-48 overflow-y-auto">
-                      {frameResults.map((f) => (
-                        <button
-                          key={f.id}
-                          type="button"
-                          className="flex w-full items-center justify-between gap-3 px-3 py-2 text-sm hover:bg-accent transition-colors text-left"
-                          onClick={() => {
-                            setSelectedFrame(f)
-                            setFormFrameId(f.id)
-                            setFrameSearch('')
-                            setFrameResults([])
-                          }}
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <Package className="h-4 w-4 text-muted-foreground shrink-0" />
-                            <span className="truncate font-medium">{f.name}</span>
-                            {f.brand && (
-                              <span className="text-muted-foreground shrink-0">{f.brand}</span>
+            <Button
+              variant={viewMode === 'timeline' ? 'default' : 'ghost'}
+              size="sm"
+              className="rounded-none gap-1.5"
+              onClick={() => setViewMode('timeline')}
+            >
+              <LayoutGrid className="h-4 w-4" />
+              <span className="hidden sm:inline">Timeline</span>
+            </Button>
+          </div>
+          <Dialog open={dialogOpen} onOpenChange={(open) => { if (open) resetForm(); setDialogOpen(open) }}>
+            <DialogTrigger asChild>
+              <Button className="gap-2"><Plus className="h-4 w-4" />New Lab Order</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Create Lab Order</DialogTitle>
+                <DialogDescription>Enter the lens prescription details and submit to the lab.</DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-5 py-2">
+                {/* Customer Selection */}
+                <div className="space-y-2" ref={customerSearchRef}>
+                  <Label className="flex items-center gap-2"><User className="h-3.5 w-3.5" />Customer <span className="text-destructive">*</span></Label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Search by name or phone..."
+                      value={selectedCustomer ? `${selectedCustomer.name} (${selectedCustomer.phone})` : customerSearch}
+                      onChange={(e) => { if (selectedCustomer) { setSelectedCustomer(null); setFormCustomerId('') }; setCustomerSearch(e.target.value) }}
+                      className="pl-9"
+                    />
+                    {customerSearching && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
+                    {customerResults.length > 0 && !selectedCustomer && (
+                      <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-48 overflow-y-auto">
+                        {customerResults.map((c) => (
+                          <button key={c.id} type="button" className="flex w-full items-center gap-3 px-3 py-2 text-sm hover:bg-accent transition-colors text-left" onClick={() => handleSelectCustomer(c)}>
+                            <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="font-medium">{c.name}</span>
+                            <span className="text-muted-foreground">{c.phone}</span>
+                            {c.lastPrescription && (
+                              <Badge variant="outline" className="ml-auto text-[9px] px-1.5 py-0 bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 shrink-0">
+                                <History className="h-2.5 w-2.5 mr-0.5" />Rx
+                              </Badge>
                             )}
-                          </div>
-                          <span className="text-muted-foreground shrink-0">{formatCurrency(f.price)}</span>
-                        </button>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Prescription Auto-fill */}
+                {selectedCustomer && prescriptions.length > 0 && (
+                  <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="flex items-center gap-2 text-sm font-medium text-emerald-800 dark:text-emerald-300">
+                        <Copy className="h-3.5 w-3.5" />
+                        Previous Prescriptions ({prescriptions.length})
+                      </Label>
+                      {loadingRx && <Loader2 className="h-3 w-3 animate-spin text-emerald-600" />}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {prescriptions.slice(0, 3).map((rx) => (
+                        <Button
+                          key={rx.id}
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs gap-1 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
+                          onClick={() => handleAutoFillRx(rx)}
+                        >
+                          <Copy className="h-3 w-3" />
+                          {format(new Date(rx.date), 'dd MMM yyyy')}
+                          {rx.leftSPH != null && <span className="text-muted-foreground">L:{rx.leftSPH} R:{rx.rightSPH}</span>}
+                        </Button>
                       ))}
                     </div>
-                  )}
-                </div>
-              </div>
+                  </div>
+                )}
 
-              {/* Price Row */}
-              <div className="grid grid-cols-2 gap-4">
+                {/* Lens Type */}
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
-                    <IndianRupee className="h-3.5 w-3.5" />
-                    Cost Price <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    value={formCostPrice}
-                    onChange={(e) => setFormCostPrice(e.target.value)}
-                  />
+                  <Label className="flex items-center gap-2"><FlaskConical className="h-3.5 w-3.5" />Lens Type <span className="text-destructive">*</span></Label>
+                  <Select value={formLensType} onValueChange={setFormLensType}>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Select lens type" /></SelectTrigger>
+                    <SelectContent>{LENS_TYPES.map((lt) => (<SelectItem key={lt} value={lt}>{lt}</SelectItem>))}</SelectContent>
+                  </Select>
                 </div>
+
+                {/* Eye Power */}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {renderPowerInputs('Left Eye (OD)', formLeft, setFormLeft)}
+                  {renderPowerInputs('Right Eye (OS)', formRight, setFormRight)}
+                </div>
+
+                {/* Frame Selection */}
+                <div className="space-y-2" ref={frameSearchRef}>
+                  <Label className="flex items-center gap-2"><Package className="h-3.5 w-3.5" />Frame <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Search frames by name or brand..."
+                      value={selectedFrame ? `${selectedFrame.name}${selectedFrame.brand ? ` (${selectedFrame.brand})` : ''}${selectedFrame.frameWidth ? ` [${selectedFrame.frameWidth}/${selectedFrame.bridge}/${selectedFrame.temple}]` : ''}` : frameSearch}
+                      onChange={(e) => { if (selectedFrame) { setSelectedFrame(null); setFormFrameId('') }; setFrameSearch(e.target.value) }}
+                      className="pl-9"
+                    />
+                    {frameSearching && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
+                    {frameResults.length > 0 && !selectedFrame && (
+                      <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-48 overflow-y-auto">
+                        {frameResults.map((f) => (
+                          <button key={f.id} type="button" className="flex w-full items-center justify-between gap-3 px-3 py-2 text-sm hover:bg-accent transition-colors text-left" onClick={() => { setSelectedFrame(f); setFormFrameId(f.id); setFrameSearch(''); setFrameResults([]) }}>
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Package className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <span className="truncate font-medium">{f.name}</span>
+                              {f.brand && <span className="text-muted-foreground shrink-0">{f.brand}</span>}
+                              {f.frameWidth && (
+                                <span className="text-[10px] text-muted-foreground shrink-0">
+                                  <Ruler className="h-3 w-3 inline mr-0.5" />{f.frameWidth}/{f.bridge}/{f.temple}
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-muted-foreground shrink-0">{formatCurrency(f.price)}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Price Row */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2"><IndianRupee className="h-3.5 w-3.5" />Cost Price <span className="text-destructive">*</span></Label>
+                    <Input type="number" step="0.01" min="0" placeholder="0.00" value={formCostPrice} onChange={(e) => setFormCostPrice(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2"><IndianRupee className="h-3.5 w-3.5" />Selling Price <span className="text-destructive">*</span></Label>
+                    <Input type="number" step="0.01" min="0" placeholder="0.00" value={formSellingPrice} onChange={(e) => setFormSellingPrice(e.target.value)} />
+                  </div>
+                </div>
+
+                {/* Due Date */}
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
-                    <IndianRupee className="h-3.5 w-3.5" />
-                    Selling Price <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    value={formSellingPrice}
-                    onChange={(e) => setFormSellingPrice(e.target.value)}
-                  />
+                  <Label className="flex items-center gap-2"><CalendarDays className="h-3.5 w-3.5" />Expected Delivery Date</Label>
+                  <Input type="date" value={formDueDate} onChange={(e) => setFormDueDate(e.target.value)} className="w-full sm:w-auto" />
+                </div>
+
+                {/* Notes */}
+                <div className="space-y-2">
+                  <Label>Notes</Label>
+                  <Textarea placeholder="Additional notes or special instructions..." value={formNotes} onChange={(e) => setFormNotes(e.target.value)} rows={3} className="resize-none" />
                 </div>
               </div>
-
-              {/* Due Date */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <CalendarDays className="h-3.5 w-3.5" />
-                  Due Date
-                </Label>
-                <Input
-                  type="date"
-                  value={formDueDate}
-                  onChange={(e) => setFormDueDate(e.target.value)}
-                  className="w-full sm:w-auto"
-                />
-              </div>
-
-              {/* Notes */}
-              <div className="space-y-2">
-                <Label>Notes</Label>
-                <Textarea
-                  placeholder="Additional notes or special instructions..."
-                  value={formNotes}
-                  onChange={(e) => setFormNotes(e.target.value)}
-                  rows={3}
-                  className="resize-none"
-                />
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleSubmit} disabled={submitting} className="gap-2">
-                {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                Create Order
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleSubmit} disabled={submitting} className="gap-2">
+                  {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Create Order
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
-      {/* ── Status Tabs ── */}
+      {/* Summary Cards */}
+      <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+        {[
+          { label: 'Received', count: summaryStats.received, icon: Inbox, color: 'bg-indigo-100 dark:bg-indigo-900/40', iconColor: 'text-indigo-600 dark:text-indigo-400' },
+          { label: 'Pending', count: summaryStats.pending, icon: Clock, color: 'bg-slate-100 dark:bg-slate-800', iconColor: 'text-slate-600 dark:text-slate-400' },
+          { label: 'In Lab', count: summaryStats.inLab, icon: FlaskConical, color: 'bg-amber-100 dark:bg-amber-900/40', iconColor: 'text-amber-600 dark:text-amber-400' },
+          { label: 'Ready', count: summaryStats.ready, icon: CheckCircle2, color: 'bg-emerald-100 dark:bg-emerald-900/40', iconColor: 'text-emerald-600 dark:text-emerald-400' },
+          { label: 'Overdue', count: summaryStats.overdue, icon: AlertTriangle, color: 'bg-red-100 dark:bg-red-900/40', iconColor: 'text-red-600 dark:text-red-400' },
+        ].map((s) => (
+          <div key={s.label} className="rounded-lg border bg-muted/30 p-3 flex items-center gap-3">
+            <div className={cn('flex h-9 w-9 items-center justify-center rounded-full', s.color)}>
+              <s.icon className={cn('h-4 w-4', s.iconColor)} />
+            </div>
+            <div>
+              <p className={cn('text-2xl font-bold leading-none', s.label === 'Overdue' && s.count > 0 ? 'text-red-600 dark:text-red-400' : '')}>{s.count}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Status Tabs */}
       <Tabs value={activeStatus} onValueChange={setActiveStatus}>
         <TabsList className="flex-wrap">
           {tabs.map((tab) => (
             <TabsTrigger key={tab.value} value={tab.value} className="gap-1.5">
               {tab.label}
-              <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-[10px]">
-                {statusCounts[tab.value] ?? 0}
-              </Badge>
+              <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-[10px]">{statusCounts[tab.value] ?? 0}</Badge>
             </TabsTrigger>
           ))}
         </TabsList>
 
         {tabs.map((tab) => (
           <TabsContent key={tab.value} value={tab.value}>
-            <div className="mt-4 rounded-lg border">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="w-[100px]">Order ID</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead className="hidden md:table-cell">Lens Type</TableHead>
-                    <TableHead className="hidden lg:table-cell">Left Power</TableHead>
-                    <TableHead className="hidden lg:table-cell">Right Power</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="hidden sm:table-cell text-right">Cost</TableHead>
-                    <TableHead className="hidden sm:table-cell text-right">Selling</TableHead>
-                    <TableHead className="hidden md:table-cell text-right">Margin</TableHead>
-                    <TableHead className="hidden md:table-cell">Due Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={11} className="h-48 text-center">
-                        <div className="flex flex-col items-center gap-2">
-                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                          <span className="text-sm text-muted-foreground">Loading lab orders...</span>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ) : sortedOrders.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={11} className="h-48 text-center">
-                        <div className="flex flex-col items-center gap-2">
-                          <FlaskConical className="h-10 w-10 text-muted-foreground/50" />
-                          <p className="text-sm text-muted-foreground">No lab orders found</p>
-                          <p className="text-xs text-muted-foreground/70">
-                            Create a new lab order to get started
-                          </p>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    sortedOrders.map((order) => {
-                      const margin = order.sellingPrice - order.costPrice
-                      const next = getNextStatus(order.status)
-                      const isOverdue =
-                        order.dueDate &&
-                        new Date(order.dueDate) < new Date() &&
-                        order.status !== 'Delivered'
-
-                      return (
-                        <TableRow key={order.id} className="group">
-                          {/* Order ID */}
-                          <TableCell className="font-mono text-xs font-medium">
-                            #{order.id.slice(-6).toUpperCase()}
-                          </TableCell>
-
-                          {/* Customer */}
-                          <TableCell>
-                            <div>
-                              <div className="font-medium text-sm">
-                                {order.customerName || '—'}
-                              </div>
-                              {order.customerPhone && (
-                                <div className="text-xs text-muted-foreground">
-                                  {order.customerPhone}
-                                </div>
-                              )}
-                            </div>
-                          </TableCell>
-
-                          {/* Lens Type */}
-                          <TableCell className="hidden md:table-cell">
-                            <Badge variant="outline" className="font-normal text-xs">
-                              {order.lensType}
-                            </Badge>
-                          </TableCell>
-
-                          {/* Left Power */}
-                          <TableCell className="hidden lg:table-cell font-mono text-xs">
-                            {formatPower(order.leftSPH, order.leftCYL, order.leftAXIS)}
-                          </TableCell>
-
-                          {/* Right Power */}
-                          <TableCell className="hidden lg:table-cell font-mono text-xs">
-                            {formatPower(order.rightSPH, order.rightCYL, order.rightAXIS)}
-                          </TableCell>
-
-                          {/* Status */}
-                          <TableCell>
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                'text-xs font-medium',
-                                STATUS_BADGE_CLASS[order.status]
-                              )}
-                            >
-                              {order.status}
-                            </Badge>
-                          </TableCell>
-
-                          {/* Cost Price */}
-                          <TableCell className="hidden sm:table-cell text-right text-sm">
-                            {formatCurrency(order.costPrice)}
-                          </TableCell>
-
-                          {/* Selling Price */}
-                          <TableCell className="hidden sm:table-cell text-right text-sm font-medium">
-                            {formatCurrency(order.sellingPrice)}
-                          </TableCell>
-
-                          {/* Margin */}
-                          <TableCell
-                            className={cn(
-                              'hidden md:table-cell text-right text-sm font-medium',
-                              margin >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                            )}
-                          >
-                            {margin >= 0 ? '+' : ''}{formatCurrency(margin)}
-                          </TableCell>
-
-                          {/* Due Date */}
-                          <TableCell className="hidden md:table-cell">
-                            {order.dueDate ? (
-                              <span
-                                className={cn(
-                                  'text-sm',
-                                  isOverdue && 'text-red-600 dark:text-red-400 font-medium'
-                                )}
-                              >
-                                {format(new Date(order.dueDate), 'dd MMM yyyy')}
-                              </span>
-                            ) : (
-                              <span className="text-sm text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-
-                          {/* Actions */}
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 opacity-70 group-hover:opacity-100"
-                                onClick={() => {
-                                  setSelectedOrder(order)
-                                  setDetailOpen(true)
-                                }}
-                                title="View details"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              {next && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 gap-1 text-xs"
-                                  disabled={updatingId === order.id}
-                                  onClick={() => handleUpdateStatus(order)}
-                                >
-                                  {updatingId === order.id ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                  ) : (
-                                    <>
-                                      {next}
-                                      <ChevronRight className="h-3 w-3" />
-                                    </>
-                                  )}
-                                </Button>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="mt-4 flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                  Page {page} of {totalPages}
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={page <= 1}
-                    onClick={() => setPage((p) => p - 1)}
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={page >= totalPages}
-                    onClick={() => setPage((p) => p + 1)}
-                  >
-                    Next
-                  </Button>
-                </div>
+            {viewMode === 'timeline' ? (
+              /* ── Kanban/Timeline View ── */
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+                {(tab.value === 'all' ? STATUS_FLOW.slice(0, -1) : [tab.value as LabOrderStatus]).map((status) => {
+                  const statusOrders = sortedOrders.filter((o) => o.status === status)
+                  const StatusIcon = STATUS_ICON[status]
+                  return (
+                    <div key={status} className={cn('rounded-lg border-t-4 bg-muted/20 p-3 space-y-3', STATUS_COLOR[status])}>
+                      <div className="flex items-center gap-2">
+                        <StatusIcon className="h-4 w-4" />
+                        <span className="font-medium text-sm">{status}</span>
+                        <Badge variant="secondary" className="ml-auto text-[10px]">{statusOrders.length}</Badge>
+                      </div>
+                      <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                        {statusOrders.length === 0 ? (
+                          <p className="text-xs text-muted-foreground text-center py-4">No orders</p>
+                        ) : (
+                          statusOrders.map(renderKanbanCard)
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
+            ) : (
+              /* ── Table View ── */
+              <>
+                <div className="mt-4 rounded-lg border">
+                  <div className="max-h-[600px] overflow-y-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead className="w-[100px]">Order ID</TableHead>
+                          <TableHead>Customer</TableHead>
+                          <TableHead className="hidden md:table-cell">Lens Type</TableHead>
+                          <TableHead className="hidden lg:table-cell">Left Power</TableHead>
+                          <TableHead className="hidden lg:table-cell">Right Power</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="hidden sm:table-cell text-right">Cost</TableHead>
+                          <TableHead className="hidden sm:table-cell text-right">Selling</TableHead>
+                          <TableHead className="hidden md:table-cell text-right">Margin</TableHead>
+                          <TableHead className="hidden md:table-cell">Due Date</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {loading ? (
+                          <TableRow>
+                            <TableCell colSpan={11} className="h-48 text-center">
+                              <div className="flex flex-col items-center gap-2">
+                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                                <span className="text-sm text-muted-foreground">Loading lab orders...</span>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ) : sortedOrders.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={11} className="h-48 text-center">
+                              <div className="flex flex-col items-center gap-2">
+                                <FlaskConical className="h-10 w-10 text-muted-foreground/50" />
+                                <p className="text-sm text-muted-foreground">No lab orders found</p>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          sortedOrders.map((order) => {
+                            const margin = order.sellingPrice - order.costPrice
+                            const next = getNextStatus(order.status)
+                            const isOverdue = order.dueDate && new Date(order.dueDate) < new Date() && order.status !== 'Delivered'
+                            const StatusIcon = STATUS_ICON[order.status]
+                            const canMarkReady = order.status !== 'Ready' && order.status !== 'Delivered'
+
+                            return (
+                              <TableRow key={order.id} className="group">
+                                <TableCell className="font-mono text-xs font-medium">#{order.id.slice(-6).toUpperCase()}</TableCell>
+                                <TableCell>
+                                  <div>
+                                    <div className="font-medium text-sm">{order.customerName || '--'}</div>
+                                    {order.customerPhone && <div className="text-xs text-muted-foreground">{order.customerPhone}</div>}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="hidden md:table-cell"><Badge variant="outline" className="font-normal text-xs">{order.lensType}</Badge></TableCell>
+                                <TableCell className="hidden lg:table-cell font-mono text-xs">{formatPower(order.leftSPH, order.leftCYL, order.leftAXIS)}</TableCell>
+                                <TableCell className="hidden lg:table-cell font-mono text-xs">{formatPower(order.rightSPH, order.rightCYL, order.rightAXIS)}</TableCell>
+                                <TableCell>
+                                  <Badge variant="outline" className={cn('text-xs font-medium gap-1', STATUS_BADGE_CLASS[order.status])}>
+                                    <StatusIcon className="h-3 w-3" />{order.status}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="hidden sm:table-cell text-right text-sm">{formatCurrency(order.costPrice)}</TableCell>
+                                <TableCell className="hidden sm:table-cell text-right text-sm font-medium">{formatCurrency(order.sellingPrice)}</TableCell>
+                                <TableCell className={cn('hidden md:table-cell text-right text-sm font-medium', margin >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400')}>
+                                  {margin >= 0 ? '+' : ''}{formatCurrency(margin)}
+                                </TableCell>
+                                <TableCell className="hidden md:table-cell">
+                                  {order.dueDate ? (
+                                    <div className="flex flex-col">
+                                      <span className={cn('text-sm', isOverdue && 'text-red-600 dark:text-red-400 font-medium')}>{format(new Date(order.dueDate), 'dd MMM yyyy')}</span>
+                                      {!isOverdue && order.status !== 'Delivered' && <span className="text-[10px] text-muted-foreground">{getDaysUntilDue(order.dueDate)}d left</span>}
+                                      {isOverdue && <span className="text-[10px] text-red-600 dark:text-red-400 font-medium">Overdue</span>}
+                                    </div>
+                                  ) : <span className="text-sm text-muted-foreground">--</span>}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex items-center justify-end gap-1">
+                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 opacity-70 group-hover:opacity-100" onClick={() => { setSelectedOrder(order); setDetailOpen(true) }} title="View details"><Eye className="h-4 w-4" /></Button>
+                                    {canMarkReady && order.status !== 'Pending' && order.status !== 'Received' && (
+                                      <Button variant="outline" size="sm" className="h-8 gap-1 text-xs bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-900/40" disabled={updatingId === order.id} onClick={() => handleMarkReady(order)}>
+                                        {updatingId === order.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><ClipboardCheck className="h-3.5 w-3.5" />Ready</>}
+                                      </Button>
+                                    )}
+                                    {next && (
+                                      <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" disabled={updatingId === order.id} onClick={() => handleUpdateStatus(order)}>
+                                        {updatingId === order.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <>{next}<ChevronRight className="h-3 w-3" /></>}
+                                      </Button>
+                                    )}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            )
+                          })
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+                {totalPages > 1 && (
+                  <div className="mt-4 flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">Page {page} of {totalPages}</p>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Previous</Button>
+                      <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next</Button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </TabsContent>
         ))}
       </Tabs>
 
-      {/* ── Detail Dialog ── */}
+      {/* Detail Dialog */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FlaskConical className="h-5 w-5" />
-              Order #{selectedOrder?.id.slice(-6).toUpperCase()}
-            </DialogTitle>
-            <DialogDescription>
-              Lab order details and prescription information
-            </DialogDescription>
+            <DialogTitle className="flex items-center gap-2"><FlaskConical className="h-5 w-5" />Order #{selectedOrder?.id.slice(-6).toUpperCase()}</DialogTitle>
+            <DialogDescription>Lab order details and prescription information</DialogDescription>
           </DialogHeader>
 
           {selectedOrder && (
             <div className="space-y-4">
-              {/* Status & Dates */}
-              <div className="flex flex-wrap gap-3">
-                <Badge
-                  variant="outline"
-                  className={cn('text-sm font-medium', STATUS_BADGE_CLASS[selectedOrder.status])}
-                >
-                  {selectedOrder.status}
-                </Badge>
-                <span className="text-sm text-muted-foreground">
-                  Created {format(new Date(selectedOrder.createdAt), 'dd MMM yyyy, HH:mm')}
-                </span>
+              {/* Status Flow Progress */}
+              <div className="rounded-lg border p-4 space-y-3">
+                <h4 className="text-sm font-semibold">Status Progress</h4>
+                <div className="flex items-center gap-1">
+                  {STATUS_FLOW.map((status, idx) => {
+                    const StatusIcon = STATUS_ICON[status]
+                    const isActive = STATUS_FLOW.indexOf(selectedOrder.status) >= idx
+                    const isCurrent = selectedOrder.status === status
+                    return (
+                      <React.Fragment key={status}>
+                        {idx > 0 && <div className={cn('h-0.5 flex-1 min-w-4', isActive ? 'bg-primary' : 'bg-muted')} />}
+                        <div className={cn('flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium', isCurrent && STATUS_BADGE_CLASS[status], isActive && !isCurrent && 'text-primary', !isActive && 'text-muted-foreground')}>
+                          <StatusIcon className={cn('h-3 w-3', isCurrent && 'text-current')} />
+                          <span className="hidden sm:inline">{status}</span>
+                        </div>
+                      </React.Fragment>
+                    )
+                  })}
+                </div>
+                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                  <span>Created {format(new Date(selectedOrder.createdAt), 'dd MMM yyyy, HH:mm')}</span>
+                  {selectedOrder.dueDate && (
+                    <span className={cn(new Date(selectedOrder.dueDate) < new Date() && selectedOrder.status !== 'Delivered' && 'text-red-600 dark:text-red-400 font-medium')}>
+                      {' '} &middot; Due {format(new Date(selectedOrder.dueDate), 'dd MMM yyyy')}
+                      {selectedOrder.status !== 'Delivered' && (
+                        <span> ({differenceInDays(new Date(selectedOrder.dueDate), new Date())}d {differenceInDays(new Date(selectedOrder.dueDate), new Date()) >= 0 ? 'left' : 'ago'})</span>
+                      )}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Customer */}
               <div className="rounded-lg border p-4 space-y-3">
                 <h4 className="text-sm font-semibold">Customer</h4>
                 <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Name:</span>{' '}
-                    <span className="font-medium">{selectedOrder.customerName || '—'}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Phone:</span>{' '}
-                    <span className="font-medium">{selectedOrder.customerPhone || '—'}</span>
-                  </div>
+                  <div><span className="text-muted-foreground">Name:</span>{' '}<span className="font-medium">{selectedOrder.customerName || '--'}</span></div>
+                  <div><span className="text-muted-foreground">Phone:</span>{' '}<span className="font-medium">{selectedOrder.customerPhone || '--'}</span></div>
                 </div>
               </div>
 
@@ -948,20 +1005,14 @@ export default function LabOrders() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Left Eye (OD)
-                    </p>
-                    <p className="font-mono text-sm">
-                      {formatPower(selectedOrder.leftSPH, selectedOrder.leftCYL, selectedOrder.leftAXIS)}
-                    </p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Left Eye (OD)</p>
+                    <p className="font-mono text-sm">{formatPower(selectedOrder.leftSPH, selectedOrder.leftCYL, selectedOrder.leftAXIS)}</p>
+                    {selectedOrder.leftPD != null && <p className="text-xs text-muted-foreground">PD: {selectedOrder.leftPD}mm</p>}
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Right Eye (OS)
-                    </p>
-                    <p className="font-mono text-sm">
-                      {formatPower(selectedOrder.rightSPH, selectedOrder.rightCYL, selectedOrder.rightAXIS)}
-                    </p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Right Eye (OS)</p>
+                    <p className="font-mono text-sm">{formatPower(selectedOrder.rightSPH, selectedOrder.rightCYL, selectedOrder.rightAXIS)}</p>
+                    {selectedOrder.rightPD != null && <p className="text-xs text-muted-foreground">PD: {selectedOrder.rightPD}mm</p>}
                   </div>
                 </div>
               </div>
@@ -970,26 +1021,12 @@ export default function LabOrders() {
               <div className="rounded-lg border p-4 space-y-3">
                 <h4 className="text-sm font-semibold">Pricing</h4>
                 <div className="grid grid-cols-3 gap-2 text-sm text-center">
-                  <div className="rounded-md bg-muted/50 p-2">
-                    <p className="text-xs text-muted-foreground">Cost Price</p>
-                    <p className="font-semibold">{formatCurrency(selectedOrder.costPrice)}</p>
-                  </div>
-                  <div className="rounded-md bg-muted/50 p-2">
-                    <p className="text-xs text-muted-foreground">Selling Price</p>
-                    <p className="font-semibold">{formatCurrency(selectedOrder.sellingPrice)}</p>
-                  </div>
+                  <div className="rounded-md bg-muted/50 p-2"><p className="text-xs text-muted-foreground">Cost Price</p><p className="font-semibold">{formatCurrency(selectedOrder.costPrice)}</p></div>
+                  <div className="rounded-md bg-muted/50 p-2"><p className="text-xs text-muted-foreground">Selling Price</p><p className="font-semibold">{formatCurrency(selectedOrder.sellingPrice)}</p></div>
                   <div className="rounded-md bg-muted/50 p-2">
                     <p className="text-xs text-muted-foreground">Margin</p>
-                    <p
-                      className={cn(
-                        'font-semibold',
-                        selectedOrder.sellingPrice - selectedOrder.costPrice >= 0
-                          ? 'text-green-600 dark:text-green-400'
-                          : 'text-red-600 dark:text-red-400'
-                      )}
-                    >
-                      {selectedOrder.sellingPrice - selectedOrder.costPrice >= 0 ? '+' : ''}
-                      {formatCurrency(selectedOrder.sellingPrice - selectedOrder.costPrice)}
+                    <p className={cn('font-semibold', selectedOrder.sellingPrice - selectedOrder.costPrice >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400')}>
+                      {selectedOrder.sellingPrice - selectedOrder.costPrice >= 0 ? '+' : ''}{formatCurrency(selectedOrder.sellingPrice - selectedOrder.costPrice)}
                     </p>
                   </div>
                 </div>
@@ -997,25 +1034,11 @@ export default function LabOrders() {
 
               {/* Meta */}
               <div className="grid grid-cols-2 gap-3 text-sm">
-                {selectedOrder.frameName && (
-                  <div className="rounded-lg border p-3">
-                    <p className="text-xs text-muted-foreground">Frame</p>
-                    <p className="font-medium">{selectedOrder.frameName}</p>
-                  </div>
-                )}
+                {selectedOrder.frameName && <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Frame</p><p className="font-medium">{selectedOrder.frameName}</p></div>}
                 {selectedOrder.dueDate && (
                   <div className="rounded-lg border p-3">
                     <p className="text-xs text-muted-foreground">Due Date</p>
-                    <p
-                      className={cn(
-                        'font-medium',
-                        new Date(selectedOrder.dueDate) < new Date() &&
-                          selectedOrder.status !== 'Delivered' &&
-                          'text-red-600 dark:text-red-400'
-                      )}
-                    >
-                      {format(new Date(selectedOrder.dueDate), 'dd MMM yyyy')}
-                    </p>
+                    <p className={cn('font-medium', new Date(selectedOrder.dueDate) < new Date() && selectedOrder.status !== 'Delivered' && 'text-red-600 dark:text-red-400')}>{format(new Date(selectedOrder.dueDate), 'dd MMM yyyy')}</p>
                   </div>
                 )}
               </div>
@@ -1028,28 +1051,31 @@ export default function LabOrders() {
               )}
 
               {/* Status Actions */}
-              {getNextStatus(selectedOrder.status) && (
-                <Button
-                  className="w-full gap-2"
-                  disabled={updatingId === selectedOrder.id}
-                  onClick={() => {
-                    handleUpdateStatus(selectedOrder)
-                  }}
-                >
-                  {updatingId === selectedOrder.id ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <>
-                      <ChevronRight className="h-4 w-4" />
-                      Mark as {getNextStatus(selectedOrder.status)}
-                    </>
-                  )}
-                </Button>
-              )}
+              <div className="flex gap-2">
+                {getNextStatus(selectedOrder.status) && (
+                  <Button className="flex-1 gap-2" disabled={updatingId === selectedOrder.id} onClick={() => handleUpdateStatus(selectedOrder)}>
+                    {updatingId === selectedOrder.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><ChevronRight className="h-4 w-4" />Advance to {getNextStatus(selectedOrder.status)}</>}
+                  </Button>
+                )}
+                {selectedOrder.status !== 'Ready' && selectedOrder.status !== 'Delivered' && (
+                  <Button variant="outline" className="gap-2 bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-900/40" disabled={updatingId === selectedOrder.id} onClick={() => handleMarkReady(selectedOrder)}>
+                    {updatingId === selectedOrder.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><ClipboardCheck className="h-4 w-4" />Mark Ready</>}
+                  </Button>
+                )}
+              </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+// Need AlertTriangle for the summary cards
+function AlertTriangle(props: React.SVGProps<SVGSVGElement> & { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4" /><path d="M12 17h.01" />
+    </svg>
   )
 }

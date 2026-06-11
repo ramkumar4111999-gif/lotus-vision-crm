@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Plus,
   Pencil,
@@ -13,6 +13,14 @@ import {
   Phone,
   Mail,
   UserCircle,
+  CalendarCheck,
+  CircleDot,
+  Clock,
+  Lock,
+  UserCheck,
+  UserX,
+  LogIn,
+  LogOut,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -57,6 +65,7 @@ interface Staff {
   salary: number
   commission: number
   isActive: boolean
+  joinDate: string | null
   createdAt: string
   updatedAt: string
 }
@@ -76,6 +85,7 @@ interface StaffFormData {
   salary: string
   commission: string
   isActive: boolean
+  joinDate: string
 }
 
 interface StaffPerformance {
@@ -87,33 +97,67 @@ interface StaffPerformance {
   transactionCount: number
 }
 
+interface AttendanceEntry {
+  staffId: string
+  staffName: string
+  clockIn: string
+  clockOut: string | null
+}
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const EMPTY_FORM: StaffFormData = {
   name: '',
   phone: '',
   email: '',
-  role: 'Staff',
+  role: 'Sales Staff',
   salary: '',
   commission: '',
   isActive: true,
+  joinDate: new Date().toISOString().split('T')[0],
 }
+
+const ROLES = ['Owner', 'Admin', 'Optometrist', 'Sales Staff', 'Assistant'] as const
 
 const ROLE_BADGE_STYLES: Record<string, string> = {
   Owner: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border-purple-200 dark:border-purple-800',
-  Manager: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-200 dark:border-blue-800',
-  Staff: 'bg-gray-100 text-gray-700 dark:bg-gray-800/40 dark:text-gray-300 border-gray-200 dark:border-gray-700',
+  Admin: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 border-red-200 dark:border-red-800',
+  Optometrist: 'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300 border-teal-200 dark:border-teal-800',
+  'Sales Staff': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+  Assistant: 'bg-gray-100 text-gray-700 dark:bg-gray-800/40 dark:text-gray-300 border-gray-200 dark:border-gray-700',
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('en-IN', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'INR',
     minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
+    maximumFractionDigits: 0,
   }).format(amount)
+}
+
+function formatDate(dateStr: string | null): string {
+  if (!dateStr) return '—'
+  return new Date(dateStr).toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
+function formatTime(isoStr: string): string {
+  return new Date(isoStr).toLocaleTimeString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  })
+}
+
+function getAttendanceStatus(joinDate: string | null, isActive: boolean): { label: string; color: string } {
+  if (!isActive) return { label: 'Inactive', color: 'bg-gray-100 text-gray-500 dark:bg-gray-800/40 dark:text-gray-400 border-gray-200 dark:border-gray-700' }
+  return { label: 'Active', color: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border-green-200 dark:border-green-800' }
 }
 
 function getCurrentMonthRange(): { start: Date; end: Date } {
@@ -121,6 +165,19 @@ function getCurrentMonthRange(): { start: Date; end: Date } {
   const start = new Date(now.getFullYear(), now.getMonth(), 1)
   const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
   return { start, end }
+}
+
+function getElapsedSeconds(isoStr: string): number {
+  return Math.max(0, Math.floor((Date.now() - new Date(isoStr).getTime()) / 1000))
+}
+
+function formatElapsed(totalSeconds: number): string {
+  const h = Math.floor(totalSeconds / 3600)
+  const m = Math.floor((totalSeconds % 3600) / 60)
+  const s = totalSeconds % 60
+  if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`
+  if (m > 0) return `${m}m ${String(s).padStart(2, '0')}s`
+  return `${s}s`
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -141,6 +198,13 @@ export default function StaffManagement() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deletingStaff, setDeletingStaff] = useState<Staff | null>(null)
 
+  // Attendance state
+  const [attendanceLog, setAttendanceLog] = useState<AttendanceEntry[]>([])
+  const [attendanceLoading, setAttendanceLoading] = useState(true)
+  const [clockSubmitting, setClockSubmitting] = useState<string | null>(null) // staffId
+  const [timerTick, setTimerTick] = useState(0)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
   // ─── Data Fetching ────────────────────────────────────────────────────────
 
   const fetchStaff = useCallback(async () => {
@@ -152,7 +216,7 @@ export default function StaffManagement() {
         setStaffList(data)
       }
     } catch {
-      // Silently fail — UI shows empty state
+      // Silently fail
     }
   }, [])
 
@@ -161,11 +225,10 @@ export default function StaffManagement() {
       const { start, end } = getCurrentMonthRange()
       const from = start.toISOString()
       const to = end.toISOString()
-      // Fetch a large page to get all sales for the month
       const res = await fetch(`/api/sales?limit=500&fromDate=${encodeURIComponent(from)}&toDate=${encodeURIComponent(to)}`)
       if (res.ok) {
         const json = await res.json()
-        const data = Array.isArray(json) ? json : json.sales ?? []
+        const data = Array.isArray(json) ? json : json.sales ?? json.data ?? []
         setSales(data)
       }
     } catch {
@@ -173,16 +236,113 @@ export default function StaffManagement() {
     }
   }, [])
 
+  const fetchAttendance = useCallback(async () => {
+    try {
+      const res = await fetch('/api/staff/attendance')
+      if (res.ok) {
+        const json = await res.json()
+        const data = Array.isArray(json) ? json : json.data ?? []
+        setAttendanceLog(data)
+      }
+    } catch {
+      // Silently fail
+    } finally {
+      setAttendanceLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
-    Promise.all([fetchStaff(), fetchSales()]).finally(() => setLoading(false))
-  }, [fetchStaff, fetchSales])
+    Promise.all([fetchStaff(), fetchSales(), fetchAttendance()]).finally(() => setLoading(false))
+  }, [fetchStaff, fetchSales, fetchAttendance])
+
+  // ─── Live Timer ──────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    const hasActive = attendanceLog.some((e) => e.clockOut === null)
+    if (hasActive) {
+      if (!timerRef.current) {
+        timerRef.current = setInterval(() => {
+          setTimerTick((t) => t + 1)
+        }, 1000)
+      }
+    } else {
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+        timerRef.current = null
+      }
+    }
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+        timerRef.current = null
+      }
+    }
+  }, [attendanceLog])
+
+  // ─── Attendance Helpers ──────────────────────────────────────────────────
+
+  function getActiveAttendance(staffId: string): AttendanceEntry | undefined {
+    return attendanceLog.find((e) => e.staffId === staffId && e.clockOut === null)
+  }
+
+  function isClockedIn(staffId: string): boolean {
+    return !!getActiveAttendance(staffId)
+  }
+
+  function getTodayTotalHours(): number {
+    let totalMs = 0
+    for (const entry of attendanceLog) {
+      const start = new Date(entry.clockIn).getTime()
+      const end = entry.clockOut ? new Date(entry.clockOut).getTime() : Date.now()
+      totalMs += Math.max(0, end - start)
+    }
+    return totalMs / (1000 * 60 * 60)
+  }
+
+  function getPresentStaffIds(): Set<string> {
+    const ids = new Set<string>()
+    for (const entry of attendanceLog) {
+      ids.add(entry.staffId)
+    }
+    return ids
+  }
+
+  async function handleClockIn(staff: Staff) {
+    setClockSubmitting(staff.id)
+    try {
+      const res = await fetch('/api/staff/attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ staffId: staff.id, staffName: staff.name, action: 'clockIn' }),
+      })
+      if (res.ok) {
+        await fetchAttendance()
+      }
+    } finally {
+      setClockSubmitting(null)
+    }
+  }
+
+  async function handleClockOut(staff: Staff) {
+    setClockSubmitting(staff.id)
+    try {
+      const res = await fetch('/api/staff/attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ staffId: staff.id, staffName: staff.name, action: 'clockOut' }),
+      })
+      if (res.ok) {
+        await fetchAttendance()
+      }
+    } finally {
+      setClockSubmitting(null)
+    }
+  }
 
   // ─── Performance Calculation ──────────────────────────────────────────────
 
   const performanceData: StaffPerformance[] = (() => {
     const { start, end } = getCurrentMonthRange()
-
-    // Filter sales to this month (server already filtered, but double-check)
     const thisMonthSales = sales.filter((s) => {
       const d = new Date(s.createdAt)
       return d >= start && d <= end && s.staffId
@@ -212,6 +372,26 @@ export default function StaffManagement() {
       })
   })()
 
+  // ─── Summary Stats ──────────────────────────────────────────────────────
+
+  const summaryStats = {
+    totalStaff: staffList.length,
+    activeStaff: staffList.filter((s) => s.isActive).length,
+    totalMonthlyPayroll: staffList.filter((s) => s.isActive).reduce((sum, s) => sum + s.salary, 0),
+    totalMonthlySales: performanceData.reduce((sum, p) => sum + p.totalSales, 0),
+  }
+
+  // Attendance derived data
+  const presentStaffIds = getPresentStaffIds()
+  const absentStaff = staffList.filter((s) => s.isActive && !presentStaffIds.has(s.id))
+  const presentCount = presentStaffIds.size
+  const todayDate = new Date().toLocaleDateString('en-IN', {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  })
+
   // ─── Form Handlers ────────────────────────────────────────────────────────
 
   function openAddDialog() {
@@ -231,6 +411,7 @@ export default function StaffManagement() {
       salary: String(staff.salary),
       commission: String(staff.commission),
       isActive: staff.isActive,
+      joinDate: staff.joinDate ? new Date(staff.joinDate).toISOString().split('T')[0] : '',
     })
     setFormErrors({})
     setDialogOpen(true)
@@ -270,10 +451,10 @@ export default function StaffManagement() {
         salary: Number(form.salary) || 0,
         commission: Number(form.commission) || 0,
         isActive: form.isActive,
+        joinDate: form.joinDate || null,
       }
 
       if (editingStaff) {
-        // PUT /api/staff/[id]
         const res = await fetch(`/api/staff/${editingStaff.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -284,7 +465,6 @@ export default function StaffManagement() {
           await fetchStaff()
         }
       } else {
-        // POST /api/staff
         const res = await fetch('/api/staff', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -330,10 +510,203 @@ export default function StaffManagement() {
     }
   }
 
+  // ─── Role Badge Renderer ─────────────────────────────────────────────────
+
+  function renderRoleBadge(role: string) {
+    return (
+      <Badge
+        variant="outline"
+        className={ROLE_BADGE_STYLES[role] ?? ''}
+      >
+        {role === 'Admin' && <Lock className="mr-1 size-3" />}
+        {role}
+      </Badge>
+    )
+  }
+
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-6">
+      {/* ── Summary Cards ────────────────────────────────────────────── */}
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-muted p-2.5">
+              <Users className="size-5 text-foreground" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Total Staff</p>
+              <p className="text-2xl font-bold">{summaryStats.totalStaff}</p>
+            </div>
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-green-100 dark:bg-green-900/30 p-2.5">
+              <CircleDot className="size-5 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Active</p>
+              <p className="text-2xl font-bold">{summaryStats.activeStaff}</p>
+            </div>
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-amber-100 dark:bg-amber-900/30 p-2.5">
+              <DollarSign className="size-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Monthly Payroll</p>
+              <p className="text-2xl font-bold">{formatCurrency(summaryStats.totalMonthlyPayroll)}</p>
+            </div>
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-emerald-100 dark:bg-emerald-900/30 p-2.5">
+              <TrendingUp className="size-5 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Monthly Sales</p>
+              <p className="text-2xl font-bold">{formatCurrency(summaryStats.totalMonthlySales)}</p>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* ── Today's Attendance Card ─────────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <Clock className="size-5 text-primary" />
+            Today&apos;s Attendance
+          </CardTitle>
+          <CardDescription className="flex items-center gap-3 flex-wrap">
+            <span className="flex items-center gap-1.5">
+              <CalendarCheck className="size-3.5" />
+              {todayDate}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <UserCheck className="size-3.5 text-green-600" />
+              {presentCount} Present
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Clock className="size-3.5 text-muted-foreground" />
+              Total: {getTodayTotalHours().toFixed(1)}h worked
+            </span>
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {attendanceLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="size-5 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-sm text-muted-foreground">Loading attendance...</span>
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {/* Present Staff */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium flex items-center gap-1.5">
+                  <UserCheck className="size-4 text-green-600" />
+                  Present ({presentCount})
+                </h4>
+                {attendanceLog.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center">
+                    No one has clocked in yet today.
+                  </p>
+                ) : (
+                  <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
+                    {attendanceLog.map((entry, idx) => {
+                      const active = entry.clockOut === null
+                      return (
+                        <div
+                          key={`${entry.staffId}-${idx}`}
+                          className="flex items-center justify-between gap-2 rounded-lg border p-3 text-sm"
+                        >
+                          <div className="min-w-0 flex-1 space-y-0.5">
+                            <p className="font-medium truncate">{entry.staffName}</p>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <LogIn className="size-3 text-green-500" />
+                                In: {formatTime(entry.clockIn)}
+                              </span>
+                              {entry.clockOut && (
+                                <span className="flex items-center gap-1">
+                                  <LogOut className="size-3 text-orange-500" />
+                                  Out: {formatTime(entry.clockOut)}
+                                </span>
+                              )}
+                              {!active && entry.clockOut && (
+                                <span className="text-muted-foreground">
+                                  ({formatElapsed(getElapsedSeconds(entry.clockIn) - getElapsedSeconds(entry.clockOut))} worked)
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {active && (
+                            <div className="shrink-0 flex flex-col items-end gap-1">
+                              <Badge variant="outline" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800 text-[10px] px-1.5 py-0">
+                                Working
+                              </Badge>
+                              <span className="text-xs font-mono text-muted-foreground tabular-nums">
+                                {formatElapsed(getElapsedSeconds(entry.clockIn))}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Absent Staff */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium flex items-center gap-1.5">
+                  <UserX className="size-4 text-red-500" />
+                  Absent ({absentStaff.length})
+                </h4>
+                {absentStaff.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center">
+                    {staffList.length === 0 ? 'No staff registered.' : 'All active staff are present!'}
+                  </p>
+                ) : (
+                  <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
+                    {absentStaff.map((staff) => (
+                      <div
+                        key={staff.id}
+                        className="flex items-center justify-between gap-2 rounded-lg border border-dashed p-3 text-sm"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium truncate">{staff.name}</p>
+                          <p className="text-xs text-muted-foreground">{staff.role}</p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="shrink-0"
+                          disabled={clockSubmitting === staff.id}
+                          onClick={() => handleClockIn(staff)}
+                        >
+                          {clockSubmitting === staff.id ? (
+                            <Loader2 className="size-3.5 animate-spin" />
+                          ) : (
+                            <LogIn className="size-3.5" />
+                          )}
+                          Clock In
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* ── Staff List Card ────────────────────────────────────────────── */}
       <Card>
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -377,85 +750,194 @@ export default function StaffManagement() {
                       <TableHead className="pl-4">Name</TableHead>
                       <TableHead>Phone</TableHead>
                       <TableHead>Role</TableHead>
+                      <TableHead>Join Date</TableHead>
+                      <TableHead>Status</TableHead>
                       <TableHead className="text-right">Salary</TableHead>
                       <TableHead className="text-right">Commission</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead className="text-center">Attendance</TableHead>
                       <TableHead className="pr-4 text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {staffList.map((staff) => (
-                      <TableRow key={staff.id}>
-                        <TableCell className="pl-4 font-medium">{staff.name}</TableCell>
-                        <TableCell className="text-muted-foreground">{staff.phone}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={ROLE_BADGE_STYLES[staff.role] ?? ''}
-                          >
-                            {staff.role}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right font-mono text-sm">
-                          {formatCurrency(staff.salary)}
-                        </TableCell>
-                        <TableCell className="text-right font-mono text-sm">
-                          {staff.commission}%
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={staff.isActive ? 'default' : 'secondary'}
-                            className={
-                              staff.isActive
-                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                                : 'bg-gray-100 text-gray-500 dark:bg-gray-800/40 dark:text-gray-400 border-gray-200 dark:border-gray-700'
-                            }
-                          >
-                            {staff.isActive ? 'Active' : 'Inactive'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="pr-4 text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-8"
-                              onClick={() => openEditDialog(staff)}
-                              aria-label={`Edit ${staff.name}`}
+                    {staffList.map((staff) => {
+                      const attStatus = getAttendanceStatus(staff.joinDate, staff.isActive)
+                      const clocked = isClockedIn(staff.id)
+                      const activeEntry = getActiveAttendance(staff.id)
+                      return (
+                        <TableRow key={staff.id}>
+                          <TableCell className="pl-4">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{staff.name}</span>
+                              {renderRoleBadge(staff.role)}
+                              <Badge
+                                variant="outline"
+                                className={`text-[10px] px-1.5 py-0 ${attStatus.color}`}
+                              >
+                                {attStatus.label}
+                              </Badge>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">{staff.phone}</TableCell>
+                          <TableCell>
+                            {renderRoleBadge(staff.role)}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-sm">
+                            <div className="flex items-center gap-1.5">
+                              <CalendarCheck className="size-3.5" />
+                              {formatDate(staff.joinDate)}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={staff.isActive ? 'default' : 'secondary'}
+                              className={
+                                staff.isActive
+                                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                                  : 'bg-gray-100 text-gray-500 dark:bg-gray-800/40 dark:text-gray-400 border-gray-200 dark:border-gray-700'
+                              }
                             >
-                              <Pencil className="size-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-8 text-destructive hover:text-destructive"
-                              onClick={() => openDeleteDialog(staff)}
-                              aria-label={`Delete ${staff.name}`}
-                            >
-                              <Trash2 className="size-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                              {staff.isActive ? 'Active' : 'Inactive'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-sm">
+                            {formatCurrency(staff.salary)}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-sm">
+                            {staff.commission}%
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {staff.isActive && (
+                              clocked ? (
+                                <div className="flex flex-col items-center gap-0.5">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 text-xs border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-900/20"
+                                    disabled={clockSubmitting === staff.id}
+                                    onClick={() => handleClockOut(staff)}
+                                  >
+                                    {clockSubmitting === staff.id ? (
+                                      <Loader2 className="size-3 animate-spin" />
+                                    ) : (
+                                      <LogOut className="size-3" />
+                                    )}
+                                    Clock Out
+                                  </Button>
+                                  {activeEntry && (
+                                    <span className="text-[10px] font-mono text-muted-foreground tabular-nums">
+                                      {formatElapsed(getElapsedSeconds(activeEntry.clockIn))}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/20"
+                                  disabled={clockSubmitting === staff.id}
+                                  onClick={() => handleClockIn(staff)}
+                                >
+                                  {clockSubmitting === staff.id ? (
+                                    <Loader2 className="size-3 animate-spin" />
+                                  ) : (
+                                    <LogIn className="size-3" />
+                                  )}
+                                  Clock In
+                                </Button>
+                              )
+                            )}
+                          </TableCell>
+                          <TableCell className="pr-4 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-8"
+                                onClick={() => openEditDialog(staff)}
+                                aria-label={`Edit ${staff.name}`}
+                              >
+                                <Pencil className="size-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-8 text-destructive hover:text-destructive"
+                                onClick={() => openDeleteDialog(staff)}
+                                aria-label={`Delete ${staff.name}`}
+                              >
+                                <Trash2 className="size-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
                   </TableBody>
                 </Table>
               </div>
 
               {/* Mobile Cards */}
               <div className="space-y-3 md:hidden">
-                {staffList.map((staff) => (
-                  <Card key={staff.id} className="p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 space-y-1">
-                        <div className="flex items-center gap-2">
-                          <p className="truncate font-medium">{staff.name}</p>
-                          <Badge
-                            variant="outline"
-                            className={`shrink-0 ${ROLE_BADGE_STYLES[staff.role] ?? ''}`}
+                {staffList.map((staff) => {
+                  const attStatus = getAttendanceStatus(staff.joinDate, staff.isActive)
+                  const clocked = isClockedIn(staff.id)
+                  const activeEntry = getActiveAttendance(staff.id)
+                  return (
+                    <Card key={staff.id} className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="truncate font-medium">{staff.name}</p>
+                            {renderRoleBadge(staff.role)}
+                            <Badge
+                              variant="outline"
+                              className={`shrink-0 text-[10px] px-1.5 py-0 ${attStatus.color}`}
+                            >
+                              {attStatus.label}
+                            </Badge>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Phone className="size-3.5" />
+                              {staff.phone}
+                            </span>
+                            {staff.email && (
+                              <span className="flex items-center gap-1 truncate">
+                                <Mail className="size-3.5 shrink-0" />
+                                {staff.email}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex shrink-0 gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8"
+                            onClick={() => openEditDialog(staff)}
+                            aria-label={`Edit ${staff.name}`}
                           >
-                            {staff.role}
-                          </Badge>
+                            <Pencil className="size-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 text-destructive hover:text-destructive"
+                            onClick={() => openDeleteDialog(staff)}
+                            aria-label={`Delete ${staff.name}`}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      <Separator className="my-3" />
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Join Date</span>
+                          <span className="font-medium">{formatDate(staff.joinDate)}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Status</span>
                           <Badge
                             variant={staff.isActive ? 'default' : 'secondary'}
                             className={
@@ -467,51 +949,64 @@ export default function StaffManagement() {
                             {staff.isActive ? 'Active' : 'Inactive'}
                           </Badge>
                         </div>
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Phone className="size-3.5" />
-                            {staff.phone}
-                          </span>
-                          {staff.email && (
-                            <span className="flex items-center gap-1 truncate">
-                              <Mail className="size-3.5 shrink-0" />
-                              {staff.email}
-                            </span>
-                          )}
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Salary</span>
+                          <span className="font-mono font-medium">{formatCurrency(staff.salary)}/mo</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Commission</span>
+                          <span className="font-mono font-medium">{staff.commission}%</span>
                         </div>
                       </div>
-                      <div className="flex shrink-0 gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-8"
-                          onClick={() => openEditDialog(staff)}
-                          aria-label={`Edit ${staff.name}`}
-                        >
-                          <Pencil className="size-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-8 text-destructive hover:text-destructive"
-                          onClick={() => openDeleteDialog(staff)}
-                          aria-label={`Delete ${staff.name}`}
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
-                      </div>
-                    </div>
-                    <Separator className="my-3" />
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Salary</span>
-                      <span className="font-mono font-medium">{formatCurrency(staff.salary)}/mo</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Commission</span>
-                      <span className="font-mono font-medium">{staff.commission}%</span>
-                    </div>
-                  </Card>
-                ))}
+                      {staff.isActive && (
+                        <>
+                          <Separator className="my-3" />
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Attendance</span>
+                            {clocked ? (
+                              <div className="flex items-center gap-2">
+                                {activeEntry && (
+                                  <span className="text-xs font-mono text-muted-foreground tabular-nums">
+                                    {formatElapsed(getElapsedSeconds(activeEntry.clockIn))}
+                                  </span>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-900/20"
+                                  disabled={clockSubmitting === staff.id}
+                                  onClick={() => handleClockOut(staff)}
+                                >
+                                  {clockSubmitting === staff.id ? (
+                                    <Loader2 className="size-3 animate-spin" />
+                                  ) : (
+                                    <LogOut className="size-3" />
+                                  )}
+                                  Clock Out
+                                </Button>
+                              </div>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/20"
+                                disabled={clockSubmitting === staff.id}
+                                onClick={() => handleClockIn(staff)}
+                              >
+                                {clockSubmitting === staff.id ? (
+                                  <Loader2 className="size-3 animate-spin" />
+                                ) : (
+                                  <LogIn className="size-3" />
+                                )}
+                                Clock In
+                              </Button>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </Card>
+                  )
+                })}
               </div>
             </>
           )}
@@ -528,7 +1023,7 @@ export default function StaffManagement() {
             </CardTitle>
             <CardDescription>
               Monthly sales performance for active staff —{' '}
-              {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              {new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -540,7 +1035,7 @@ export default function StaffManagement() {
                     <TableHead className="pl-4">Staff</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead className="text-right">Total Sales</TableHead>
-                    <TableHead className="text-right">Commission Earned</TableHead>
+                    <TableHead className="text-right">This Month&apos;s Commission</TableHead>
                     <TableHead className="pr-4 text-right">Transactions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -549,12 +1044,7 @@ export default function StaffManagement() {
                     <TableRow key={p.staffId}>
                       <TableCell className="pl-4 font-medium">{p.staffName}</TableCell>
                       <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={ROLE_BADGE_STYLES[p.staffRole] ?? ''}
-                        >
-                          {p.staffRole}
-                        </Badge>
+                        {renderRoleBadge(p.staffRole)}
                       </TableCell>
                       <TableCell className="text-right font-mono">
                         {formatCurrency(p.totalSales)}
@@ -581,12 +1071,7 @@ export default function StaffManagement() {
                   <div className="mb-3 flex items-center justify-between">
                     <div className="min-w-0">
                       <p className="truncate font-medium">{p.staffName}</p>
-                      <Badge
-                        variant="outline"
-                        className={`mt-1 ${ROLE_BADGE_STYLES[p.staffRole] ?? ''}`}
-                      >
-                        {p.staffRole}
-                      </Badge>
+                      {renderRoleBadge(p.staffRole)}
                     </div>
                     <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
                       <UserCircle className="size-5 text-primary" />
@@ -603,7 +1088,7 @@ export default function StaffManagement() {
                     <div className="flex items-center justify-between">
                       <span className="flex items-center gap-1.5 text-muted-foreground">
                         <TrendingUp className="size-3.5" />
-                        Commission
+                        This Month&apos;s Commission
                       </span>
                       <span className="font-mono font-medium text-emerald-600 dark:text-emerald-400">
                         {formatCurrency(p.commissionEarned)}
@@ -644,7 +1129,7 @@ export default function StaffManagement() {
               </Label>
               <Input
                 id="staff-name"
-                placeholder="John Doe"
+                placeholder="e.g., Kumar"
                 value={form.name}
                 onChange={(e) => updateField('name', e.target.value)}
                 aria-invalid={!!formErrors.name}
@@ -662,7 +1147,7 @@ export default function StaffManagement() {
               <Input
                 id="staff-phone"
                 type="tel"
-                placeholder="+1 (555) 000-0000"
+                placeholder="+91 98765 43210"
                 value={form.phone}
                 onChange={(e) => updateField('phone', e.target.value)}
                 aria-invalid={!!formErrors.phone}
@@ -678,7 +1163,7 @@ export default function StaffManagement() {
               <Input
                 id="staff-email"
                 type="email"
-                placeholder="john@example.com"
+                placeholder="staff@example.com"
                 value={form.email}
                 onChange={(e) => updateField('email', e.target.value)}
               />
@@ -695,23 +1180,36 @@ export default function StaffManagement() {
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Owner">Owner</SelectItem>
-                  <SelectItem value="Manager">Manager</SelectItem>
-                  <SelectItem value="Staff">Staff</SelectItem>
+                  {ROLES.map((role) => (
+                    <SelectItem key={role} value={role}>
+                      {role}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Join Date */}
+            <div className="grid gap-2">
+              <Label htmlFor="staff-join-date">Join Date</Label>
+              <Input
+                id="staff-join-date"
+                type="date"
+                value={form.joinDate}
+                onChange={(e) => updateField('joinDate', e.target.value)}
+              />
             </div>
 
             {/* Salary & Commission Row */}
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="staff-salary">Salary (monthly)</Label>
+                <Label htmlFor="staff-salary">Salary (₹/month)</Label>
                 <Input
                   id="staff-salary"
                   type="number"
                   min="0"
-                  step="100"
-                  placeholder="5000"
+                  step="500"
+                  placeholder="15000"
                   value={form.salary}
                   onChange={(e) => updateField('salary', e.target.value)}
                   aria-invalid={!!formErrors.salary}

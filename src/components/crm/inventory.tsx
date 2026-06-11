@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   Package,
   Plus,
@@ -14,6 +14,12 @@ import {
   Eye,
   EyeOff,
   Loader2,
+  IndianRupee,
+  Upload,
+  FileBarChart,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -69,6 +75,13 @@ interface Product {
   description: string | null
   createdAt: string
   updatedAt: string
+  // NEW fields returned from API:
+  supplier: string | null
+  supplierPhone: string | null
+  lastRestocked: string | null
+  frameWidth: number | null
+  bridge: number | null
+  temple: number | null
 }
 
 interface ProductFormData {
@@ -87,6 +100,11 @@ interface ProductFormData {
   duration: string
   expiryDate: string
   description: string
+  supplier: string
+  supplierPhone: string
+  frameWidth: string
+  bridge: string
+  temple: string
 }
 
 interface ProductsResponse {
@@ -99,15 +117,45 @@ interface ProductsResponse {
   lowStockItems: Product[]
 }
 
+interface LowStockReportItem {
+  id: string
+  name: string
+  category: string
+  brand: string | null
+  stock: number
+  minStock: number
+  needed: number
+  sku: string
+  costPrice: number | null
+  reorderCost: number
+  supplier: string | null
+  supplierPhone: string | null
+}
+
+interface LowStockReport {
+  total: number
+  byCategory: Record<string, number>
+  totalReorderValue: number
+  items: LowStockReportItem[]
+}
+
+interface BulkImportResult {
+  created: number
+  skipped: number
+  errors: string[]
+}
+
+type SortField = 'name' | 'price' | 'stock' | 'minStock'
+type SortDirection = 'asc' | 'desc'
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const CATEGORIES = [
   'Frames',
   'Lenses',
-  'Contact Lenses',
   'Sunglasses',
+  'Contact Lenses',
   'Accessories',
-  'Solutions',
 ] as const
 
 const CATEGORY_TABS = ['All', ...CATEGORIES] as const
@@ -130,6 +178,9 @@ const DURATIONS = [
 
 const ITEMS_PER_PAGE = 10
 
+const CSV_SAMPLE = `name,category,brand,model,price,stock,min_stock,supplier
+Aviator Classic,Frames,Ray-Ban,RB3025,4500,10,5,Ray-Ban India`
+
 const emptyForm: ProductFormData = {
   name: '',
   brand: '',
@@ -146,12 +197,34 @@ const emptyForm: ProductFormData = {
   duration: '',
   expiryDate: '',
   description: '',
+  supplier: '',
+  supplierPhone: '',
+  frameWidth: '',
+  bridge: '',
+  temple: '',
 }
 
 function generateSKU(category: string): string {
   const catPrefix = category.substring(0, 3).toUpperCase()
   const suffix = Date.now().toString(36).toUpperCase()
   return `SKO-${catPrefix}-${suffix}`
+}
+
+function formatINR(amount: number): string {
+  return `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+}
+
+function formatDate(dateStr: string | null): string {
+  if (!dateStr) return 'Never'
+  try {
+    return new Date(dateStr).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    })
+  } catch {
+    return 'Never'
+  }
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -163,9 +236,14 @@ export default function Inventory() {
   const [totalPages, setTotalPages] = useState(1)
   const [currentPage, setCurrentPage] = useState(1)
   const [activeTab, setActiveTab] = useState('All')
+  const [categorySelect, setCategorySelect] = useState('All')
   const [search, setSearch] = useState('')
   const [lowStockFilter, setLowStockFilter] = useState(false)
   const [loading, setLoading] = useState(true)
+
+  // Sort state
+  const [sortField, setSortField] = useState<SortField | null>(null)
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
 
   // Alert state
   const [lowStockCount, setLowStockCount] = useState(0)
@@ -183,13 +261,47 @@ export default function Inventory() {
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null)
   const [deleting, setDeleting] = useState(false)
 
+  // CSV Import dialog state
+  const [csvDialogOpen, setCsvDialogOpen] = useState(false)
+  const [csvData, setCsvData] = useState('')
+  const [importing, setImporting] = useState(false)
+  const [importResult, setImportResult] = useState<BulkImportResult | null>(null)
+
+  // Low-Stock Report dialog state
+  const [reportDialogOpen, setReportDialogOpen] = useState(false)
+  const [reportLoading, setReportLoading] = useState(false)
+  const [reportData, setReportData] = useState<LowStockReport | null>(null)
+
+  // ─── Sorted products ─────────────────────────────────────────────────────
+
+  const sortedProducts = useMemo(() => {
+    if (!sortField) return products
+    const sorted = [...products].sort((a, b) => {
+      let aVal: string | number
+      let bVal: string | number
+      if (sortField === 'name') {
+        aVal = a.name.toLowerCase()
+        bVal = b.name.toLowerCase()
+      } else {
+        aVal = a[sortField]
+        bVal = b[sortField]
+      }
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1
+      return 0
+    })
+    return sorted
+  }, [products, sortField, sortDirection])
+
   // ─── Fetch products ──────────────────────────────────────────────────────
 
   const fetchProducts = useCallback(async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams()
-      if (activeTab !== 'All') params.set('category', activeTab)
+      // Use categorySelect if it's not 'All', otherwise fall back to activeTab
+      const effectiveCategory = categorySelect !== 'All' ? categorySelect : activeTab
+      if (effectiveCategory !== 'All') params.set('category', effectiveCategory)
       if (search.trim()) params.set('search', search.trim())
       params.set('page', String(currentPage))
       params.set('pageSize', String(ITEMS_PER_PAGE))
@@ -211,7 +323,7 @@ export default function Inventory() {
     } finally {
       setLoading(false)
     }
-  }, [activeTab, search, currentPage, lowStockFilter])
+  }, [activeTab, categorySelect, search, currentPage, lowStockFilter])
 
   useEffect(() => {
     fetchProducts()
@@ -245,6 +357,11 @@ export default function Inventory() {
         ? new Date(product.expiryDate).toISOString().split('T')[0]
         : '',
       description: product.description ?? '',
+      supplier: product.supplier ?? '',
+      supplierPhone: product.supplierPhone ?? '',
+      frameWidth: product.frameWidth != null ? String(product.frameWidth) : '',
+      bridge: product.bridge != null ? String(product.bridge) : '',
+      temple: product.temple != null ? String(product.temple) : '',
     })
     setDialogOpen(true)
   }
@@ -288,11 +405,22 @@ export default function Inventory() {
         ? form.duration
         : null,
       expiryDate:
-        ['Solutions', 'Lenses', 'Contact Lenses'].includes(form.category) &&
+        ['Lenses', 'Contact Lenses'].includes(form.category) &&
         form.expiryDate
           ? new Date(form.expiryDate).toISOString()
           : null,
       description: form.description.trim() || null,
+      supplier: form.supplier.trim() || null,
+      supplierPhone: form.supplierPhone.trim() || null,
+      frameWidth: form.category === 'Frames' && form.frameWidth.trim()
+        ? Number(form.frameWidth)
+        : null,
+      bridge: form.category === 'Frames' && form.bridge.trim()
+        ? Number(form.bridge)
+        : null,
+      temple: form.category === 'Frames' && form.temple.trim()
+        ? Number(form.temple)
+        : null,
     }
 
     setSubmitting(true)
@@ -346,6 +474,18 @@ export default function Inventory() {
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab)
+    setCategorySelect('All')
+    setCurrentPage(1)
+  }
+
+  const handleCategorySelectChange = (value: string) => {
+    setCategorySelect(value)
+    // Sync tab to All when using the dropdown
+    if (value !== 'All') {
+      setActiveTab('All')
+    } else {
+      // If selecting All in dropdown, keep current tab behavior
+    }
     setCurrentPage(1)
   }
 
@@ -362,6 +502,77 @@ export default function Inventory() {
   const goToPage = (page: number) => {
     if (page < 1 || page > totalPages) return
     setCurrentPage(page)
+  }
+
+  // ─── Sort handler ───────────────────────────────────────────────────────
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortField(field)
+      setSortDirection('asc')
+    }
+  }
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="ml-1 h-3.5 w-3.5 inline opacity-40" />
+    }
+    return sortDirection === 'asc' ? (
+      <ArrowUp className="ml-1 h-3.5 w-3.5 inline" />
+    ) : (
+      <ArrowDown className="ml-1 h-3.5 w-3.5 inline" />
+    )
+  }
+
+  // ─── CSV Import handler ─────────────────────────────────────────────────
+
+  const openCsvDialog = () => {
+    setCsvData('')
+    setImportResult(null)
+    setCsvDialogOpen(true)
+  }
+
+  const handleCsvImport = async () => {
+    if (!csvData.trim()) return
+    setImporting(true)
+    setImportResult(null)
+    try {
+      const res = await fetch('/api/products/bulk-import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ csv: csvData.trim() }),
+      })
+      if (!res.ok) throw new Error('Import failed')
+      const data: BulkImportResult = await res.json()
+      setImportResult(data)
+      if (data.created > 0) {
+        fetchProducts()
+      }
+    } catch {
+      setImportResult({ created: 0, skipped: 0, errors: ['Import request failed'] })
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  // ─── Low-Stock Report handler ───────────────────────────────────────────
+
+  const openReportDialog = async () => {
+    setReportDialogOpen(true)
+    setReportLoading(true)
+    setReportData(null)
+    try {
+      const res = await fetch('/api/products/low-stock')
+      if (!res.ok) throw new Error('Failed to fetch report')
+      const data: LowStockReport = await res.json()
+      setReportData(data)
+    } catch {
+      // handled silently
+    } finally {
+      setReportLoading(false)
+    }
   }
 
   // ─── Helpers ────────────────────────────────────────────────────────────
@@ -392,9 +603,8 @@ export default function Inventory() {
 
   const showTypeField = form.category === 'Lenses'
   const showDurationField = form.category === 'Contact Lenses'
-  const showExpiryField = ['Solutions', 'Lenses', 'Contact Lenses'].includes(
-    form.category
-  )
+  const showExpiryField = ['Lenses', 'Contact Lenses'].includes(form.category)
+  const showFrameSizeFields = form.category === 'Frames'
 
   // ─── Render: Pagination ─────────────────────────────────────────────────
 
@@ -489,6 +699,10 @@ export default function Inventory() {
     </div>
   )
 
+  // ─── Total visible columns count ────────────────────────────────────────
+
+  const TABLE_COLSPAN = 12
+
   // ─── Main Render ────────────────────────────────────────────────────────
 
   return (
@@ -504,15 +718,25 @@ export default function Inventory() {
             Manage your products, track stock levels, and monitor inventory alerts.
           </p>
         </div>
-        <Button onClick={openCreateDialog} className="w-full sm:w-auto">
-          <Plus className="mr-2 h-4 w-4" />
-          Add Product
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={openReportDialog} className="w-full sm:w-auto">
+            <FileBarChart className="mr-2 h-4 w-4" />
+            Low Stock Report
+          </Button>
+          <Button variant="outline" onClick={openCsvDialog} className="w-full sm:w-auto">
+            <Upload className="mr-2 h-4 w-4" />
+            Import CSV
+          </Button>
+          <Button onClick={openCreateDialog} className="w-full sm:w-auto">
+            <Plus className="mr-2 h-4 w-4" />
+            Add Product
+          </Button>
+        </div>
       </div>
 
       {/* Stock Alert Section */}
       {lowStockCount > 0 && showAlert && (
-        <Alert variant="destructive" className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-100">
+        <Alert variant="destructive" className="relative border-amber-500/50 bg-amber-50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-100">
           <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
           <AlertTitle className="text-amber-800 dark:text-amber-200">
             {lowStockCount} product{lowStockCount !== 1 ? 's' : ''} below minimum stock level
@@ -539,6 +763,7 @@ export default function Inventory() {
                     onClick={() => {
                       setLowStockFilter(true)
                       setActiveTab('All')
+                      setCategorySelect('All')
                       setCurrentPage(1)
                     }}
                   >
@@ -584,7 +809,22 @@ export default function Inventory() {
                   className="pl-9"
                 />
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Category filter dropdown */}
+                <Select value={categorySelect} onValueChange={handleCategorySelectChange}>
+                  <SelectTrigger className="w-[160px] h-9">
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">All Categories</SelectItem>
+                    {CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
                 <Button
                   variant={lowStockFilter ? 'default' : 'outline'}
                   size="sm"
@@ -620,12 +860,46 @@ export default function Inventory() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[110px]">SKU</TableHead>
-                  <TableHead>Name</TableHead>
+                  <TableHead>
+                    <button
+                      className="inline-flex items-center hover:text-foreground transition-colors font-semibold text-muted-foreground"
+                      onClick={() => handleSort('name')}
+                    >
+                      Name
+                      <SortIcon field="name" />
+                    </button>
+                  </TableHead>
                   <TableHead className="hidden md:table-cell">Brand</TableHead>
                   <TableHead className="hidden sm:table-cell">Category</TableHead>
-                  <TableHead className="text-right">Price</TableHead>
-                  <TableHead className="text-right">Stock</TableHead>
-                  <TableHead className="hidden lg:table-cell text-right">Min Stock</TableHead>
+                  <TableHead className="text-right">
+                    <button
+                      className="inline-flex items-center hover:text-foreground transition-colors font-semibold text-muted-foreground"
+                      onClick={() => handleSort('price')}
+                    >
+                      Price
+                      <SortIcon field="price" />
+                    </button>
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <button
+                      className="inline-flex items-center hover:text-foreground transition-colors font-semibold text-muted-foreground"
+                      onClick={() => handleSort('stock')}
+                    >
+                      Stock
+                      <SortIcon field="stock" />
+                    </button>
+                  </TableHead>
+                  <TableHead className="hidden lg:table-cell text-right">
+                    <button
+                      className="inline-flex items-center hover:text-foreground transition-colors font-semibold text-muted-foreground"
+                      onClick={() => handleSort('minStock')}
+                    >
+                      Min Stock
+                      <SortIcon field="minStock" />
+                    </button>
+                  </TableHead>
+                  <TableHead className="hidden lg:table-cell">Supplier</TableHead>
+                  <TableHead className="hidden xl:table-cell">Last Restocked</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -633,11 +907,11 @@ export default function Inventory() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={9}>{renderSkeleton()}</TableCell>
+                    <TableCell colSpan={TABLE_COLSPAN}>{renderSkeleton()}</TableCell>
                   </TableRow>
-                ) : products.length === 0 ? (
+                ) : sortedProducts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="h-32 text-center">
+                    <TableCell colSpan={TABLE_COLSPAN} className="h-32 text-center">
                       <div className="flex flex-col items-center gap-2 text-muted-foreground">
                         <Package className="h-8 w-8 opacity-40" />
                         <p>No products found.</p>
@@ -652,7 +926,7 @@ export default function Inventory() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  products.map((product) => (
+                  sortedProducts.map((product) => (
                     <TableRow key={product.id}>
                       <TableCell className="font-mono text-xs text-muted-foreground">
                         {product.sku}
@@ -669,21 +943,35 @@ export default function Inventory() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right font-medium">
-                        ${product.price.toFixed(2)}
+                        {formatINR(product.price)}
                       </TableCell>
                       <TableCell className="text-right">
-                        <span
-                          className={
-                            isLowStock(product)
-                              ? 'text-red-600 dark:text-red-400 font-semibold'
-                              : 'text-emerald-600 dark:text-emerald-400 font-medium'
-                          }
-                        >
-                          {product.stock}
+                        <span className="inline-flex items-center gap-1.5">
+                          {isLowStock(product) && (
+                            <span className="relative flex h-2.5 w-2.5">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+                              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600" />
+                            </span>
+                          )}
+                          <span
+                            className={
+                              isLowStock(product)
+                                ? 'text-red-600 dark:text-red-400 font-semibold'
+                                : 'text-emerald-600 dark:text-emerald-400 font-medium'
+                            }
+                          >
+                            {product.stock}
+                          </span>
                         </span>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell text-right text-muted-foreground">
                         {product.minStock}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell text-muted-foreground">
+                        {product.supplier || '—'}
+                      </TableCell>
+                      <TableCell className="hidden xl:table-cell text-muted-foreground text-xs">
+                        {formatDate(product.lastRestocked)}
                       </TableCell>
                       <TableCell>{getStatusBadge(product)}</TableCell>
                       <TableCell className="text-right">
@@ -824,7 +1112,8 @@ export default function Inventory() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="product-price">
-                  Price ($) <span className="text-destructive">*</span>
+                  <IndianRupee className="h-3.5 w-3.5" />
+                  Price <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="product-price"
@@ -837,7 +1126,7 @@ export default function Inventory() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="product-cost-price">Cost Price ($)</Label>
+                <Label htmlFor="product-cost-price"><IndianRupee className="h-3.5 w-3.5 mr-1 inline" />Cost Price</Label>
                 <Input
                   id="product-cost-price"
                   type="number"
@@ -878,7 +1167,7 @@ export default function Inventory() {
               </div>
             </div>
 
-            {/* Row 6: SKU */}
+            {/* Row: SKU */}
             <div className="space-y-2">
               <Label htmlFor="product-sku">
                 SKU <span className="text-destructive">*</span>
@@ -893,6 +1182,70 @@ export default function Inventory() {
                 onChange={(e) => updateField('sku', e.target.value)}
               />
             </div>
+
+            {/* Row: Supplier & Supplier Phone */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="product-supplier">Supplier</Label>
+                <Input
+                  id="product-supplier"
+                  placeholder="e.g. Ray-Ban India"
+                  value={form.supplier}
+                  onChange={(e) => updateField('supplier', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="product-supplier-phone">Supplier Phone</Label>
+                <Input
+                  id="product-supplier-phone"
+                  placeholder="e.g. +91 98765 43210"
+                  value={form.supplierPhone}
+                  onChange={(e) => updateField('supplierPhone', e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Conditional: Frame Size Fields (for Frames) */}
+            {showFrameSizeFields && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-3 rounded-lg border bg-muted/30">
+                <div className="space-y-2">
+                  <Label htmlFor="product-frame-width">Frame Width (mm)</Label>
+                  <Input
+                    id="product-frame-width"
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="e.g. 140"
+                    value={form.frameWidth}
+                    onChange={(e) => updateField('frameWidth', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="product-bridge">Bridge (mm)</Label>
+                  <Input
+                    id="product-bridge"
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="e.g. 18"
+                    value={form.bridge}
+                    onChange={(e) => updateField('bridge', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="product-temple">Temple Length (mm)</Label>
+                  <Input
+                    id="product-temple"
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="e.g. 145"
+                    value={form.temple}
+                    onChange={(e) => updateField('temple', e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Conditional: Lens Type (for Lenses) */}
             {showTypeField && (
@@ -1025,6 +1378,260 @@ export default function Inventory() {
             >
               {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Bulk CSV Import Dialog ───────────────────────────────────────── */}
+      <Dialog open={csvDialogOpen} onOpenChange={(open) => {
+        setCsvDialogOpen(open)
+        if (!open) {
+          setCsvData('')
+          setImportResult(null)
+        }
+      }}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              <span className="inline-flex items-center gap-2">
+                <Upload className="h-5 w-5" />
+                Bulk Import CSV
+              </span>
+            </DialogTitle>
+            <DialogDescription>
+              Paste your CSV data below to import products in bulk. The first row must be the header.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Sample format hint */}
+            <div className="rounded-lg border bg-muted/50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                Sample CSV Format
+              </p>
+              <pre className="text-xs text-foreground/80 overflow-x-auto whitespace-pre">
+                {CSV_SAMPLE}
+              </pre>
+              <p className="text-xs text-muted-foreground mt-2">
+                Required columns: name, category, price. Optional: brand, model, stock, min_stock, supplier, supplier_phone, cost_price, sku, color, size, type, duration.
+              </p>
+            </div>
+
+            {/* CSV textarea */}
+            <div className="space-y-2">
+              <Label htmlFor="csv-data">
+                CSV Data <span className="text-destructive">*</span>
+              </Label>
+              <Textarea
+                id="csv-data"
+                placeholder="Paste your CSV data here, including the header row..."
+                value={csvData}
+                onChange={(e) => setCsvData(e.target.value)}
+                rows={10}
+                className="font-mono text-xs"
+              />
+            </div>
+
+            {/* Import results */}
+            {importResult && (
+              <div className="rounded-lg border p-4 space-y-3">
+                <p className="text-sm font-semibold">Import Results</p>
+                <div className="flex flex-wrap gap-4 text-sm">
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                    <span><strong>{importResult.created}</strong> created</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-amber-500" />
+                    <span><strong>{importResult.skipped}</strong> skipped</span>
+                  </div>
+                  {importResult.errors.length > 0 && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-red-500" />
+                      <span><strong>{importResult.errors.length}</strong> errors</span>
+                    </div>
+                  )}
+                </div>
+                {importResult.errors.length > 0 && (
+                  <div className="mt-2 max-h-32 overflow-y-auto">
+                    <ul className="text-xs text-red-600 dark:text-red-400 space-y-1">
+                      {importResult.errors.map((err, i) => (
+                        <li key={i} className="flex items-start gap-1.5">
+                          <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                          {err}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCsvDialogOpen(false)
+                setCsvData('')
+                setImportResult(null)
+              }}
+              disabled={importing}
+            >
+              Close
+            </Button>
+            <Button
+              onClick={handleCsvImport}
+              disabled={importing || !csvData.trim()}
+            >
+              {importing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Import Products
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Low-Stock Report Dialog ──────────────────────────────────────── */}
+      <Dialog open={reportDialogOpen} onOpenChange={(open) => {
+        setReportDialogOpen(open)
+        if (!open) {
+          setReportData(null)
+        }
+      }}>
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              <span className="inline-flex items-center gap-2">
+                <FileBarChart className="h-5 w-5" />
+                Low Stock Report
+              </span>
+            </DialogTitle>
+            <DialogDescription>
+              Overview of all products that need reordering.
+            </DialogDescription>
+          </DialogHeader>
+
+          {reportLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : reportData ? (
+            <div className="space-y-6 py-2">
+              {/* Summary cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <Card>
+                  <CardContent className="pt-6">
+                    <p className="text-sm text-muted-foreground">Total Low-Stock Items</p>
+                    <p className="text-3xl font-bold mt-1">{reportData.total}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <p className="text-sm text-muted-foreground">Categories Affected</p>
+                    <p className="text-3xl font-bold mt-1">{Object.keys(reportData.byCategory).length}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <p className="text-sm text-muted-foreground">Total Reorder Value</p>
+                    <p className="text-3xl font-bold mt-1 flex items-center gap-1">
+                      <IndianRupee className="h-5 w-5" />
+                      {reportData.totalReorderValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* By-category breakdown */}
+              <div>
+                <h3 className="text-sm font-semibold mb-2">By Category</h3>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(reportData.byCategory).map(([category, count]) => (
+                    <Badge key={category} variant="secondary" className="text-sm px-3 py-1">
+                      {category}: <strong className="ml-1">{count}</strong>
+                    </Badge>
+                  ))}
+                  {Object.keys(reportData.byCategory).length === 0 && (
+                    <p className="text-sm text-muted-foreground">No categories affected.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Items table */}
+              {reportData.items.length > 0 ? (
+                <div>
+                  <h3 className="text-sm font-semibold mb-2">Items Needing Reorder</h3>
+                  <div className="max-h-[400px] overflow-y-auto rounded-lg border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead className="hidden sm:table-cell">Category</TableHead>
+                          <TableHead className="hidden md:table-cell">Brand</TableHead>
+                          <TableHead className="text-right">Stock / Min</TableHead>
+                          <TableHead className="text-right">Needed</TableHead>
+                          <TableHead className="hidden sm:table-cell text-right">Reorder Cost</TableHead>
+                          <TableHead className="hidden lg:table-cell">Supplier</TableHead>
+                          <TableHead className="hidden lg:table-cell">Phone</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {reportData.items.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell className="font-medium">{item.name}</TableCell>
+                            <TableCell className="hidden sm:table-cell">
+                              <Badge variant="secondary" className="text-xs">{item.category}</Badge>
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell text-muted-foreground">
+                              {item.brand || '—'}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <span className="text-red-600 dark:text-red-400 font-semibold">
+                                {item.stock}
+                              </span>
+                              <span className="text-muted-foreground"> / {item.minStock}</span>
+                            </TableCell>
+                            <TableCell className="text-right font-semibold">
+                              {item.needed}
+                            </TableCell>
+                            <TableCell className="hidden sm:table-cell text-right font-medium">
+                              {formatINR(item.reorderCost)}
+                            </TableCell>
+                            <TableCell className="hidden lg:table-cell text-muted-foreground">
+                              {item.supplier || '—'}
+                            </TableCell>
+                            <TableCell className="hidden lg:table-cell text-muted-foreground text-xs">
+                              {item.supplierPhone || '—'}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Package className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                  <p>No items are currently below minimum stock levels.</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>Failed to load report.</p>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setReportDialogOpen(false)
+                setReportData(null)
+              }}
+            >
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

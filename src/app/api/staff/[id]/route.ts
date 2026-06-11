@@ -37,7 +37,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, phone, role, email, salary, commission, isActive, loginId } =
+    const { name, phone, role, email, salary, commission, isActive, joinDate, loginId } =
       body;
 
     // Verify the staff exists
@@ -46,18 +46,21 @@ export async function PUT(
       return NextResponse.json({ error: "Staff not found" }, { status: 404 });
     }
 
+    const updateData: Record<string, unknown> = {
+      ...(name !== undefined && { name }),
+      ...(phone !== undefined && { phone }),
+      ...(role !== undefined && { role }),
+      ...(email !== undefined && { email }),
+      ...(salary !== undefined && { salary: parseFloat(salary) }),
+      ...(commission !== undefined && { commission: parseFloat(commission) }),
+      ...(isActive !== undefined && { isActive }),
+      ...(loginId !== undefined && { loginId }),
+      ...(joinDate !== undefined && { joinDate: joinDate ? new Date(joinDate) : null }),
+    };
+
     const staff = await db.staff.update({
       where: { id },
-      data: {
-        ...(name !== undefined && { name }),
-        ...(phone !== undefined && { phone }),
-        ...(role !== undefined && { role }),
-        ...(email !== undefined && { email }),
-        ...(salary !== undefined && { salary: parseFloat(salary) }),
-        ...(commission !== undefined && { commission: parseFloat(commission) }),
-        ...(isActive !== undefined && { isActive }),
-        ...(loginId !== undefined && { loginId }),
-      },
+      data: updateData,
     });
 
     return NextResponse.json(staff);

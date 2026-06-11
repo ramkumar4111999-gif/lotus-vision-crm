@@ -10,6 +10,9 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20', 10);
     const group = searchParams.get('group') || '';
     const filter = searchParams.get('filter') || '';
+    const sortParam = searchParams.get('sort') || '';
+    const fromDate = searchParams.get('fromDate') || '';
+    const toDate = searchParams.get('toDate') || '';
 
     // Birthday this week filter: return raw array
     if (filter === 'birthday_this_week') {
@@ -66,12 +69,34 @@ export async function GET(req: NextRequest) {
       where.group = group;
     }
 
+    if (fromDate || toDate) {
+      where.createdAt = {};
+      if (fromDate) {
+        (where.createdAt as Record<string, unknown>).gte = new Date(fromDate);
+      }
+      if (toDate) {
+        const endDate = new Date(toDate);
+        endDate.setHours(23, 59, 59, 999);
+        (where.createdAt as Record<string, unknown>).lte = endDate;
+      }
+    }
+
+    // Parse sort parameter (format: "field:direction")
+    let orderBy: Record<string, string> = { createdAt: 'desc' };
+    if (sortParam) {
+      const [sortField, sortDir] = sortParam.split(':');
+      const validFields = ['name', 'phone', 'group', 'loyaltyPoints', 'totalSpent', 'createdAt'];
+      if (validFields.includes(sortField)) {
+        orderBy = { [sortField]: sortDir === 'desc' ? 'desc' : 'asc' };
+      }
+    }
+
     const [data, total] = await Promise.all([
       db.customer.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         include: {
           _count: {
             select: {
@@ -85,13 +110,14 @@ export async function GET(req: NextRequest) {
       db.customer.count({ where }),
     ]);
 
+    const headers = new Headers({ 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' });
     return NextResponse.json({
       data,
       total,
       page,
       limit,
       totalPages: Math.ceil(total / limit),
-    });
+    }, { headers });
   } catch (error) {
     console.error('Failed to fetch customers:', error);
     return NextResponse.json(

@@ -55,26 +55,33 @@ model Visit {
 }
 
 model Product {
-  id          String   @id @default(cuid())
-  name        String
-  category    String
-  brand       String?
-  model       String?
-  color       String?
-  size        String?
-  price       Float
-  costPrice   Float?
-  stock       Int      @default(0)
-  minStock    Int      @default(5)
-  sku         String   @unique
-  barcode     String?
-  type        String?
-  duration    String?
-  expiryDate  DateTime?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  saleItems   SaleItem[]
+  id            String    @id @default(cuid())
+  name          String
+  category      String
+  brand         String?
+  model         String?
+  color         String?
+  size          String?
+  frameWidth    Int?
+  bridge        Int?
+  temple        Int?
+  price         Float
+  costPrice     Float?
+  stock         Int       @default(0)
+  minStock      Int       @default(5)
+  supplier      String?
+  supplierPhone String?
+  lastRestocked DateTime?
+  sku           String    @unique
+  barcode       String?
+  type          String?
+  duration      String?
+  expiryDate    DateTime?
+  description   String?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  saleItems     SaleItem[]
 }
 
 model Sale {
@@ -120,24 +127,26 @@ model Return {
 }
 
 model LabOrder {
-  id          String   @id @default(cuid())
-  customerId  String?
-  saleId      String?
-  lensType    String
-  leftSPH     Float?
-  leftCYL     Float?
-  leftAXIS    Float?
-  rightSPH    Float?
-  rightCYL    Float?
-  rightAXIS   Float?
-  frameId     String?
-  status      String   @default("Sent")
-  costPrice   Float    @default(0)
-  sellingPrice Float   @default(0)
-  dueDate     DateTime?
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(cuid())
+  customerId    String?
+  saleId        String?
+  lensType      String
+  leftSPH       Float?
+  leftCYL       Float?
+  leftAXIS      Float?
+  rightSPH      Float?
+  rightCYL      Float?
+  rightAXIS     Float?
+  leftPD        Float?
+  rightPD       Float?
+  frameId       String?
+  status        String   @default("Pending")
+  costPrice     Float    @default(0)
+  sellingPrice  Float    @default(0)
+  dueDate       DateTime?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model Appointment {
@@ -145,6 +154,7 @@ model Appointment {
   customerId String
   customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   date       DateTime
+  time       String?
   purpose    String?
   status     String   @default("Scheduled")
   notes      String?
@@ -184,6 +194,7 @@ model Staff {
   salary      Float    @default(0)
   commission  Float    @default(0)
   isActive    Boolean  @default(true)
+  joinDate    DateTime?
   loginId     String?  @unique
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -194,8 +205,12 @@ model Campaign {
   name        String
   type        String
   message     String
-  status      String   @default("Draft")
+  status      String   @default("Planned")
+  budget      Float    @default(0)
+  reach       Int      @default(0)
+  targetGroup String?
   scheduledAt DateTime?
   sentCount   Int      @default(0)
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

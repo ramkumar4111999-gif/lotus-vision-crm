@@ -8,10 +8,12 @@ export async function GET(request: NextRequest) {
 
     const search = searchParams.get('search') || '';
     const status = searchParams.get('status') || '';
+    const purpose = searchParams.get('purpose') || '';
     const fromDate = searchParams.get('fromDate');
     const toDate = searchParams.get('toDate');
+    const date = searchParams.get('date');
     const page = parseInt(searchParams.get('page') || '1', 10);
-    const limit = parseInt(searchParams.get('limit') || '20', 10);
+    const limit = parseInt(searchParams.get('limit') || '100', 10);
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = {};
@@ -29,7 +31,16 @@ export async function GET(request: NextRequest) {
       where.status = status;
     }
 
-    if (fromDate || toDate) {
+    if (purpose) {
+      where.purpose = purpose;
+    }
+
+    // Support single date filter
+    if (date) {
+      const dayStart = new Date(date + 'T00:00:00.000Z');
+      const dayEnd = new Date(date + 'T23:59:59.999Z');
+      where.date = { gte: dayStart, lte: dayEnd };
+    } else if (fromDate || toDate) {
       where.date = {};
       if (fromDate) {
         (where.date as Record<string, unknown>).gte = new Date(fromDate);
@@ -44,10 +55,10 @@ export async function GET(request: NextRequest) {
         where,
         include: {
           customer: {
-            select: { id: true, name: true, phone: true },
+            select: { id: true, name: true, phone: true, email: true },
           },
         },
-        orderBy: { date: 'desc' },
+        orderBy: [{ date: 'asc' }, { time: 'asc' }],
         skip,
         take: limit,
       }),
@@ -76,7 +87,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { customerId, date, purpose, notes } = body;
+    const { customerId, date, time, purpose, status, notes } = body;
 
     // Validate required fields
     if (!customerId) {
@@ -109,12 +120,14 @@ export async function POST(request: NextRequest) {
       data: {
         customerId,
         date: new Date(date),
+        time: time || null,
         purpose: purpose || null,
+        status: status || 'Scheduled',
         notes: notes || null,
       },
       include: {
         customer: {
-          select: { id: true, name: true, phone: true },
+          select: { id: true, name: true, phone: true, email: true },
         },
       },
     });

@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const searchType = searchParams.get('searchType')
     const query = searchParams.get('q')?.trim() || ''
 
-    // ── Customer search endpoint ──
+    // ── Customer search endpoint (with latest prescription) ──
     if (searchType === 'customers') {
       if (!query) return NextResponse.json({ results: [] })
 
@@ -25,7 +25,37 @@ export async function GET(request: NextRequest) {
         orderBy: { name: 'asc' },
       })
 
-      return NextResponse.json({ results: customers })
+      // Fetch latest prescription for each customer
+      const customerIds = customers.map((c) => c.id)
+      const prescriptions = customerIds.length > 0
+        ? await db.prescription.findMany({
+            where: { customerId: { in: customerIds } },
+            orderBy: { date: 'desc' },
+            distinct: ['customerId'],
+          })
+        : []
+
+      const rxMap = new Map(prescriptions.map((p) => [p.customerId, p]))
+
+      const results = customers.map((c) => {
+        const rx = rxMap.get(c.id)
+        return {
+          id: c.id,
+          name: c.name,
+          phone: c.phone,
+          lastPrescription: rx ? {
+            leftSPH: rx.leftSPH,
+            leftCYL: rx.leftCYL,
+            leftAXIS: rx.leftAXIS,
+            rightSPH: rx.rightSPH,
+            rightCYL: rx.rightCYL,
+            rightAXIS: rx.rightAXIS,
+            date: rx.date.toISOString(),
+          } : null,
+        }
+      })
+
+      return NextResponse.json({ results })
     }
 
     // ── Frame search endpoint ──
@@ -41,7 +71,7 @@ export async function GET(request: NextRequest) {
             { brand: { contains: query } },
           ],
         },
-        select: { id: true, name: true, brand: true, price: true },
+        select: { id: true, name: true, brand: true, price: true, frameWidth: true, bridge: true, temple: true },
         take: 15,
         orderBy: { name: 'asc' },
       })
@@ -193,7 +223,7 @@ export async function POST(request: NextRequest) {
         sellingPrice: Number(sellingPrice),
         dueDate: dueDate ? new Date(dueDate) : null,
         notes: notes || null,
-        status: 'Sent',
+        status: 'Pending',
       },
     })
 

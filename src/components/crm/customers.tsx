@@ -1,11 +1,15 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import {
   Search,
   Plus,
   ChevronLeft,
   ChevronRight,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
   Pencil,
   Eye,
   ShoppingCart,
@@ -24,6 +28,12 @@ import {
   Stethoscope,
   History,
   Receipt,
+  Download,
+  MessageCircle,
+  AlertTriangle,
+  Upload,
+  Gift,
+  Star,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -65,6 +75,7 @@ import {
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -143,6 +154,14 @@ interface VisitFormData {
   notes: string;
 }
 
+interface CustomerPurchase {
+  id: string;
+  invoiceNo: string;
+  total: number;
+  status: string;
+  createdAt: string;
+}
+
 interface PaginatedResponse<T> {
   data: T[];
   total: number;
@@ -200,6 +219,9 @@ const EMPTY_VISIT_FORM: VisitFormData = {
 
 const PAGE_LIMIT = 20;
 
+type SortField = 'name' | 'phone' | 'group' | 'loyaltyPoints' | 'totalSpent' | 'createdAt';
+type SortDir = 'asc' | 'desc';
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function formatCurrency(amount: number): string {
@@ -222,6 +244,23 @@ function formatDate(dateStr: string): string {
   } catch {
     return dateStr;
   }
+}
+
+function formatRelativeTime(dateStr: string): string {
+  if (!dateStr) return '';
+  const now = new Date();
+  const date = new Date(dateStr);
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  if (diffMins < 1) return 'just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+  if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo ago`;
+  return `${Math.floor(diffDays / 365)}y ago`;
 }
 
 function formatEyePower(
@@ -250,6 +289,12 @@ export default function Customers() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [groupFilter, setGroupFilter] = useState<string>('all');
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
 
   // Detail panel state
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -276,7 +321,89 @@ export default function Customers() {
   const [visitForm, setVisitForm] = useState<VisitFormData>(EMPTY_VISIT_FORM);
   const [visitSubmitting, setVisitSubmitting] = useState(false);
 
+  // Loyalty dialog state
+  const [loyaltyDialogOpen, setLoyaltyDialogOpen] = useState(false);
+  const [loyaltyType, setLoyaltyType] = useState<'earn' | 'redeem'>('earn');
+  const [loyaltyPoints, setLoyaltyPoints] = useState('');
+  const [loyaltyReason, setLoyaltyReason] = useState('');
+  const [loyaltySubmitting, setLoyaltySubmitting] = useState(false);
+
+  // Purchase history state
+  const [purchases, setPurchases] = useState<CustomerPurchase[]>([]);
+  const [purchasesLoading, setPurchasesLoading] = useState(false);
+
+  // CSV import state
+  const [importing, setImporting] = useState(false);
+  const importInputRef = React.useRef<HTMLInputElement>(null);
+
   // ─── Fetch customers ───────────────────────────────────────────────────
+
+  const handleGroupFilterChange = (value: string) => {
+    setGroupFilter(value);
+    setPage(1);
+  };
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDir('asc');
+    }
+  };
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <ArrowUpDown className="ml-1 size-3 opacity-40" />;
+    return sortDir === 'asc' ? <ArrowUp className="ml-1 size-3" /> : <ArrowDown className="ml-1 size-3" />;
+  };
+
+  // ─── WhatsApp helper ──────────────────────────────────────────────────
+  const openWhatsApp = (phone: string, name: string) => {
+    const cleanPhone = phone.replace(/\D/g, '');
+    const url = `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(`Hi ${name}, this is Sankaran Kovil Opticals. We value your visit!`)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  // ─── CSV Export ───────────────────────────────────────────────────────
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportCSV = async () => {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams({ limit: '9999' });
+      if (search) params.set('search', search);
+      if (groupFilter !== 'all') params.set('group', groupFilter);
+      const res = await fetch(`/api/customers?${params}`);
+      if (!res.ok) throw new Error('Failed to fetch');
+      const json: PaginatedResponse<Customer> = await res.json();
+      const allCustomers = json.data;
+
+      const headers = ['Name', 'Phone', 'Email', 'Group', 'Points', 'Total Spent', 'DOB', 'Address', 'Created At'];
+      const rows = allCustomers.map((c) => [
+        c.name,
+        c.phone,
+        c.email || '',
+        c.group,
+        String(c.loyaltyPoints),
+        String(c.totalSpent),
+        c.dob ? new Date(c.dob).toLocaleDateString('en-IN') : '',
+        c.address || '',
+        new Date(c.createdAt).toLocaleDateString('en-IN'),
+      ]);
+      const csvContent = [headers, ...rows].map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `customers_export_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError('Failed to export CSV');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const fetchCustomers = useCallback(async () => {
     setLoading(true);
@@ -287,10 +414,22 @@ export default function Customers() {
         limit: String(PAGE_LIMIT),
       });
       if (search) params.set('search', search);
+      if (groupFilter !== 'all') params.set('group', groupFilter);
+      if (fromDate) params.set('fromDate', fromDate);
+      if (toDate) params.set('toDate', toDate);
+      params.set('sort', `${sortField}:${sortDir}`);
 
       const res = await fetch(`/api/customers?${params}`);
       if (!res.ok) throw new Error(`Failed to fetch customers (HTTP ${res.status})`);
       const json: PaginatedResponse<Customer> = await res.json();
+      // Duplicate phone detection
+      const phoneMap = new Map<string, number>();
+      json.data.forEach((c) => {
+        const cleaned = c.phone.replace(/\D/g, '');
+        phoneMap.set(cleaned, (phoneMap.get(cleaned) || 0) + 1);
+      });
+      const dupes = Array.from(phoneMap.entries()).filter(([, count]) => count > 1);
+      setDuplicateWarning(dupes.length > 0 ? `${dupes.length} duplicate phone number(s) found` : null);
       setCustomers(json.data);
       setTotalPages(json.totalPages);
       setTotal(json.total);
@@ -299,7 +438,7 @@ export default function Customers() {
     } finally {
       setLoading(false);
     }
-  }, [page, search]);
+  }, [page, search, groupFilter, sortField, sortDir, fromDate, toDate]);
 
   useEffect(() => {
     fetchCustomers();
@@ -310,11 +449,13 @@ export default function Customers() {
   const fetchCustomerDetails = useCallback(async (customerId: string) => {
     setDetailLoading(true);
     setDetailError(null);
+    setPurchases([]);
     try {
-      const [prescRes, visitRes, dueRes] = await Promise.all([
+      const [prescRes, visitRes, dueRes, purchaseRes] = await Promise.all([
         fetch(`/api/prescriptions?customerId=${customerId}`),
         fetch(`/api/visits?customerId=${customerId}`),
         fetch(`/api/dues?customerId=${customerId}`),
+        fetch(`/api/sales?customerId=${customerId}&limit=50`),
       ]);
 
       if (!prescRes.ok) throw new Error('Failed to fetch prescriptions');
@@ -328,6 +469,19 @@ export default function Customers() {
       setPrescriptions(Array.isArray(prescJson.data) ? prescJson.data : prescJson || []);
       setVisits(Array.isArray(visitJson.data) ? visitJson.data : visitJson || []);
       setDues(Array.isArray(dueJson.data) ? dueJson.data : dueJson || []);
+
+      // Fetch purchase history
+      if (purchaseRes.ok) {
+        const purchaseJson = await purchaseRes.json();
+        const saleList = Array.isArray(purchaseJson.sales) ? purchaseJson.sales : [];
+        setPurchases(saleList.map((s: { id: string; invoiceNo: string; total: number; status: string; createdAt: string }) => ({
+          id: s.id,
+          invoiceNo: s.invoiceNo,
+          total: s.total,
+          status: s.status,
+          createdAt: s.createdAt,
+        })));
+      }
     } catch (err) {
       setDetailError(err instanceof Error ? err.message : 'Failed to load details');
     } finally {
@@ -349,6 +503,27 @@ export default function Customers() {
   const handleClearSearch = () => {
     setSearchInput('');
     setSearch('');
+    setPage(1);
+  };
+
+  const handleFromDateChange = (value: string) => {
+    setFromDate(value);
+    setPage(1);
+  };
+
+  const handleToDateChange = (value: string) => {
+    setToDate(value);
+    setPage(1);
+  };
+
+  const hasActiveFilters = search || groupFilter !== 'all' || fromDate || toDate;
+
+  const handleClearFilters = () => {
+    setSearchInput('');
+    setSearch('');
+    setGroupFilter('all');
+    setFromDate('');
+    setToDate('');
     setPage(1);
   };
 
@@ -384,6 +559,12 @@ export default function Customers() {
       errors.phone = 'Enter a valid phone number';
     if (customerForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerForm.email))
       errors.email = 'Enter a valid email';
+    // Duplicate phone check (exclude current editing customer)
+    const cleaned = customerForm.phone.replace(/\D/g, '');
+    const isDuplicate = customers.some(
+      (c) => c.phone.replace(/\D/g, '') === cleaned && c.id !== editingCustomer?.id
+    );
+    if (isDuplicate) errors.phone = 'This phone number already exists!';
     setCustomerFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -509,6 +690,85 @@ export default function Customers() {
     }
   };
 
+  // ─── Loyalty handlers ────────────────────────────────────────────────
+
+  const openLoyaltyDialog = (type: 'earn' | 'redeem') => {
+    setLoyaltyType(type);
+    setLoyaltyPoints('');
+    setLoyaltyReason('');
+    setLoyaltyDialogOpen(true);
+  };
+
+  const handleLoyaltySubmit = async () => {
+    if (!selectedCustomer) return;
+    const pts = parseInt(loyaltyPoints, 10);
+    if (!pts || pts <= 0) {
+      toast.error('Please enter valid points');
+      return;
+    }
+    if (loyaltyType === 'redeem' && pts > selectedCustomer.loyaltyPoints) {
+      toast.error(`Only ${selectedCustomer.loyaltyPoints} points available`);
+      return;
+    }
+    setLoyaltySubmitting(true);
+    try {
+      const res = await fetch(`/api/customers/${selectedCustomer.id}/loyalty`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          points: loyaltyType === 'earn' ? pts : -pts,
+          reason: loyaltyReason.trim(),
+          type: loyaltyType,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || 'Failed to update points');
+      }
+      const result = await res.json();
+      toast.success(result.message);
+      setLoyaltyDialogOpen(false);
+      // Refresh customer data
+      setSelectedCustomer({ ...selectedCustomer, loyaltyPoints: result.loyaltyPoints });
+      fetchCustomers();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update loyalty points');
+    } finally {
+      setLoyaltySubmitting(false);
+    }
+  };
+
+  // ─── CSV Import handler ──────────────────────────────────────────────
+
+  const handleCSVImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/customers/import', {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || 'Import failed');
+      }
+      const result = await res.json();
+      toast.success(`Imported ${result.imported} customers${result.skipped > 0 ? `, ${result.skipped} skipped` : ''}`);
+      if (result.errors?.length) {
+        console.warn('Import errors:', result.errors);
+      }
+      fetchCustomers();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to import CSV');
+    } finally {
+      setImporting(false);
+      if (importInputRef.current) importInputRef.current.value = '';
+    }
+  };
+
   // ─── Render helpers ────────────────────────────────────────────────────
 
   const renderGroupBadge = (group: Customer['group']) => (
@@ -546,37 +806,101 @@ export default function Customers() {
             {total} customer{total !== 1 ? 's' : ''} total
           </p>
         </div>
-        <Button onClick={openAddCustomerDialog} className="w-full sm:w-auto">
-          <Plus className="mr-2 size-4" />
-          Add Customer
-        </Button>
+        <div className="flex gap-2 w-full sm:w-auto">
+            <Button onClick={openAddCustomerDialog} className="flex-1 sm:flex-none">
+              <Plus className="mr-2 size-4" />
+              Add Customer
+            </Button>
+            <Button variant="outline" className="flex-1 sm:flex-none" disabled={importing} onClick={() => importInputRef.current?.click()}>
+              {importing ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Upload className="mr-2 size-4" />}
+              Import CSV
+            </Button>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".csv"
+              className="hidden"
+              onChange={handleCSVImport}
+            />
+            <Button variant="outline" onClick={handleExportCSV} className="flex-1 sm:flex-none" disabled={exporting}>
+              {exporting ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Download className="mr-2 size-4" />}
+              Export CSV
+            </Button>
+          </div>
       </div>
 
-      {/* ─── Search Bar ─────────────────────────────────────────────── */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="text-muted-foreground absolute left-3 top-1/2 size-4 -translate-y-1/2" />
-          <Input
-            placeholder="Search by name or phone..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            onKeyDown={handleSearchKeyDown}
-            className="pl-9"
-          />
-          {searchInput && (
-            <button
-              onClick={handleClearSearch}
-              className="text-muted-foreground hover:text-foreground absolute right-3 top-1/2 -translate-y-1/2"
-              aria-label="Clear search"
-            >
-              <X className="size-4" />
-            </button>
+      {/* ─── Search + Filters Bar ──────────────────────────────────── */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-1 gap-2">
+          <div className="relative flex-1">
+            <Search className="text-muted-foreground absolute left-3 top-1/2 size-4 -translate-y-1/2" />
+            <Input
+              placeholder="Search by name or phone..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
+              className="pl-9"
+            />
+            {searchInput && (
+              <button
+                onClick={handleClearSearch}
+                className="text-muted-foreground hover:text-foreground absolute right-3 top-1/2 -translate-y-1/2"
+                aria-label="Clear search"
+              >
+                <X className="size-4" />
+              </button>
+            )}
+          </div>
+          <Button variant="outline" onClick={handleSearch}>
+            Search
+          </Button>
+        </div>
+        <div className="flex items-end gap-2 flex-shrink-0">
+          <Select value={groupFilter} onValueChange={handleGroupFilterChange}>
+            <SelectTrigger className="w-36">
+              <SelectValue placeholder="All Groups" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Groups</SelectItem>
+              {GROUP_LIST.map((g) => (
+                <SelectItem key={g} value={g}>{g}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs text-muted-foreground">From</span>
+            <Input
+              type="date"
+              value={fromDate}
+              onChange={(e) => handleFromDateChange(e.target.value)}
+              className="w-36"
+            />
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs text-muted-foreground">To</span>
+            <Input
+              type="date"
+              value={toDate}
+              onChange={(e) => handleToDateChange(e.target.value)}
+              className="w-36"
+            />
+          </div>
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={handleClearFilters}>
+              <X className="mr-1 size-3" />
+              Clear
+            </Button>
           )}
         </div>
-        <Button variant="outline" onClick={handleSearch}>
-          Search
-        </Button>
       </div>
+      {duplicateWarning && (
+        <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30">
+          <AlertTriangle className="size-4 text-amber-600" />
+          <AlertDescription className="text-amber-800 dark:text-amber-300">
+            {duplicateWarning}
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* ─── Customer Table ────────────────────────────────────────── */}
       <Card>
@@ -584,11 +908,21 @@ export default function Customers() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="min-w-[160px]">Name</TableHead>
-                <TableHead className="min-w-[130px]">Phone</TableHead>
-                <TableHead>Group</TableHead>
-                <TableHead className="text-right">Points</TableHead>
-                <TableHead className="text-right">Total Spent</TableHead>
+                <TableHead className="min-w-[160px] cursor-pointer select-none" onClick={() => handleSort('name')}>
+                  <div className="flex items-center gap-1">Name <SortIcon field="name" /></div>
+                </TableHead>
+                <TableHead className="min-w-[200px] cursor-pointer select-none" onClick={() => handleSort('phone')}>
+                  <div className="flex items-center gap-1">Phone <SortIcon field="phone" /></div>
+                </TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => handleSort('group')}>
+                  <div className="flex items-center gap-1">Group <SortIcon field="group" /></div>
+                </TableHead>
+                <TableHead className="text-right cursor-pointer select-none" onClick={() => handleSort('loyaltyPoints')}>
+                  <div className="flex items-center justify-end gap-1">Points <SortIcon field="loyaltyPoints" /></div>
+                </TableHead>
+                <TableHead className="text-right cursor-pointer select-none" onClick={() => handleSort('totalSpent')}>
+                  <div className="flex items-center justify-end gap-1">Total Spent <SortIcon field="totalSpent" /></div>
+                </TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -632,7 +966,22 @@ export default function Customers() {
                     onClick={() => handleSelectCustomer(customer)}
                   >
                     <TableCell className="font-medium">{customer.name}</TableCell>
-                    <TableCell>{customer.phone}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5">
+                        <span className="tabular-nums">{customer.phone}</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openWhatsApp(customer.phone, customer.name);
+                          }}
+                          className="inline-flex items-center justify-center size-7 rounded-md text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-950/50 transition-colors shrink-0"
+                          aria-label={`WhatsApp ${customer.name}`}
+                          title="Chat on WhatsApp"
+                        >
+                          <MessageCircle className="size-3.5" />
+                        </button>
+                      </div>
+                    </TableCell>
                     <TableCell>{renderGroupBadge(customer.group)}</TableCell>
                     <TableCell className="text-right tabular-nums">
                       {customer.loyaltyPoints.toLocaleString()}
@@ -801,6 +1150,22 @@ export default function Customers() {
                   <History className="mr-1.5 size-3.5" />
                   Add Visit
                 </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => openLoyaltyDialog('earn')}
+                >
+                  <Gift className="mr-1.5 size-3.5" />
+                  Earn Points
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => openLoyaltyDialog('redeem')}
+                >
+                  <Star className="mr-1.5 size-3.5" />
+                  Redeem Points
+                </Button>
                 <Button size="sm">
                   <ShoppingCart className="mr-1.5 size-3.5" />
                   New Sale
@@ -845,6 +1210,15 @@ export default function Customers() {
                       {visits.length > 0 && (
                         <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">
                           {visits.length}
+                        </Badge>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger value="purchases" className="flex-1">
+                      <Receipt className="mr-1.5 size-3.5" />
+                      Purchases
+                      {purchases.length > 0 && (
+                        <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">
+                          {purchases.length}
                         </Badge>
                       )}
                     </TabsTrigger>
@@ -928,7 +1302,7 @@ export default function Customers() {
                     </ScrollArea>
                   </TabsContent>
 
-                  {/* Visits Tab */}
+                  {/* Visits Tab - Timeline View */}
                   <TabsContent value="visits">
                     <ScrollArea className="max-h-72">
                       {visits.length === 0 ? (
@@ -945,33 +1319,82 @@ export default function Customers() {
                           </Button>
                         </div>
                       ) : (
-                        <div className="flex flex-col gap-2">
-                          {visits.map((visit) => (
-                            <div
-                              key={visit.id}
-                              className="flex items-start gap-3 rounded-lg border p-3"
-                            >
-                              <div className="bg-muted flex size-8 shrink-0 items-center justify-center rounded-full">
-                                <Clock className="text-muted-foreground size-4" />
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center justify-between gap-2">
-                                  <p className="text-sm font-medium truncate">
-                                    {visit.purpose}
-                                  </p>
-                                  <p className="text-muted-foreground shrink-0 text-xs">
+                        <div className="relative pl-6">
+                          {/* Vertical line */}
+                          <div className="absolute left-[9px] top-2 bottom-2 w-0.5 bg-border" />
+                          <div className="flex flex-col gap-4 py-2">
+                            {visits.map((visit, idx) => (
+                              <div key={visit.id} className="relative flex gap-3">
+                                {/* Dot on the line */}
+                                <div className="absolute left-[-15px] top-1.5 size-3.5 rounded-full border-2 border-background bg-emerald-500 z-10" />
+                                <div className="flex-1 min-w-0 rounded-lg border p-3">
+                                  <div className="flex items-center justify-between gap-2 mb-1">
+                                    <p className="text-sm font-medium truncate">
+                                      {visit.purpose}
+                                    </p>
+                                    <span className="text-muted-foreground shrink-0 text-xs">
+                                      {formatRelativeTime(visit.date)}
+                                    </span>
+                                  </div>
+                                  <p className="text-muted-foreground text-xs mb-1">
                                     {formatDate(visit.date)}
                                   </p>
+                                  {visit.notes && (
+                                    <p className="text-muted-foreground text-xs line-clamp-2 border-t pt-1 mt-1">
+                                      {visit.notes}
+                                    </p>
+                                  )}
                                 </div>
-                                {visit.notes && (
-                                  <p className="text-muted-foreground mt-0.5 text-xs line-clamp-2">
-                                    {visit.notes}
-                                  </p>
-                                )}
                               </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
+                      )}
+                    </ScrollArea>
+                  </TabsContent>
+
+                  {/* Purchases Tab */}
+                  <TabsContent value="purchases">
+                    <ScrollArea className="max-h-72">
+                      {purchases.length === 0 ? (
+                        <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
+                          <Receipt className="size-8" />
+                          <p className="text-sm">No purchase history yet.</p>
+                        </div>
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="text-xs">Invoice #</TableHead>
+                              <TableHead className="text-xs text-right">Total</TableHead>
+                              <TableHead className="text-xs">Date</TableHead>
+                              <TableHead className="text-xs">Status</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {purchases.map((p) => (
+                              <TableRow key={p.id}>
+                                <TableCell className="font-mono text-xs">{p.invoiceNo}</TableCell>
+                                <TableCell className="text-right font-mono text-xs font-medium">
+                                  {formatCurrency(p.total)}
+                                </TableCell>
+                                <TableCell className="text-xs text-muted-foreground">
+                                  {formatDate(p.createdAt)}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge
+                                    variant={
+                                      p.status === 'Completed' ? 'default' : p.status === 'Pending' ? 'secondary' : 'outline'
+                                    }
+                                    className="text-[10px] px-1.5 py-0"
+                                  >
+                                    {p.status}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
                       )}
                     </ScrollArea>
                   </TabsContent>
@@ -1207,6 +1630,61 @@ export default function Customers() {
             <Button onClick={handleCustomerSubmit} disabled={customerSubmitting}>
               {customerSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
               {editingCustomer ? 'Update Customer' : 'Add Customer'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Loyalty Points Dialog ───────────────────────────────────── */}
+      <Dialog open={loyaltyDialogOpen} onOpenChange={setLoyaltyDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {loyaltyType === 'earn' ? 'Earn Loyalty Points' : 'Redeem Loyalty Points'}
+            </DialogTitle>
+            <DialogDescription>
+              {loyaltyType === 'earn'
+                ? 'Add loyalty points to this customer manually.'
+                : `Customer has ${selectedCustomer?.loyaltyPoints ?? 0} points available. 100 points = ₹50 discount.`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="loyalty-points">
+                Points {loyaltyType === 'earn' ? 'to Add' : 'to Redeem'}
+              </Label>
+              <Input
+                id="loyalty-points"
+                type="number"
+                min={1}
+                max={loyaltyType === 'redeem' ? (selectedCustomer?.loyaltyPoints ?? 0) : undefined}
+                placeholder={loyaltyType === 'earn' ? 'e.g. 50' : `Max: ${selectedCustomer?.loyaltyPoints ?? 0}`}
+                value={loyaltyPoints}
+                onChange={(e) => setLoyaltyPoints(e.target.value)}
+              />
+              {loyaltyType === 'redeem' && loyaltyPoints && (
+                <p className="text-xs text-muted-foreground">
+                  Discount value: {formatCurrency(parseInt(loyaltyPoints, 10) * 0.5)}
+                </p>
+              )}
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="loyalty-reason">Reason</Label>
+              <Input
+                id="loyalty-reason"
+                placeholder={loyaltyType === 'earn' ? 'e.g. Referral bonus' : 'e.g. Points redemption'}
+                value={loyaltyReason}
+                onChange={(e) => setLoyaltyReason(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0 mt-4">
+            <Button variant="outline" onClick={() => setLoyaltyDialogOpen(false)} disabled={loyaltySubmitting}>
+              Cancel
+            </Button>
+            <Button onClick={handleLoyaltySubmit} disabled={loyaltySubmitting || !loyaltyPoints}>
+              {loyaltySubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
+              {loyaltyType === 'earn' ? 'Earn Points' : 'Redeem Points'}
             </Button>
           </DialogFooter>
         </DialogContent>

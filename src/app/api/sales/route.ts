@@ -11,6 +11,8 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get('status') || ''
     const fromDate = searchParams.get('fromDate')
     const toDate = searchParams.get('toDate')
+    const customerId = searchParams.get('customerId') || ''
+    const paymentMode = searchParams.get('paymentMode') || ''
 
     const skip = (page - 1) * limit
 
@@ -18,6 +20,14 @@ export async function GET(req: NextRequest) {
 
     if (status) {
       where.status = status
+    }
+
+    if (customerId) {
+      where.customerId = customerId
+    }
+
+    if (paymentMode) {
+      where.paymentMode = paymentMode
     }
 
     if (search) {
