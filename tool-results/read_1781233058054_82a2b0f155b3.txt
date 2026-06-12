@@ -1,0 +1,2002 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+     4→import { format, parseISO, startOfDay, isToday, isWithinInterval, startOfMonth, endOfMonth, subMonths, isBefore } from 'date-fns';
+     5→import {
+     6→  TrendingUp,
+     7→  TrendingDown,
+     8→  Wallet,
+     9→  AlertTriangle,
+    10→  Plus,
+    11→  Pencil,
+    12→  Trash2,
+    13→  IndianRupee,
+    14→  CalendarDays,
+    15→  Filter,
+    16→  Receipt,
+    17→  CreditCard,
+    18→  PieChart as PieChartIcon,
+    19→  Banknote,
+    20→  CheckCircle2,
+    21→  Check,
+    22→  RotateCcw,
+    23→  MessageCircle,
+    24→  ChevronDown,
+    25→  ChevronUp,
+    26→  Download,
+    27→  Target,
+    28→  ArrowUpRight,
+    29→  ArrowDownRight,
+    30→  Search,
+    31→  FileText,
+    32→  BarChart3,
+    33→  CircleDollarSign,
+    34→  Scale,
+    35→  Calculator,
+    36→} from 'lucide-react';
+    37→import {
+    38→  Card,
+    39→  CardContent,
+    40→  CardDescription,
+    41→  CardHeader,
+    42→  CardTitle,
+    43→} from '@/components/ui/card';
+    44→import { Button } from '@/components/ui/button';
+    45→import { Badge } from '@/components/ui/badge';
+    46→import {
+    47→  Table,
+    48→  TableBody,
+    49→  TableCell,
+    50→  TableFooter,
+    51→  TableHead,
+    52→  TableHeader,
+    53→  TableRow,
+    54→} from '@/components/ui/table';
+    55→import { Input } from '@/components/ui/input';
+    56→import { Label } from '@/components/ui/label';
+    57→import {
+    58→  Select,
+    59→  SelectContent,
+    60→  SelectItem,
+    61→  SelectTrigger,
+    62→  SelectValue,
+    63→} from '@/components/ui/select';
+    64→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+    65→import { Separator } from '@/components/ui/separator';
+    66→import {
+    67→  Dialog,
+    68→  DialogContent,
+    69→  DialogDescription,
+    70→  DialogFooter,
+    71→  DialogHeader,
+    72→  DialogTitle,
+    73→} from '@/components/ui/dialog';
+    74→import {
+    75→  ChartContainer,
+    76→  ChartTooltip,
+    77→  ChartTooltipContent,
+    78→  type ChartConfig,
+    79→} from '@/components/ui/chart';
+    80→import { Progress } from '@/components/ui/progress';
+    81→import {
+    82→  Collapsible,
+    83→  CollapsibleTrigger,
+    84→  CollapsibleContent,
+    85→} from '@/components/ui/collapsible';
+    86→import {
+    87→  Tooltip,
+    88→  TooltipTrigger,
+    89→  TooltipContent,
+    90→} from '@/components/ui/tooltip';
+    91→import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+    92→import { toast } from 'sonner';
+    93→
+    94→// ─── Types ───────────────────────────────────────────────────────────────────
+    95→
+    96→interface Expense {
+    97→  id: string;
+    98→  category: string;
+    99→  description: string;
+   100→  amount: number;
+   101→  date: string;
+   102→  vendor: string | null;
+   103→  createdAt: string;
+   104→}
+   105→
+   106→interface Due {
+   107→  id: string;
+   108→  customer: { name: string; phone: string } | null;
+   109→  amount: number;
+   110→  paid: number;
+   111→  status: string;
+   112→  dueDate: string | null;
+   113→  notes: string | null;
+   114→  createdAt: string;
+   115→  updatedAt?: string;
+   116→}
+   117→
+   118→interface Sale {
+   119→  id: string;
+   120→  invoiceNo: string;
+   121→  customerName: string;
+   122→  customer?: { name: string; phone: string } | null;
+   123→  total: number;
+   124→  paymentMode: string;
+   125→  createdAt: string;
+   126→}
+   127→
+   128→interface CashFlowEntry {
+   129→  date: string;
+   130→  description: string;
+   131→  type: 'Income' | 'Expense';
+   132→  amount: number;
+   133→  balance: number;
+   134→}
+   135→
+   136→interface ReturnItem {
+   137→  id: string;
+   138→  saleId: string;
+   139→  reason: string;
+   140→  amount: number;
+   141→  status: string;
+   142→  createdAt: string;
+   143→  sale?: {
+   144→    id: string;
+   145→    invoiceNo: string;
+   146→    customer?: { id: string; name: string; phone: string } | null;
+   147→  };
+   148→}
+   149→
+   150→// ─── Constants ───────────────────────────────────────────────────────────────
+   151→
+   152→const EXPENSE_CATEGORIES = [
+   153→  'Rent',
+   154→  'Salary',
+   155→  'Supplies',
+   156→  'Marketing',
+   157→  'Utilities',
+   158→  'Maintenance',
+   159→  'Transport',
+   160→  'Other',
+   161→] as const;
+   162→
+   163→const RETURN_REASONS = [
+   164→  'Defective',
+   165→  'Wrong Product',
+   166→  'Customer Changed Mind',
+   167→  'Warranty',
+   168→  'Other',
+   169→] as const;
+   170→
+   171→const PIE_COLORS = [
+   172→  'hsl(var(--chart-1))',
+   173→  'hsl(var(--chart-2))',
+   174→  'hsl(var(--chart-3))',
+   175→  'hsl(var(--chart-4))',
+   176→  'hsl(var(--chart-5))',
+   177→  'hsl(var(--chart-6))',
+   178→  'hsl(var(--chart-1) / 0.6)',
+   179→  'hsl(var(--chart-2) / 0.6)',
+   180→];
+   181→
+   182→const BAR_CHART_CONFIG: ChartConfig = {
+   183→  amount: { label: 'Amount', color: 'hsl(var(--chart-1))' },
+   184→};
+   185→
+   186→const PIE_CHART_CONFIG: ChartConfig = {
+   187→  value: { label: 'Amount' },
+   188→  Rent: { label: 'Rent', color: 'hsl(var(--chart-1))' },
+   189→  Salary: { label: 'Salary', color: 'hsl(var(--chart-2))' },
+   190→  Supplies: { label: 'Supplies', color: 'hsl(var(--chart-3))' },
+   191→  Marketing: { label: 'Marketing', color: 'hsl(var(--chart-4))' },
+   192→  Utilities: { label: 'Utilities', color: 'hsl(var(--chart-5))' },
+   193→  Transport: { label: 'Transport', color: 'hsl(var(--chart-6))' },
+   194→  Maintenance: { label: 'Maintenance', color: 'hsl(var(--chart-1) / 0.6)' },
+   195→  Other: { label: 'Other', color: 'hsl(40, 80%, 55%)' },
+   196→};
+   197→
+   198→// ─── Helpers ─────────────────────────────────────────────────────────────────
+   199→
+   200→function formatINR(amount: number): string {
+   201→  return new Intl.NumberFormat('en-IN', {
+   202→    style: 'currency',
+   203→    currency: 'INR',
+   204→    minimumFractionDigits: 0,
+   205→    maximumFractionDigits: 0,
+   206→  }).format(amount);
+   207→}
+   208→
+   209→function formatDate(dateStr: string | Date): string {
+   210→  try {
+   211→    const d = typeof dateStr === 'string' ? parseISO(dateStr) : dateStr;
+   212→    return format(d, 'dd MMM yyyy');
+   213→  } catch {
+   214→    return String(dateStr);
+   215→  }
+   216→}
+   217→
+   218→function toDateString(dateStr: string | Date): string {
+   219→  try {
+   220→    const d = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
+   221→    return format(d, 'yyyy-MM-dd');
+   222→  } catch {
+   223→    return String(dateStr);
+   224→  }
+   225→}
+   226→
+   227→function getTodayStr(): string {
+   228→  return format(new Date(), 'yyyy-MM-dd');
+   229→}
+   230→
+   231→function getBudgetKey(): string {
+   232→  const now = new Date();
+   233→  return `accounting_budget_${now.getFullYear()}_${now.getMonth() + 1}`;
+   234→}
+   235→
+   236→// ─── Component ───────────────────────────────────────────────────────────────
+   237→
+   238→// ─── Invoice GST Report Sub-Component ──────────────────────────────────
+   239→
+   240→function InvoiceGSTReport() {
+   241→  const [sales, setSales] = useState<Array<Record<string, unknown>>>([]);
+   242→  const [loading, setLoading] = useState(true);
+   243→  const [month, setMonth] = useState(() => {
+   244→    const now = new Date();
+   245→    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+   246→  });
+   247→
+   248→  useEffect(() => {
+   249→    setLoading(true);
+   250→    const start = `${month}-01`;
+   251→    const [y, m] = month.split('-').map(Number);
+   252→    const lastDay = new Date(y, m, 0).getDate();
+   253→    const end = `${month}-${String(lastDay).padStart(2, '0')}`;
+   254→    fetch(`/api/sales?fromDate=${start}&toDate=${end}&limit=500`)
+   255→      .then(r => r.ok ? r.json() : [])
+   256→      .then(json => {
+   257→        const data = json.sales ?? json.data ?? json ?? [];
+   258→        setSales(Array.isArray(data) ? data : []);
+   259→      })
+   260→      .catch(() => {})
+   261→      .finally(() => setLoading(false));
+   262→  }, [month]);
+   263→
+   264→  const gstSales = sales.filter((s: Record<string, unknown>) => ((s.cgst as number) || 0) + ((s.sgst as number) || 0) + ((s.igst as number) || 0) > 0);
+   265→  const totals = gstSales.reduce((acc: Record<string, number>, s: Record<string, unknown>) => {
+   266→    acc.subtotal += (s.subtotal as number) || 0;
+   267→    acc.cgst += (s.cgst as number) || 0;
+   268→    acc.sgst += (s.sgst as number) || 0;
+   269→    acc.igst += (s.igst as number) || 0;
+   270→    acc.total += (s.totalAmount as number) || 0;
+   271→    return acc;
+   272→  }, { subtotal: 0, cgst: 0, sgst: 0, igst: 0, total: 0 });
+   273→
+   274→  if (loading) return <div className="flex items-center justify-center py-8"><span className="size-5 animate-spin inline-block border-2 border-current border-t-transparent rounded-full" /></div>;
+   275→
+   276→  return (
+   277→    <div className="space-y-4">
+   278→      <div className="flex items-center gap-2">
+   279→        <Input type="month" value={month} onChange={e => setMonth(e.target.value)} className="w-auto" />
+   280→        <p className="text-sm text-muted-foreground">{gstSales.length} invoices with GST</p>
+   281→      </div>
+   282→      {gstSales.length === 0 ? (
+   283→        <p className="text-sm text-muted-foreground text-center py-8">No GST invoices for this month.</p>
+   284→      ) : (
+   285→        <>
+   286→          {/* GST Collection Summary Cards (ABOVE table) */}
+   287→          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+   288→            <Card className="py-3">
+   289→              <CardContent className="px-4">
+   290→                <p className="text-xs text-muted-foreground font-medium">Total CGST Collected</p>
+   291→                <p className="text-lg font-bold text-blue-600 dark:text-blue-400 font-mono mt-1">{formatINR(totals.cgst)}</p>
+   292→              </CardContent>
+   293→            </Card>
+   294→            <Card className="py-3">
+   295→              <CardContent className="px-4">
+   296→                <p className="text-xs text-muted-foreground font-medium">Total SGST Collected</p>
+   297→                <p className="text-lg font-bold text-violet-600 dark:text-violet-400 font-mono mt-1">{formatINR(totals.sgst)}</p>
+   298→              </CardContent>
+   299→            </Card>
+   300→            <Card className="py-3">
+   301→              <CardContent className="px-4">
+   302→                <p className="text-xs text-muted-foreground font-medium">Total IGST Collected</p>
+   303→                <p className="text-lg font-bold text-amber-600 dark:text-amber-400 font-mono mt-1">{formatINR(totals.igst)}</p>
+   304→              </CardContent>
+   305→            </Card>
+   306→            <Card className="py-3 bg-emerald-50 dark:bg-emerald-950/30">
+   307→              <CardContent className="px-4">
+   308→                <p className="text-xs text-muted-foreground font-medium">Total GST Collected</p>
+   309→                <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 font-mono mt-1">{formatINR(totals.cgst + totals.sgst + totals.igst)}</p>
+   310→              </CardContent>
+   311→            </Card>
+   312→          </div>
+   313→          <div className="overflow-x-auto">
+   314→          <Table>
+   315→            <TableHeader>
+   316→              <TableRow>
+   317→                <TableHead>Invoice</TableHead>
+   318→                <TableHead>Customer</TableHead>
+   319→                <TableHead className="text-right">Subtotal</TableHead>
+   320→                <TableHead className="text-right">CGST</TableHead>
+   321→                <TableHead className="text-right">SGST</TableHead>
+   322→                <TableHead className="text-right">IGST</TableHead>
+   323→                <TableHead className="text-right">Total</TableHead>
+   324→              </TableRow>
+   325→            </TableHeader>
+   326→            <TableBody>
+   327→              {gstSales.map((s: Record<string, unknown>) => (
+   328→                <TableRow key={s.id}>
+   329→                  <TableCell className="font-mono text-xs">{s.invoiceNo as string}</TableCell>
+   330→                  <TableCell className="text-sm">{(s.customerName as string) || 'Walk-in'}</TableCell>
+   331→                  <TableCell className="text-right font-mono text-sm">{formatINR((s.subtotal as number) || 0)}</TableCell>
+   332→                  <TableCell className="text-right font-mono text-sm text-blue-600 dark:text-blue-400">{formatINR((s.cgst as number) || 0)}</TableCell>
+   333→                  <TableCell className="text-right font-mono text-sm text-blue-600 dark:text-blue-400">{formatINR((s.sgst as number) || 0)}</TableCell>
+   334→                  <TableCell className="text-right font-mono text-sm text-purple-600 dark:text-purple-400">{formatINR((s.igst as number) || 0)}</TableCell>
+   335→                  <TableCell className="text-right font-mono text-sm font-semibold">{formatINR((s.totalAmount as number) || 0)}</TableCell>
+   336→                </TableRow>
+   337→              ))}
+   338→              <TableRow className="bg-muted/50 font-semibold">
+   339→                <TableCell colSpan={2}>Total</TableCell>
+   340→                <TableCell className="text-right font-mono text-sm">{formatINR(totals.subtotal)}</TableCell>
+   341→                <TableCell className="text-right font-mono text-sm">{formatINR(totals.cgst)}</TableCell>
+   342→                <TableCell className="text-right font-mono text-sm">{formatINR(totals.sgst)}</TableCell>
+   343→                <TableCell className="text-right font-mono text-sm">{formatINR(totals.igst)}</TableCell>
+   344→                <TableCell className="text-right font-mono text-sm">{formatINR(totals.total)}</TableCell>
+   345→              </TableRow>
+   346→            </TableBody>
+   347→          </Table>
+   348→          </div>
+   349→          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+   350→            <div className="rounded-lg border p-3 text-center">
+   351→              <p className="text-xs text-muted-foreground">CGST</p>
+   352→              <p className="font-mono font-semibold">{formatINR(totals.cgst)}</p>
+   353→            </div>
+   354→            <div className="rounded-lg border p-3 text-center">
+   355→              <p className="text-xs text-muted-foreground">SGST</p>
+   356→              <p className="font-mono font-semibold">{formatINR(totals.sgst)}</p>
+   357→            </div>
+   358→            <div className="rounded-lg border p-3 text-center">
+   359→              <p className="text-xs text-muted-foreground">IGST</p>
+   360→              <p className="font-mono font-semibold">{formatINR(totals.igst)}</p>
+   361→            </div>
+   362→            <div className="rounded-lg border p-3 text-center bg-emerald-50 dark:bg-emerald-900/20">
+   363→              <p className="text-xs text-muted-foreground">Total GST</p>
+   364→              <p className="font-mono font-semibold text-emerald-700 dark:text-emerald-400">{formatINR(totals.cgst + totals.sgst + totals.igst)}</p>
+   365→            </div>
+   366→          </div>
+   367→        </>
+   368→      )}
+   369→    </div>
+   370→  );
+   371→}
+   372→
+   373→export default function Accounting() {
+   374→  // Data state
+   375→  const [expenses, setExpenses] = useState<Expense[]>([]);
+   376→  const [dues, setDues] = useState<Due[]>([]);
+   377→  const [sales, setSales] = useState<Sale[]>([]);
+   378→  const [returns, setReturns] = useState<ReturnItem[]>([]);
+   379→
+   380→  // Loading states
+   381→  const [loadingExpenses, setLoadingExpenses] = useState(true);
+   382→  const [loadingDues, setLoadingDues] = useState(true);
+   383→  const [loadingSales, setLoadingSales] = useState(true);
+   384→  const [loadingReturns, setLoadingReturns] = useState(true);
+   385→
+   386→  // Dialog states
+   387→  const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
+   388→  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+   389→  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+   390→  const [payingDue, setPayingDue] = useState<Due | null>(null);
+   391→  const [markPaidLoading, setMarkPaidLoading] = useState(false);
+   392→  const [returnDialogOpen, setReturnDialogOpen] = useState(false);
+   393→  const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
+   394→
+   395→  // Expense form state
+   396→  const [expForm, setExpForm] = useState({
+   397→    category: '',
+   398→    description: '',
+   399→    amount: '',
+   400→    date: getTodayStr(),
+   401→    vendor: '',
+   402→  });
+   403→
+   404→  // Payment form state
+   405→  const [paymentAmount, setPaymentAmount] = useState('');
+   406→
+   407→  // Return form state
+   408→  const [returnForm, setReturnForm] = useState({
+   409→    saleSearch: '',
+   410→    saleId: '',
+   411→    refundAmount: '',
+   412→    reason: '',
+   413→  });
+   414→  const [saleSearchResults, setSaleSearchResults] = useState<Sale[]>([]);
+   415→  const [selectedReturnSale, setSelectedReturnSale] = useState<Sale | null>(null);
+   416→  const [creatingReturn, setCreatingReturn] = useState(false);
+   417→  const saleSearchTimeout = useRef<NodeJS.Timeout | null>(null);
+   418→
+   419→  // Budget state
+   420→  const [monthlyBudget, setMonthlyBudget] = useState<number>(0);
+   421→  const [budgetInput, setBudgetInput] = useState('');
+   422→
+   423→  // Expanded due row (payment history)
+   424→  const [expandedDueId, setExpandedDueId] = useState<string | null>(null);
+   425→
+   426→  // P&L collapsible
+   427→  const [plOpen, setPlOpen] = useState(false);
+   428→
+   429→  // Filter states
+   430→  const [cashFlowFrom, setCashFlowFrom] = useState(
+   431→    format(startOfMonth(new Date()), 'yyyy-MM-dd')
+   432→  );
+   433→  const [cashFlowTo, setCashFlowTo] = useState(getTodayStr());
+   434→  const [dueFilter, setDueFilter] = useState<string>('All');
+   435→
+   436→  // Deleting state
+   437→  const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
+   438→
+   439→  // GST state
+   440→  const [gstData, setGstData] = useState<{ cgst: number; sgst: number; igst: number; total: number } | null>(null);
+   441→  const [gstLoading, setGstLoading] = useState(false);
+   442→
+   443→  // Daily reconciliation state
+   444→  const [reconDate, setReconDate] = useState(getTodayStr());
+   445→
+   446→  // P&L Statement state
+   447→  const [plFromDate, setPlFromDate] = useState(() => format(startOfMonth(new Date()), 'yyyy-MM-dd'));
+   448→  const [plToDate, setPlToDate] = useState(getTodayStr());
+   449→  const [plRevenue, setPlRevenue] = useState(0);
+   450→  const [plLoading, setPlLoading] = useState(false);
+   451→
+   452→  // Cash Reconcile state
+   453→  const [actualCashInHand, setActualCashInHand] = useState('');
+   454→
+   455→  // ─── Fetch Data ──────────────────────────────────────────────────────────
+   456→
+   457→  const fetchExpenses = useCallback(async () => {
+   458→    try {
+   459→      setLoadingExpenses(true);
+   460→      const res = await fetch('/api/expenses?limit=200');
+   461→      if (res.ok) {
+   462→        const json = await res.json();
+   463→        setExpenses(Array.isArray(json.data) ? json.data : Array.isArray(json) ? json : []);
+   464→      }
+   465→    } catch {
+   466→      toast.error('Failed to fetch expenses');
+   467→    } finally {
+   468→      setLoadingExpenses(false);
+   469→    }
+   470→  }, []);
+   471→
+   472→  const fetchDues = useCallback(async () => {
+   473→    try {
+   474→      setLoadingDues(true);
+   475→      const res = await fetch('/api/dues?limit=200');
+   476→      if (res.ok) {
+   477→        const json = await res.json();
+   478→        setDues(Array.isArray(json.data) ? json.data : Array.isArray(json) ? json : []);
+   479→      }
+   480→    } catch {
+   481→      toast.error('Failed to fetch dues');
+   482→    } finally {
+   483→      setLoadingDues(false);
+   484→    }
+   485→  }, []);
+   486→
+   487→  const fetchSales = useCallback(async () => {
+   488→    try {
+   489→      setLoadingSales(true);
+   490→      const res = await fetch('/api/sales?limit=500');
+   491→      if (res.ok) {
+   492→        const json = await res.json();
+   493→        const arr = Array.isArray(json.sales) ? json.sales : Array.isArray(json.data) ? json.data : [];
+   494→        setSales(arr);
+   495→      }
+   496→    } catch {
+   497→      toast.error('Failed to fetch sales');
+   498→    } finally {
+   499→      setLoadingSales(false);
+   500→    }
+   501→  }, []);
+   502→
+   503→  const fetchReturns = useCallback(async () => {
+   504→    try {
+   505→      setLoadingReturns(true);
+   506→      const res = await fetch('/api/returns?limit=50');
+   507→      if (res.ok) {
+   508→        const json = await res.json();
+   509→        setReturns(Array.isArray(json.returns) ? json.returns : Array.isArray(json.data) ? json.data : []);
+   510→      }
+   511→    } catch {
+   512→      toast.error('Failed to fetch returns');
+   513→    } finally {
+   514→      setLoadingReturns(false);
+   515→    }
+   516→  }, []);
+   517→
+   518→  // ─── GST Fetch ──────────────────────────────────────────────────────────
+   519→
+   520→  const fetchGST = useCallback(async () => {
+   521→    setGstLoading(true);
+   522→    try {
+   523→      const res = await fetch('/api/reports?type=revenue-comparison');
+   524→      if (res.ok) {
+   525→        const json = await res.json();
+   526→        const summary = json.summary?.thisMonth;
+   527→        if (summary) {
+   528→          setGstData({
+   529→            cgst: summary.cgst || 0,
+   530→            sgst: summary.sgst || 0,
+   531→            igst: summary.igst || 0,
+   532→            total: (summary.cgst || 0) + (summary.sgst || 0) + (summary.igst || 0),
+   533→          });
+   534→        }
+   535→      }
+   536→    } catch { /* ignore */ }
+   537→    finally { setGstLoading(false); }
+   538→  }, []);
+   539→
+   540→  // ─── Daily Cash Reconciliation ──────────────────────────────────────────
+   541→
+   542→  const dailyReconciliation = useMemo(() => {
+   543→    const targetDate = startOfDay(parseISO(reconDate));
+   544→    const nextDay = new Date(targetDate);
+   545→    nextDay.setDate(nextDay.getDate() + 1);
+   546→
+   547→    const daySales = sales.filter((s) => {
+   548→      try {
+   549→        const d = new Date(s.createdAt);
+   550→        return d >= targetDate && d < nextDay;
+   551→      } catch { return false; }
+   552→    });
+   553→
+   554→    const dayExpenses = expenses.filter((e) => {
+   555→      try {
+   556→        const d = new Date(e.date);
+   557→        return d >= targetDate && d < nextDay;
+   558→      } catch { return false; }
+   559→    });
+   560→
+   561→    const cashSales = daySales.filter((s) => (s.paymentMode || '').toLowerCase() === 'cash').reduce((s, x) => s + (x.total || 0), 0);
+   562→    const upiSales = daySales.filter((s) => (s.paymentMode || '').toLowerCase() === 'upi').reduce((s, x) => s + (x.total || 0), 0);
+   563→    const cardSales = daySales.filter((s) => (s.paymentMode || '').toLowerCase() === 'card').reduce((s, x) => s + (x.total || 0), 0);
+   564→    const creditSales = daySales.filter((s) => (s.paymentMode || '').toLowerCase() === 'credit').reduce((s, x) => s + (x.total || 0), 0);
+   565→    const otherSales = daySales.filter((s) => {
+   566→      const m = (s.paymentMode || '').toLowerCase();
+   567→      return !['cash', 'upi', 'card', 'credit'].includes(m);
+   568→    }).reduce((s, x) => s + (x.total || 0), 0);
+   569→
+   570→    const totalDayIncome = daySales.reduce((s, x) => s + (x.total || 0), 0);
+   571→    const totalDayExpenses = dayExpenses.reduce((s, x) => s + (x.amount || 0), 0);
+   572→    const expectedCash = cashSales - totalDayExpenses;
+   573→
+   574→    const dayCGST = daySales.reduce((s, x) => s + ((x as Record<string, unknown>).cgst as number || 0), 0);
+   575→    const daySGST = daySales.reduce((s, x) => s + ((x as Record<string, unknown>).sgst as number || 0), 0);
+   576→    const dayIGST = daySales.reduce((s, x) => s + ((x as Record<string, unknown>).igst as number || 0), 0);
+   577→
+   578→    return {
+   579→      date: reconDate,
+   580→      totalTransactions: daySales.length,
+   581→      totalIncome: totalDayIncome,
+   582→      totalExpenses: totalDayExpenses,
+   583→      cashSales,
+   584→      upiSales,
+   585→      cardSales,
+   586→      creditSales,
+   587→      otherSales,
+   588→      expectedCash,
+   589→      dayCGST,
+   590→      daySGST,
+   591→      dayIGST,
+   592→      totalGST: dayCGST + daySGST + dayIGST,
+   593→      sales: daySales,
+   594→      expenses: dayExpenses,
+   595→    };
+   596→  }, [sales, expenses, reconDate]);
+   597→
+   598→  // ─── P&L Revenue Fetch ─────────────────────────────────────────────────
+   599→
+   600→  const fetchPLRevenue = useCallback(async () => {
+   601→    setPlLoading(true);
+   602→    try {
+   603→      const res = await fetch(`/api/reports?type=revenue&fromDate=${plFromDate}&toDate=${plToDate}`);
+   604→      if (res.ok) {
+   605→        const json = await res.json();
+   606→        const total = json.total ?? json.revenue ?? json.data?.total ?? json.data?.revenue ?? 0;
+   607→        setPlRevenue(typeof total === 'number' ? total : 0);
+   608→      }
+   609→    } catch { /* ignore */ }
+   610→    finally { setPlLoading(false); }
+   611→  }, [plFromDate, plToDate]);
+   612→
+   613→  // ─── P&L Expense Grouping ──────────────────────────────────────────────
+   614→
+   615→  const plExpensesByCategory = useMemo(() => {
+   616→    const from = startOfDay(parseISO(plFromDate));
+   617→    const to = new Date(plToDate + 'T23:59:59');
+   618→    const filtered = expenses.filter((e) => {
+   619→      try {
+   620→        const d = new Date(e.date);
+   621→        return d >= from && d <= to;
+   622→      } catch { return false; }
+   623→    });
+   624→    const map: Record<string, number> = {};
+   625→    filtered.forEach((e) => {
+   626→      const cat = e.category || 'Other';
+   627→      map[cat] = (map[cat] || 0) + (e.amount || 0);
+   628→    });
+   629→    return EXPENSE_CATEGORIES.map((cat) => ({
+   630→      category: cat,
+   631→      total: map[cat] || 0,
+   632→    })).filter((c) => c.total > 0);
+   633→  }, [expenses, plFromDate, plToDate]);
+   634→
+   635→  const plTotalExpenses = useMemo(() => {
+   636→    return plExpensesByCategory.reduce((s, c) => s + c.total, 0);
+   637→  }, [plExpensesByCategory]);
+   638→
+   639→  const plNetProfit = plRevenue - plTotalExpenses;
+   640→
+   641→  // ─── Today's Cash Data (for Cash Reconcile) ────────────────────────────
+   642→
+   643→  const todayCashData = useMemo(() => {
+   644→    const targetDate = startOfDay(new Date());
+   645→    const nextDay = new Date(targetDate);
+   646→    nextDay.setDate(nextDay.getDate() + 1);
+   647→
+   648→    const todaySales = sales.filter((s) => {
+   649→      try {
+   650→        const d = new Date(s.createdAt);
+   651→        return d >= targetDate && d < nextDay;
+   652→      } catch { return false; }
+   653→    });
+   654→
+   655→    const todayExpenses = expenses.filter((e) => {
+   656→      try {
+   657→        const d = new Date(e.date);
+   658→        return d >= targetDate && d < nextDay;
+   659→      } catch { return false; }
+   660→    });
+   661→
+   662→    const cashSales = todaySales
+   663→      .filter((s) => (s.paymentMode || '').toLowerCase() === 'cash')
+   664→      .reduce((s, x) => s + (x.total || 0), 0);
+   665→
+   666→    const cashExpenses = todayExpenses.reduce((s, x) => s + (x.amount || 0), 0);
+   667→
+   668→    return {
+   669→      cashSales,
+   670→      cashExpenses,
+   671→      expectedCash: cashSales - cashExpenses,
+   672→    };
+   673→  }, [sales, expenses]);
+   674→
+   675→  const cashVariance = useMemo(() => {
+   676→    const actual = parseFloat(actualCashInHand);
+   677→    if (isNaN(actual)) return null;
+   678→    return actual - todayCashData.expectedCash;
+   679→  }, [actualCashInHand, todayCashData.expectedCash]);
+   680→
+   681→  // Load budget from localStorage
+   682→  useEffect(() => {
+   683→    try {
+   684→      const stored = localStorage.getItem(getBudgetKey());
+   685→      if (stored) setMonthlyBudget(parseFloat(stored) || 0);
+   686→    } catch { /* ignore */ }
+   687→  }, []);
+   688→
+   689→  useEffect(() => {
+   690→    fetchExpenses();
+   691→    fetchDues();
+   692→    fetchSales();
+   693→    fetchReturns();
+   694→    fetchGST();
+   695→  }, [fetchExpenses, fetchDues, fetchSales, fetchReturns, fetchGST]);
+   696→
+   697→  // Fetch P&L revenue on mount and date change
+   698→  useEffect(() => {
+   699→    fetchPLRevenue();
+   700→  }, [fetchPLRevenue]);
+   701→
+   702→  // Cash variance toast (debounced via ref key)
+   703→  const cashVarianceToastKey = useRef<string | null>(null);
+   704→  useEffect(() => {
+   705→    if (cashVariance !== null && Math.abs(cashVariance) > 500) {
+   706→      const key = actualCashInHand;
+   707→      if (cashVarianceToastKey.current !== key) {
+   708→        cashVarianceToastKey.current = key;
+   709→        toast.warning(`Cash variance of ${formatINR(Math.abs(cashVariance))} detected!`, {
+   710→          description: `Expected: ${formatINR(todayCashData.expectedCash)}, Actual: ${formatINR(parseFloat(actualCashInHand))}`,
+   711→        });
+   712→      }
+   713→    } else {
+   714→      cashVarianceToastKey.current = null;
+   715→    }
+   716→  }, [cashVariance, todayCashData.expectedCash, actualCashInHand]);
+   717→
+   718→  // ─── Summary Calculations ────────────────────────────────────────────────
+   719→
+   720→  const todayIncome = useMemo(() => {
+   721→    return sales
+   722→      .filter((s) => {
+   723→        try { return isToday(new Date(s.createdAt)); } catch { return false; }
+   724→      })
+   725→      .reduce((sum, s) => sum + (s.total || 0), 0);
+   726→  }, [sales]);
+   727→
+   728→  const monthlyIncome = useMemo(() => {
+   729→    const mStart = startOfMonth(new Date());
+   730→    return sales
+   731→      .filter((s) => {
+   732→        try { return new Date(s.createdAt) >= mStart; } catch { return false; }
+   733→      })
+   734→      .reduce((sum, s) => sum + (s.total || 0), 0);
+   735→  }, [sales]);
+   736→
+   737→  const lastMonthIncome = useMemo(() => {
+   738→    const lastMStart = startOfMonth(subMonths(new Date(), 1));
+   739→    const lastMEnd = endOfMonth(subMonths(new Date(), 1));
+   740→    return sales
+   741→      .filter((s) => {
+   742→        try {
+   743→          const d = new Date(s.createdAt);
+   744→          return d >= lastMStart && d <= lastMEnd;
+   745→        } catch { return false; }
+   746→      })
+   747→      .reduce((sum, s) => sum + (s.total || 0), 0);
+   748→  }, [sales]);
+   749→
+   750→  const monthlyExpensesTotal = useMemo(() => {
+   751→    const mStart = startOfMonth(new Date());
+   752→    return expenses
+   753→      .filter((e) => {
+   754→        try { return new Date(e.date) >= mStart; } catch { return false; }
+   755→      })
+   756→      .reduce((sum, e) => sum + (e.amount || 0), 0);
+   757→  }, [expenses]);
+   758→
+   759→  const totalExpenses = useMemo(() => {
+   760→    return expenses.reduce((s, e) => s + (e.amount || 0), 0);
+   761→  }, [expenses]);
+   762→
+   763→  const todayExpenses = useMemo(() => {
+   764→    return expenses
+   765→      .filter((e) => {
+   766→        try { return isToday(new Date(e.date)); } catch { return false; }
+   767→      })
+   768→      .reduce((sum, e) => sum + (e.amount || 0), 0);
+   769→  }, [expenses]);
+   770→
+   771→  const totalPendingDues = useMemo(() => {
+   772→    return dues
+   773→      .filter((d) => d.status !== 'Paid')
+   774→      .reduce((sum, d) => sum + ((d.amount || 0) - (d.paid || 0)), 0);
+   775→  }, [dues]);
+   776→
+   777→  // ─── Returns Summary ────────────────────────────────────────────────────
+   778→
+   779→  const totalReturnRefund = useMemo(() => {
+   780→    return returns.reduce((s, r) => s + (r.amount || 0), 0);
+   781→  }, [returns]);
+   782→
+   783→  const thisMonthReturns = useMemo(() => {
+   784→    const mStart = startOfMonth(new Date());
+   785→    return returns.filter((r) => {
+   786→      try { return new Date(r.createdAt) >= mStart; } catch { return false; }
+   787→    });
+   788→  }, [returns]);
+   789→
+   790→  const thisMonthReturnAmount = useMemo(() => {
+   791→    return thisMonthReturns.reduce((s, r) => s + (r.amount || 0), 0);
+   792→  }, [thisMonthReturns]);
+   793→
+   794→  // ─── P&L Calculations ───────────────────────────────────────────────────
+   795→
+   796→  const netProfit = useMemo(() => {
+   797→    return monthlyIncome - monthlyExpensesTotal;
+   798→  }, [monthlyIncome, monthlyExpensesTotal]);
+   799→
+   800→  const momChangePercent = useMemo(() => {
+   801→    if (lastMonthIncome === 0) return monthlyIncome > 0 ? 100 : 0;
+   802→    return Math.round(((monthlyIncome - lastMonthIncome) / lastMonthIncome) * 100);
+   803→  }, [monthlyIncome, lastMonthIncome]);
+   804→
+   805→  // ─── Cash Flow Calculations ──────────────────────────────────────────────
+   806→
+   807→  const cashFlowData = useMemo((): CashFlowEntry[] => {
+   808→    const fromDate = startOfDay(parseISO(cashFlowFrom));
+   809→    const toDate = startOfDay(parseISO(cashFlowTo));
+   810→
+   811→    const incomeEntries: CashFlowEntry[] = sales
+   812→      .filter((s) => {
+   813→        try {
+   814→          const d = new Date(s.createdAt);
+   815→          return isWithinInterval(d, { start: fromDate, end: new Date(cashFlowTo + 'T23:59:59') });
+   816→        } catch { return false; }
+   817→      })
+   818→      .map((s) => ({
+   819→        date: toDateString(s.createdAt),
+   820→        description: `Sale - ${s.customer?.name || s.customerName || 'Customer'} (${s.invoiceNo || ''})`,
+   821→        type: 'Income' as const,
+   822→        amount: s.total || 0,
+   823→        balance: 0,
+   824→      }));
+   825→
+   826→    const expenseEntries: CashFlowEntry[] = expenses
+   827→      .filter((e) => {
+   828→        try {
+   829→          const d = new Date(e.date);
+   830→          return isWithinInterval(d, { start: fromDate, end: new Date(cashFlowTo + 'T23:59:59') });
+   831→        } catch { return false; }
+   832→      })
+   833→      .map((e) => ({
+   834→        date: toDateString(e.date),
+   835→        description: `${e.category} - ${e.description || e.vendor || 'Expense'}`,
+   836→        type: 'Expense' as const,
+   837→        amount: e.amount,
+   838→        balance: 0,
+   839→      }));
+   840→
+   841→    const allEntries = [...incomeEntries, ...expenseEntries].sort((a, b) => {
+   842→      const dc = a.date.localeCompare(b.date);
+   843→      if (dc !== 0) return dc;
+   844→      return a.type === 'Income' ? -1 : 1;
+   845→    });
+   846→
+   847→    let runningBalance = 0;
+   848→    return allEntries.map((entry) => {
+   849→      if (entry.type === 'Income') runningBalance += entry.amount;
+   850→      else runningBalance -= entry.amount;
+   851→      return { ...entry, balance: runningBalance };
+   852→    });
+   853→  }, [sales, expenses, cashFlowFrom, cashFlowTo]);
+   854→
+   855→  const cashFlowSummary = useMemo(() => {
+   856→    const totalIncome = cashFlowData.filter((e) => e.type === 'Income').reduce((s, e) => s + e.amount, 0);
+   857→    const totalExpense = cashFlowData.filter((e) => e.type === 'Expense').reduce((s, e) => s + e.amount, 0);
+   858→    return { totalIncome, totalExpense, net: totalIncome - totalExpense };
+   859→  }, [cashFlowData]);
+   860→
+   861→  // ─── Expense Category Summary ────────────────────────────────────────────
+   862→
+   863→  const categorySummary = useMemo(() => {
+   864→    const map: Record<string, number> = {};
+   865→    expenses.forEach((e) => {
+   866→      const cat = e.category || 'Other';
+   867→      map[cat] = (map[cat] || 0) + (e.amount || 0);
+   868→    });
+   869→    return EXPENSE_CATEGORIES.map((cat) => ({
+   870→      name: cat,
+   871→      value: map[cat] || 0,
+   872→    })).filter((c) => c.value > 0);
+   873→  }, [expenses]);
+   874→
+   875→  // ─── Filtered Dues (with overdue detection) ──────────────────────────────
+   876→
+   877→  const filteredDues = useMemo(() => {
+   878→    let filtered = dues;
+   879→    if (dueFilter === 'All') {
+   880→      // no filter
+   881→    } else if (dueFilter === 'Overdue') {
+   882→      const todayStr = getTodayStr();
+   883→      filtered = dues.filter((d) => {
+   884→        if (d.status === 'Paid') return false;
+   885→        if (!d.dueDate) return false;
+   886→        try {
+   887→          return isBefore(parseISO(toDateString(d.dueDate)), parseISO(todayStr));
+   888→        } catch { return false; }
+   889→      });
+   890→    } else {
+   891→      filtered = dues.filter((d) => d.status === dueFilter);
+   892→    }
+   893→    return filtered;
+   894→  }, [dues, dueFilter]);
+   895→
+   896→  // ─── Overdue check helper ────────────────────────────────────────────────
+   897→
+   898→  const isDueOverdue = useCallback((due: Due): boolean => {
+   899→    if (due.status === 'Paid') return false;
+   900→    if (!due.dueDate) return false;
+   901→    try {
+   902→      return isBefore(parseISO(toDateString(due.dueDate)), parseISO(getTodayStr()));
+   903→    } catch { return false; }
+   904→  }, []);
+   905→
+   906→  // ─── Expense Form Handlers ───────────────────────────────────────────────
+   907→
+   908→  const resetExpForm = () => {
+   909→    setExpForm({ category: '', description: '', amount: '', date: getTodayStr(), vendor: '' });
+   910→    setEditingExpense(null);
+   911→  };
+   912→
+   913→  const openAddExpense = () => { resetExpForm(); setExpenseDialogOpen(true); };
+   914→
+   915→  const openEditExpense = (expense: Expense) => {
+   916→    setEditingExpense(expense);
+   917→    setExpForm({
+   918→      category: expense.category || '',
+   919→      description: expense.description || '',
+   920→      amount: String(expense.amount || ''),
+   921→      date: toDateString(expense.date),
+   922→      vendor: expense.vendor || '',
+   923→    });
+   924→    setExpenseDialogOpen(true);
+   925→  };
+   926→
+   927→  const handleSaveExpense = async () => {
+   928→    const amount = parseFloat(expForm.amount);
+   929→    if (!expForm.category || !expForm.description || isNaN(amount) || amount <= 0 || !expForm.date) {
+   930→      toast.error('Please fill in all required fields with valid data');
+   931→      return;
+   932→    }
+   933→    try {
+   934→      const isEdit = !!editingExpense;
+   935→      const url = editingExpense ? `/api/expenses?id=${editingExpense.id}` : '/api/expenses';
+   936→      const res = await fetch(url, {
+   937→        method: isEdit ? 'PUT' : 'POST',
+   938→        headers: { 'Content-Type': 'application/json' },
+   939→        body: JSON.stringify({
+   940→          category: expForm.category,
+   941→          description: expForm.description,
+   942→          amount,
+   943→          date: expForm.date,
+   944→          vendor: expForm.vendor || null,
+   945→        }),
+   946→      });
+   947→      if (res.ok) {
+   948→        toast.success(isEdit ? 'Expense updated' : 'Expense added');
+   949→        setExpenseDialogOpen(false);
+   950→        resetExpForm();
+   951→        fetchExpenses();
+   952→      } else {
+   953→        const err = await res.json().catch(() => ({}));
+   954→        toast.error(err.error || 'Failed to save expense');
+   955→      }
+   956→    } catch { toast.error('Network error'); }
+   957→  };
+   958→
+   959→  const handleDeleteExpense = async (id: string) => {
+   960→    setDeletingExpenseId(id);
+   961→    try {
+   962→      const res = await fetch(`/api/expenses?id=${id}`, { method: 'DELETE' });
+   963→      if (res.ok) { toast.success('Expense deleted'); fetchExpenses(); }
+   964→      else toast.error('Failed to delete expense');
+   965→    } catch { toast.error('Network error'); }
+   966→    finally { setDeletingExpenseId(null); }
+   967→  };
+   968→
+   969→  // ─── Payment Handlers ────────────────────────────────────────────────────
+   970→
+   971→  const openPaymentDialog = (due: Due) => {
+   972→    setPayingDue(due);
+   973→    setPaymentAmount('');
+   974→    setPaymentDialogOpen(true);
+   975→  };
+   976→
+   977→  const handleRecordPayment = async () => {
+   978→    if (!payingDue) return;
+   979→    const amount = parseFloat(paymentAmount);
+   980→    const balance = (payingDue.amount || 0) - (payingDue.paid || 0);
+   981→    if (isNaN(amount) || amount <= 0) { toast.error('Please enter a valid amount'); return; }
+   982→    if (amount > balance) { toast.error('Amount exceeds pending balance'); return; }
+   983→
+   984→    setMarkPaidLoading(true);
+   985→    try {
+   986→      const res = await fetch(`/api/dues?id=${payingDue.id}`, {
+   987→        method: 'PUT',
+   988→        headers: { 'Content-Type': 'application/json' },
+   989→        body: JSON.stringify({ paidAmount: amount }),
+   990→      });
+   991→      if (res.ok) {
+   992→        toast.success(`Payment of ${formatINR(amount)} recorded`);
+   993→        setPaymentDialogOpen(false);
+   994→        setPayingDue(null);
+   995→        fetchDues();
+   996→      } else toast.error('Failed to record payment');
+   997→    } catch { toast.error('Network error'); }
+   998→    finally { setMarkPaidLoading(false); }
+   999→  };
+  1000→
+  1001→  const handleMarkPaid = async (due: Due) => {
+  1002→    setMarkPaidLoading(true);
+  1003→    try {
+  1004→      const res = await fetch(`/api/dues?id=${due.id}`, {
+  1005→        method: 'PUT',
+  1006→        headers: { 'Content-Type': 'application/json' },
+  1007→        body: JSON.stringify({ status: 'Paid' }),
+  1008→      });
+  1009→      if (res.ok) { toast.success(`${due.customer?.name || 'Customer'} marked as paid`); fetchDues(); }
+  1010→      else toast.error('Failed to update');
+  1011→    } catch { toast.error('Network error'); }
+  1012→    finally { setMarkPaidLoading(false); }
+  1013→  };
+  1014→
+  1015→  // ─── Return Handlers ─────────────────────────────────────────────────────
+  1016→
+  1017→  const openCreateReturn = () => {
+  1018→    setReturnForm({ saleSearch: '', saleId: '', refundAmount: '', reason: '' });
+  1019→    setSaleSearchResults([]);
+  1020→    setSelectedReturnSale(null);
+  1021→    setReturnDialogOpen(true);
+  1022→  };
+  1023→
+  1024→  const handleSaleSearch = (query: string) => {
+  1025→    setReturnForm((f) => ({ ...f, saleSearch: query }));
+  1026→    if (saleSearchTimeout.current) clearTimeout(saleSearchTimeout.current);
+  1027→    if (!query.trim()) { setSaleSearchResults([]); return; }
+  1028→    saleSearchTimeout.current = setTimeout(async () => {
+  1029→      try {
+  1030→        const res = await fetch(`/api/sales?search=${encodeURIComponent(query)}&limit=10`);
+  1031→        if (res.ok) {
+  1032→          const json = await res.json();
+  1033→          const arr = Array.isArray(json.sales) ? json.sales : Array.isArray(json.data) ? json.data : [];
+  1034→          setSaleSearchResults(arr);
+  1035→        }
+  1036→      } catch { /* ignore */ }
+  1037→    }, 300);
+  1038→  };
+  1039→
+  1040→  const selectReturnSale = (sale: Sale) => {
+  1041→    setSelectedReturnSale(sale);
+  1042→    setReturnForm((f) => ({ ...f, saleId: sale.id, refundAmount: String(sale.total || 0) }));
+  1043→    setSaleSearchResults([]);
+  1044→  };
+  1045→
+  1046→  const handleCreateReturn = async () => {
+  1047→    if (!returnForm.saleId || !returnForm.reason) {
+  1048→      toast.error('Please select a sale and a reason');
+  1049→      return;
+  1050→    }
+  1051→    const amount = parseFloat(returnForm.refundAmount);
+  1052→    if (isNaN(amount) || amount <= 0) {
+  1053→      toast.error('Please enter a valid refund amount');
+  1054→      return;
+  1055→    }
+  1056→    setCreatingReturn(true);
+  1057→    try {
+  1058→      const res = await fetch('/api/returns', {
+  1059→        method: 'POST',
+  1060→        headers: { 'Content-Type': 'application/json' },
+  1061→        body: JSON.stringify({
+  1062→          saleId: returnForm.saleId,
+  1063→          reason: returnForm.reason,
+  1064→          refundAmount: amount,
+  1065→        }),
+  1066→      });
+  1067→      if (res.ok) {
+  1068→        toast.success('Return created successfully');
+  1069→        setReturnDialogOpen(false);
+  1070→        fetchReturns();
+  1071→      } else {
+  1072→        const err = await res.json().catch(() => ({}));
+  1073→        toast.error(err.error || 'Failed to create return');
+  1074→      }
+  1075→    } catch { toast.error('Network error'); }
+  1076→    finally { setCreatingReturn(false); }
+  1077→  };
+  1078→
+  1079→  // ─── CSV Export ──────────────────────────────────────────────────────────
+  1080→
+  1081→  const handleExportCSV = () => {
+  1082→    const rows = expenses.map((e) => [
+  1083→      formatDate(e.date),
+  1084→      e.category,
+  1085→      `"${(e.description || '').replace(/"/g, '""')}"`,
+  1086→      e.amount,
+  1087→      `"${(e.vendor || '').replace(/"/g, '""')}"`,
+  1088→    ]);
+  1089→    const csv = ['Date,Category,Description,Amount,Vendor', ...rows.map((r) => r.join(','))].join('\n');
+  1090→    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  1091→    const url = URL.createObjectURL(blob);
+  1092→    const a = document.createElement('a');
+  1093→    a.href = url;
+  1094→    a.download = `expenses_${getTodayStr()}.csv`;
+  1095→    a.click();
+  1096→    URL.revokeObjectURL(url);
+  1097→    toast.success('CSV exported successfully');
+  1098→  };
+  1099→
+  1100→  // ─── Budget Handlers ─────────────────────────────────────────────────────
+  1101→
+  1102→  const handleSetBudget = () => {
+  1103→    const val = parseFloat(budgetInput);
+  1104→    if (isNaN(val) || val <= 0) {
+  1105→      toast.error('Please enter a valid budget amount');
+  1106→      return;
+  1107→    }
+  1108→    setMonthlyBudget(val);
+  1109→    localStorage.setItem(getBudgetKey(), String(val));
+  1110→    setBudgetDialogOpen(false);
+  1111→    setBudgetInput('');
+  1112→    toast.success('Monthly budget set to ' + formatINR(val));
+  1113→  };
+  1114→
+  1115→  const budgetPercent = monthlyBudget > 0 ? Math.min((monthlyExpensesTotal / monthlyBudget) * 100, 100) : 0;
+  1116→  const budgetRemaining = monthlyBudget - monthlyExpensesTotal;
+  1117→
+  1118→  // ─── Status Badges ───────────────────────────────────────────────────────
+  1119→
+  1120→  const DueStatusBadge = ({ status }: { status: string }) => {
+  1121→    const styles: Record<string, string> = {
+  1122→      Pending: 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800',
+  1123→      Partial: 'bg-sky-100 text-sky-800 border-sky-200 hover:bg-sky-100 dark:bg-sky-950 dark:text-sky-300 dark:border-sky-800',
+  1124→      Paid: 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800',
+  1125→      Overdue: 'bg-red-100 text-red-800 border-red-200 hover:bg-red-100 dark:bg-red-950 dark:text-red-300 dark:border-red-800',
+  1126→    };
+  1127→    return (
+  1128→      <Badge className={styles[status] || 'border'}>
+  1129→        {status}
+  1130→      </Badge>
+  1131→    );
+  1132→  };
+  1133→
+  1134→  const ReturnStatusBadge = ({ status }: { status: string }) => {
+  1135→    const styles: Record<string, string> = {
+  1136→      Completed: 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800',
+  1137→      Pending: 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800',
+  1138→      Rejected: 'bg-red-100 text-red-800 border-red-200 hover:bg-red-100 dark:bg-red-950 dark:text-red-300 dark:border-red-800',
+  1139→    };
+  1140→    return (
+  1141→      <Badge className={styles[status] || 'border'}>
+  1142→        {status}
+  1143→      </Badge>
+  1144→    );
+  1145→  };
+  1146→
+  1147→  // ─── Skeleton ─────────────────────────────────────────────────────────────
+  1148→
+  1149→  const TableSkeleton = ({ rows = 5, cols = 6 }: { rows?: number; cols?: number }) => (
+  1150→    <div className="space-y-2 p-4">
+  1151→      {Array.from({ length: rows }).map((_, i) => (
+  1152→        <div key={i} className="flex gap-4">
+  1153→          {Array.from({ length: cols }).map((_, j) => (
+  1154→            <div key={j} className="h-8 bg-muted rounded animate-pulse flex-1" />
+  1155→          ))}
+  1156→        </div>
+  1157→      ))}
+  1158→    </div>
+  1159→  );
+  1160→
+  1161→  // ─── Render ──────────────────────────────────────────────────────────────
+  1162→
+  1163→  return (
+  1164→    <div className="space-y-6 p-4 md:p-6">
+  1165→      {/* Page Header */}
+  1166→      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  1167→        <div>
+  1168→          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+  1169→            <IndianRupee className="h-6 w-6" />
+  1170→            Accounting & Finance
+  1171→          </h1>
+  1172→          <p className="text-muted-foreground text-sm mt-1">
+  1173→            Track income, expenses, and pending dues
+  1174→          </p>
+  1175→        </div>
+  1176→        <Button onClick={openAddExpense} size="sm" className="gap-1.5 w-fit touch-manipulation min-h-[44px] active:scale-95 transition-transform">
+  1177→          <Plus className="h-4 w-4" />
+  1178→          Add Expense
+  1179→        </Button>
+  1180→      </div>
+  1181→
+  1182→      {/* ─── Profit & Loss Card ─────────────────────────────────────────── */}
+  1183→      <Collapsible open={plOpen} onOpenChange={setPlOpen}>
+  1184→        <Card>
+  1185→          <CollapsibleTrigger className="w-full">
+  1186→            <CardHeader className="pb-2 cursor-pointer">
+  1187→              <div className="flex items-center justify-between">
+  1188→                <div className="flex items-center gap-2">
+  1189→                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-950">
+  1190→                    <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+  1191→                  </div>
+  1192→                  <div>
+  1193→                    <CardTitle className="text-base">Profit &amp; Loss Summary</CardTitle>
+  1194→                    <CardDescription className="text-xs">
+  1195→                      {format(new Date(), 'MMMM yyyy')} &bull; Net: <span className={netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-red-600 dark:text-red-400 font-semibold'}>{formatINR(netProfit)}</span>
+  1196→                    </CardDescription>
+  1197→                  </div>
+  1198→                </div>
+  1199→                <div className="flex items-center gap-3">
+  1200→                  {lastMonthIncome > 0 && (
+  1201→                    <div className={`flex items-center gap-0.5 text-xs font-medium ${momChangePercent >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+  1202→                      {momChangePercent >= 0 ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
+  1203→                      {Math.abs(momChangePercent)}% vs last month
+  1204→                    </div>
+  1205→                  )}
+  1206→                  {plOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+  1207→                </div>
+  1208→              </div>
+  1209→            </CardHeader>
+  1210→          </CollapsibleTrigger>
+  1211→          <CollapsibleContent>
+  1212→            <CardContent className="pt-0 space-y-4">
+  1213→              {/* P&L Header Row */}
+  1214→              <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+  1215→                <div className="rounded-lg border p-3">
+  1216→                  <p className="text-xs text-muted-foreground">Revenue</p>
+  1217→                  <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">{formatINR(monthlyIncome)}</p>
+  1218→                  <p className="text-[10px] text-muted-foreground mt-0.5">Monthly collections</p>
+  1219→                </div>
+  1220→                <div className="rounded-lg border p-3">
+  1221→                  <p className="text-xs text-muted-foreground">Cost of Goods</p>
+  1222→                  <p className="text-sm font-bold text-muted-foreground font-mono">Not tracked</p>
+  1223→                  <p className="text-[10px] text-muted-foreground mt-0.5">Enable product costing</p>
+  1224→                </div>
+  1225→                <div className="rounded-lg border p-3">
+  1226→                  <p className="text-xs text-muted-foreground">Gross Profit</p>
+  1227→                  <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">{formatINR(monthlyIncome)}</p>
+  1228→                  <p className="text-[10px] text-muted-foreground mt-0.5">Revenue (COGS not tracked)</p>
+  1229→                </div>
+  1230→                <div className="rounded-lg border p-3">
+  1231→                  <p className="text-xs text-muted-foreground">Total Expenses</p>
+  1232→                  <p className="text-sm font-bold text-red-600 dark:text-red-400 font-mono">{formatINR(monthlyExpensesTotal)}</p>
+  1233→                  <p className="text-[10px] text-muted-foreground mt-0.5">This month</p>
+  1234→                </div>
+  1235→                <div className={`rounded-lg border p-3 ${netProfit >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-red-50 dark:bg-red-950/30'}`}>
+  1236→                  <p className="text-xs text-muted-foreground">Net Profit</p>
+  1237→                  <p className={`text-sm font-bold font-mono ${netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{formatINR(netProfit)}</p>
+  1238→                  <p className="text-[10px] text-muted-foreground mt-0.5">Revenue - Expenses</p>
+  1239→                </div>
+  1240→              </div>
+  1241→
+  1242→              {/* P&L Detail: Expense Category Breakdown */}
+  1243→              <Separator />
+  1244→              <div>
+  1245→                <h3 className="text-sm font-semibold mb-3">Expense Breakdown by Category</h3>
+  1246→                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+  1247→                  {EXPENSE_CATEGORIES.map((cat) => {
+  1248→                    const catTotal = expenses
+  1249→                      .filter((e) => {
+  1250→                        if (e.category !== cat) return false;
+  1251→                        try { return new Date(e.date) >= startOfMonth(new Date()); } catch { return false; }
+  1252→                      })
+  1253→                      .reduce((s, e) => s + (e.amount || 0), 0);
+  1254→                    if (catTotal === 0) return null;
+  1255→                    const pct = monthlyExpensesTotal > 0 ? ((catTotal / monthlyExpensesTotal) * 100).toFixed(1) : '0.0';
+  1256→                    return (
+  1257→                      <div key={cat} className="rounded-lg border p-3">
+  1258→                        <div className="flex items-center justify-between mb-1">
+  1259→                          <p className="text-xs font-medium text-muted-foreground">{cat}</p>
+  1260→                          <span className="text-[10px] text-muted-foreground">{pct}%</span>
+  1261→                        </div>
+  1262→                        <p className="text-sm font-bold text-red-600 dark:text-red-400 font-mono">{formatINR(catTotal)}</p>
+  1263→                        <Progress value={parseFloat(pct)} className="mt-1.5 h-1" />
+  1264→                      </div>
+  1265→                    );
+  1266→                  })}
+  1267→                </div>
+  1268→              </div>
+  1269→
+  1270→              {/* P&L Bar Chart: Income vs Expenses by category */}
+  1271→              {categorySummary.length > 0 && (
+  1272→                <div>
+  1273→                  <h3 className="text-sm font-semibold mb-3">Income vs Expenses (This Month)</h3>
+  1274→                  <div className="h-[220px]">
+  1275→                    <ChartContainer config={BAR_CHART_CONFIG} className="h-full w-full">
+  1276→                      <BarChart data={categorySummary} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+  1277→                        <CartesianGrid vertical={false} strokeDasharray="3 3" />
+  1278→                        <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+  1279→                        <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+  1280→                        <ChartTooltip content={<ChartTooltipContent />} />
+  1281→                        <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={28} fill="hsl(var(--chart-1))" />
+  1282→                      </BarChart>
+  1283→                    </ChartContainer>
+  1284→                  </div>
+  1285→                </div>
+  1286→              )}
+  1287→            </CardContent>
+  1288→          </CollapsibleContent>
+  1289→        </Card>
+  1290→      </Collapsible>
+  1291→
+  1292→      {/* Summary Cards */}
+  1293→      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+  1294→        <Card className="py-4">
+  1295→          <CardContent className="px-4">
+  1296→            <div className="flex items-center gap-3">
+  1297→              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-950">
+  1298→                <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+  1299→              </div>
+  1300→              <div className="min-w-0">
+  1301→                <p className="text-xs text-muted-foreground font-medium">Today&apos;s Collections</p>
+  1302→                <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 truncate">{formatINR(todayIncome)}</p>
+  1303→              </div>
+  1304→            </div>
+  1305→          </CardContent>
+  1306→        </Card>
+  1307→
+  1308→        <Card className="py-4">
+  1309→          <CardContent className="px-4">
+  1310→            <div className="flex items-center gap-3">
+  1311→              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-100 dark:bg-teal-950">
+  1312→                <Wallet className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+  1313→              </div>
+  1314→              <div className="min-w-0">
+  1315→                <p className="text-xs text-muted-foreground font-medium">Monthly Collections</p>
+  1316→                <p className="text-lg font-bold text-teal-600 dark:text-teal-400 truncate">{formatINR(monthlyIncome)}</p>
+  1317→              </div>
+  1318→            </div>
+  1319→          </CardContent>
+  1320→        </Card>
+  1321→
+  1322→        <Card className="py-4">
+  1323→          <CardContent className="px-4">
+  1324→            <div className="flex items-center gap-3">
+  1325→              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-950">
+  1326→                <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+  1327→              </div>
+  1328→              <div className="min-w-0">
+  1329→                <p className="text-xs text-muted-foreground font-medium">Outstanding Dues</p>
+  1330→                <p className="text-lg font-bold text-amber-600 dark:text-amber-400 truncate">{formatINR(totalPendingDues)}</p>
+  1331→              </div>
+  1332→            </div>
+  1333→          </CardContent>
+  1334→        </Card>
+  1335→
+  1336→        <Card className="py-4">
+  1337→          <CardContent className="px-4">
+  1338→            <div className="flex items-center gap-3">
+  1339→              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-100 dark:bg-red-950">
+  1340→                <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
+  1341→              </div>
+  1342→              <div className="min-w-0">
+  1343→                <p className="text-xs text-muted-foreground font-medium">Total Expenses</p>
+  1344→                <p className="text-lg font-bold text-red-600 dark:text-red-400 truncate">{formatINR(totalExpenses)}</p>
+  1345→              </div>
+  1346→            </div>
+  1347→          </CardContent>
+  1348→        </Card>
+  1349→      </div>
+  1350→
+  1351→      {/* Tabs */}
+  1352→      <Tabs defaultValue="cashflow" className="space-y-4">
+  1353→        <TabsList className="flex-wrap">
+  1354→          <TabsTrigger value="cashflow" className="gap-1.5 touch-manipulation min-h-[44px]"><Banknote className="h-4 w-4" /><span className="hidden sm:inline">Cash Flow</span></TabsTrigger>
+  1355→          <TabsTrigger value="expenses" className="gap-1.5 touch-manipulation min-h-[44px]"><Receipt className="h-4 w-4" /><span className="hidden sm:inline">Expenses</span></TabsTrigger>
+  1356→          <TabsTrigger value="gst" className="gap-1.5 touch-manipulation min-h-[44px]"><Target className="h-4 w-4" /><span className="hidden sm:inline">GST</span></TabsTrigger>
+  1357→          <TabsTrigger value="pl-statement" className="gap-1.5 touch-manipulation min-h-[44px]"><BarChart3 className="h-4 w-4" /><span className="hidden sm:inline">P&L Statement</span></TabsTrigger>
+  1358→          <TabsTrigger value="reconciliation" className="gap-1.5 touch-manipulation min-h-[44px]"><CheckCircle2 className="h-4 w-4" /><span className="hidden sm:inline">Cash Recon</span></TabsTrigger>
+  1359→          <TabsTrigger value="cash-reconcile" className="gap-1.5 touch-manipulation min-h-[44px]"><Calculator className="h-4 w-4" /><span className="hidden sm:inline">Reconcile</span></TabsTrigger>
+  1360→          <TabsTrigger value="dues" className="gap-1.5 touch-manipulation min-h-[44px]"><CreditCard className="h-4 w-4" /><span className="hidden sm:inline">Dues</span></TabsTrigger>
+  1361→          <TabsTrigger value="returns" className="gap-1.5 touch-manipulation min-h-[44px]"><RotateCcw className="h-4 w-4" /><span className="hidden sm:inline">Returns</span></TabsTrigger>
+  1362→          <TabsTrigger value="invoice-gst" className="gap-1.5 touch-manipulation min-h-[44px]"><FileText className="h-4 w-4" /><span className="hidden sm:inline">Invoice GST</span></TabsTrigger>
+  1363→        </TabsList>
+  1364→
+  1365→        {/* ─── Cash Flow Tab ────────────────────────────────────────────── */}
+  1366→        <TabsContent value="cashflow">
+  1367→          <Card>
+  1368→            <CardHeader>
+  1369→              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  1370→                <div>
+  1371→                  <CardTitle className="text-lg">Cash Flow Statement</CardTitle>
+  1372→                  <CardDescription>Track all income and expense transactions</CardDescription>
+  1373→                </div>
+  1374→                <div className="flex items-center gap-2 flex-wrap">
+  1375→                  <div className="flex items-center gap-1.5">
+  1376→                    <Label htmlFor="cf-from" className="text-xs whitespace-nowrap"><CalendarDays className="h-3.5 w-3.5 inline mr-1" />From</Label>
+  1377→                    <Input id="cf-from" type="date" value={cashFlowFrom} onChange={(e) => setCashFlowFrom(e.target.value)} className="h-8 w-[140px] text-xs" />
+  1378→                  </div>
+  1379→                  <div className="flex items-center gap-1.5">
+  1380→                    <Label htmlFor="cf-to" className="text-xs whitespace-nowrap">To</Label>
+  1381→                    <Input id="cf-to" type="date" value={cashFlowTo} onChange={(e) => setCashFlowTo(e.target.value)} className="h-8 w-[140px] text-xs" />
+  1382→                  </div>
+  1383→                </div>
+  1384→              </div>
+  1385→            </CardHeader>
+  1386→            <CardContent>
+  1387→              {loadingSales || loadingExpenses ? (
+  1388→                <TableSkeleton rows={6} cols={5} />
+  1389→              ) : cashFlowData.length === 0 ? (
+  1390→                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+  1391→                  <Wallet className="h-10 w-10 mb-2 opacity-40" />
+  1392→                  <p className="text-sm">No transactions found in this period</p>
+  1393→                </div>
+  1394→              ) : (
+  1395→                <>
+  1396→                  <div className="max-h-[420px] overflow-y-auto rounded-md border">
+  1397→                    <Table>
+  1398→                      <TableHeader>
+  1399→                        <TableRow>
+  1400→                          <TableHead className="text-xs">Date</TableHead>
+  1401→                          <TableHead className="text-xs">Description</TableHead>
+  1402→                          <TableHead className="text-xs">Type</TableHead>
+  1403→                          <TableHead className="text-xs text-right">Amount</TableHead>
+  1404→                          <TableHead className="text-xs text-right">Balance</TableHead>
+  1405→                        </TableRow>
+  1406→                      </TableHeader>
+  1407→                      <TableBody>
+  1408→                        {cashFlowData.map((entry, i) => (
+  1409→                          <TableRow key={`cf-${i}`}>
+  1410→                            <TableCell className="text-xs">{formatDate(entry.date)}</TableCell>
+  1411→                            <TableCell className="text-xs max-w-[200px] truncate">{entry.description}</TableCell>
+  1412→                            <TableCell>
+  1413→                              {entry.type === 'Income' ? (
+  1414→                                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800">Income</Badge>
+  1415→                              ) : (
+  1416→                                <Badge className="bg-red-100 text-red-700 border-red-200 text-xs dark:bg-red-950 dark:text-red-300 dark:border-red-800">Expense</Badge>
+  1417→                              )}
+  1418→                            </TableCell>
+  1419→                            <TableCell className={`text-xs text-right font-mono font-medium ${entry.type === 'Income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+  1420→                              {entry.type === 'Income' ? '+' : '-'}{formatINR(entry.amount)}
+  1421→                            </TableCell>
+  1422→                            <TableCell className={`text-xs text-right font-mono font-medium ${entry.balance >= 0 ? 'text-foreground' : 'text-red-600 dark:text-red-400'}`}>
+  1423→                              {formatINR(entry.balance)}
+  1424→                            </TableCell>
+  1425→                          </TableRow>
+  1426→                        ))}
+  1427→                      </TableBody>
+  1428→                      <TableFooter>
+  1429→                        <TableRow>
+  1430→                          <TableCell colSpan={3} className="text-xs font-semibold">Summary</TableCell>
+  1431→                          <TableCell className="text-xs text-right">
+  1432→                            <div className="space-y-0.5">
+  1433→                              <span className="block text-emerald-600 dark:text-emerald-400 font-mono">+{formatINR(cashFlowSummary.totalIncome)}</span>
+  1434→                              <span className="block text-red-600 dark:text-red-400 font-mono">-{formatINR(cashFlowSummary.totalExpense)}</span>
+  1435→                            </div>
+  1436→                          </TableCell>
+  1437→                          <TableCell className={`text-xs text-right font-mono font-bold ${cashFlowSummary.net >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+  1438→                            {cashFlowSummary.net >= 0 ? '+' : ''}{formatINR(cashFlowSummary.net)}
+  1439→                          </TableCell>
+  1440→                        </TableRow>
+  1441→                      </TableFooter>
+  1442→                    </Table>
+  1443→                  </div>
+  1444→                  <div className="grid grid-cols-3 gap-3 mt-4">
+  1445→                    <div className="rounded-lg border bg-emerald-50 dark:bg-emerald-950/30 p-3 text-center">
+  1446→                      <p className="text-xs text-muted-foreground">Total Income</p>
+  1447→                      <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">{formatINR(cashFlowSummary.totalIncome)}</p>
+  1448→                    </div>
+  1449→                    <div className="rounded-lg border bg-red-50 dark:bg-red-950/30 p-3 text-center">
+  1450→                      <p className="text-xs text-muted-foreground">Total Expense</p>
+  1451→                      <p className="text-sm font-bold text-red-600 dark:text-red-400 font-mono">{formatINR(cashFlowSummary.totalExpense)}</p>
+  1452→                    </div>
+  1453→                    <div className={`rounded-lg border p-3 text-center ${cashFlowSummary.net >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-red-50 dark:bg-red-950/30'}`}>
+  1454→                      <p className="text-xs text-muted-foreground">Net</p>
+  1455→                      <p className={`text-sm font-bold font-mono ${cashFlowSummary.net >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+  1456→                        {cashFlowSummary.net >= 0 ? '+' : ''}{formatINR(cashFlowSummary.net)}
+  1457→                      </p>
+  1458→                    </div>
+  1459→                  </div>
+  1460→                </>
+  1461→              )}
+  1462→            </CardContent>
+  1463→          </Card>
+  1464→        </TabsContent>
+  1465→
+  1466→        {/* ─── Expenses Tab ─────────────────────────────────────────────── */}
+  1467→        <TabsContent value="expenses">
+  1468→          <Card>
+  1469→            <CardHeader>
+  1470→              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  1471→                <div>
+  1472→                  <CardTitle className="text-lg flex items-center gap-2"><Receipt className="h-5 w-5" />Expense Management</CardTitle>
+  1473→                  <CardDescription>{expenses.length} expense{expenses.length !== 1 ? 's' : ''} totaling {formatINR(totalExpenses)}</CardDescription>
+  1474→                </div>
+  1475→                <div className="flex items-center gap-2">
+  1476→                  <Button variant="outline" size="sm" className="gap-1.5 touch-manipulation min-h-[44px] active:scale-95 transition-transform" onClick={() => { setBudgetInput(monthlyBudget > 0 ? String(monthlyBudget) : ''); setBudgetDialogOpen(true); }}>
+  1477→                    <Target className="h-3.5 w-3.5" />Set Budget
+  1478→                  </Button>
+  1479→                  <Button variant="outline" size="sm" className="gap-1.5 touch-manipulation min-h-[44px] active:scale-95 transition-transform" onClick={handleExportCSV} disabled={expenses.length === 0}>
+  1480→                    <Download className="h-3.5 w-3.5" />CSV
+  1481→                  </Button>
+  1482→                  <Button onClick={openAddExpense} size="sm" className="gap-1.5 touch-manipulation min-h-[44px] active:scale-95 transition-transform"><Plus className="h-4 w-4" />Add Expense</Button>
+  1483→                </div>
+  1484→              </div>
+  1485→            </CardHeader>
+  1486→            <CardContent>
+  1487→              {/* Monthly Budget Tracking */}
+  1488→              {monthlyBudget > 0 && (
+  1489→                <div className="mb-4 rounded-lg border p-4">
+  1490→                  <div className="flex items-center justify-between mb-2">
+  1491→                    <div className="flex items-center gap-2">
+  1492→                      <Target className="h-4 w-4 text-muted-foreground" />
+  1493→                      <span className="text-xs font-medium">Monthly Budget: {formatINR(monthlyBudget)}</span>
+  1494→                    </div>
+  1495→                    <span className={`text-xs font-semibold ${budgetRemaining >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+  1496→                      {budgetRemaining >= 0 ? `${formatINR(budgetRemaining)} remaining` : `${formatINR(Math.abs(budgetRemaining))} over budget`}
+  1497→                    </span>
+  1498→                  </div>
+  1499→                  <div className="relative">
+  1500→                    <Progress
+  1501→                      value={budgetPercent}
+  1502→                      className={`h-3 ${budgetPercent < 75 ? '[&>div]:bg-emerald-500' : budgetPercent < 100 ? '[&>div]:bg-amber-500' : '[&>div]:bg-red-500'}`}
+  1503→                    />
+  1504→                  </div>
+  1505→                  <div className="flex items-center justify-between mt-1.5">
+  1506→                    <span className="text-[11px] text-muted-foreground">{formatINR(monthlyExpensesTotal)} spent this month</span>
+  1507→                    <span className="text-[11px] text-muted-foreground">{Math.round(budgetPercent)}% used</span>
+  1508→                  </div>
+  1509→                </div>
+  1510→              )}
+  1511→
+  1512→              {loadingExpenses ? (
+  1513→                <TableSkeleton rows={6} cols={6} />
+  1514→              ) : expenses.length === 0 ? (
+  1515→                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+  1516→                  <Receipt className="h-10 w-10 mb-2 opacity-40" />
+  1517→                  <p className="text-sm">No expenses recorded yet</p>
+  1518→                  <Button variant="outline" size="sm" className="mt-3 gap-1.5 touch-manipulation min-h-[44px] active:scale-95 transition-transform" onClick={openAddExpense}><Plus className="h-3.5 w-3.5" />Add your first expense</Button>
+  1519→                </div>
+  1520→              ) : (
+  1521→                <>
+  1522→                  <div className="max-h-[360px] overflow-y-auto rounded-md border">
+  1523→                    <Table>
+  1524→                      <TableHeader>
+  1525→                        <TableRow>
+  1526→                          <TableHead className="text-xs">Date</TableHead>
+  1527→                          <TableHead className="text-xs">Category</TableHead>
+  1528→                          <TableHead className="text-xs">Description</TableHead>
+  1529→                          <TableHead className="text-xs text-right">Amount</TableHead>
+  1530→                          <TableHead className="text-xs hidden sm:table-cell">Vendor</TableHead>
+  1531→                          <TableHead className="text-xs text-right">Actions</TableHead>
+  1532→                        </TableRow>
+  1533→                      </TableHeader>
+  1534→                      <TableBody>
+  1535→                        {expenses.map((exp) => (
+  1536→                          <TableRow key={exp.id}>
+  1537→                            <TableCell className="text-xs">{formatDate(exp.date)}</TableCell>
+  1538→                            <TableCell><Badge variant="outline" className="text-xs">{exp.category}</Badge></TableCell>
+  1539→                            <TableCell className="text-xs max-w-[180px] truncate">{exp.description}</TableCell>
+  1540→                            <TableCell className="text-xs text-right font-mono font-medium text-red-600 dark:text-red-400">{formatINR(exp.amount)}</TableCell>
+  1541→                            <TableCell className="text-xs hidden sm:table-cell max-w-[120px] truncate">{exp.vendor || '—'}</TableCell>
+  1542→                            <TableCell className="text-right">
+  1543→                              <div className="flex items-center justify-end gap-1">
+  1544→                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 touch-manipulation active:scale-95 transition-transform" onClick={() => openEditExpense(exp)}><Pencil className="h-3.5 w-3.5" /><span className="sr-only">Edit</span></Button>
+  1545→                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950 touch-manipulation active:scale-95 transition-transform" onClick={() => handleDeleteExpense(exp.id)} disabled={deletingExpenseId === exp.id}>
+  1546→                                  {deletingExpenseId === exp.id ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <Trash2 className="h-3.5 w-3.5" />}
+  1547→                                  <span className="sr-only">Delete</span>
+  1548→                                </Button>
+  1549→                              </div>
+  1550→                            </TableCell>
+  1551→                          </TableRow>
+  1552→                        ))}
+  1553→                      </TableBody>
+  1554→                    </Table>
+  1555→                  </div>
+  1556→
+  1557→                  {categorySummary.length > 0 && (
+  1558→                    <div className="mt-6">
+  1559→                      <Separator className="mb-4" />
+  1560→                      <h3 className="text-sm font-semibold mb-4 flex items-center gap-2"><PieChartIcon className="h-4 w-4" />Expense Distribution by Category</h3>
+  1561→                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  1562→                        <div className="flex items-center justify-center">
+  1563→                          <ChartContainer config={PIE_CHART_CONFIG} className="h-[250px] w-full max-w-[250px]">
+  1564→                            <PieChart>
+  1565→                              <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+  1566→                              <Pie data={categorySummary} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2} strokeWidth={2}>
+  1567→                                {categorySummary.map((_, index) => <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+  1568→                              </Pie>
+  1569→                            </PieChart>
+  1570→                          </ChartContainer>
+  1571→                        </div>
+  1572→                        <div className="space-y-3">
+  1573→                          <ChartContainer config={BAR_CHART_CONFIG} className="h-[200px] w-full">
+  1574→                            <BarChart data={categorySummary} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 60 }}>
+  1575→                              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+  1576→                              <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
+  1577→                              <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} width={65} />
+  1578→                              <ChartTooltip content={<ChartTooltipContent />} />
+  1579→                              <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+  1580→                                {categorySummary.map((_, index) => <Cell key={`bar-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+  1581→                              </Bar>
+  1582→                            </BarChart>
+  1583→                          </ChartContainer>
+  1584→                        </div>
+  1585→                      </div>
+  1586→                    </div>
+  1587→                  )}
+  1588→                </>
+  1589→              )}
+  1590→            </CardContent>
+  1591→          </Card>
+  1592→        </TabsContent>
+  1593→
+  1594→        {/* ─── GST Collection Tab ────────────────────────────────────────── */}
+  1595→        <TabsContent value="gst">
+  1596→          <div className="space-y-4">
+  1597→            <Card>
+  1598→              <CardHeader>
+  1599→                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  1600→                  <div>
+  1601→                    <CardTitle className="text-lg flex items-center gap-2">
+  1602→                      <Target className="h-5 w-5" />
+  1603→                      GST Collection Summary
+  1604→                    </CardTitle>
+  1605→                    <CardDescription>Current month GST collected on sales</CardDescription>
+  1606→                  </div>
+  1607→                  <Badge variant="outline" className="text-xs">
+  1608→                    {format(new Date(), 'MMMM yyyy')}
+  1609→                  </Badge>
+  1610→                </div>
+  1611→              </CardHeader>
+  1612→              <CardContent>
+  1613→                {gstLoading ? (
+  1614→                  <TableSkeleton rows={3} cols={4} />
+  1615→                ) : (
+  1616→                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+  1617→                    <div className="rounded-lg border p-4">
+  1618→                      <p className="text-xs text-muted-foreground font-medium">CGST Collected</p>
+  1619→                      <p className="text-xl font-bold text-blue-600 dark:text-blue-400 font-mono mt-1">{formatINR(gstData?.cgst || 0)}</p>
+  1620→                      <p className="text-[10px] text-muted-foreground mt-1">Central Goods & Services Tax</p>
+  1621→                    </div>
+  1622→                    <div className="rounded-lg border p-4">
+  1623→                      <p className="text-xs text-muted-foreground font-medium">SGST Collected</p>
+  1624→                      <p className="text-xl font-bold text-violet-600 dark:text-violet-400 font-mono mt-1">{formatINR(gstData?.sgst || 0)}</p>
+  1625→                      <p className="text-[10px] text-muted-foreground mt-1">State Goods & Services Tax</p>
+  1626→                    </div>
+  1627→                    <div className="rounded-lg border p-4">
+  1628→                      <p className="text-xs text-muted-foreground font-medium">IGST Collected</p>
+  1629→                      <p className="text-xl font-bold text-amber-600 dark:text-amber-400 font-mono mt-1">{formatINR(gstData?.igst || 0)}</p>
+  1630→                      <p className="text-[10px] text-muted-foreground mt-1">Integrated Goods & Services Tax</p>
+  1631→                    </div>
+  1632→                    <div className="rounded-lg border p-4 bg-emerald-50 dark:bg-emerald-950/30">
+  1633→                      <p className="text-xs text-muted-foreground font-medium">Total GST Payable</p>
+  1634→                      <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400 font-mono mt-1">{formatINR(gstData?.total || 0)}</p>
+  1635→                      <p className="text-[10px] text-muted-foreground mt-1">CGST + SGST + IGST</p>
+  1636→                    </div>
+  1637→                  </div>
+  1638→                )}
+  1639→              </CardContent>
+  1640→            </Card>
+  1641→
+  1642→            {/* GST Pie Chart */}
+  1643→            {gstData && gstData.total > 0 && (
+  1644→              <Card>
+  1645→                <CardHeader>
+  1646→                  <CardTitle className="text-base">GST Distribution</CardTitle>
+  1647→                  <CardDescription>Breakdown of GST components</CardDescription>
+  1648→                </CardHeader>
+  1649→                <CardContent>
+  1650→                  <div className="h-[250px]">
+  1651→                    <ChartContainer config={PIE_CHART_CONFIG} className="h-full w-full">
+  1652→                      <PieChart>
+  1653→                        <ChartTooltip content={<ChartTooltipContent />} />
+  1654→                        <Pie
+  1655→                          data={[
+  1656→                            { name: 'CGST', value: gstData.cgst },
+  1657→                            { name: 'SGST', value: gstData.sgst },
+  1658→                            ...(gstData.igst > 0 ? [{ name: 'IGST', value: gstData.igst }] : []),
+  1659→                          ]}
+  1660→                          cx="50%"
+  1661→                          cy="50%"
+  1662→                          outerRadius={90}
+  1663→                          innerRadius={45}
+  1664→                          dataKey="value"
+  1665→                          nameKey="name"
+  1666→                        >
+  1667→                          <Cell fill="hsl(var(--chart-1))" />
+  1668→                          <Cell fill="hsl(var(--chart-2))" />
+  1669→                          {gstData.igst > 0 && <Cell fill="hsl(var(--chart-3))" />}
+  1670→                        </Pie>
+  1671→                      </PieChart>
+  1672→                    </ChartContainer>
+  1673→                  </div>
+  1674→                </CardContent>
+  1675→              </Card>
+  1676→            )}
+  1677→          </div>
+  1678→        </TabsContent>
+  1679→
+  1680→        {/* ─── P&L Statement Tab ─────────────────────────────────────────── */}
+  1681→        <TabsContent value="pl-statement">
+  1682→          <Card>
+  1683→            <CardHeader>
+  1684→              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  1685→                <div>
+  1686→                  <CardTitle className="text-lg flex items-center gap-2">
+  1687→                    <Scale className="h-5 w-5" />
+  1688→                    P&amp;L Statement
+  1689→                  </CardTitle>
+  1690→                  <CardDescription>Profit &amp; Loss for the selected period</CardDescription>
+  1691→                </div>
+  1692→                <div className="flex items-center gap-2 flex-wrap">
+  1693→                  <div className="flex items-center gap-1.5">
+  1694→                    <Label className="text-xs whitespace-nowrap"><CalendarDays className="h-3.5 w-3.5 inline mr-1" />From</Label>
+  1695→                    <Input type="date" value={plFromDate} onChange={(e) => setPlFromDate(e.target.value)} className="h-8 w-[140px] text-xs" />
+  1696→                  </div>
+  1697→                  <div className="flex items-center gap-1.5">
+  1698→                    <Label className="text-xs whitespace-nowrap">To</Label>
+  1699→                    <Input type="date" value={plToDate} onChange={(e) => setPlToDate(e.target.value)} className="h-8 w-[140px] text-xs" />
+  1700→                  </div>
+  1701→                </div>
+  1702→              </div>
+  1703→            </CardHeader>
+  1704→            <CardContent>
+  1705→              {plLoading ? (
+  1706→                <TableSkeleton rows={6} cols={3} />
+  1707→              ) : (
+  1708→                <div className="space-y-6">
+  1709→                  {/* Summary Cards */}
+  1710→                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+  1711→                    <Card className="py-4">
+  1712→                      <CardContent className="px-4">
+  1713→                        <div className="flex items-center gap-3">
+  1714→                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-950">
+  1715→                            <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+  1716→                          </div>
+  1717→                          <div>
+  1718→                            <p className="text-xs text-muted-foreground font-medium">Total Revenue</p>
+  1719→                            <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 font-mono">{formatINR(plRevenue)}</p>
+  1720→                            <p className="text-[10px] text-muted-foreground">Sales revenue for the period</p>
+  1721→                          </div>
+  1722→                        </div>
+  1723→                      </CardContent>
+  1724→                    </Card>
+  1725→                    <Card className="py-4">
+  1726→                      <CardContent className="px-4">
+  1727→                        <div className="flex items-center gap-3">
+  1728→                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-100 dark:bg-red-950">
+  1729→                            <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
+  1730→                          </div>
+  1731→                          <div>
+  1732→                            <p className="text-xs text-muted-foreground font-medium">Total Expenses</p>
+  1733→                            <p className="text-lg font-bold text-red-600 dark:text-red-400 font-mono">{formatINR(plTotalExpenses)}</p>
+  1734→                            <p className="text-[10px] text-muted-foreground">{plExpensesByCategory.length} categor{plExpensesByCategory.length !== 1 ? 'ies' : 'y'}</p>
+  1735→                          </div>
+  1736→                        </div>
+  1737→                      </CardContent>
+  1738→                    </Card>
+  1739→                    <Card className={`py-4 ${plNetProfit >= 0 ? 'bg-emerald-50/50 dark:bg-emerald-950/20' : 'bg-red-50/50 dark:bg-red-950/20'}`}>
+  1740→                      <CardContent className="px-4">
+  1741→                        <div className="flex items-center gap-3">
+  1742→                          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${plNetProfit >= 0 ? 'bg-emerald-100 dark:bg-emerald-950' : 'bg-red-100 dark:bg-red-950'}`}>
+  1743→                            {plNetProfit >= 0
+  1744→                              ? <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+  1745→                              : <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
+  1746→                            }
+  1747→                          </div>
+  1748→                          <div>
+  1749→                            <p className="text-xs text-muted-foreground font-medium">Net Profit</p>
+  1750→                            <p className={`text-lg font-bold font-mono ${plNetProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{formatINR(plNetProfit)}</p>
+  1751→                            <p className="text-[10px] text-muted-foreground">Revenue - Total Expenses</p>
+  1752→                          </div>
+  1753→                        </div>
+  1754→                      </CardContent>
+  1755→                    </Card>
+  1756→                  </div>
+  1757→
+  1758→                  {/* Revenue Section */}
+  1759→                  <div>
+  1760→                    <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+  1761→                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-950">
+  1762→                        <TrendingUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+  1763→                      </div>
+  1764→                      Revenue
+  1765→                    </h3>
+  1766→                    <div className="rounded-md border">
+  1767→                      <Table>
+  1768→                        <TableBody>
+  1769→                          <TableRow>
+  1770→                            <TableCell className="text-sm font-medium">Total Sales Revenue</TableCell>
+  1771→                            <TableCell className="text-xs text-muted-foreground">Fetched from reports API</TableCell>
+  1772→                            <TableCell className="text-sm font-mono font-semibold text-emerald-600 dark:text-emerald-400 text-right">{formatINR(plRevenue)}</TableCell>
+  1773→                          </TableRow>
+  1774→                        </TableBody>
+  1775→                      </Table>
+  1776→                    </div>
+  1777→                  </div>
+  1778→
+  1779→                  {/* Expense Breakdown by Category */}
+  1780→                  <div>
+  1781→                    <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+  1782→                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-red-100 dark:bg-red-950">
+  1783→                        <TrendingDown className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+  1784→                      </div>
+  1785→                      Expenses (by Category)
+  1786→                    </h3>
+  1787→                    {plExpensesByCategory.length === 0 ? (
+  1788→                      <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+  1789→                        <Receipt className="h-8 w-8 mb-2 opacity-40" />
+  1790→                        <p className="text-sm">No expenses recorded for this period.</p>
+  1791→                      </div>
+  1792→                    ) : (
+  1793→                      <div className="max-h-96 overflow-y-auto rounded-md border">
+  1794→                        <Table>
+  1795→                          <TableHeader>
+  1796→                            <TableRow>
+  1797→                              <TableHead className="text-xs">Category</TableHead>
+  1798→                              <TableHead className="text-xs text-right">Amount</TableHead>
+  1799→                              <TableHead className="text-xs text-right hidden sm:table-cell">% of Total</TableHead>
+  1800→                            </TableRow>
+  1801→                          </TableHeader>
+  1802→                          <TableBody>
+  1803→                            {plExpensesByCategory.map((cat) => {
+  1804→                              const pct = plTotalExpenses > 0 ? ((cat.total / plTotalExpenses) * 100).toFixed(1) : '0.0';
+  1805→                              return (
+  1806→                                <TableRow key={cat.category}>
+  1807→                                  <TableCell className="text-sm font-medium">{cat.category}</TableCell>
+  1808→                                  <TableCell className="text-sm font-mono text-red-600 dark:text-red-400 text-right">{formatINR(cat.total)}</TableCell>
+  1809→                                  <TableCell className="text-xs text-muted-foreground text-right font-mono hidden sm:table-cell">{pct}%</TableCell>
+  1810→                                </TableRow>
+  1811→                              );
+  1812→                            })}
+  1813→                          </TableBody>
+  1814→                          <TableFooter>
+  1815→                            <TableRow className="bg-muted/50 font-semibold">
+  1816→                              <TableCell className="text-sm">Total Expenses</TableCell>
+  1817→                              <TableCell className="text-sm font-mono text-red-600 dark:text-red-400 text-right">{formatINR(plTotalExpenses)}</TableCell>
+  1818→                              <TableCell className="text-xs text-right font-mono hidden sm:table-cell">100%</TableCell>
+  1819→                            </TableRow>
+  1820→                          </TableFooter>
+  1821→                        </Table>
+  1822→                      </div>
+  1823→                    )}
+  1824→                  </div>
+  1825→
+  1826→                  {/* Net Profit Card */}
+  1827→                  <div className={`rounded-lg border p-4 ${plNetProfit >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800' : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'}`}>
+  1828→                    <div className="flex items-center justify-between">
+  1829→                      <div className="flex items-center gap-2">
+  1830→                        <CircleDollarSign className={`h-5 w-5 ${plNetProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`} />
+  1831→                        <span className="text-sm font-semibold">Net Profit</span>
+  1832→                      </div>
+  1833→                      <div className="flex items-center gap-4">
+  1834→                        <div className="text-right">
+  1835→                          <p className="text-xs text-muted-foreground">Revenue: {formatINR(plRevenue)}</p>
+  1836→                          <p className="text-xs text-muted-foreground">Expenses: -{formatINR(plTotalExpenses)}</p>
+  1837→                        </div>
+  1838→                        <p className={`text-xl font-bold font-mono ${plNetProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+  1839→                          {formatINR(plNetProfit)}
+  1840→                        </p>
+  1841→                      </div>
+  1842→                    </div>
+  1843→                  </div>
+  1844→                </div>
+  1845→              )}
+  1846→            </CardContent>
+  1847→          </Card>
+  1848→        </TabsContent>
+  1849→
+  1850→        {/* ─── Daily Cash Reconciliation Tab ─────────────────────────────── */}
+  1851→        <TabsContent value="reconciliation">
+  1852→          <div className="space-y-4">
+  1853→            <Card>
+  1854→              <CardHeader>
+  1855→                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  1856→                  <div>
+  1857→                    <CardTitle className="text-lg flex items-center gap-2">
+  1858→                      <CheckCircle2 className="h-5 w-5" />
+  1859→                      Daily Cash Reconciliation
+  1860→                    </CardTitle>
+  1861→                    <CardDescription>Verify daily cash balance against sales and expenses</CardDescription>
+  1862→                  </div>
+  1863→                  <div className="flex items-center gap-2">
+  1864→                    <Label htmlFor="recon-date" className="text-xs whitespace-nowrap">Date:</Label>
+  1865→                    <Input id="recon-date" type="date" value={reconDate} onChange={(e) => setReconDate(e.target.value)} className="h-8 w-[150px] text-xs" />
+  1866→                    <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => setReconDate(getTodayStr())}>Today</Button>
+  1867→                  </div>
+  1868→                </div>
+  1869→              </CardHeader>
+  1870→              <CardContent>
+  1871→                {loadingSales || loadingExpenses ? (
+  1872→                  <TableSkeleton rows={4} cols={3} />
+  1873→                ) : (
+  1874→                  <div className="space-y-4">
+  1875→                    {/* Reconciliation Summary Cards */}
+  1876→                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+  1877→                      <div className="rounded-lg border p-3">
+  1878→                        <p className="text-[10px] text-muted-foreground">Total Sales</p>
+  1879→                        <p className="text-sm font-bold font-mono">{formatINR(dailyReconciliation.totalIncome)}</p>
+  1880→                        <p className="text-[10px] text-muted-foreground">{dailyReconciliation.totalTransactions} transactions</p>
+  1881→                      </div>
+  1882→                      <div className="rounded-lg border p-3">
+  1883→                        <p className="text-[10px] text-muted-foreground">Cash Sales</p>
+  1884→                        <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">{formatINR(dailyReconciliation.cashSales)}</p>
+  1885→                      </div>
+  1886→                      <div className="rounded-lg border p-3">
+  1887→                        <p className="text-[10px] text-muted-foreground">UPI Sales</p>
+  1888→                        <p className="text-sm font-bold text-violet-600 dark:text-violet-400 font-mono">{formatINR(dailyReconciliation.upiSales)}</p>
+  1889→                      </div>
+  1890→                      <div className="rounded-lg border p-3">
+  1891→                        <p className="text-[10px] text-muted-foreground">Card Sales</p>
+  1892→                        <p className="text-sm font-bold text-blue-600 dark:text-blue-400 font-mono">{formatINR(dailyReconciliation.cardSales)}</p>
+  1893→                      </div>
+  1894→                      <div className="rounded-lg border p-3">
+  1895→                        <p className="text-[10px] text-muted-foreground">Credit Sales</p>
+  1896→                        <p className="text-sm font-bold text-amber-600 dark:text-amber-400 font-mono">{formatINR(dailyReconciliation.creditSales)}</p>
+  1897→                      </div>
+  1898→                    </div>
+  1899→
+  1900→                    {/* Reconciliation Detail Table */}
+  1901→                    <div className="rounded-lg border overflow-hidden">
+  1902→                      <Table>
+  1903→                        <TableHeader>
+  1904→                          <TableRow>
+  1905→                            <TableHead className="text-xs">Item</TableHead>
+  1906→                            <TableHead className="text-xs text-right">Amount</TableHead>
+  1907→                            <TableHead className="text-xs text-right hidden sm:table-cell">Notes</TableHead>
+  1908→                          </TableRow>
+  1909→                        </TableHeader>
+  1910→                        <TableBody>
+  1911→                          <TableRow>
+  1912→                            <TableCell className="text-sm font-medium">Total Income (All Modes)</TableCell>
+  1913→                            <TableCell className="text-sm font-mono text-emerald-600 dark:text-emerald-400 text-right">{formatINR(dailyReconciliation.totalIncome)}</TableCell>
+  1914→                            <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">{dailyReconciliation.totalTransactions} sales</TableCell>
+  1915→                          </TableRow>
+  1916→                          <TableRow>
+  1917→                            <TableCell className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Cash Received</TableCell>
+  1918→                            <TableCell className="text-sm font-mono text-emerald-600 dark:text-emerald-400 text-right">+{formatINR(dailyReconciliation.cashSales)}</TableCell>
+  1919→                            <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">Cash payments</TableCell>
+  1920→                          </TableRow>
+  1921→                          <TableRow>
+  1922→                            <TableCell className="text-sm font-medium text-violet-600 dark:text-violet-400">UPI Received</TableCell>
+  1923→                            <TableCell className="text-sm font-mono text-violet-600 dark:text-violet-400 text-right">+{formatINR(dailyReconciliation.upiSales)}</TableCell>
+  1924→                            <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">GPay/PhonePe/Paytm</TableCell>
+  1925→                          </TableRow>
+  1926→                          <TableRow>
+  1927→                            <TableCell className="text-sm font-medium text-blue-600 dark:text-blue-400">Card Received</TableCell>
+  1928→                            <TableCell className="text-sm font-mono text-blue-600 dark:text-blue-400 text-right">+{formatINR(dailyReconciliation.cardSales)}</TableCell>
+  1929→                            <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">Debit/Credit card</TableCell>
+  1930→                          </TableRow>
+  1931→                          <TableRow>
+  1932→                            <TableCell className="text-sm font-medium text-amber-600 dark:text-amber-400">Credit Given</TableCell>
+  1933→                            <TableCell className="text-sm font-mono text-amber-600 dark:text-amber-400 text-right">{formatINR(dailyReconciliation.creditSales)}</TableCell>
+  1934→                            <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">Outstanding dues</TableCell>
+  1935→                          </TableRow>
+  1936→                          {dailyReconciliation.otherSales > 0 && (
+  1937→                            <TableRow>
+  1938→                              <TableCell className="text-sm font-medium">Other Modes</TableCell>
+  1939→                              <TableCell className="text-sm font-mono text-right">{formatINR(dailyReconciliation.otherSales)}</TableCell>
+  1940→                              <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">Mixed/Split</TableCell>
+  1941→                            </TableRow>
+  1942→                          )}
+  1943→                          <TableRow>
+  1944→                            <TableCell className="text-sm font-medium text-red-600 dark:text-red-400">Less: Expenses Paid (Cash)</TableCell>
+  1945→                            <TableCell className="text-sm font-mono text-red-600 dark:text-red-400 text-right">-{formatINR(dailyReconciliation.totalExpenses)}</TableCell>
+  1946→                            <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">{dailyReconciliation.expenses.length} expenses</TableCell>
+  1947→                          </TableRow>
+  1948→                        </TableBody>
+  1949→                        <TableFooter>
+  1950→                          <TableRow className="bg-muted/50 font-bold">
+  1951→                            <TableCell className="text-sm">Expected Cash in Hand</TableCell>
+  1952→                            <TableCell className={`text-sm font-mono text-right ${dailyReconciliation.expectedCash >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+  1953→                              {formatINR(dailyReconciliation.expectedCash)}
+  1954→                            </TableCell>
+  1955→                            <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">Cash In - Expenses</TableCell>
+  1956→                          </TableRow>
+  1957→                        </TableFooter>
+  1958→                      </Table>
+  1959→                    </div>
+  1960→
+  1961→                    {/* Day GST */}
+  1962→                    {dailyReconciliation.totalGST > 0 && (
+  1963→                      <div className="rounded-lg border p-3">
+  1964→                        <p className="text-xs font-medium text-muted-foreground mb-2">GST Collected on {formatDate(reconDate)}</p>
+  1965→                        <div className="grid grid-cols-3 gap-3">
+  1966→                          <div>
+  1967→                            <p className="text-[10px] text-muted-foreground">CGST</p>
+  1968→                            <p className="text-sm font-mono font-semibold">{formatINR(dailyReconciliation.dayCGST)}</p>
+  1969→                          </div>
+  1970→                          <div>
+  1971→                            <p className="text-[10px] text-muted-foreground">SGST</p>
+  1972→                            <p className="text-sm font-mono font-semibold">{formatINR(dailyReconciliation.daySGST)}</p>
+  1973→                          </div>
+  1974→                          <div>
+  1975→                            <p className="text-[10px] text-muted-foreground">IGST</p>
+  1976→                            <p className="text-sm font-mono font-semibold">{formatINR(dailyReconciliation.dayIGST)}</p>
+  1977→                          </div>
+  1978→                        </div>
+  1979→                      </div>
+  1980→                    )}
+  1981→
+  1982→                    {/* Transaction list for that day */}
+  1983→                    {dailyReconciliation.sales.length > 0 && (
+  1984→                      <div>
+  1985→                        <h3 className="text-sm font-semibold mb-2">Sales Transactions ({formatDate(reconDate)})</h3>
+  1986→                        <div className="max-h-60 overflow-y-auto rounded-md border">
+  1987→                          <Table>
+  1988→                            <TableHeader>
+  1989→                              <TableRow>
+  1990→                                <TableHead className="text-xs">Invoice</TableHead>
+  1991→                                <TableHead className="text-xs">Customer</TableHead>
+  1992→                                <TableHead className="text-xs">Mode</TableHead>
+  1993→                                <TableHead className="text-xs text-right">Amount</TableHead>
+  1994→                              </TableRow>
+  1995→                            </TableHeader>
+  1996→                            <TableBody>
+  1997→                              {dailyReconciliation.sales.map((s) => (
+  1998→                                <TableRow key={s.id}>
+  1999→                                  <TableCell className="text-xs font-mono">{s.invoiceNo || '—'}</TableCell>
+  2000→                                  <TableCell className="text-xs">{s.customer?.name || s.customerName || 'Walk-in'}</TableCell>
+
+[showing lines 1-2000 of 2595; use offset=2001 with limit to continue reading]

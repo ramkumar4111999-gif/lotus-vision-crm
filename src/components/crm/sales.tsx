@@ -179,115 +179,6 @@ function uid(): string {
 }
 
 // ---------------------------------------------------------------------------
-// Mock Data (used when API returns 404 / for demo purposes)
-// ---------------------------------------------------------------------------
-
-const MOCK_PRODUCTS: Product[] = [
-  { id: "p1", name: "CR-39 Clear Lens (1.50)", price: 150, stock: 120, sku: "CL-001" },
-  { id: "p2", name: "CR-39 Photochromic Lens (1.50)", price: 350, stock: 80, sku: "CL-002" },
-  { id: "p3", name: "Progressive Lens (1.56)", price: 1800, stock: 45, sku: "PL-001" },
-  { id: "p4", name: "Bifocal Lens (1.50)", price: 650, stock: 60, sku: "BL-001" },
-  { id: "p5", name: "Titanium Frame (Full Rim)", price: 2200, stock: 35, sku: "TF-001" },
-  { id: "p6", name: "Acetate Frame (Wayfarer)", price: 1200, stock: 50, sku: "AF-001" },
-  { id: "p7", name: "TR-90 Frame (Flexible)", price: 800, stock: 70, sku: "TR-001" },
-  { id: "p8", name: "Metal Frame (Aviator)", price: 1500, stock: 40, sku: "MF-001" },
-  { id: "p9", name: "Ray-Ban Original Wayfarer", price: 4500, stock: 20, sku: "RB-001" },
-  { id: "p10", name: "Zero Power Lens (PC)", price: 200, stock: 100, sku: "ZP-001" },
-  { id: "p11", name: "Blue Cut Coating (Add-on)", price: 300, stock: 200, sku: "BC-001" },
-  { id: "p12", name: "Anti-Reflective Coating (Add-on)", price: 250, stock: 200, sku: "AR-001" },
-];
-
-const MOCK_CUSTOMERS: Customer[] = [
-  { id: "c1", name: "Murugan S", phone: "9443212345", email: "murugan@email.com", address: "12, Main Road, Sankarankovil" },
-  { id: "c2", name: "Aishwarya R", phone: "9876501234", email: "aishwarya@email.com", address: "34, Nadar Street, Sankarankovil" },
-  { id: "c3", name: "Karthik B", phone: "9789456789", email: "karthik@email.com", address: "56, Kovil Street, Sankarankovil" },
-  { id: "c4", name: "Lakshmi P", phone: "9944012345", email: "lakshmi@email.com", address: "78, Bazaar Street, Sankarankovil" },
-  { id: "c5", name: "Suresh K", phone: "8012345678", email: "suresh@email.com", address: "90, Bus Stand Road, Sankarankovil" },
-  { id: "c6", name: "Priya M", phone: "9364456789", email: "priya.m@email.com", address: "15, Temple Road, Sankarankovil" },
-  { id: "c7", name: "Rajesh D", phone: "9753214567", email: "rajesh.d@email.com", address: "22, Market Street, Sankarankovil" },
-  { id: "c8", name: "Meena K", phone: "9865432100", email: "meena.k@email.com", address: "45, College Road, Sankarankovil" },
-];
-
-const MOCK_SALES: SaleListItem[] = Array.from({ length: 23 }, (_, i) => {
-  const statuses: Array<"Completed" | "Pending" | "Return"> = ["Completed", "Completed", "Completed", "Pending", "Return"];
-  const modes = ["Cash", "Card", "UPI", "Credit"];
-  const customers = MOCK_CUSTOMERS.map((c) => c.name);
-  const day = 28 - (i % 28);
-  const now = new Date();
-  const d = new Date(now.getFullYear(), now.getMonth(), Math.max(1, now.getDate() - (i % 28)));
-  const date = d.toISOString().split('T')[0];
-
-  const subtotal = Math.floor(Math.random() * 8000) + 500;
-  const discount = i % 5 === 0 ? Math.floor(subtotal * 0.05) : 0;
-  const taxable = subtotal - discount;
-  const cgst = Math.round(taxable * CGST_RATE * 100) / 100;
-  const sgst = Math.round(taxable * SGST_RATE * 100) / 100;
-  const total = taxable + cgst + sgst;
-  const itemsCount = Math.floor(Math.random() * 5) + 1;
-
-  return {
-    id: `sale-${i + 1}`,
-    invoiceNo: `INV-2501${day.toString().padStart(2, "0")}-${1000 + i}`,
-    customerName: customers[i % customers.length],
-    itemsCount,
-    subtotal,
-    discount,
-    cgst,
-    sgst,
-    total: Math.round(total * 100) / 100,
-    paymentMode: modes[i % modes.length],
-    status: statuses[i % statuses.length],
-    createdAt: date,
-  };
-});
-
-const MOCK_SALE_DETAIL: Record<string, Sale> = Object.fromEntries(
-  MOCK_SALES.slice(0, 10).map((s, idx) => {
-    const items: SaleItem[] = Array.from({ length: s.itemsCount }, (_, j) => {
-      const p = MOCK_PRODUCTS[(idx + j) % MOCK_PRODUCTS.length];
-      return {
-        id: `si-${s.id}-${j}`,
-        productId: p.id,
-        productName: p.name,
-        price: p.price,
-        qty: Math.floor(Math.random() * 5) + 1,
-        lineTotal: 0,
-      };
-    });
-    items.forEach((item) => {
-      item.lineTotal = item.price * item.qty;
-    });
-
-    const sub = items.reduce((a, b) => a + b.lineTotal, 0);
-    const disc = s.discount;
-    const taxable = sub - disc;
-    const cg = Math.round(taxable * CGST_RATE * 100) / 100;
-    const sg = Math.round(taxable * SGST_RATE * 100) / 100;
-    const tot = taxable + cg + sg;
-
-    const cust = MOCK_CUSTOMERS[idx % MOCK_CUSTOMERS.length];
-
-    return [
-      s.id,
-      {
-        ...s,
-        subtotal: sub,
-        cgst: cg,
-        sgst: sg,
-        total: Math.round(tot * 100) / 100,
-        discountType: "flat",
-        items,
-        customerId: cust.id,
-        customerPhone: cust.phone,
-        customerEmail: cust.email,
-        customerAddress: cust.address,
-        notes: idx % 3 === 0 ? "Customer requested express packaging." : undefined,
-      },
-    ];
-  })
-);
-
-// ---------------------------------------------------------------------------
 // Component: Status Badge
 // ---------------------------------------------------------------------------
 
@@ -752,9 +643,9 @@ function CreateSaleDialog({ open, onOpenChange, onCreated }: CreateSaleDialogPro
           setProducts(list);
         }
       } catch {
-        // Fallback to mock data if API fails
-        setCustomers(MOCK_CUSTOMERS);
-        setProducts(MOCK_PRODUCTS);
+        setCustomers([]);
+        setProducts([]);
+        toast.error('Failed to load customers or products');
       }
       setCustomersLoaded(true);
       setProductsLoaded(true);
@@ -1234,6 +1125,7 @@ function SaleDetailDialog({ sale, open, onOpenChange, onReturn, onToggleStatus }
   try {
     settings = getSettings();
   } catch {
+    // Fallback defaults
     settings = { shopName: 'Lotus Vision Opticals', gstin: '33BPKPS1234F1Z5', phone: '+91 94432 12345', address: 'Main Road, Sankarankovil - 627751' };
   }
 
@@ -1403,7 +1295,7 @@ function SaleDetailDialog({ sale, open, onOpenChange, onReturn, onToggleStatus }
                 size="sm"
                 className="min-h-[44px] touch-manipulation text-emerald-600 border-emerald-200 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-950/50"
                 onClick={() => {
-                  const cleanPhone = sale.customerPhone.replace(/\D/g, '');
+                  const cleanPhone = (sale.customerPhone ?? '').replace(/\D/g, '');
                   window.open(`https://wa.me/91${cleanPhone}?text=${encodeURIComponent(`Hi ${sale.customerName}, your invoice ${sale.invoiceNo} for ${INR(sale.total)} is ready. Thank you for choosing Lotus Vision Opticals!`)}`, '_blank', 'noopener,noreferrer');
                 }}
               >
@@ -1823,9 +1715,6 @@ export default function Sales() {
   const [returnSale, setReturnSale] = React.useState<Sale | null>(null);
   const [returnOpen, setReturnOpen] = React.useState(false);
 
-  const [localSales, setLocalSales] = React.useState<SaleListItem[]>([]);
-  const [localDetails, setLocalDetails] = React.useState<Record<string, Sale>>({});
-  const [usingLocal, setUsingLocal] = React.useState(false);
   const [creditFilter, setCreditFilter] = React.useState(false);
   const [creditTotal, setCreditTotal] = React.useState(0);
   const [summaryPeriod, setSummaryPeriod] = React.useState<"today" | "week" | "month">("today");
@@ -1916,55 +1805,19 @@ export default function Sales() {
         const data: SalesResponse = await res.json();
         setSales(data.sales);
         setTotal(data.total);
-        setUsingLocal(false);
       } else {
-        // API not available — use mock data
-        await loadMockData();
+        setSales([]);
+        setTotal(0);
+        toast.error("Failed to load sales");
       }
     } catch {
-      // Network error — use mock data
-      await loadMockData();
+      setSales([]);
+      setTotal(0);
+      toast.error("Network error while loading sales");
     } finally {
       setLoading(false);
       fetchCreditTotal();
     }
-  }, [search, page, fromDate, toDate, creditFilter, statusFilter, paymentModeFilter]);
-
-  const loadMockData = React.useCallback(async () => {
-    // Simulate API delay
-    await new Promise((r) => setTimeout(r, 400));
-
-    let filtered = [...MOCK_SALES];
-
-    if (search) {
-      const q = search.toLowerCase();
-      filtered = filtered.filter(
-        (s) =>
-          s.invoiceNo.toLowerCase().includes(q) ||
-          s.customerName.toLowerCase().includes(q)
-      );
-    }
-    if (fromDate) {
-      filtered = filtered.filter((s) => s.createdAt >= fromDate);
-    }
-    if (toDate) {
-      filtered = filtered.filter((s) => s.createdAt <= toDate);
-    }
-    if (statusFilter) {
-      filtered = filtered.filter((s) => s.status === statusFilter);
-    }
-    if (paymentModeFilter) {
-      filtered = filtered.filter((s) => s.paymentMode === paymentModeFilter);
-    }
-
-    const totalRecords = filtered.length;
-    const start = (page - 1) * pageSize;
-    const paged = filtered.slice(start, start + pageSize);
-
-    setLocalSales(filtered);
-    setSales(paged);
-    setTotal(totalRecords);
-    setUsingLocal(true);
   }, [search, page, fromDate, toDate, creditFilter, statusFilter, paymentModeFilter]);
 
   React.useEffect(() => {
@@ -2008,50 +1861,16 @@ export default function Sales() {
 
   // -- Detail --
   const handleViewDetail = async (saleItem: SaleListItem) => {
-    if (usingLocal) {
-      const detail = localDetails[saleItem.id] || MOCK_SALE_DETAIL[saleItem.id];
-      if (detail) {
-        setDetailSale(detail);
+    try {
+      const res = await fetch(`/api/sales/${saleItem.id}`);
+      if (res.ok) {
+        const data: Sale = await res.json();
+        setDetailSale(data);
       } else {
-        // Generate a synthetic detail from the list item
-        const cust = MOCK_CUSTOMERS.find((c) => c.name === saleItem.customerName);
-        const mockItems: SaleItem[] = Array.from({ length: saleItem.itemsCount }, (_, j) => {
-          const p = MOCK_PRODUCTS[(j + parseInt(saleItem.id.split("-")[1] || "0")) % MOCK_PRODUCTS.length];
-          return {
-            id: `si-${saleItem.id}-${j}`,
-            productId: p.id,
-            productName: p.name,
-            price: p.price,
-            qty: Math.floor(Math.random() * 5) + 1,
-            lineTotal: 0,
-          };
-        });
-        mockItems.forEach((it) => {
-          it.lineTotal = it.price * it.qty;
-        });
-        setDetailSale({
-          ...saleItem,
-          customerId: cust?.id || "",
-          customerPhone: cust?.phone,
-          customerEmail: cust?.email,
-          customerAddress: cust?.address,
-          items: mockItems,
-          discountType: "flat",
-          notes: undefined,
-        });
+        toast.error("Failed to load sale details");
       }
-    } else {
-      try {
-        const res = await fetch(`/api/sales/${saleItem.id}`);
-        if (res.ok) {
-          const data: Sale = await res.json();
-          setDetailSale(data);
-        } else {
-          toast.error("Failed to load sale details");
-        }
-      } catch {
-        toast.error("Network error");
-      }
+    } catch {
+      toast.error("Network error");
     }
     setDetailOpen(true);
   };
@@ -2059,16 +1878,6 @@ export default function Sales() {
   // -- Status Toggle --
   const handleToggleStatus = async (sale: Sale) => {
     const newStatus = sale.status === "Completed" ? "Pending" : "Completed";
-
-    if (usingLocal) {
-      setLocalSales((prev) =>
-        prev.map((s) => (s.id === sale.id ? { ...s, status: newStatus as SaleListItem["status"] } : s))
-      );
-      setDetailSale((prev) => (prev ? { ...prev, status: newStatus as Sale["status"] } : null));
-      toast.success(`Invoice marked as ${newStatus}`);
-      fetchSales();
-      return;
-    }
 
     try {
       const res = await fetch(`/api/sales/${sale.id}`, {

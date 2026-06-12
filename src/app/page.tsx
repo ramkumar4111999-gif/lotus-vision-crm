@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   LayoutDashboard, Users, Package, Receipt, FlaskConical, CalendarDays, Wallet,
   BarChart3, UserCog, Megaphone, Menu, Moon, Sun, LogOut, X, Search,
-  Database, CheckCircle2, Settings,
+  Database, Settings,
   Loader, Download, Upload, AlertOctagon, TrendingUp, ChevronDown,
   ShoppingCart, Calculator,
 } from 'lucide-react';
@@ -74,10 +74,6 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'lens-calculator', label: 'Lens Calculator', icon: Calculator },
 ];
 
-// ─── Mock notifications ────────────────────────────────────────────────
-
-// Notifications are now real — see src/components/crm/notifications.tsx
-
 // ─── Section renderer with transition ─────────────────────────────────
 
 function SectionRenderer() {
@@ -117,9 +113,6 @@ function SectionRenderer() {
 
 function Sidebar({ onNav }: { onNav?: () => void }) {
   const { activeSection, setActiveSection, darkMode, toggleDarkMode } = useCrmStore();
-  const [isSeeding, setIsSeeding] = useState(false);
-  const [seedDone, setSeedDone] = useState(false);
-
   // Quick stats for mobile sidebar
   const [quickStats, setQuickStats] = useState({ todaySales: 0, pendingLab: 0, lowStock: 0, dueAmount: 0 });
   const [statsLoaded, setStatsLoaded] = useState(false);
@@ -172,18 +165,6 @@ function Sidebar({ onNav }: { onNav?: () => void }) {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
-
-  const handleSeed = useCallback(async () => {
-    setIsSeeding(true);
-    try {
-      const res = await fetch('/api/seed', { method: 'POST' });
-      if (res.ok) {
-        setSeedDone(true);
-        setTimeout(() => setSeedDone(false), 3000);
-      }
-    } catch { /* ignore */ }
-    setIsSeeding(false);
   }, []);
 
   return (
@@ -288,24 +269,6 @@ function Sidebar({ onNav }: { onNav?: () => void }) {
 
       {/* Footer */}
       <div className="p-3 space-y-1">
-        {/* Seed Database button */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleSeed}
-          disabled={isSeeding}
-          className="w-full justify-start gap-2 px-3 text-xs text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
-        >
-          {isSeeding ? (
-            <Database className="h-3.5 w-3.5 animate-pulse" />
-          ) : seedDone ? (
-            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-          ) : (
-            <Database className="h-3.5 w-3.5" />
-          )}
-          {isSeeding ? 'Seeding...' : seedDone ? 'Database Seeded!' : 'Seed Database'}
-        </Button>
-
         <button
           onClick={toggleDarkMode}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 transition-colors min-h-[44px] touch-manipulation"
