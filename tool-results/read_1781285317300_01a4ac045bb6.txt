@@ -1442,7 +1442,7 @@
   1442→                    <CardDescription>All products ranked by revenue with margin analysis</CardDescription>
   1443→                  </CardHeader>
   1444→                  <CardContent className="p-0">
-  1445→                    <div className="max-h-[500px] overflow-y-auto">
+  1445→                    <div className="max-h-[500px] overflow-x-auto overflow-y-auto">
   1446→                      <Table>
   1447→                        <TableHeader>
   1448→                          <TableRow>
@@ -1483,7 +1483,7 @@
   1483→                    <CardTitle className="text-base">Product Revenue Details</CardTitle>
   1484→                  </CardHeader>
   1485→                  <CardContent className="p-0">
-  1486→                    <div className="max-h-96 overflow-y-auto">
+  1486→                    <div className="max-h-96 overflow-x-auto overflow-y-auto">
   1487→                      <Table>
   1488→                        <TableHeader>
   1489→                          <TableRow>
@@ -1551,7 +1551,7 @@
   1551→                      <p className="text-sm">No customer data available</p>
   1552→                    </div>
   1553→                  ) : (
-  1554→                    <div className="max-h-[480px] overflow-y-auto">
+  1554→                    <div className="max-h-[480px] overflow-x-auto overflow-y-auto">
   1555→                      <Table>
   1556→                        <TableHeader>
   1557→                          <TableRow>
@@ -1608,7 +1608,7 @@
   1608→                        <CardDescription>Products below minimum stock level</CardDescription>
   1609→                      </CardHeader>
   1610→                      <CardContent className="p-0">
-  1611→                        <div className="max-h-96 overflow-y-auto">
+  1611→                        <div className="max-h-96 overflow-x-auto overflow-y-auto">
   1612→                          <Table>
   1613→                            <TableHeader>
   1614→                              <TableRow>
@@ -1650,7 +1650,7 @@
   1650→                      </div>
   1651→                    </CardHeader>
   1652→                    <CardContent className="p-0">
-  1653→                      <div className="max-h-[500px] overflow-y-auto">
+  1653→                      <div className="max-h-[500px] overflow-x-auto overflow-y-auto">
   1654→                        <Table>
   1655→                          <TableHeader>
   1656→                            <TableRow>
@@ -1899,7 +1899,7 @@
   1899→                </CardHeader>
   1900→                <CardContent className="p-0">
   1901→                  {productPerf && productPerf.productData.length > 0 ? (
-  1902→                    <div className="max-h-[500px] overflow-y-auto">
+  1902→                    <div className="max-h-[500px] overflow-x-auto overflow-y-auto">
   1903→                      <Table>
   1904→                        <TableHeader>
   1905→                          <TableRow>
@@ -1928,7 +1928,7 @@
   1928→                      </Table>
   1929→                    </div>
   1930→                  ) : topProductsByRevenue.length > 0 ? (
-  1931→                    <div className="max-h-[500px] overflow-y-auto">
+  1931→                    <div className="max-h-[500px] overflow-x-auto overflow-y-auto">
   1932→                      <Table>
   1933→                        <TableHeader>
   1934→                          <TableRow>

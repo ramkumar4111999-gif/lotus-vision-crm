@@ -1718,8 +1718,8 @@ export default function Sales() {
   const [creditFilter, setCreditFilter] = React.useState(false);
   const [creditTotal, setCreditTotal] = React.useState(0);
   const [summaryPeriod, setSummaryPeriod] = React.useState<"today" | "week" | "month">("today");
-  const [statusFilter, setStatusFilter] = React.useState<"" | "Completed" | "Pending" | "Return">("");
-  const [paymentModeFilter, setPaymentModeFilter] = React.useState<"" | "Cash" | "Card" | "UPI" | "Credit" | "Split">("");
+  const [statusFilter, setStatusFilter] = React.useState<"all" | "Completed" | "Pending" | "Return">("all");
+  const [paymentModeFilter, setPaymentModeFilter] = React.useState<"all" | "Cash" | "Card" | "UPI" | "Credit" | "Split">("all");
 
   // -- Fetch Outstanding Credit Total --
   const fetchCreditTotal = React.useCallback(async () => {
@@ -1796,8 +1796,8 @@ export default function Sales() {
     if (fromDate) params.set("fromDate", fromDate);
     if (toDate) params.set("toDate", toDate);
     if (creditFilter) params.set("paymentMode", "Credit");
-    if (statusFilter) params.set("status", statusFilter);
-    if (paymentModeFilter) params.set("paymentMode", paymentModeFilter);
+    if (statusFilter && statusFilter !== "all") params.set("status", statusFilter);
+    if (paymentModeFilter && paymentModeFilter !== "all") params.set("paymentMode", paymentModeFilter);
 
     try {
       const res = await fetch(`/api/sales?${params.toString()}`);
@@ -1838,11 +1838,11 @@ export default function Sales() {
     setPage(1);
   };
   const handleStatusFilterChange = (val: string) => {
-    setStatusFilter(val as "" | "Completed" | "Pending" | "Return");
+    setStatusFilter(val as "all" | "Completed" | "Pending" | "Return");
     setPage(1);
   };
   const handlePaymentModeFilterChange = (val: string) => {
-    setPaymentModeFilter(val as "" | "Cash" | "Card" | "UPI" | "Credit" | "Split");
+    setPaymentModeFilter(val as "all" | "Cash" | "Card" | "UPI" | "Credit" | "Split");
     setPage(1);
   };
 
@@ -2046,12 +2046,12 @@ export default function Sales() {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">Status</Label>
-                  <Select value={statusFilter || ""} onValueChange={handleStatusFilterChange}>
+                  <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
                     <SelectTrigger className="w-full sm:w-36">
                       <SelectValue placeholder="All Statuses" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All</SelectItem>
+                      <SelectItem value="all">All</SelectItem>
                       <SelectItem value="Completed">Completed</SelectItem>
                       <SelectItem value="Pending">Pending</SelectItem>
                       <SelectItem value="Return">Return</SelectItem>
@@ -2060,12 +2060,12 @@ export default function Sales() {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">Payment</Label>
-                  <Select value={paymentModeFilter || ""} onValueChange={handlePaymentModeFilterChange}>
+                  <Select value={paymentModeFilter} onValueChange={handlePaymentModeFilterChange}>
                     <SelectTrigger className="w-full sm:w-36">
                       <SelectValue placeholder="All Modes" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All</SelectItem>
+                      <SelectItem value="all">All</SelectItem>
                       <SelectItem value="Cash">Cash</SelectItem>
                       <SelectItem value="Card">Card</SelectItem>
                       <SelectItem value="UPI">UPI</SelectItem>
@@ -2074,7 +2074,7 @@ export default function Sales() {
                     </SelectContent>
                   </Select>
                 </div>
-                {(search || fromDate || toDate || statusFilter || paymentModeFilter) && (
+                {(search || fromDate || toDate || statusFilter !== "all" || paymentModeFilter !== "all") && (
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground invisible">Action</Label>
                     <Button

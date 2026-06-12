@@ -286,7 +286,7 @@ function Sidebar({ onNav }: { onNav?: () => void }) {
             <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">Ram Kumar</p>
             <p className="text-xs text-slate-500 dark:text-slate-400 truncate">Owner</p>
           </div>
-          <button className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors h-10 w-10 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 touch-manipulation" aria-label="Log out">
+          <button className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors h-10 w-10 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 touch-manipulation" aria-label="Log out" onClick={() => toast.info('Session management is not configured. Contact your admin.')}>
             <LogOut className="h-4.5 w-4.5" />
           </button>
         </div>

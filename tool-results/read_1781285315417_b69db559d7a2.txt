@@ -368,7 +368,7 @@
    368→                    </TableCell>
    369→                    <TableCell className="text-right">
    370→                      {r.status === 'Pending' && (
-   371→                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleMarkPaid(r.id)}>
+   371→                        <Button size="sm" variant="outline" className="h-9 min-w-[44px] min-h-[44px] text-xs touch-manipulation active:scale-95 transition-transform" onClick={() => handleMarkPaid(r.id)}>
    372→                          <CheckCircle2 className="size-3 mr-1" /> Mark Paid
    373→                        </Button>
    374→                      )}
@@ -959,7 +959,7 @@
    959→          ) : (
    960→            <>
    961→              {/* Desktop Table */}
-   962→              <div className="hidden md:block">
+   962→              <div className="hidden md:block overflow-x-auto">
    963→                <Table>
    964→                  <TableHeader>
    965→                    <TableRow>
@@ -1244,7 +1244,7 @@
   1244→          </CardHeader>
   1245→          <CardContent>
   1246→            {/* Desktop Performance Table */}
-  1247→            <div className="hidden md:block">
+  1247→            <div className="hidden md:block overflow-x-auto">
   1248→              <Table>
   1249→                <TableHeader>
   1250→                  <TableRow>

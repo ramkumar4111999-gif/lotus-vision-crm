@@ -859,7 +859,7 @@
    859→              </Button>
    860→            </div>
    861→
-   862→            <div className="rounded-lg border overflow-hidden">
+   862→            <div className="rounded-lg border overflow-x-auto overflow-hidden">
    863→              <Table>
    864→                <TableHeader>
    865→                  <TableRow className="bg-muted/50">
@@ -1206,7 +1206,7 @@
   1206→          </div>
   1207→
   1208→          {/* Items Table */}
-  1209→          <div className="rounded-lg border overflow-hidden print:border">
+  1209→          <div className="rounded-lg border overflow-x-auto overflow-hidden print:border">
   1210→            <Table>
   1211→              <TableHeader>
   1212→                <TableRow className="bg-muted/50">
@@ -1462,7 +1462,7 @@
   1462→
   1463→        <div className="space-y-4">
   1464→          {/* Items to return */}
-  1465→          <div className="rounded-lg border overflow-hidden">
+  1465→          <div className="rounded-lg border overflow-x-auto overflow-hidden">
   1466→            <Table>
   1467→              <TableHeader>
   1468→                <TableRow className="bg-muted/50">

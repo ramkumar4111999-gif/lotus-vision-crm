@@ -1393,7 +1393,7 @@
   1393→                </div>
   1394→              ) : (
   1395→                <>
-  1396→                  <div className="max-h-[420px] overflow-y-auto rounded-md border">
+  1396→                  <div className="max-h-[420px] overflow-x-auto overflow-y-auto rounded-md border">
   1397→                    <Table>
   1398→                      <TableHeader>
   1399→                        <TableRow>
@@ -1519,7 +1519,7 @@
   1519→                </div>
   1520→              ) : (
   1521→                <>
-  1522→                  <div className="max-h-[360px] overflow-y-auto rounded-md border">
+  1522→                  <div className="max-h-[360px] overflow-x-auto overflow-y-auto rounded-md border">
   1523→                    <Table>
   1524→                      <TableHeader>
   1525→                        <TableRow>
@@ -1541,8 +1541,8 @@
   1541→                            <TableCell className="text-xs hidden sm:table-cell max-w-[120px] truncate">{exp.vendor || '—'}</TableCell>
   1542→                            <TableCell className="text-right">
   1543→                              <div className="flex items-center justify-end gap-1">
-  1544→                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 touch-manipulation active:scale-95 transition-transform" onClick={() => openEditExpense(exp)}><Pencil className="h-3.5 w-3.5" /><span className="sr-only">Edit</span></Button>
-  1545→                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950 touch-manipulation active:scale-95 transition-transform" onClick={() => handleDeleteExpense(exp.id)} disabled={deletingExpenseId === exp.id}>
+  1544→                                <Button variant="ghost" size="sm" className="h-9 w-9 min-w-[44px] min-h-[44px] p-0 touch-manipulation active:scale-95 transition-transform" onClick={() => openEditExpense(exp)}><Pencil className="h-3.5 w-3.5" /><span className="sr-only">Edit</span></Button>
+  1545→                                <Button variant="ghost" size="sm" className="h-9 w-9 min-w-[44px] min-h-[44px] p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950 touch-manipulation active:scale-95 transition-transform" onClick={() => handleDeleteExpense(exp.id)} disabled={deletingExpenseId === exp.id}>
   1546→                                  {deletingExpenseId === exp.id ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <Trash2 className="h-3.5 w-3.5" />}
   1547→                                  <span className="sr-only">Delete</span>
   1548→                                </Button>
@@ -1763,7 +1763,7 @@
   1763→                      </div>
   1764→                      Revenue
   1765→                    </h3>
-  1766→                    <div className="rounded-md border">
+  1766→                    <div className="rounded-md border overflow-x-auto">
   1767→                      <Table>
   1768→                        <TableBody>
   1769→                          <TableRow>
@@ -1790,7 +1790,7 @@
   1790→                        <p className="text-sm">No expenses recorded for this period.</p>
   1791→                      </div>
   1792→                    ) : (
-  1793→                      <div className="max-h-96 overflow-y-auto rounded-md border">
+  1793→                      <div className="max-h-96 overflow-x-auto overflow-y-auto rounded-md border">
   1794→                        <Table>
   1795→                          <TableHeader>
   1796→                            <TableRow>
@@ -1863,7 +1863,7 @@
   1863→                  <div className="flex items-center gap-2">
   1864→                    <Label htmlFor="recon-date" className="text-xs whitespace-nowrap">Date:</Label>
   1865→                    <Input id="recon-date" type="date" value={reconDate} onChange={(e) => setReconDate(e.target.value)} className="h-8 w-[150px] text-xs" />
-  1866→                    <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => setReconDate(getTodayStr())}>Today</Button>
+  1866→                    <Button variant="outline" size="sm" className="text-xs h-9 min-w-[44px] min-h-[44px] touch-manipulation" onClick={() => setReconDate(getTodayStr())}>Today</Button>
   1867→                  </div>
   1868→                </div>
   1869→              </CardHeader>
@@ -1898,7 +1898,7 @@
   1898→                    </div>
   1899→
   1900→                    {/* Reconciliation Detail Table */}
-  1901→                    <div className="rounded-lg border overflow-hidden">
+  1901→                    <div className="rounded-lg border overflow-x-auto overflow-hidden">
   1902→                      <Table>
   1903→                        <TableHeader>
   1904→                          <TableRow>
@@ -1983,7 +1983,7 @@
   1983→                    {dailyReconciliation.sales.length > 0 && (
   1984→                      <div>
   1985→                        <h3 className="text-sm font-semibold mb-2">Sales Transactions ({formatDate(reconDate)})</h3>
-  1986→                        <div className="max-h-60 overflow-y-auto rounded-md border">
+  1986→                        <div className="max-h-60 overflow-x-auto overflow-y-auto rounded-md border">
   1987→                          <Table>
   1988→                            <TableHeader>
   1989→                              <TableRow>

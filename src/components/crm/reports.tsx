@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useMemo, useState, useCallback, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
 import {
   AreaChart,
   Area,
@@ -338,103 +337,88 @@ function StatCard({ title, value, change, icon, iconBg }: StatCardProps) {
   );
 }
 
-// ─── Data Hooks ───────────────────────────────────────────────────────────────
+// ─── Data Hooks (plain fetch, no react-query dependency) ──────────────────
+
+function useFetch<T>(url: string | null, fallback: T): { data: T; loading: boolean; error: string | null } {
+  const [data, setData] = useState<T>(fallback);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!url) { setLoading(false); return; }
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    fetch(url)
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((d) => { if (!cancelled) setData(d); })
+      .catch((e) => { if (!cancelled) setError(e.message); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [url]);
+
+  return { data, loading, error };
+}
 
 function useReportsData<T>(type: string, fallbackData: T, dateFrom?: string, dateTo?: string) {
-  return useQuery<T>({
-    queryKey: ["reports", type, dateFrom, dateTo],
-    queryFn: () => {
-      const params = new URLSearchParams({ type });
-      if (dateFrom) params.set("from", dateFrom);
-      if (dateTo) params.set("to", dateTo);
-      return fetch(`/api/reports?${params}`).then((r) => r.json());
-    },
-    placeholderData: fallbackData,
-    staleTime: 30_000,
-  });
+  const params = new URLSearchParams({ type });
+  if (dateFrom) params.set("from", dateFrom);
+  if (dateTo) params.set("to", dateTo);
+  return useFetch<T>(`/api/reports?${params}`, fallbackData);
 }
 
 function useSalesData(dateFrom?: string, dateTo?: string) {
-  return useQuery<{ sales?: SaleRecord[]; data?: SaleRecord[] }>({
-    queryKey: ["sales-all", dateFrom, dateTo],
-    queryFn: () => {
-      const params = new URLSearchParams({ limit: "1000" });
-      if (dateFrom) params.set("fromDate", dateFrom);
-      if (dateTo) params.set("toDate", dateTo);
-      return fetch(`/api/sales?${params}`).then((r) => r.json());
-    },
-    staleTime: 30_000,
-  });
+  const params = new URLSearchParams({ limit: "1000" });
+  if (dateFrom) params.set("fromDate", dateFrom);
+  if (dateTo) params.set("toDate", dateTo);
+  return useFetch<{ sales?: SaleRecord[]; data?: SaleRecord[] }>(`/api/sales?${params}`, { sales: [], data: [] });
 }
 
 function useProductsData() {
-  return useQuery<{ products?: Product[]; data?: Product[] }>({
-    queryKey: ["products"],
-    queryFn: () => fetch("/api/products").then((r) => r.json()),
-    staleTime: 60_000,
-  });
+  return useFetch<{ products?: Product[]; data?: Product[] }>("/api/products", { products: [], data: [] });
 }
 
 function useTopCustomers() {
-  return useQuery<{ data: TopCustomer[] }>({
-    queryKey: ["top-customers"],
-    queryFn: () => fetch("/api/reports?type=top-customers").then((r) => r.json()),
-    staleTime: 60_000,
-  });
+  return useFetch<{ data: TopCustomer[] }>("/api/reports?type=top-customers", { data: [] });
 }
 
 function useRevenueComparison() {
-  return useQuery<{
+  return useFetch<{
     summary: RevenueComparisonSummary;
     thisMonthData: RevenueComparisonDay[];
     lastMonthData: RevenueComparisonDay[];
-  }>({
-    queryKey: ["revenue-comparison"],
-    queryFn: () => fetch("/api/reports?type=revenue-comparison").then((r) => r.json()),
-    staleTime: 60_000,
-  });
+  }>("/api/reports?type=revenue-comparison", { summary: { thisMonth: { total: 0, orders: 0, cgst: 0, sgst: 0, igst: 0 }, lastMonth: { total: 0, orders: 0, cgst: 0, sgst: 0, igst: 0 }, changePercent: 0 }, thisMonthData: [], lastMonthData: [] });
 }
 
 function useProductPerformance() {
-  return useQuery<{
+  return useFetch<{
     categoryData: ProductPerformanceCategory[];
     productData: ProductPerformanceItem[];
     totalProducts: number;
     totalRevenue: number;
-  }>({
-    queryKey: ["product-performance"],
-    queryFn: () => fetch("/api/reports?type=product-performance").then((r) => r.json()),
-    staleTime: 60_000,
-  });
+  }>("/api/reports?type=product-performance", { categoryData: [], productData: [], totalProducts: 0, totalRevenue: 0 });
 }
 
 function useCustomerAcquisitionReport() {
-  return useQuery<CustomerAcquisitionResponse>({
-    queryKey: ["customer-acquisition-report"],
-    queryFn: () => fetch("/api/reports?type=customer-acquisition").then((r) => r.json()),
-    staleTime: 60_000,
-  });
+  return useFetch<CustomerAcquisitionResponse>("/api/reports?type=customer-acquisition", { report: "customer-acquisition", period: "last-30-days", totalNew: 0, thisWeekNew: 0, data: [] });
 }
 
 function useDashboardComparison() {
-  return useQuery<DashboardComparisonData>({
-    queryKey: ["dashboard-comparison"],
-    queryFn: () => fetch("/api/dashboard").then((r) => r.json()),
-    staleTime: 60_000,
-  });
+  return useFetch<DashboardComparisonData>("/api/dashboard", { salesToday: 0, salesThisMonth: 0, totalCustomers: 0, totalProducts: 0, lowStockCount: 0, pendingAppointments: 0, pendingLabOrders: 0, duesOverdue: 0 });
 }
 
 // ─── New Feature Hooks ────────────────────────────────────────────────────
 
 function useAllCustomersForReport() {
-  return useQuery<Array<Record<string, unknown>>>({ 
-    queryKey: ["all-customers-report"],
-    queryFn: () =>
-      fetch("/api/customers?limit=999")
-        .then((r) => r.json())
-        .then((d) => d.data || d.customers || (Array.isArray(d) ? d : [])),
-    staleTime: 60_000,
-  });
+  const { data, loading } = useFetch<Record<string, unknown>>("/api/customers?limit=999", {});
+  const customers = useMemo(() => {
+    const d = data as Record<string, unknown>;
+    return (d.data || d.customers || (Array.isArray(d) ? d : [])) as Array<Record<string, unknown>>;
+  }, [data]);
+  return { data: customers, loading };
 }
 
 // ─── Fallback Data ───────────────────────────────────────────────────────────

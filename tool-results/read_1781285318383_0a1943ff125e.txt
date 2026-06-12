@@ -1613,7 +1613,7 @@
   1613→              {reportData.items.length > 0 ? (
   1614→                <div>
   1615→                  <h3 className="text-sm font-semibold mb-2">Items Needing Reorder</h3>
-  1616→                  <div className="max-h-[400px] overflow-y-auto rounded-lg border">
+  1616→                  <div className="max-h-[400px] overflow-x-auto overflow-y-auto rounded-lg border">
   1617→                    <Table>
   1618→                      <TableHeader>
   1619→                        <TableRow>

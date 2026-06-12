@@ -61,7 +61,7 @@ import {
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type LabOrderStatus = 'Received' | 'Pending' | 'In Lab' | 'Ready' | 'Delivered'
+type LabOrderStatus = 'Received' | 'Pending' | 'In Lab' | 'Ready' | 'Delivered' | 'Sent' | 'In Progress'
 
 interface LensPower {
   sph: string
@@ -138,7 +138,7 @@ interface LabOrder {
 
 const STATUS_FLOW: LabOrderStatus[] = ['Received', 'Pending', 'In Lab', 'Ready', 'Delivered']
 
-const STATUS_BADGE_CLASS: Record<LabOrderStatus, string> = {
+const STATUS_BADGE_CLASS: Record<string, string> = {
   Received: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800',
   Pending: 'bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300 border-slate-200 dark:border-slate-700',
   'In Lab': 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800',
@@ -146,15 +146,17 @@ const STATUS_BADGE_CLASS: Record<LabOrderStatus, string> = {
   Delivered: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-200 dark:border-blue-800',
 }
 
-const STATUS_ICON: Record<LabOrderStatus, typeof Clock> = {
+const STATUS_ICON: Record<string, typeof Clock> = {
   Received: Inbox,
   Pending: Clock,
   'In Lab': FlaskConical,
+  'In Progress': FlaskConical,
   Ready: CheckCircle2,
+  Sent: Truck,
   Delivered: Truck,
 }
 
-const STATUS_COLOR: Record<LabOrderStatus, string> = {
+const STATUS_COLOR: Record<string, string> = {
   Received: 'border-indigo-300 dark:border-indigo-800',
   Pending: 'border-slate-300 dark:border-slate-700',
   'In Lab': 'border-amber-300 dark:border-amber-800',
@@ -520,7 +522,7 @@ export default function LabOrders() {
     const margin = order.sellingPrice - order.costPrice
     const isOverdue = order.dueDate && new Date(order.dueDate) < new Date() && order.status !== 'Delivered'
     const next = getNextStatus(order.status)
-    const StatusIcon = STATUS_ICON[order.status]
+    const StatusIcon = STATUS_ICON[order.status] || Clock
 
     return (
       <div
@@ -832,7 +834,7 @@ export default function LabOrders() {
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
                 {(tab.value === 'all' ? STATUS_FLOW.slice(0, -1) : [tab.value as LabOrderStatus]).map((status) => {
                   const statusOrders = sortedOrders.filter((o) => o.status === status)
-                  const StatusIcon = STATUS_ICON[status]
+                  const StatusIcon = STATUS_ICON[status] || Clock
                   return (
                     <div key={status} className={cn('rounded-lg border-t-4 bg-muted/20 p-3 space-y-3', STATUS_COLOR[status])}>
                       <div className="flex items-center gap-2">
@@ -896,7 +898,7 @@ export default function LabOrders() {
                             const margin = order.sellingPrice - order.costPrice
                             const next = getNextStatus(order.status)
                             const isOverdue = order.dueDate && new Date(order.dueDate) < new Date() && order.status !== 'Delivered'
-                            const StatusIcon = STATUS_ICON[order.status]
+                            const StatusIcon = STATUS_ICON[order.status] || Clock
                             const canMarkReady = order.status !== 'Ready' && order.status !== 'Delivered'
 
                             return (
@@ -983,7 +985,7 @@ export default function LabOrders() {
                 <h4 className="text-sm font-semibold">Status Progress</h4>
                 <div className="flex items-center gap-1">
                   {STATUS_FLOW.map((status, idx) => {
-                    const StatusIcon = STATUS_ICON[status]
+                    const StatusIcon = STATUS_ICON[status] || Clock
                     const isActive = STATUS_FLOW.indexOf(selectedOrder.status) >= idx
                     const isCurrent = selectedOrder.status === status
                     return (
