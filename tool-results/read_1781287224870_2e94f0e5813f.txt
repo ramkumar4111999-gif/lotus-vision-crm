@@ -1,0 +1,1594 @@
+     1→     1→'use client'
+     2→     2→
+     3→     3→import React, { useState, useEffect, useCallback, useMemo } from 'react'
+     4→     4→import {
+     5→     5→  format,
+     6→     6→  parseISO,
+     7→     7→  isToday,
+     8→     8→  isSameMonth,
+     9→     9→  startOfWeek,
+    10→    10→  addDays,
+    11→    11→} from 'date-fns'
+    12→    12→import { DayPicker } from 'react-day-picker'
+    13→    13→import {
+    14→    14→  CalendarDays,
+    15→    15→  Plus,
+    16→    16→  Search,
+    17→    17→  CheckCircle2,
+    18→    18→  XCircle,
+    19→    19→  Pencil,
+    20→    20→  Clock,
+    21→    21→  Loader2,
+    22→    22→  CalendarIcon,
+    23→    23→  User,
+    24→    24→  FileText,
+    25→    25→  Trash2,
+    26→    26→  MoreHorizontal,
+    27→    27→  AlertTriangle,
+    28→    28→  MessageSquare,
+    29→    29→  Footprints,
+    30→    30→  CalendarRange,
+    31→    31→  ChevronLeft,
+    32→    32→  ChevronRight,
+    33→    33→} from 'lucide-react'
+    34→    34→import { toast } from 'sonner'
+    35→    35→
+    36→    36→import { cn } from '@/lib/utils'
+    37→    37→import { Button } from '@/components/ui/button'
+    38→    38→import { Badge } from '@/components/ui/badge'
+    39→    39→import { Input } from '@/components/ui/input'
+    40→    40→import { Label } from '@/components/ui/label'
+    41→    41→import { Textarea } from '@/components/ui/textarea'
+    42→    42→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+    43→    43→import { Skeleton } from '@/components/ui/skeleton'
+    44→    44→import { ScrollArea } from '@/components/ui/scroll-area'
+    45→    45→import {
+    46→    46→  Table,
+    47→    47→  TableBody,
+    48→    48→  TableCell,
+    49→    49→  TableHead,
+    50→    50→  TableHeader,
+    51→    51→  TableRow,
+    52→    52→} from '@/components/ui/table'
+    53→    53→import {
+    54→    54→  Dialog,
+    55→    55→  DialogContent,
+    56→    56→  DialogDescription,
+    57→    57→  DialogFooter,
+    58→    58→  DialogHeader,
+    59→    59→  DialogTitle,
+    60→    60→} from '@/components/ui/dialog'
+    61→    61→import {
+    62→    62→  Select,
+    63→    63→  SelectContent,
+    64→    64→  SelectItem,
+    65→    65→  SelectTrigger,
+    66→    66→  SelectValue,
+    67→    67→} from '@/components/ui/select'
+    68→    68→import {
+    69→    69→  DropdownMenu,
+    70→    70→  DropdownMenuContent,
+    71→    71→  DropdownMenuItem,
+    72→    72→  DropdownMenuSeparator,
+    73→    73→  DropdownMenuTrigger,
+    74→    74→} from '@/components/ui/dropdown-menu'
+    75→    75→import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    76→    76→import {
+    77→    77→  Popover,
+    78→    78→  PopoverContent,
+    79→    79→  PopoverTrigger,
+    80→    80→} from '@/components/ui/popover'
+    81→    81→import {
+    82→    82→  Tooltip,
+    83→    83→  TooltipContent,
+    84→    84→  TooltipTrigger,
+    85→    85→} from '@/components/ui/tooltip'
+    86→    86→
+    87→    87→// ─── Types ───────────────────────────────────────────────────────────────────
+    88→    88→
+    89→    89→type AppointmentStatus = 'Scheduled' | 'Confirmed' | 'Completed' | 'Cancelled' | 'No-Show'
+    90→    90→
+    91→    91→type AppointmentPurpose =
+    92→    92→  | 'Eye Exam'
+    93→    93→  | 'Frame Selection'
+    94→    94→  | 'Lens Fitting'
+    95→    95→  | 'Delivery'
+    96→    96→  | 'Follow-up'
+    97→    97→  | 'Walk-in'
+    98→    98→  | 'Other'
+    99→    99→
+   100→   100→interface Customer {
+   101→   101→  id: string
+   102→   102→  name: string
+   103→   103→  email?: string
+   104→   104→  phone?: string
+   105→   105→}
+   106→   106→
+   107→   107→interface Appointment {
+   108→   108→  id: string
+   109→   109→  customerId: string
+   110→   110→  customer?: { id: string; name: string; phone?: string; email?: string }
+   111→   111→  customerName: string
+   112→   112→  customerPhone?: string
+   113→   113→  date: string
+   114→   114→  time?: string | null
+   115→   115→  purpose?: string | null
+   116→   116→  status: string
+   117→   117→  notes?: string | null
+   118→   118→  recurrence?: string | null
+   119→   119→  createdAt: string
+   120→   120→  updatedAt: string
+   121→   121→}
+   122→   122→
+   123→   123→// ─── Constants ───────────────────────────────────────────────────────────────
+   124→   124→
+   125→   125→const PURPOSE_OPTIONS: { value: AppointmentPurpose; label: string }[] = [
+   126→   126→  { value: 'Eye Exam', label: 'Eye Exam' },
+   127→   127→  { value: 'Frame Selection', label: 'Frame Selection' },
+   128→   128→  { value: 'Lens Fitting', label: 'Lens Fitting' },
+   129→   129→  { value: 'Delivery', label: 'Delivery' },
+   130→   130→  { value: 'Follow-up', label: 'Follow-up' },
+   131→   131→  { value: 'Walk-in', label: 'Walk-in' },
+   132→   132→  { value: 'Other', label: 'Other' },
+   133→   133→]
+   134→   134→
+   135→   135→const PURPOSE_COLORS: Record<string, string> = {
+   136→   136→  'Eye Exam': 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-400 border-teal-200 dark:border-teal-800',
+   137→   137→  'Frame Selection': 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 border-purple-200 dark:border-purple-800',
+   138→   138→  'Lens Fitting': 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800',
+   139→   139→  'Delivery': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
+   140→   140→  'Follow-up': 'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400 border-sky-200 dark:border-sky-800',
+   141→   141→  'Walk-in': 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800',
+   142→   142→  'Other': 'bg-gray-100 text-gray-700 dark:bg-gray-800/30 dark:text-gray-400 border-gray-200 dark:border-gray-800',
+   143→   143→}
+   144→   144→
+   145→   145→const STATUS_VARIANTS: Record<string, { label: string; className: string }> = {
+   146→   146→  Scheduled: {
+   147→   147→    label: 'Scheduled',
+   148→   148→    className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800',
+   149→   149→  },
+   150→   150→  Confirmed: {
+   151→   151→    label: 'Confirmed',
+   152→   152→    className: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800',
+   153→   153→  },
+   154→   154→  Completed: {
+   155→   155→    label: 'Completed',
+   156→   156→    className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800',
+   157→   157→  },
+   158→   158→  Cancelled: {
+   159→   159→    label: 'Cancelled',
+   160→   160→    className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800',
+   161→   161→  },
+   162→   162→  'No-Show': {
+   163→   163→    label: 'No-Show',
+   164→   164→    className: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800',
+   165→   165→  },
+   166→   166→}
+   167→   167→
+   168→   168→const STATUS_LIST: string[] = ['Scheduled', 'Confirmed', 'Completed', 'Cancelled', 'No-Show']
+   169→   169→
+   170→   170→const RECURRENCE_OPTIONS = [
+   171→   171→  { value: '', label: 'Does not repeat' },
+   172→   172→  { value: 'weekly', label: 'Every week' },
+   173→   173→  { value: 'biweekly', label: 'Every 2 weeks' },
+   174→   174→  { value: 'monthly', label: 'Every month' },
+   175→   175→] as const
+   176→   176→
+   177→   177→const WEEK_TIME_SLOTS: string[] = [
+   178→   178→  '09:00', '10:00', '11:00', '12:00', '13:00',
+   179→   179→  '14:00', '15:00', '16:00', '17:00', '18:00', '19:00',
+   180→   180→]
+   181→   181→
+   182→   182→const WEEK_DAYS: string[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+   183→   183→
+   184→   184→// ─── Helpers ─────────────────────────────────────────────────────────────────
+   185→   185→
+   186→   186→function formatDate(dateStr: string): string {
+   187→   187→  try {
+   188→   188→    const date = parseISO(dateStr)
+   189→   189→    if (isToday(date)) return 'Today'
+   190→   190→    return format(date, 'MMM d, yyyy')
+   191→   191→  } catch {
+   192→   192→    return dateStr
+   193→   193→  }
+   194→   194→}
+   195→   195→
+   196→   196→function formatTime(timeStr: string | null | undefined): string {
+   197→   197→  if (!timeStr) return '—'
+   198→   198→  try {
+   199→   199→    const [hours, minutes] = timeStr.split(':').map(Number)
+   200→   200→    const period = hours >= 12 ? 'PM' : 'AM'
+   201→   201→    const displayHours = hours % 12 || 12
+   202→   202→    return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`
+   203→   203→  } catch {
+   204→   204→    return timeStr
+   205→   205→  }
+   206→   206→}
+   207→   207→
+   208→   208→function toDateString(date: Date): string {
+   209→   209→  return format(date, 'yyyy-MM-dd')
+   210→   210→}
+   211→   211→
+   212→   212→function transformAppointment(raw: Record<string, unknown>): Appointment {
+   213→   213→  const customer = raw.customer as { id: string; name: string; phone?: string; email?: string } | undefined
+   214→   214→  return {
+   215→   215→    id: raw.id as string,
+   216→   216→    customerId: raw.customerId as string,
+   217→   217→    customer,
+   218→   218→    customerName: customer?.name ?? 'Unknown',
+   219→   219→    customerPhone: customer?.phone,
+   220→   220→    date: raw.date as string,
+   221→   221→    time: (raw.time as string) ?? null,
+   222→   222→    purpose: (raw.purpose as string) ?? null,
+   223→   223→    status: (raw.status as string) ?? 'Scheduled',
+   224→   224→    notes: (raw.notes as string) ?? null,
+   225→   225→    createdAt: (raw.createdAt as string) ?? '',
+   226→   226→    updatedAt: (raw.updatedAt as string) ?? '',
+   227→   227→  }
+   228→   228→}
+   229→   229→
+   230→   230→// ─── Sub-components ──────────────────────────────────────────────────────────
+   231→   231→
+   232→   232→function StatusBadge({ status }: { status: string }) {
+   233→   233→  const config = STATUS_VARIANTS[status] ?? STATUS_VARIANTS.Scheduled
+   234→   234→  return (
+   235→   235→    <Badge variant="outline" className={cn('text-xs font-medium', config.className)}>
+   236→   236→      {config.label}
+   237→   237→    </Badge>
+   238→   238→  )
+   239→   239→}
+   240→   240→
+   241→   241→function PurposeBadge({ purpose }: { purpose: string | null | undefined }) {
+   242→   242→  if (!purpose) return null
+   243→   243→  return (
+   244→   244→    <Badge variant="outline" className={cn('text-xs', PURPOSE_COLORS[purpose] ?? PURPOSE_COLORS['Other'])}>
+   245→   245→      {purpose}
+   246→   246→    </Badge>
+   247→   247→  )
+   248→   248→}
+   249→   249→
+   250→   250→function TableSkeleton() {
+   251→   251→  return (
+   252→   252→    <div className="space-y-3 p-4">
+   253→   253→      {Array.from({ length: 5 }).map((_, i) => (
+   254→   254→        <div key={i} className="flex items-center gap-4">
+   255→   255→          <Skeleton className="h-4 w-28" />
+   256→   256→          <Skeleton className="h-4 w-32" />
+   257→   257→          <Skeleton className="h-5 w-20 rounded-full" />
+   258→   258→          <Skeleton className="h-5 w-24 rounded-full" />
+   259→   259→          <Skeleton className="h-4 w-40" />
+   260→   260→          <Skeleton className="h-8 w-8" />
+   261→   261→        </div>
+   262→   262→      ))}
+   263→   263→    </div>
+   264→   264→  )
+   265→   265→}
+   266→   266→
+   267→   267→// ─── Appointment Form Dialog ─────────────────────────────────────────────────
+   268→   268→
+   269→   269→interface AppointmentFormDialogProps {
+   270→   270→  open: boolean
+   271→   271→  onOpenChange: (open: boolean) => void
+   272→   272→  appointment?: Appointment | null
+   273→   273→  customers: Customer[]
+   274→   274→  isWalkIn?: boolean
+   275→   275→  onSubmit: (data: {
+   276→   276→    customerId: string
+   277→   277→    date: string
+   278→   278→    time: string
+   279→   279→    purpose: string
+   280→   280→    status: string
+   281→   281→    notes: string
+   282→   282→    isWalkIn?: boolean
+   283→   283→  }) => Promise<void>
+   284→   284→}
+   285→   285→
+   286→   286→function AppointmentFormDialog({
+   287→   287→  open,
+   288→   288→  onOpenChange,
+   289→   289→  appointment,
+   290→   290→  customers,
+   291→   291→  isWalkIn = false,
+   292→   292→  onSubmit,
+   293→   293→}: AppointmentFormDialogProps) {
+   294→   294→  const isEditing = !!appointment
+   295→   295→  const [submitting, setSubmitting] = useState(false)
+   296→   296→  const [customerId, setCustomerId] = useState(appointment?.customerId ?? '')
+   297→   297→  const [date, setDate] = useState(appointment?.date ? toDateString(parseISO(appointment.date)) : toDateString(new Date()))
+   298→   298→  const [time, setTime] = useState(appointment?.time ?? '09:00')
+   299→   299→  const [purpose, setPurpose] = useState<string>(appointment?.purpose ?? 'Eye Exam')
+   300→   300→  const [status, setStatus] = useState(appointment?.status ?? 'Scheduled')
+   301→   301→  const [notes, setNotes] = useState(appointment?.notes ?? '')
+   302→   302→  const [recurrence, setRecurrence] = useState(appointment?.recurrence ?? '')
+   303→   303→  const [customerSearch, setCustomerSearch] = useState('')
+   304→   304→  const [showCustomerPicker, setShowCustomerPicker] = useState(false)
+   305→   305→
+   306→   306→  useEffect(() => {
+   307→   307→    if (open) {
+   308→   308→      // If creating a new appointment with walk-in mode, prefill purpose & status
+   309→   309→      if (!appointment && isWalkIn) {
+   310→   310→        setCustomerId('')
+   311→   311→        setDate(toDateString(new Date()))
+   312→   312→        setTime(format(new Date(), 'HH:mm'))
+   313→   313→        setPurpose('Walk-in')
+   314→   314→        setStatus('Completed')
+   315→   315→        setNotes('')
+   316→   316→      } else {
+   317→   317→        setCustomerId(appointment?.customerId ?? '')
+   318→   318→        setDate(appointment?.date ? toDateString(parseISO(appointment.date)) : toDateString(new Date()))
+   319→   319→        setTime(appointment?.time ?? '09:00')
+   320→   320→        setPurpose(appointment?.purpose ?? 'Eye Exam')
+   321→   321→        setStatus(appointment?.status ?? 'Scheduled')
+   322→   322→        setNotes(appointment?.notes ?? '')
+   323→   323→      }
+   324→   324→      setCustomerSearch('')
+   325→   325→      setShowCustomerPicker(false)
+   326→   326→    }
+   327→   327→  }, [open, appointment, isWalkIn])
+   328→   328→
+   329→   329→  const selectedCustomer = useMemo(
+   330→   330→    () => customers.find((c) => c.id === customerId),
+   331→   331→    [customers, customerId]
+   332→   332→  )
+   333→   333→
+   334→   334→  const filteredCustomers = useMemo(() => {
+   335→   335→    if (!customerSearch.trim()) return customers.slice(0, 8)
+   336→   336→    const q = customerSearch.toLowerCase()
+   337→   337→    return customers.filter(
+   338→   338→      (c) =>
+   339→   339→        c.name.toLowerCase().includes(q) ||
+   340→   340→        c.email?.toLowerCase().includes(q) ||
+   341→   341→        c.phone?.includes(q)
+   342→   342→    )
+   343→   343→  }, [customers, customerSearch])
+   344→   344→
+   345→   345→  const canSubmit = customerId && date && time && purpose
+   346→   346→
+   347→   347→  const handleSubmit = async () => {
+   348→   348→    if (!canSubmit) return
+   349→   349→    setSubmitting(true)
+   350→   350→    try {
+   351→   351→      await onSubmit({ customerId, date, time, purpose, status, notes, recurrence, isWalkIn: isEditing ? false : isWalkIn })
+   352→   352→      onOpenChange(false)
+   353→   353→    } finally {
+   354→   354→      setSubmitting(false)
+   355→   355→    }
+   356→   356→  }
+   357→   357→
+   358→   358→  return (
+   359→   359→    <Dialog open={open} onOpenChange={onOpenChange}>
+   360→   360→      <DialogContent className="sm:max-w-[500px]">
+   361→   361→        <DialogHeader>
+   362→   362→          <DialogTitle>{isEditing ? 'Edit Appointment' : isWalkIn ? 'New Walk-in' : 'New Appointment'}</DialogTitle>
+   363→   363→          <DialogDescription>
+   364→   364→            {isEditing
+   365→   365→              ? 'Update the appointment details below.'
+   366→   366→              : isWalkIn
+   367→   367→                ? 'Quickly register a walk-in visit.'
+   368→   368→                : 'Schedule a new appointment by filling in the details below.'}
+   369→   369→          </DialogDescription>
+   370→   370→        </DialogHeader>
+   371→   371→
+   372→   372→        <div className="space-y-4 py-2">
+   373→   373→          {/* Walk-in indicator */}
+   374→   374→          {!isEditing && isWalkIn && (
+   375→   375→            <div className="flex items-center gap-2 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 p-3">
+   376→   376→              <Footprints className="size-4 text-orange-600 dark:text-orange-400 shrink-0" />
+   377→   377→              <span className="text-sm text-orange-800 dark:text-orange-300">
+   378→   378→                Walk-in mode — purpose and status are auto-set. You can still change them below.
+   379→   379→              </span>
+   380→   380→            </div>
+   381→   381→          )}
+   382→   382→
+   383→   383→          {/* Customer Selection */}
+   384→   384→          <div className="space-y-2">
+   385→   385→            <Label htmlFor="customer" className="flex items-center gap-1.5">
+   386→   386→              <User className="size-3.5" />
+   387→   387→              Customer <span className="text-destructive">*</span>
+   388→   388→            </Label>
+   389→   389→            <Popover open={showCustomerPicker} onOpenChange={setShowCustomerPicker}>
+   390→   390→              <PopoverTrigger asChild>
+   391→   391→                <Button
+   392→   392→                  id="customer"
+   393→   393→                  variant="outline"
+   394→   394→                  role="combobox"
+   395→   395→                  aria-expanded={showCustomerPicker}
+   396→   396→                  className="w-full justify-between font-normal"
+   397→   397→                >
+   398→   398→                  {selectedCustomer ? (
+   399→   399→                    <span className="flex items-center gap-2">
+   400→   400→                      <span>{selectedCustomer.name}</span>
+   401→   401→                      {selectedCustomer.phone && (
+   402→   402→                        <span className="text-muted-foreground text-xs">{selectedCustomer.phone}</span>
+   403→   403→                      )}
+   404→   404→                    </span>
+   405→   405→                  ) : (
+   406→   406→                    <span className="text-muted-foreground">Search & select customer...</span>
+   407→   407→                  )}
+   408→   408→                </Button>
+   409→   409→              </PopoverTrigger>
+   410→   410→              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+   411→   411→                <div className="p-2 border-b">
+   412→   412→                  <div className="relative">
+   413→   413→                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+   414→   414→                    <Input
+   415→   415→                      placeholder="Search customers..."
+   416→   416→                      value={customerSearch}
+   417→   417→                      onChange={(e) => setCustomerSearch(e.target.value)}
+   418→   418→                      className="pl-8 h-8"
+   419→   419→                    />
+   420→   420→                  </div>
+   421→   421→                </div>
+   422→   422→                <ScrollArea className="max-h-48">
+   423→   423→                  <div className="p-1">
+   424→   424→                    {filteredCustomers.length === 0 ? (
+   425→   425→                      <p className="text-sm text-muted-foreground p-2 text-center">No customers found.</p>
+   426→   426→                    ) : (
+   427→   427→                      filteredCustomers.map((customer) => (
+   428→   428→                        <button
+   429→   429→                          key={customer.id}
+   430→   430→                          type="button"
+   431→   431→                          className={cn(
+   432→   432→                            'flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors text-left',
+   433→   433→                            customerId === customer.id && 'bg-accent'
+   434→   434→                          )}
+   435→   435→                          onClick={() => {
+   436→   436→                            setCustomerId(customer.id)
+   437→   437→                            setShowCustomerPicker(false)
+   438→   438→                            setCustomerSearch('')
+   439→   439→                          }}
+   440→   440→                        >
+   441→   441→                          <div className="flex flex-col">
+   442→   442→                            <span className="font-medium">{customer.name}</span>
+   443→   443→                            <span className="text-xs text-muted-foreground">
+   444→   444→                              {customer.email || customer.phone || 'No contact info'}
+   445→   445→                            </span>
+   446→   446→                          </div>
+   447→   447→                        </button>
+   448→   448→                      ))
+   449→   449→                    )}
+   450→   450→                  </div>
+   451→   451→                </ScrollArea>
+   452→   452→              </PopoverContent>
+   453→   453→            </Popover>
+   454→   454→          </div>
+   455→   455→
+   456→   456→          {/* Date & Time */}
+   457→   457→          <div className="grid grid-cols-2 gap-4">
+   458→   458→            <div className="space-y-2">
+   459→   459→              <Label htmlFor="date" className="flex items-center gap-1.5">
+   460→   460→                <CalendarIcon className="size-3.5" />
+   461→   461→                Date <span className="text-destructive">*</span>
+   462→   462→              </Label>
+   463→   463→              <Input
+   464→   464→                id="date"
+   465→   465→                type="date"
+   466→   466→                value={date}
+   467→   467→                onChange={(e) => setDate(e.target.value)}
+   468→   468→              />
+   469→   469→            </div>
+   470→   470→            <div className="space-y-2">
+   471→   471→              <Label htmlFor="time" className="flex items-center gap-1.5">
+   472→   472→                <Clock className="size-3.5" />
+   473→   473→                Time <span className="text-destructive">*</span>
+   474→   474→              </Label>
+   475→   475→              <Input
+   476→   476→                id="time"
+   477→   477→                type="time"
+   478→   478→                value={time}
+   479→   479→                onChange={(e) => setTime(e.target.value)}
+   480→   480→              />
+   481→   481→            </div>
+   482→   482→          </div>
+   483→   483→
+   484→   484→          {/* Purpose & Status */}
+   485→   485→          <div className="grid grid-cols-2 gap-4">
+   486→   486→            <div className="space-y-2">
+   487→   487→              <Label htmlFor="purpose" className="flex items-center gap-1.5">
+   488→   488→                <FileText className="size-3.5" />
+   489→   489→                Purpose
+   490→   490→              </Label>
+   491→   491→              <Select value={purpose} onValueChange={setPurpose}>
+   492→   492→                <SelectTrigger id="purpose" className="w-full">
+   493→   493→                  <SelectValue placeholder="Select purpose" />
+   494→   494→                </SelectTrigger>
+   495→   495→                <SelectContent>
+   496→   496→                  {PURPOSE_OPTIONS.map((opt) => (
+   497→   497→                    <SelectItem key={opt.value} value={opt.value}>
+   498→   498→                      {opt.label}
+   499→   499→                    </SelectItem>
+   500→   500→                  ))}
+   501→   501→                </SelectContent>
+   502→   502→              </Select>
+   503→   503→            </div>
+   504→   504→            <div className="space-y-2">
+   505→   505→              <Label htmlFor="status">Status</Label>
+   506→   506→              <Select value={status} onValueChange={setStatus}>
+   507→   507→                <SelectTrigger id="status" className="w-full">
+   508→   508→                  <SelectValue placeholder="Select status" />
+   509→   509→                </SelectTrigger>
+   510→   510→                <SelectContent>
+   511→   511→                  {STATUS_LIST.map((s) => (
+   512→   512→                    <SelectItem key={s} value={s}>{s}</SelectItem>
+   513→   513→                  ))}
+   514→   514→                </SelectContent>
+   515→   515→              </Select>
+   516→   516→            </div>
+   517→   517→          </div>
+   518→   518→
+   519→   519→          {/* Notes */}
+   520→   520→          <div className="space-y-2">
+   521→   521→            <Label htmlFor="notes">Notes</Label>
+   522→   522→            <Textarea
+   523→   523→              id="notes"
+   524→   524→              value={notes}
+   525→   525→              onChange={(e) => setNotes(e.target.value)}
+   526→   526→              placeholder="Add any relevant notes for this appointment..."
+   527→   527→              rows={3}
+   528→   528→              className="resize-none"
+   529→   529→            />
+   530→   530→          </div>
+   531→   531→
+   532→   532→          {/* Recurrence (new appointments only) */}
+   533→   533→          {!isEditing && (
+   534→   534→            <div className="space-y-2">
+   535→   535→              <Label>Repeat</Label>
+   536→   536→              <Select value={recurrence} onValueChange={setRecurrence}>
+   537→   537→                <SelectTrigger>
+   538→   538→                  <SelectValue placeholder="Does not repeat" />
+   539→   539→                </SelectTrigger>
+   540→   540→                <SelectContent>
+   541→   541→                  {RECURRENCE_OPTIONS.map((opt) => (
+   542→   542→                    <SelectItem key={opt.value || 'none'} value={opt.value || 'none'}>
+   543→   543→                      {opt.label}
+   544→   544→                    </SelectItem>
+   545→   545→                  ))}
+   546→   546→                </SelectContent>
+   547→   547→              </Select>
+   548→   548→            </div>
+   549→   549→          )}
+   550→   550→        </div>
+   551→   551→
+   552→   552→        <DialogFooter>
+   553→   553→          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
+   554→   554→            Cancel
+   555→   555→          </Button>
+   556→   556→          <Button onClick={handleSubmit} disabled={!canSubmit || submitting}>
+   557→   557→            {submitting && <Loader2 className="size-4 animate-spin mr-2" />}
+   558→   558→            {isEditing ? 'Save Changes' : isWalkIn ? 'Register Walk-in' : 'Create Appointment'}
+   559→   559→          </Button>
+   560→   560→        </DialogFooter>
+   561→   561→      </DialogContent>
+   562→   562→    </Dialog>
+   563→   563→  )
+   564→   564→}
+   565→   565→
+   566→   566→// ─── Calendar Month View ───────────────────────────────────────────────────
+   567→   567→
+   568→   568→interface CalendarViewProps {
+   569→   569→  appointments: Appointment[]
+   570→   570→  selectedDate: Date | undefined
+   571→   571→  onDateSelect: (date: Date) => void
+   572→   572→}
+   573→   573→
+   574→   574→function CalendarMonthView({ appointments, selectedDate, onDateSelect }: CalendarViewProps) {
+   575→   575→  const [currentMonth, setCurrentMonth] = useState(new Date())
+   576→   576→
+   577→   577→  const appointmentDateMap = useMemo(() => {
+   578→   578→    const map: Record<string, { total: number; scheduled: number; completed: number; cancelled: number; confirmed: number; noshow: number }> = {}
+   579→   579→    appointments.forEach((apt) => {
+   580→   580→      const dateStr = apt.date.startsWith('{') ? '' : apt.date
+   581→   581→      const dayOnly = dateStr ? toDateString(parseISO(dateStr)) : ''
+   582→   582→      if (!dayOnly) return
+   583→   583→      if (!map[dayOnly]) {
+   584→   584→        map[dayOnly] = { total: 0, scheduled: 0, completed: 0, cancelled: 0, confirmed: 0, noshow: 0 }
+   585→   585→      }
+   586→   586→      map[dayOnly].total++
+   587→   587→      const s = apt.status.toLowerCase()
+   588→   588→      if (s === 'scheduled') map[dayOnly].scheduled++
+   589→   589→      else if (s === 'confirmed') map[dayOnly].confirmed++
+   590→   590→      else if (s === 'completed') map[dayOnly].completed++
+   591→   591→      else if (s === 'cancelled') map[dayOnly].cancelled++
+   592→   592→      else if (s === 'no-show') map[dayOnly].noshow++
+   593→   593→    })
+   594→   594→    return map
+   595→   595→  }, [appointments])
+   596→   596→
+   597→   597→  const appointmentDates = useMemo(() => {
+   598→   598→    const dates: Set<string> = new Set()
+   599→   599→    appointments.forEach((apt) => {
+   600→   600→      try {
+   601→   601→        const dateStr = apt.date.startsWith('{') ? '' : apt.date
+   602→   602→        if (dateStr && isSameMonth(parseISO(dateStr), currentMonth)) {
+   603→   603→          dates.add(toDateString(parseISO(dateStr)))
+   604→   604→        }
+   605→   605→      } catch {
+   606→   606→        // skip
+   607→   607→      }
+   608→   608→    })
+   609→   609→    return dates
+   610→   610→  }, [appointments, currentMonth])
+   611→   611→
+   612→   612→  const selectedDateApts = useMemo(() => {
+   613→   613→    if (!selectedDate) return []
+   614→   614→    const dateStr = toDateString(selectedDate)
+   615→   615→    return appointments
+   616→   616→      .filter((apt) => {
+   617→   617→        try {
+   618→   618→          return toDateString(parseISO(apt.date)) === dateStr
+   619→   619→        } catch {
+   620→   620→          return false
+   621→   621→        }
+   622→   622→      })
+   623→   623→      .sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''))
+   624→   624→  }, [appointments, selectedDate])
+   625→   625→
+   626→   626→  const dayRender = (day: Date) => {
+   627→   627→    const dateStr = toDateString(day)
+   628→   628→    const info = appointmentDateMap[dateStr]
+   629→   629→    if (!info) return null
+   630→   630→    return (
+   631→   631→      <div className="flex gap-0.5 justify-center mt-0.5">
+   632→   632→        {(info.scheduled + info.confirmed) > 0 && (
+   633→   633→          <span className="size-1 rounded-full bg-blue-500" />
+   634→   634→        )}
+   635→   635→        {info.completed > 0 && (
+   636→   636→          <span className="size-1 rounded-full bg-green-500" />
+   637→   637→        )}
+   638→   638→        {(info.cancelled + info.noshow) > 0 && (
+   639→   639→          <span className="size-1 rounded-full bg-red-500" />
+   640→   640→        )}
+   641→   641→      </div>
+   642→   642→    )
+   643→   643→  }
+   644→   644→
+   645→   645→  const totalMonthAppointments = useMemo(() => {
+   646→   646→    return appointments.filter((apt) => {
+   647→   647→      try {
+   648→   648→        return isSameMonth(parseISO(apt.date), currentMonth)
+   649→   649→      } catch {
+   650→   650→        return false
+   651→   651→      }
+   652→   652→    }).length
+   653→   653→  }, [appointments, currentMonth])
+   654→   654→
+   655→   655→  return (
+   656→   656→    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+   657→   657→      {/* Calendar Grid */}
+   658→   658→      <Card className="lg:col-span-2">
+   659→   659→        <CardHeader className="pb-3">
+   660→   660→          <div className="flex items-center justify-between">
+   661→   661→            <CardTitle className="text-lg flex items-center gap-2">
+   662→   662→              <CalendarDays className="size-5" />
+   663→   663→              {format(currentMonth, 'MMMM yyyy')}
+   664→   664→            </CardTitle>
+   665→   665→            <Badge variant="secondary" className="text-xs">
+   666→   666→              {totalMonthAppointments} appointment{totalMonthAppointments !== 1 ? 's' : ''}
+   667→   667→            </Badge>
+   668→   668→          </div>
+   669→   669→        </CardHeader>
+   670→   670→        <CardContent>
+   671→   671→          <DayPicker
+   672→   672→            mode="single"
+   673→   673→            selected={selectedDate}
+   674→   674→            onSelect={(date) => date && onDateSelect(date)}
+   675→   675→            month={currentMonth}
+   676→   676→            onMonthChange={setCurrentMonth}
+   677→   677→            showOutsideDays
+   678→   678→            modifiers={{
+   679→   679→              hasAppointments: (day) => appointmentDates.has(toDateString(day)),
+   680→   680→            }}
+   681→   681→            modifiersStyles={{
+   682→   682→              hasAppointments: { fontWeight: '600' },
+   683→   683→            }}
+   684→   684→            className="mx-auto"
+   685→   685→            classNames={{
+   686→   686→              day: 'relative w-full h-full p-0 text-center [&:first-child[data-selected=true]_button]:rounded-l-md [&:last-child[data-selected=true]_button]:rounded-r-md group/day aspect-square select-none',
+   687→   687→            }}
+   688→   688→            components={{
+   689→   689→              DayContent: ({ date }) => (
+   690→   690→                <div className="flex flex-col items-center justify-center w-full h-full py-1">
+   691→   691→                  <span>{format(date, 'd')}</span>
+   692→   692→                  {dayRender(date)}
+   693→   693→                </div>
+   694→   694→              ),
+   695→   695→            }}
+   696→   696→          />
+   697→   697→          <div className="flex items-center justify-center gap-4 mt-4 text-xs text-muted-foreground flex-wrap">
+   698→   698→            <div className="flex items-center gap-1.5">
+   699→   699→              <span className="size-2 rounded-full bg-blue-500" />
+   700→   700→              Scheduled / Confirmed
+   701→   701→            </div>
+   702→   702→            <div className="flex items-center gap-1.5">
+   703→   703→              <span className="size-2 rounded-full bg-green-500" />
+   704→   704→              Completed
+   705→   705→            </div>
+   706→   706→            <div className="flex items-center gap-1.5">
+   707→   707→              <span className="size-2 rounded-full bg-red-500" />
+   708→   708→              Cancelled / No-Show
+   709→   709→            </div>
+   710→   710→          </div>
+   711→   711→        </CardContent>
+   712→   712→      </Card>
+   713→   713→
+   714→   714→      {/* Selected Date Details */}
+   715→   715→      <Card>
+   716→   716→        <CardHeader className="pb-3">
+   717→   717→          <CardTitle className="text-lg">
+   718→   718→            {selectedDate
+   719→   719→              ? isToday(selectedDate)
+   720→   720→                ? "Today's Appointments"
+   721→   721→                : format(selectedDate, 'EEEE, MMM d')
+   722→   722→              : 'Select a Date'}
+   723→   723→          </CardTitle>
+   724→   724→        </CardHeader>
+   725→   725→        <CardContent>
+   726→   726→          {!selectedDate ? (
+   727→   727→            <div className="flex flex-col items-center justify-center py-8 text-center">
+   728→   728→              <CalendarDays className="size-10 text-muted-foreground/40 mb-3" />
+   729→   729→              <p className="text-sm text-muted-foreground">Click on a date to view appointments.</p>
+   730→   730→            </div>
+   731→   731→          ) : selectedDateApts.length === 0 ? (
+   732→   732→            <div className="flex flex-col items-center justify-center py-8 text-center">
+   733→   733→              <Clock className="size-10 text-muted-foreground/40 mb-3" />
+   734→   734→              <p className="text-sm text-muted-foreground">No appointments scheduled.</p>
+   735→   735→            </div>
+   736→   736→          ) : (
+   737→   737→            <ScrollArea className="max-h-[400px]">
+   738→   738→              <div className="space-y-3 pr-3">
+   739→   739→                {selectedDateApts.map((apt) => (
+   740→   740→                  <div
+   741→   741→                    key={apt.id}
+   742→   742→                    className="rounded-lg border p-3 space-y-2 hover:bg-accent/50 transition-colors"
+   743→   743→                  >
+   744→   744→                    <div className="flex items-center justify-between">
+   745→   745→                      <span className="font-medium text-sm">{formatTime(apt.time)}</span>
+   746→   746→                      <StatusBadge status={apt.status} />
+   747→   747→                    </div>
+   748→   748→                    <div className="text-sm font-medium">{apt.customerName}</div>
+   749→   749→                    {apt.purpose && <PurposeBadge purpose={apt.purpose} />}
+   750→   750→                    {apt.notes && (
+   751→   751→                      <p className="text-xs text-muted-foreground line-clamp-2">{apt.notes}</p>
+   752→   752→                    )}
+   753→   753→                  </div>
+   754→   754→                ))}
+   755→   755→              </div>
+   756→   756→            </ScrollArea>
+   757→   757→          )}
+   758→   758→        </CardContent>
+   759→   759→      </Card>
+   760→   760→    </div>
+   761→   761→  )
+   762→   762→}
+   763→   763→
+   764→   764→// ─── Calendar Week View ─────────────────────────────────────────────────────
+   765→   765→
+   766→   766→function CalendarWeekView({ appointments }: { appointments: Appointment[] }) {
+   767→   767→  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }))
+   768→   768→
+   769→   769→  const weekDates = useMemo(() => {
+   770→   770→    return WEEK_DAYS.map((_, i) => addDays(weekStart, i))
+   771→   771→  }, [weekStart])
+   772→   772→
+   773→   773→  const handlePrevWeek = () => setWeekStart((w) => addDays(w, -7))
+   774→   774→  const handleNextWeek = () => setWeekStart((w) => addDays(w, 7))
+   775→   775→  const handleGoToday = () => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))
+   776→   776→
+   777→   777→  // Build lookup: { 'yyyy-MM-dd:HH:MM': Appointment[] }
+   778→   778→  const slotMap = useMemo(() => {
+   779→   779→    const map: Record<string, Appointment[]> = {}
+   780→   780→    appointments.forEach((apt) => {
+   781→   781→      try {
+   782→   782→        const dateStr = apt.date.startsWith('{') ? '' : apt.date
+   783→   783→        if (!dateStr) return
+   784→   784→        const d = toDateString(parseISO(dateStr))
+   785→   785→        const timeKey = apt.time ? apt.time.substring(0, 5) : null
+   786→   786→        if (timeKey && WEEK_TIME_SLOTS.includes(timeKey)) {
+   787→   787→          const key = `${d}:${timeKey}`
+   788→   788→          if (!map[key]) map[key] = []
+   789→   789→          map[key].push(apt)
+   790→   790→        }
+   791→   791→      } catch {
+   792→   792→        // skip
+   793→   793→      }
+   794→   794→    })
+   795→   795→    return map
+   796→   796→  }, [appointments])
+   797→   797→
+   798→   798→  return (
+   799→   799→    <Card>
+   800→   800→      <CardHeader className="pb-3">
+   801→   801→        <div className="flex items-center justify-between flex-wrap gap-2">
+   802→   802→          <CardTitle className="text-lg flex items-center gap-2">
+   803→   803→            <CalendarRange className="size-5" />
+   804→   804→            Week of {format(weekStart, 'MMM d')} – {format(addDays(weekStart, 6), 'MMM d, yyyy')}
+   805→   805→          </CardTitle>
+   806→   806→          <div className="flex items-center gap-2">
+   807→   807→            <Button variant="outline" size="sm" className="min-h-[44px] touch-manipulation" onClick={handleGoToday}>
+   808→   808→              Today
+   809→   809→            </Button>
+   810→   810→            <Button variant="outline" size="icon" className="min-w-[44px] min-h-[44px] touch-manipulation" onClick={handlePrevWeek}>
+   811→   811→              <ChevronLeft className="size-4" />
+   812→   812→            </Button>
+   813→   813→            <Button variant="outline" size="icon" className="min-w-[44px] min-h-[44px] touch-manipulation" onClick={handleNextWeek}>
+   814→   814→              <ChevronRight className="size-4" />
+   815→   815→            </Button>
+   816→   816→          </div>
+   817→   817→        </div>
+   818→   818→      </CardHeader>
+   819→   819→      <CardContent className="p-0">
+   820→   820→        <ScrollArea className="w-full">
+   821→   821→          <div className="min-w-[640px]">
+   822→   822→            {/* Header row */}
+   823→   823→            <div className="grid grid-cols-8 border-b">
+   824→   824→              <div className="p-2 text-xs font-medium text-muted-foreground text-center border-r">
+   825→   825→                Time
+   826→   826→              </div>
+   827→   827→              {weekDates.map((d, i) => {
+   828→   828→                const isDateToday = isToday(d)
+   829→   829→                const isSelected = toDateString(d) === toDateString(weekStart)
+   830→   830→                return (
+   831→   831→                  <div
+   832→   832→                    key={i}
+   833→   833→                    className={cn(
+   834→   834→                      'p-2 text-center border-r last:border-r-0',
+   835→   835→                      isDateToday && 'bg-blue-50 dark:bg-blue-950/30'
+   836→   836→                    )}
+   837→   837→                  >
+   838→   838→                    <div className="text-xs font-medium text-muted-foreground">{WEEK_DAYS[i]}</div>
+   839→   839→                    <div
+   840→   840→                      className={cn(
+   841→   841→                        'text-sm font-semibold mt-0.5',
+   842→   842→                        isDateToday && 'text-blue-600 dark:text-blue-400'
+   843→   843→                      )}
+   844→   844→                    >
+   845→   845→                      {format(d, 'd')}
+   846→   846→                    </div>
+   847→   847→                  </div>
+   848→   848→                )
+   849→   849→              })}
+   850→   850→            </div>
+   851→   851→
+   852→   852→            {/* Time rows */}
+   853→   853→            {WEEK_TIME_SLOTS.map((slot) => (
+   854→   854→              <div key={slot} className="grid grid-cols-8 border-b last:border-b-0 min-h-[3rem]">
+   855→   855→                <div className="p-1.5 text-xs font-mono text-muted-foreground text-center flex items-center justify-center border-r">
+   856→   856→                  {formatTime(slot)}
+   857→   857→                </div>
+   858→   858→                {weekDates.map((d, i) => {
+   859→   859→                  const key = `${toDateString(d)}:${slot}`
+   860→   860→                  const slotApts = slotMap[key] ?? []
+   861→   861→                  const isDateToday = isToday(d)
+   862→   862→                  return (
+   863→   863→                    <div
+   864→   864→                      key={i}
+   865→   865→                      className={cn(
+   866→   866→                        'p-0.5 border-r last:border-r-0 border-b',
+   867→   867→                        isDateToday && 'bg-blue-50/50 dark:bg-blue-950/10'
+   868→   868→                      )}
+   869→   869→                    >
+   870→   870→                      {slotApts.length > 0 ? (
+   871→   871→                        <div className="space-y-0.5">
+   872→   872→                          {slotApts.map((apt) => (
+   873→   873→                            <div
+   874→   874→                              key={apt.id}
+   875→   875→                              className="rounded px-1.5 py-0.5 text-[10px] leading-tight truncate"
+   876→   876→                              style={{
+   877→   877→                                backgroundColor: apt.purpose
+   878→   878→                                  ? (apt.status === 'Completed' ? '#dcfce7' : apt.status === 'Cancelled' ? '#fee2e2' : '#dbeafe')
+   879→   879→                                  : '#f3f4f6',
+   880→   880→                              }}
+   881→   881→                            >
+   882→   882→                              <span className="font-semibold">{apt.customerName}</span>
+   883→   883→                              {apt.purpose && (
+   884→   884→                                <span className="text-muted-foreground ml-0.5">· {apt.purpose}</span>
+   885→   885→                              )}
+   886→   886→                            </div>
+   887→   887→                          ))}
+   888→   888→                        </div>
+   889→   889→                      ) : null}
+   890→   890→                    </div>
+   891→   891→                  )
+   892→   892→                })}
+   893→   893→              </div>
+   894→   894→            ))}
+   895→   895→          </div>
+   896→   896→        </ScrollArea>
+   897→   897→      </CardContent>
+   898→   898→    </Card>
+   899→   899→  )
+   900→   900→}
+   901→   901→
+   902→   902→// ─── Main Component ──────────────────────────────────────────────────────────
+   903→   903→
+   904→   904→type ViewMode = 'list' | 'calendar' | 'week'
+   905→   905→type StatusFilter = 'all' | AppointmentStatus
+   906→   906→
+   907→   907→export default function Appointments() {
+   908→   908→  const [viewMode, setViewMode] = useState<ViewMode>('list')
+   909→   909→  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+   910→   910→  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
+   911→   911→  const [appointments, setAppointments] = useState<Appointment[]>([])
+   912→   912→  const [allAppointments, setAllAppointments] = useState<Appointment[]>([])
+   913→   913→  const [customers, setCustomers] = useState<Customer[]>([])
+   914→   914→  const [loading, setLoading] = useState(true)
+   915→   915→  const [page, setPage] = useState(1)
+   916→   916→  const [total, setTotal] = useState(0)
+   917→   917→  const pageSize = 50
+   918→   918→
+   919→   919→  // Walk-in toggle state
+   920→   920→  const [isWalkIn, setIsWalkIn] = useState(false)
+   921→   921→
+   922→   922→  // Dialogs
+   923→   923→  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+   924→   924→  const [editAppointment, setEditAppointment] = useState<Appointment | null>(null)
+   925→   925→  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+   926→   926→  const [deletingId, setDeletingId] = useState<string | null>(null)
+   927→   927→
+   928→   928→  // ─── Data Fetching ───────────────────────────────────────────────────────
+   929→   929→
+   930→   930→  const fetchAppointments = useCallback(async () => {
+   931→   931→    setLoading(true)
+   932→   932→    try {
+   933→   933→      const params = new URLSearchParams()
+   934→   934→      params.set('date', toDateString(selectedDate))
+   935→   935→      if (statusFilter !== 'all') params.set('status', statusFilter)
+   936→   936→      params.set('limit', pageSize.toString())
+   937→   937→
+   938→   938→      const res = await fetch(`/api/appointments?${params.toString()}`)
+   939→   939→      if (res.ok) {
+   940→   940→        const json = await res.json()
+   941→   941→        const data = (json.data ?? json.appointments ?? []).map(transformAppointment)
+   942→   942→        setAppointments(data.sort((a, b) => (a.time ?? '').localeCompare(b.time ?? '')))
+   943→   943→        setTotal(json.pagination?.total ?? data.length)
+   944→   944→      }
+   945→   945→    } catch {
+   946→   946→      // Silently fail
+   947→   947→    } finally {
+   948→   948→      setLoading(false)
+   949→   949→    }
+   950→   950→  }, [selectedDate, statusFilter, pageSize])
+   951→   951→
+   952→   952→  const fetchAllAppointments = useCallback(async () => {
+   953→   953→    try {
+   954→   954→      // Fetch appointments for current month (for calendar dots and stats)
+   955→   955→      const now = new Date()
+   956→   956→      const monthStart = format(new Date(now.getFullYear(), now.getMonth(), 1), 'yyyy-MM-dd')
+   957→   957→      const monthEnd = format(new Date(now.getFullYear(), now.getMonth() + 1, 0), 'yyyy-MM-dd')
+   958→   958→
+   959→   959→      const params = new URLSearchParams()
+   960→   960→      params.set('fromDate', monthStart)
+   961→   961→      params.set('toDate', monthEnd)
+   962→   962→      params.set('limit', '500')
+   963→   963→
+   964→   964→      const res = await fetch(`/api/appointments?${params.toString()}`)
+   965→   965→      if (res.ok) {
+   966→   966→        const json = await res.json()
+   967→   967→        const data = (json.data ?? json.appointments ?? []).map(transformAppointment)
+   968→   968→        setAllAppointments(data)
+   969→   969→      }
+   970→   970→    } catch {
+   971→   971→      // Silently fail
+   972→   972→    }
+   973→   973→  }, [])
+   974→   974→
+   975→   975→  const fetchCustomers = useCallback(async () => {
+   976→   976→    try {
+   977→   977→      const res = await fetch('/api/customers?limit=100')
+   978→   978→      if (res.ok) {
+   979→   979→        const json = await res.json()
+   980→   980→        setCustomers(json.data ?? json.customers ?? [])
+   981→   981→      }
+   982→   982→    } catch {
+   983→   983→      // Silently fail
+   984→   984→    }
+   985→   985→  }, [])
+   986→   986→
+   987→   987→  useEffect(() => {
+   988→   988→    fetchCustomers()
+   989→   989→  }, [fetchCustomers])
+   990→   990→
+   991→   991→  useEffect(() => {
+   992→   992→    fetchAppointments()
+   993→   993→    fetchAllAppointments()
+   994→   994→  }, [fetchAppointments, fetchAllAppointments])
+   995→   995→
+   996→   996→  // ─── Grouped Appointments by Date ─────────────────────────────────────────
+   997→   997→
+   998→   998→  const groupedAppointments = useMemo(() => {
+   999→   999→    const groups: Record<string, Appointment[]> = {}
+  1000→  1000→    appointments.forEach((apt) => {
+  1001→  1001→      try {
+  1002→  1002→        const key = toDateString(parseISO(apt.date))
+  1003→  1003→        if (!groups[key]) groups[key] = []
+  1004→  1004→        groups[key].push(apt)
+  1005→  1005→      } catch {
+  1006→  1006→        // skip
+  1007→  1007→      }
+  1008→  1008→    })
+  1009→  1009→    return groups
+  1010→  1010→  }, [appointments])
+  1011→  1011→
+  1012→  1012→  // ─── Today's Appointments ───────────────────────────────────────────────
+  1013→  1013→
+  1014→  1014→  const todayAppointments = useMemo(() => {
+  1015→  1015→    const todayStr = toDateString(new Date())
+  1016→  1016→    return allAppointments
+  1017→  1017→      .filter((apt) => {
+  1018→  1018→        try {
+  1019→  1019→          return toDateString(parseISO(apt.date)) === todayStr
+  1020→  1020→        } catch {
+  1021→  1021→          return false
+  1022→  1022→        }
+  1023→  1023→      })
+  1024→  1024→      .sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''))
+  1025→  1025→  }, [allAppointments])
+  1026→  1026→
+  1027→  1027→  // ─── Stats ──────────────────────────────────────────────────────────────
+  1028→  1028→
+  1029→  1029→  const stats = useMemo(() => {
+  1030→  1030→    const todayStr = toDateString(new Date())
+  1031→  1031→    const todayApts = allAppointments.filter((a) => {
+  1032→  1032→      try {
+  1033→  1033→        return toDateString(parseISO(a.date)) === todayStr
+  1034→  1034→      } catch {
+  1035→  1035→        return false
+  1036→  1036→      }
+  1037→  1037→    })
+  1038→  1038→    return {
+  1039→  1039→      today: todayApts.length,
+  1040→  1040→      scheduled: todayApts.filter((a) => a.status === 'Scheduled').length,
+  1041→  1041→      completed: todayApts.filter((a) => a.status === 'Completed').length,
+  1042→  1042→    }
+  1043→  1043→  }, [allAppointments])
+  1044→  1044→
+  1045→  1045→  // ─── Actions ────────────────────────────────────────────────────────────
+  1046→  1046→
+  1047→  1047→  const handleCreateAppointment = async (data: {
+  1048→  1048→    customerId: string
+  1049→  1049→    date: string
+  1050→  1050→    time: string
+  1051→  1051→    purpose: string
+  1052→  1052→    status: string
+  1053→  1053→    notes: string
+  1054→  1054→    recurrence: string
+  1055→  1055→    isWalkIn?: boolean
+  1056→  1056→  }) => {
+  1057→  1057→    try {
+  1058→  1058→      const res = await fetch('/api/appointments', {
+  1059→  1059→        method: 'POST',
+  1060→  1060→        headers: { 'Content-Type': 'application/json' },
+  1061→  1061→        body: JSON.stringify(data),
+  1062→  1062→      })
+  1063→  1063→      if (res.ok) {
+  1064→  1064→        await Promise.all([fetchAppointments(), fetchAllAppointments()])
+  1065→  1065→        return
+  1066→  1066→      }
+  1067→  1067→    } catch {
+  1068→  1068→      // fallback
+  1069→  1069→    }
+  1070→  1070→  }
+  1071→  1071→
+  1072→  1072→  const handleEditAppointment = async (data: {
+  1073→  1073→    customerId: string
+  1074→  1074→    date: string
+  1075→  1075→    time: string
+  1076→  1076→    purpose: string
+  1077→  1077→    status: string
+  1078→  1078→    notes: string
+  1079→  1079→    isWalkIn?: boolean
+  1080→  1080→  }) => {
+  1081→  1081→    if (!editAppointment) return
+  1082→  1082→    try {
+  1083→  1083→      const res = await fetch(`/api/appointments/${editAppointment.id}`, {
+  1084→  1084→        method: 'PUT',
+  1085→  1085→        headers: { 'Content-Type': 'application/json' },
+  1086→  1086→        body: JSON.stringify(data),
+  1087→  1087→      })
+  1088→  1088→      if (res.ok) {
+  1089→  1089→        setEditAppointment(null)
+  1090→  1090→        await Promise.all([fetchAppointments(), fetchAllAppointments()])
+  1091→  1091→        return
+  1092→  1092→      }
+  1093→  1093→    } catch {
+  1094→  1094→      // fallback
+  1095→  1095→    }
+  1096→  1096→    setEditAppointment(null)
+  1097→  1097→  }
+  1098→  1098→
+  1099→  1099→  const handleUpdateStatus = async (appointmentId: string, newStatus: string) => {
+  1100→  1100→    try {
+  1101→  1101→      const res = await fetch(`/api/appointments/${appointmentId}`, {
+  1102→  1102→        method: 'PATCH',
+  1103→  1103→        headers: { 'Content-Type': 'application/json' },
+  1104→  1104→        body: JSON.stringify({ status: newStatus }),
+  1105→  1105→      })
+  1106→  1106→      if (res.ok) {
+  1107→  1107→        await Promise.all([fetchAppointments(), fetchAllAppointments()])
+  1108→  1108→        return
+  1109→  1109→      }
+  1110→  1110→    } catch {
+  1111→  1111→      // fallback
+  1112→  1112→    }
+  1113→  1113→  }
+  1114→  1114→
+  1115→  1115→  const handleDeleteAppointment = async () => {
+  1116→  1116→    if (!deletingId) return
+  1117→  1117→    try {
+  1118→  1118→      const res = await fetch(`/api/appointments/${deletingId}`, { method: 'DELETE' })
+  1119→  1119→      if (res.ok) {
+  1120→  1120→        setDeleteDialogOpen(false)
+  1121→  1121→        setDeletingId(null)
+  1122→  1122→        await Promise.all([fetchAppointments(), fetchAllAppointments()])
+  1123→  1123→      }
+  1124→  1124→    } catch {
+  1125→  1125→      // fallback
+  1126→  1126→    }
+  1127→  1127→  }
+  1128→  1128→
+  1129→  1129→  const handleSMSReminder = (appointment: Appointment) => {
+  1130→  1130→    const phone = appointment.customerPhone || appointment.customer?.phone
+  1131→  1131→    if (!phone) {
+  1132→  1132→      toast.error('No phone number found for this customer')
+  1133→  1133→      return
+  1134→  1134→    }
+  1135→  1135→    const cleanPhone = phone.replace(/\D/g, '')
+  1136→  1136→    const formattedDate = formatDate(appointment.date)
+  1137→  1137→    const formattedTime = formatTime(appointment.time)
+  1138→  1138→    const message = encodeURIComponent(
+  1139→  1139→      `Hi ${appointment.customerName}, reminder from Lotus Vision Opticals:\nYour appointment is on ${formattedDate}${appointment.time ? ` at ${formattedTime}` : ''}${appointment.purpose ? ` for ${appointment.purpose}` : ''}.\nPlease visit us on time. Thank you!`
+  1140→  1140→    )
+  1141→  1141→    window.open(`https://wa.me/91${cleanPhone}?text=${message}`, '_blank')
+  1142→  1142→    toast.success('WhatsApp reminder opened', { description: 'Send the message in the opened window' })
+  1143→  1143→  }
+  1144→  1144→
+  1145→  1145→  // ─── Render ─────────────────────────────────────────────────────────────
+  1146→  1146→
+  1147→  1147→  return (
+  1148→  1148→    <div className="space-y-6">
+  1149→  1149→      {/* Header */}
+  1150→  1150→      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+  1151→  1151→        <div>
+  1152→  1152→          <h1 className="text-2xl font-bold tracking-tight">Appointments</h1>
+  1153→  1153→          <p className="text-muted-foreground text-sm mt-1">
+  1154→  1154→            Manage and schedule customer appointments.
+  1155→  1155→          </p>
+  1156→  1156→        </div>
+  1157→  1157→        <div className="flex items-center gap-2 shrink-0">
+  1158→  1158→          {/* Walk-in / Scheduled Toggle */}
+  1159→  1159→          <Tooltip>
+  1160→  1160→            <TooltipTrigger asChild>
+  1161→  1161→              <Button
+  1162→  1162→                variant={isWalkIn ? 'default' : 'outline'}
+  1163→  1163→                size="sm"
+  1164→  1164→                onClick={() => setIsWalkIn(!isWalkIn)}
+  1165→  1165→                className={cn(
+  1166→  1166→                  'gap-1.5 transition-colors',
+  1167→  1167→                  isWalkIn && 'bg-orange-600 hover:bg-orange-700 text-white'
+  1168→  1168→                )}
+  1169→  1169→              >
+  1170→  1170→                <Footprints className="size-3.5" />
+  1171→  1171→                {isWalkIn ? 'Walk-in' : 'Scheduled'}
+  1172→  1172→              </Button>
+  1173→  1173→            </TooltipTrigger>
+  1174→  1174→            <TooltipContent>
+  1175→  1175→              {isWalkIn
+  1176→  1176→                ? 'Walk-in mode: new entries auto-set purpose & status'
+  1177→  1177→                : 'Switch to Walk-in mode for quick registration'}
+  1178→  1178→            </TooltipContent>
+  1179→  1179→          </Tooltip>
+  1180→  1180→
+  1181→  1181→          <Button
+  1182→  1182→            onClick={() => setCreateDialogOpen(true)}
+  1183→  1183→            className="gap-2"
+  1184→  1184→          >
+  1185→  1185→            <Plus className="size-4" />
+  1186→  1186→            New Appointment
+  1187→  1187→          </Button>
+  1188→  1188→        </div>
+  1189→  1189→      </div>
+  1190→  1190→
+  1191→  1191→      {/* Stats Cards */}
+  1192→  1192→      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+  1193→  1193→        <Card className="p-4">
+  1194→  1194→          <div className="flex items-center gap-3">
+  1195→  1195→            <div className="rounded-lg bg-muted p-2.5">
+  1196→  1196→              <CalendarDays className="size-5 text-foreground" />
+  1197→  1197→            </div>
+  1198→  1198→            <div>
+  1199→  1199→              <p className="text-sm text-muted-foreground">Today&apos;s Total</p>
+  1200→  1200→              <p className="text-2xl font-bold">{stats.today}</p>
+  1201→  1201→            </div>
+  1202→  1202→          </div>
+  1203→  1203→        </Card>
+  1204→  1204→        <Card className="p-4">
+  1205→  1205→          <div className="flex items-center gap-3">
+  1206→  1206→            <div className="rounded-lg bg-blue-100 dark:bg-blue-900/30 p-2.5">
+  1207→  1207→              <Clock className="size-5 text-blue-600 dark:text-blue-400" />
+  1208→  1208→            </div>
+  1209→  1209→            <div>
+  1210→  1210→              <p className="text-sm text-muted-foreground">Scheduled</p>
+  1211→  1211→              <p className="text-2xl font-bold">{stats.scheduled}</p>
+  1212→  1212→            </div>
+  1213→  1213→          </div>
+  1214→  1214→        </Card>
+  1215→  1215→        <Card className="p-4">
+  1216→  1216→          <div className="flex items-center gap-3">
+  1217→  1217→            <div className="rounded-lg bg-green-100 dark:bg-green-900/30 p-2.5">
+  1218→  1218→              <CheckCircle2 className="size-5 text-green-600 dark:text-green-400" />
+  1219→  1219→            </div>
+  1220→  1220→            <div>
+  1221→  1221→              <p className="text-sm text-muted-foreground">Completed</p>
+  1222→  1222→              <p className="text-2xl font-bold">{stats.completed}</p>
+  1223→  1223→            </div>
+  1224→  1224→          </div>
+  1225→  1225→        </Card>
+  1226→  1226→      </div>
+  1227→  1227→
+  1228→  1228→      {/* Today's Appointments Highlighted */}
+  1229→  1229→      {todayAppointments.length > 0 && viewMode === 'list' && (
+  1230→  1230→        <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+  1231→  1231→          <CardHeader className="pb-3">
+  1232→  1232→            <CardTitle className="text-lg flex items-center gap-2">
+  1233→  1233→              <CalendarDays className="size-5 text-blue-600" />
+  1234→  1234→              Today&apos;s Appointments
+  1235→  1235→              <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
+  1236→  1236→                {todayAppointments.length}
+  1237→  1237→              </Badge>
+  1238→  1238→            </CardTitle>
+  1239→  1239→          </CardHeader>
+  1240→  1240→          <CardContent>
+  1241→  1241→            <div className="space-y-2">
+  1242→  1242→              {todayAppointments.map((apt) => (
+  1243→  1243→                <div
+  1244→  1244→                  key={apt.id}
+  1245→  1245→                  className="flex items-center gap-3 rounded-lg border border-blue-100 dark:border-blue-900 p-3 bg-white dark:bg-slate-900 hover:bg-accent/50 transition-colors"
+  1246→  1246→                >
+  1247→  1247→                  <div className="text-sm font-mono font-medium min-w-[70px]">
+  1248→  1248→                    {formatTime(apt.time)}
+  1249→  1249→                  </div>
+  1250→  1250→                  <div className="flex-1 min-w-0">
+  1251→  1251→                    <p className="font-medium text-sm truncate">{apt.customerName}</p>
+  1252→  1252→                    <div className="flex items-center gap-2 mt-0.5">
+  1253→  1253→                      <PurposeBadge purpose={apt.purpose} />
+  1254→  1254→                      {apt.customerPhone && (
+  1255→  1255→                        <span className="text-xs text-muted-foreground">{apt.customerPhone}</span>
+  1256→  1256→                      )}
+  1257→  1257→                    </div>
+  1258→  1258→                  </div>
+  1259→  1259→                  <StatusBadge status={apt.status} />
+  1260→  1260→                  {/* SMS Reminder Button */}
+  1261→  1261→                  <Tooltip>
+  1262→  1262→                    <TooltipTrigger asChild>
+  1263→  1263→                      <Button
+  1264→  1264→                        variant="ghost"
+  1265→  1265→                        size="icon"
+  1266→  1266→                        className="min-w-[44px] min-h-[44px] touch-manipulation text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400"
+  1267→  1267→                        onClick={() => handleSMSReminder(apt)}
+  1268→  1268→                      >
+  1269→  1269→                        <MessageSquare className="size-3.5" />
+  1270→  1270→                      </Button>
+  1271→  1271→                    </TooltipTrigger>
+  1272→  1272→                    <TooltipContent>WhatsApp Reminder</TooltipContent>
+  1273→  1273→                  </Tooltip>
+  1274→  1274→                  <DropdownMenu>
+  1275→  1275→                    <DropdownMenuTrigger asChild>
+  1276→  1276→                      <Button variant="ghost" size="icon" className="min-w-[44px] min-h-[44px] touch-manipulation">
+  1277→  1277→                        <MoreHorizontal className="size-4" />
+  1278→  1278→                      </Button>
+  1279→  1279→                    </DropdownMenuTrigger>
+  1280→  1280→                    <DropdownMenuContent align="end">
+  1281→  1281→                      <DropdownMenuItem onClick={() => setEditAppointment(apt)}>
+  1282→  1282→                        <Pencil className="size-4 mr-2" /> Edit
+  1283→  1283→                      </DropdownMenuItem>
+  1284→  1284→                      {apt.status === 'Scheduled' && (
+  1285→  1285→                        <DropdownMenuItem onClick={() => handleUpdateStatus(apt.id, 'Confirmed')}>
+  1286→  1286→                          <CheckCircle2 className="size-4 mr-2" /> Confirm
+  1287→  1287→                        </DropdownMenuItem>
+  1288→  1288→                      )}
+  1289→  1289→                      {(apt.status === 'Scheduled' || apt.status === 'Confirmed') && (
+  1290→  1290→                        <DropdownMenuItem onClick={() => handleUpdateStatus(apt.id, 'Completed')}>
+  1291→  1291→                          <CheckCircle2 className="size-4 mr-2" /> Mark Completed
+  1292→  1292→                        </DropdownMenuItem>
+  1293→  1293→                      )}
+  1294→  1294→                      {(apt.status === 'Scheduled' || apt.status === 'Confirmed') && (
+  1295→  1295→                        <DropdownMenuItem onClick={() => handleUpdateStatus(apt.id, 'No-Show')}>
+  1296→  1296→                          <AlertTriangle className="size-4 mr-2" /> Mark No-Show
+  1297→  1297→                        </DropdownMenuItem>
+  1298→  1298→                      )}
+  1299→  1299→                      {apt.status !== 'Cancelled' && apt.status !== 'Completed' && (
+  1300→  1300→                        <>
+  1301→  1301→                          <DropdownMenuSeparator />
+  1302→  1302→                          <DropdownMenuItem onClick={() => handleUpdateStatus(apt.id, 'Cancelled')} className="text-destructive">
+  1303→  1303→                            <XCircle className="size-4 mr-2" /> Cancel
+  1304→  1304→                          </DropdownMenuItem>
+  1305→  1305→                        </>
+  1306→  1306→                      )}
+  1307→  1307→                    </DropdownMenuContent>
+  1308→  1308→                  </DropdownMenu>
+  1309→  1309→                </div>
+  1310→  1310→              ))}
+  1311→  1311→            </div>
+  1312→  1312→          </CardContent>
+  1313→  1313→        </Card>
+  1314→  1314→      )}
+  1315→  1315→
+  1316→  1316→      {/* Toolbar */}
+  1317→  1317→      <Card>
+  1318→  1318→        <CardContent className="p-4">
+  1319→  1319→          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+  1320→  1320→            {/* Date Picker */}
+  1321→  1321→            <Popover>
+  1322→  1322→              <PopoverTrigger asChild>
+  1323→  1323→                <Button
+  1324→  1324→                  variant="outline"
+  1325→  1325→                  className={cn(
+  1326→  1326→                    'justify-start text-left font-normal gap-2 w-full sm:w-auto',
+  1327→  1327→                    !selectedDate && 'text-muted-foreground'
+  1328→  1328→                  )}
+  1329→  1329→                >
+  1330→  1330→                  <CalendarIcon className="size-4" />
+  1331→  1331→                  {selectedDate
+  1332→  1332→                    ? isToday(selectedDate)
+  1333→  1333→                      ? 'Today'
+  1334→  1334→                      : format(selectedDate, 'MMM d, yyyy')
+  1335→  1335→                    : 'Pick a date'}
+  1336→  1336→                </Button>
+  1337→  1337→              </PopoverTrigger>
+  1338→  1338→              <PopoverContent className="w-auto p-0" align="start">
+  1339→  1339→                <DayPicker
+  1340→  1340→                  mode="single"
+  1341→  1341→                  selected={selectedDate}
+  1342→  1342→                  onSelect={(date) => {
+  1343→  1343→                    if (date) {
+  1344→  1344→                      setSelectedDate(date)
+  1345→  1345→                      setPage(1)
+  1346→  1346→                    }
+  1347→  1347→                  }}
+  1348→  1348→                  initialFocus
+  1349→  1349→                />
+  1350→  1350→              </PopoverContent>
+  1351→  1351→            </Popover>
+  1352→  1352→
+  1353→  1353→            {/* Status Filter Tabs */}
+  1354→  1354→            <Tabs
+  1355→  1355→              value={statusFilter}
+  1356→  1356→              onValueChange={(v) => {
+  1357→  1357→                setStatusFilter(v as StatusFilter)
+  1358→  1358→                setPage(1)
+  1359→  1359→              }}
+  1360→  1360→            >
+  1361→  1361→              <TabsList>
+  1362→  1362→                <TabsTrigger value="all">All</TabsTrigger>
+  1363→  1363→                <TabsTrigger value="Scheduled">Scheduled</TabsTrigger>
+  1364→  1364→                <TabsTrigger value="Confirmed">Confirmed</TabsTrigger>
+  1365→  1365→                <TabsTrigger value="Completed">Completed</TabsTrigger>
+  1366→  1366→                <TabsTrigger value="Cancelled">Cancelled</TabsTrigger>
+  1367→  1367→              </TabsList>
+  1368→  1368→            </Tabs>
+  1369→  1369→
+  1370→  1370→            <div className="flex-1" />
+  1371→  1371→
+  1372→  1372→            {/* View Toggle: List / Calendar / Week */}
+  1373→  1373→            <div className="flex items-center border rounded-md">
+  1374→  1374→              <Button
+  1375→  1375→                variant={viewMode === 'list' ? 'default' : 'ghost'}
+  1376→  1376→                size="sm"
+  1377→  1377→                className="rounded-none px-3"
+  1378→  1378→                onClick={() => setViewMode('list')}
+  1379→  1379→              >
+  1380→  1380→                List
+  1381→  1381→              </Button>
+  1382→  1382→              <div className="w-px bg-border" />
+  1383→  1383→              <Button
+  1384→  1384→                variant={viewMode === 'calendar' ? 'default' : 'ghost'}
+  1385→  1385→                size="sm"
+  1386→  1386→                className="rounded-none px-3"
+  1387→  1387→                onClick={() => setViewMode('calendar')}
+  1388→  1388→              >
+  1389→  1389→                Month
+  1390→  1390→              </Button>
+  1391→  1391→              <div className="w-px bg-border" />
+  1392→  1392→              <Button
+  1393→  1393→                variant={viewMode === 'week' ? 'default' : 'ghost'}
+  1394→  1394→                size="sm"
+  1395→  1395→                className="rounded-none px-3"
+  1396→  1396→                onClick={() => setViewMode('week')}
+  1397→  1397→              >
+  1398→  1398→                Week
+  1399→  1399→              </Button>
+  1400→  1400→            </div>
+  1401→  1401→          </div>
+  1402→  1402→        </CardContent>
+  1403→  1403→      </Card>
+  1404→  1404→
+  1405→  1405→      {/* Content */}
+  1406→  1406→      {loading ? (
+  1407→  1407→        <Card>
+  1408→  1408→          <CardContent className="p-4">
+  1409→  1409→            <TableSkeleton />
+  1410→  1410→          </CardContent>
+  1411→  1411→        </Card>
+  1412→  1412→      ) : viewMode === 'week' ? (
+  1413→  1413→        <CalendarWeekView appointments={allAppointments} />
+  1414→  1414→      ) : viewMode === 'calendar' ? (
+  1415→  1415→        <CalendarMonthView
+  1416→  1416→          appointments={allAppointments}
+  1417→  1417→          selectedDate={selectedDate}
+  1418→  1418→          onDateSelect={(date) => {
+  1419→  1419→            setSelectedDate(date)
+  1420→  1420→            setPage(1)
+  1421→  1421→          }}
+  1422→  1422→        />
+  1423→  1423→      ) : (
+  1424→  1424→        <Card>
+  1425→  1425→          <CardContent className="p-0">
+  1426→  1426→            {appointments.length === 0 ? (
+  1427→  1427→              <div className="flex flex-col items-center justify-center py-12 gap-3">
+  1428→  1428→                <div className="flex items-center justify-center size-12 rounded-full bg-muted">
+  1429→  1429→                  <CalendarDays className="size-6 text-muted-foreground" />
+  1430→  1430→                </div>
+  1431→  1431→                <p className="text-muted-foreground text-sm">No appointments found for this date and filter.</p>
+  1432→  1432→                <Button variant="outline" size="sm" onClick={() => setCreateDialogOpen(true)}>
+  1433→  1433→                  <Plus className="size-4 mr-1" />
+  1434→  1434→                  Schedule an Appointment
+  1435→  1435→                </Button>
+  1436→  1436→              </div>
+  1437→  1437→            ) : (
+  1438→  1438→              <div className="overflow-x-auto">
+  1439→  1439→              <Table>
+  1440→  1440→                <TableHeader>
+  1441→  1441→                  <TableRow>
+  1442→  1442→                    <TableHead className="pl-4">Customer</TableHead>
+  1443→  1443→                    <TableHead className="hidden sm:table-cell">Date</TableHead>
+  1444→  1444→                    <TableHead>Time</TableHead>
+  1445→  1445→                    <TableHead className="hidden md:table-cell">Purpose</TableHead>
+  1446→  1446→                    <TableHead>Status</TableHead>
+  1447→  1447→                    <TableHead className="hidden lg:table-cell">Notes</TableHead>
+  1448→  1448→                    <TableHead className="hidden xl:table-cell">Repeat</TableHead>
+  1449→  1449→                    <TableHead className="pr-4 text-right">Actions</TableHead>
+  1450→  1450→                  </TableRow>
+  1451→  1451→                </TableHeader>
+  1452→  1452→                <TableBody>
+  1453→  1453→                  {appointments.map((apt) => (
+  1454→  1454→                    <TableRow key={apt.id}>
+  1455→  1455→                      <TableCell className="pl-4">
+  1456→  1456→                        <div>
+  1457→  1457→                          <p className="font-medium text-sm">{apt.customerName}</p>
+  1458→  1458→                          {apt.customerPhone && (
+  1459→  1459→                            <p className="text-xs text-muted-foreground">{apt.customerPhone}</p>
+  1460→  1460→                          )}
+  1461→  1461→                        </div>
+  1462→  1462→                      </TableCell>
+  1463→  1463→                      <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
+  1464→  1464→                        {formatDate(apt.date)}
+  1465→  1465→                      </TableCell>
+  1466→  1466→                      <TableCell className="font-mono text-sm">
+  1467→  1467→                        {formatTime(apt.time)}
+  1468→  1468→                      </TableCell>
+  1469→  1469→                      <TableCell className="hidden md:table-cell">
+  1470→  1470→                        <PurposeBadge purpose={apt.purpose} />
+  1471→  1471→                      </TableCell>
+  1472→  1472→                      <TableCell>
+  1473→  1473→                        <StatusBadge status={apt.status} />
+  1474→  1474→                      </TableCell>
+  1475→  1475→                      <TableCell className="hidden lg:table-cell">
+  1476→  1476→                        <p className="text-xs text-muted-foreground max-w-[200px] truncate">
+  1477→  1477→                          {apt.notes || '—'}
+  1478→  1478→                        </p>
+  1479→  1479→                      </TableCell>
+  1480→  1480→                      <TableCell className="hidden xl:table-cell">
+  1481→  1481→                        {apt.recurrence ? (
+  1482→  1482→                          <Badge variant="outline" className="bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 text-[10px]">
+  1483→  1483→                            {apt.recurrence}
+  1484→  1484→                          </Badge>
+  1485→  1485→                        ) : '—'}
+  1486→  1486→                      </TableCell>
+  1487→  1487→                      <TableCell className="pr-4 text-right">
+  1488→  1488→                        <div className="flex items-center justify-end gap-0.5">
+  1489→  1489→                          {/* SMS Reminder Button */}
+  1490→  1490→                          <Tooltip>
+  1491→  1491→                            <TooltipTrigger asChild>
+  1492→  1492→                              <Button
+  1493→  1493→                                variant="ghost"
+  1494→  1494→                                size="icon"
+  1495→  1495→                                className="min-w-[44px] min-h-[44px] touch-manipulation text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400"
+  1496→  1496→                                onClick={() => handleSMSReminder(apt)}
+  1497→  1497→                              >
+  1498→  1498→                                <MessageSquare className="size-3.5" />
+  1499→  1499→                              </Button>
+  1500→  1500→                            </TooltipTrigger>
+  1501→  1501→                            <TooltipContent>WhatsApp Reminder</TooltipContent>
+  1502→  1502→                          </Tooltip>
+  1503→  1503→                          <DropdownMenu>
+  1504→  1504→                            <DropdownMenuTrigger asChild>
+  1505→  1505→                              <Button variant="ghost" size="icon" className="min-w-[44px] min-h-[44px] touch-manipulation">
+  1506→  1506→                                <MoreHorizontal className="size-4" />
+  1507→  1507→                              </Button>
+  1508→  1508→                            </DropdownMenuTrigger>
+  1509→  1509→                            <DropdownMenuContent align="end">
+  1510→  1510→                              <DropdownMenuItem onClick={() => setEditAppointment(apt)}>
+  1511→  1511→                                <Pencil className="size-4 mr-2" /> Edit
+  1512→  1512→                              </DropdownMenuItem>
+  1513→  1513→                              {apt.status === 'Scheduled' && (
+  1514→  1514→                                <DropdownMenuItem onClick={() => handleUpdateStatus(apt.id, 'Confirmed')}>
+  1515→  1515→                                  <CheckCircle2 className="size-4 mr-2" /> Confirm
+  1516→  1516→                                </DropdownMenuItem>
+  1517→  1517→                              )}
+  1518→  1518→                              {(apt.status === 'Scheduled' || apt.status === 'Confirmed') && (
+  1519→  1519→                                <DropdownMenuItem onClick={() => handleUpdateStatus(apt.id, 'Completed')}>
+  1520→  1520→                                  <CheckCircle2 className="size-4 mr-2" /> Mark Completed
+  1521→  1521→                                </DropdownMenuItem>
+  1522→  1522→                              )}
+  1523→  1523→                              {(apt.status === 'Scheduled' || apt.status === 'Confirmed') && (
+  1524→  1524→                                <DropdownMenuItem onClick={() => handleUpdateStatus(apt.id, 'No-Show')}>
+  1525→  1525→                                  <AlertTriangle className="size-4 mr-2" /> Mark No-Show
+  1526→  1526→                                </DropdownMenuItem>
+  1527→  1527→                              )}
+  1528→  1528→                              {apt.status !== 'Cancelled' && apt.status !== 'Completed' && (
+  1529→  1529→                                <>
+  1530→  1530→                                  <DropdownMenuSeparator />
+  1531→  1531→                                  <DropdownMenuItem onClick={() => handleUpdateStatus(apt.id, 'Cancelled')} className="text-destructive">
+  1532→  1532→                                    <XCircle className="size-4 mr-2" /> Cancel
+  1533→  1533→                                  </DropdownMenuItem>
+  1534→  1534→                                </>
+  1535→  1535→                              )}
+  1536→  1536→                              <DropdownMenuSeparator />
+  1537→  1537→                              <DropdownMenuItem onClick={() => { setDeletingId(apt.id); setDeleteDialogOpen(true) }} className="text-destructive">
+  1538→  1538→                                <Trash2 className="size-4 mr-2" /> Delete
+  1539→  1539→                              </DropdownMenuItem>
+  1540→  1540→                            </DropdownMenuContent>
+  1541→  1541→                          </DropdownMenu>
+  1542→  1542→                        </div>
+  1543→  1543→                      </TableCell>
+  1544→  1544→                    </TableRow>
+  1545→  1545→                  ))}
+  1546→  1546→                </TableBody>
+  1547→  1547→              </Table>
+  1548→  1548→              </div>
+  1549→  1549→            )}
+  1550→  1550→          </CardContent>
+  1551→  1551→        </Card>
+  1552→  1552→      )}
+  1553→  1553→
+  1554→  1554→      {/* New Appointment Dialog */}
+  1555→  1555→      <AppointmentFormDialog
+  1556→  1556→        open={createDialogOpen}
+  1557→  1557→        onOpenChange={setCreateDialogOpen}
+  1558→  1558→        customers={customers}
+  1559→  1559→        isWalkIn={isWalkIn}
+  1560→  1560→        onSubmit={handleCreateAppointment}
+  1561→  1561→      />
+  1562→  1562→
+  1563→  1563→      {/* Edit Appointment Dialog */}
+  1564→  1564→      <AppointmentFormDialog
+  1565→  1565→        open={!!editAppointment}
+  1566→  1566→        onOpenChange={(open) => { if (!open) setEditAppointment(null) }}
+  1567→  1567→        appointment={editAppointment}
+  1568→  1568→        customers={customers}
+  1569→  1569→        isWalkIn={false}
+  1570→  1570→        onSubmit={handleEditAppointment}
+  1571→  1571→      />
+  1572→  1572→
+  1573→  1573→      {/* Delete Confirmation Dialog */}
+  1574→  1574→      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+  1575→  1575→        <DialogContent className="sm:max-w-md">
+  1576→  1576→          <DialogHeader>
+  1577→  1577→            <DialogTitle>Delete Appointment</DialogTitle>
+  1578→  1578→            <DialogDescription>
+  1579→  1579→              Are you sure you want to delete this appointment? This action cannot be undone.
+  1580→  1580→            </DialogDescription>
+  1581→  1581→          </DialogHeader>
+  1582→  1582→          <DialogFooter>
+  1583→  1583→            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+  1584→  1584→            <Button variant="destructive" onClick={handleDeleteAppointment}>
+  1585→  1585→              <Trash2 className="size-4 mr-2" />
+  1586→  1586→              Delete
+  1587→  1587→            </Button>
+  1588→  1588→          </DialogFooter>
+  1589→  1589→        </DialogContent>
+  1590→  1590→      </Dialog>
+  1591→  1591→    </div>
+  1592→  1592→  )
+  1593→  1593→}
+  1594→  1594→

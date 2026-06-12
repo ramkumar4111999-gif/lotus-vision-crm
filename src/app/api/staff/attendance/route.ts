@@ -7,8 +7,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const date = searchParams.get('date'); // YYYY-MM-DD
     const staffId = searchParams.get('staffId');
-    const from = searchParams.get('from');
-    const to = searchParams.get('to');
+    const from = searchParams.get('from') || searchParams.get('fromDate');
+    const to = searchParams.get('to') || searchParams.get('toDate');
 
     let startDate: Date;
     let endDate: Date;

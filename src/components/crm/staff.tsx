@@ -25,6 +25,11 @@ import {
   Receipt,
   CheckCircle2,
   XCircle,
+  Trophy,
+  History,
+  CalendarRange,
+  Info,
+  Star,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -112,6 +117,17 @@ interface AttendanceEntry {
   clockOut: string | null
 }
 
+interface AttendanceHistoryRecord {
+  id: string
+  staffId: string
+  staffName: string
+  staffRole: string
+  clockIn: string
+  clockOut: string | null
+  date: string
+  hoursWorked: number
+}
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const EMPTY_FORM: StaffFormData = {
@@ -147,6 +163,14 @@ const ROLE_BADGE_STYLES: Record<string, string> = {
   Assistant: 'bg-gray-100 text-gray-700 dark:bg-gray-800/40 dark:text-gray-300 border-gray-200 dark:border-gray-700',
 }
 
+const ROLE_ROW_COLORS: Record<string, string> = {
+  Owner: 'bg-purple-50/50 dark:bg-purple-950/20',
+  Admin: 'bg-red-50/50 dark:bg-red-950/20',
+  Optometrist: 'bg-teal-50/50 dark:bg-teal-950/20',
+  'Sales Staff': 'bg-emerald-50/50 dark:bg-emerald-950/20',
+  Assistant: 'bg-gray-50/50 dark:bg-gray-900/20',
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function formatCurrency(amount: number): string {
@@ -164,6 +188,13 @@ function formatDate(dateStr: string | null): string {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
+  })
+}
+
+function formatDateShort(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
   })
 }
 
@@ -198,6 +229,14 @@ function formatElapsed(totalSeconds: number): string {
   if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`
   if (m > 0) return `${m}m ${String(s).padStart(2, '0')}s`
   return `${s}s`
+}
+
+function formatHoursDecimal(hours: number): string {
+  const h = Math.floor(hours)
+  const m = Math.round((hours - h) * 60)
+  if (h > 0 && m > 0) return `${h}h ${m}m`
+  if (h > 0) return `${h}h`
+  return `${m}m`
 }
 
 // ─── Salary Management Sub-Component ────────────────────────────────────────
@@ -313,7 +352,7 @@ function SalaryManagementSection({ staffList, performanceData }: { staffList: St
             onChange={(e) => setSelectedMonth(e.target.value)}
             className="w-auto"
           />
-          <Button onClick={handleGenerate} disabled={genLoading || staffList.length === 0} variant="outline">
+          <Button onClick={handleGenerate} disabled={genLoading || staffList.length === 0} variant="outline" className="min-w-[44px] min-h-[44px] touch-manipulation">
             {genLoading ? <span className="size-4 animate-spin inline-block border-2 border-current border-t-transparent rounded-full" /> : <DollarSign className="size-4" />}
             Generate
           </Button>
@@ -409,6 +448,13 @@ export default function StaffManagement() {
   const [clockSubmitting, setClockSubmitting] = useState<string | null>(null) // staffId
   const [timerTick, setTimerTick] = useState(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Attendance History state
+  const [historyFromDate, setHistoryFromDate] = useState(() => new Date().toISOString().split('T')[0])
+  const [historyToDate, setHistoryToDate] = useState(() => new Date().toISOString().split('T')[0])
+  const [historyRecords, setHistoryRecords] = useState<AttendanceHistoryRecord[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyFetched, setHistoryFetched] = useState(false)
 
   // ─── Data Fetching ────────────────────────────────────────────────────────
 
@@ -544,6 +590,29 @@ export default function StaffManagement() {
     }
   }
 
+  // ─── Attendance History Fetch ────────────────────────────────────────────
+
+  const fetchAttendanceHistory = useCallback(async () => {
+    if (!historyFromDate || !historyToDate) return
+    setHistoryLoading(true)
+    setHistoryFetched(true)
+    try {
+      const res = await fetch(`/api/staff/attendance?fromDate=${encodeURIComponent(historyFromDate)}&toDate=${encodeURIComponent(historyToDate)}`)
+      if (res.ok) {
+        const json = await res.json()
+        setHistoryRecords(json.data ?? [])
+      } else {
+        toast.error('Failed to fetch attendance history')
+        setHistoryRecords([])
+      }
+    } catch {
+      toast.error('Network error while fetching attendance history')
+      setHistoryRecords([])
+    } finally {
+      setHistoryLoading(false)
+    }
+  }, [historyFromDate, historyToDate])
+
   // ─── Performance Calculation ──────────────────────────────────────────────
 
   const performanceData: StaffPerformance[] = (() => {
@@ -577,6 +646,28 @@ export default function StaffManagement() {
       })
   })()
 
+  // ─── Commission Breakdown ─────────────────────────────────────────────────
+
+  const commissionBreakdown = (() => {
+    const sorted = [...performanceData].sort((a, b) => b.commissionEarned - a.commissionEarned)
+    return sorted.map((p) => {
+      const staff = staffList.find((s) => s.id === p.staffId)
+      const avgSaleValue = p.transactionCount > 0 ? p.totalSales / p.transactionCount : 0
+      return {
+        staffId: p.staffId,
+        staffName: p.staffName,
+        staffRole: p.staffRole,
+        transactionCount: p.transactionCount,
+        totalSales: p.totalSales,
+        commissionRate: staff?.commission ?? 0,
+        commissionEarned: p.commissionEarned,
+        avgSaleValue,
+      }
+    })
+  })()
+
+  const topCommissionEarner = commissionBreakdown.length > 0 ? commissionBreakdown[0] : null
+
   // ─── Summary Stats ──────────────────────────────────────────────────────
 
   const summaryStats = {
@@ -596,6 +687,23 @@ export default function StaffManagement() {
     month: 'long',
     year: 'numeric',
   })
+
+  // ─── Quick Stats ──────────────────────────────────────────────────────────
+
+  const avgHoursToday = (() => {
+    if (presentCount === 0) return 0
+    return getTodayTotalHours() / presentCount
+  })()
+
+  const totalCommissionPayable = performanceData.reduce((sum, p) => sum + p.commissionEarned, 0)
+
+  const mostProductiveStaff = (() => {
+    if (performanceData.length === 0) return '—'
+    const sorted = [...performanceData].sort((a, b) => b.totalSales - a.totalSales)
+    return sorted[0].staffName
+  })()
+
+  const staffOnLeave = staffList.filter((s) => !s.isActive).length
 
   // ─── Form Handlers ────────────────────────────────────────────────────────
 
@@ -792,6 +900,46 @@ export default function StaffManagement() {
         </Card>
       </div>
 
+      {/* ── Staff Quick Stats Summary Row ────────────────────────────── */}
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        <div className="flex items-center gap-2.5 rounded-lg border bg-card px-4 py-3">
+          <div className="rounded-md bg-sky-100 dark:bg-sky-900/30 p-1.5">
+            <Clock className="size-4 text-sky-600 dark:text-sky-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground truncate">Avg Hours Today</p>
+            <p className="text-sm font-semibold tabular-nums">{avgHoursToday.toFixed(1)}h</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2.5 rounded-lg border bg-card px-4 py-3">
+          <div className="rounded-md bg-violet-100 dark:bg-violet-900/30 p-1.5">
+            <DollarSign className="size-4 text-violet-600 dark:text-violet-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground truncate">Commission Payable</p>
+            <p className="text-sm font-semibold">{formatCurrency(totalCommissionPayable)}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2.5 rounded-lg border bg-card px-4 py-3">
+          <div className="rounded-md bg-amber-100 dark:bg-amber-900/30 p-1.5">
+            <Star className="size-4 text-amber-600 dark:text-amber-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground truncate">Top Performer</p>
+            <p className="text-sm font-semibold truncate">{mostProductiveStaff}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2.5 rounded-lg border bg-card px-4 py-3">
+          <div className="rounded-md bg-rose-100 dark:bg-rose-900/30 p-1.5">
+            <UserX className="size-4 text-rose-600 dark:text-rose-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground truncate">Staff on Leave</p>
+            <p className="text-sm font-semibold">{staffOnLeave}</p>
+          </div>
+        </div>
+      </div>
+
       {/* ── Today's Attendance Card ─────────────────────────────────── */}
       <Card>
         <CardHeader>
@@ -902,7 +1050,7 @@ export default function StaffManagement() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="shrink-0"
+                          className="shrink-0 min-w-[44px] min-h-[44px] touch-manipulation"
                           disabled={clockSubmitting === staff.id}
                           onClick={() => handleClockIn(staff)}
                         >
@@ -935,7 +1083,7 @@ export default function StaffManagement() {
               {staffList.length} staff member{staffList.length !== 1 ? 's' : ''} registered
             </CardDescription>
           </div>
-          <Button onClick={openAddDialog} className="w-full sm:w-auto">
+          <Button onClick={openAddDialog} className="w-full sm:w-auto min-w-[44px] min-h-[44px] touch-manipulation">
             <Plus className="size-4" />
             Add Staff
           </Button>
@@ -951,7 +1099,7 @@ export default function StaffManagement() {
             <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
               <UserCircle className="size-12" />
               <p className="text-sm">No staff members yet.</p>
-              <Button variant="outline" size="sm" onClick={openAddDialog}>
+              <Button variant="outline" size="sm" onClick={openAddDialog} className="min-w-[44px] min-h-[44px] touch-manipulation">
                 <Plus className="size-4" />
                 Add your first staff member
               </Button>
@@ -1028,7 +1176,7 @@ export default function StaffManagement() {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="h-7 text-xs border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-900/20"
+                                    className="h-7 text-xs border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-900/20 min-w-[44px] min-h-[44px] touch-manipulation"
                                     disabled={clockSubmitting === staff.id}
                                     onClick={() => handleClockOut(staff)}
                                   >
@@ -1049,7 +1197,7 @@ export default function StaffManagement() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="h-7 text-xs border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/20"
+                                  className="h-7 text-xs border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/20 min-w-[44px] min-h-[44px] touch-manipulation"
                                   disabled={clockSubmitting === staff.id}
                                   onClick={() => handleClockIn(staff)}
                                 >
@@ -1189,7 +1337,7 @@ export default function StaffManagement() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="h-7 text-xs border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-900/20"
+                                  className="h-7 text-xs border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-900/20 min-w-[44px] min-h-[44px] touch-manipulation"
                                   disabled={clockSubmitting === staff.id}
                                   onClick={() => handleClockOut(staff)}
                                 >
@@ -1205,7 +1353,7 @@ export default function StaffManagement() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="h-7 text-xs border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/20"
+                                className="h-7 text-xs border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/20 min-w-[44px] min-h-[44px] touch-manipulation"
                                 disabled={clockSubmitting === staff.id}
                                 onClick={() => handleClockIn(staff)}
                               >
@@ -1325,6 +1473,110 @@ export default function StaffManagement() {
         </Card>
       )}
 
+      {/* ── Commission Breakdown ───────────────────────────────────────── */}
+      {commissionBreakdown.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-xl">
+              <Trophy className="size-5 text-amber-500" />
+              Commission Breakdown
+            </CardTitle>
+            <CardDescription>
+              Detailed commission analysis for active staff — sorted by commission earned
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="pl-4">Staff</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead className="text-right">Sales Count</TableHead>
+                    <TableHead className="text-right">Total Sales</TableHead>
+                    <TableHead className="text-right">Rate (%)</TableHead>
+                    <TableHead className="text-right">Commission Earned</TableHead>
+                    <TableHead className="pr-4 text-right">Avg Sale Value</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {commissionBreakdown.map((cb) => {
+                    const isTop = topCommissionEarner && cb.staffId === topCommissionEarner.staffId
+                    return (
+                      <TableRow key={cb.staffId} className={isTop ? 'bg-amber-50/50 dark:bg-amber-950/20' : ''}>
+                        <TableCell className="pl-4">
+                          <div className="flex items-center gap-2">
+                            {isTop && <Trophy className="size-4 text-amber-500 shrink-0" />}
+                            <span className={`font-medium ${isTop ? 'text-amber-700 dark:text-amber-400' : ''}`}>{cb.staffName}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>{renderRoleBadge(cb.staffRole)}</TableCell>
+                        <TableCell className="text-right font-mono">
+                          {cb.transactionCount}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {formatCurrency(cb.totalSales)}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-muted-foreground">
+                          {cb.commissionRate}%
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                          {formatCurrency(cb.commissionEarned)}
+                        </TableCell>
+                        <TableCell className="pr-4 text-right font-mono">
+                          {cb.transactionCount > 0 ? formatCurrency(cb.avgSaleValue) : '—'}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 md:hidden">
+              {commissionBreakdown.map((cb) => {
+                const isTop = topCommissionEarner && cb.staffId === topCommissionEarner.staffId
+                return (
+                  <Card key={cb.staffId} className={`p-4 ${isTop ? 'border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/20' : ''}`}>
+                    <div className="mb-3 flex items-center justify-between">
+                      <div className="min-w-0 flex items-center gap-2">
+                        {isTop && <Trophy className="size-4 text-amber-500 shrink-0" />}
+                        <p className={`truncate font-medium ${isTop ? 'text-amber-700 dark:text-amber-400' : ''}`}>{cb.staffName}</p>
+                      </div>
+                      {renderRoleBadge(cb.staffRole)}
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Sales Count</span>
+                        <span className="font-mono font-medium">{cb.transactionCount}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Total Sales</span>
+                        <span className="font-mono font-medium">{formatCurrency(cb.totalSales)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Rate</span>
+                        <span className="font-mono font-medium text-muted-foreground">{cb.commissionRate}%</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Commission</span>
+                        <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(cb.commissionEarned)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Avg Sale</span>
+                        <span className="font-mono font-medium">{cb.transactionCount > 0 ? formatCurrency(cb.avgSaleValue) : '—'}</span>
+                      </div>
+                    </div>
+                  </Card>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* ── Role-Based Access Reference ─────────────────────────────── */}
       <Card>
         <CardHeader>
@@ -1334,7 +1586,7 @@ export default function StaffManagement() {
           </CardTitle>
           <CardDescription>Permission levels for each staff role</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -1353,7 +1605,7 @@ export default function StaffManagement() {
                   const perms = ROLE_PERMISSIONS[role]
                   if (!perms) return null
                   return (
-                    <TableRow key={role}>
+                    <TableRow key={role} className={ROLE_ROW_COLORS[role] ?? ''}>
                       <TableCell className="font-medium">{renderRoleBadge(role)}</TableCell>
                       <TableCell className="text-center">{perms.canManageStaff ? <CheckCircle2 className="size-4 text-green-600 mx-auto" /> : <XCircle className="size-4 text-red-400 mx-auto" />}</TableCell>
                       <TableCell className="text-center">{perms.canAccessSalary ? <CheckCircle2 className="size-4 text-green-600 mx-auto" /> : <XCircle className="size-4 text-red-400 mx-auto" />}</TableCell>
@@ -1367,6 +1619,181 @@ export default function StaffManagement() {
               </TableBody>
             </Table>
           </div>
+
+          {/* Login Placeholder Section */}
+          <Separator />
+          <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="rounded-lg bg-sky-100 dark:bg-sky-900/30 p-2 mt-0.5">
+                <Info className="size-4 text-sky-600 dark:text-sky-400" />
+              </div>
+              <div className="min-w-0 space-y-1">
+                <h4 className="text-sm font-medium">Login Placeholder</h4>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Role-based login is a placeholder for future authentication integration. Currently, all users have full access. Set up NextAuth.js or similar to enable role-based restrictions.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {ROLES.map((role) => {
+                const count = staffList.filter((s) => s.role === role).length
+                return (
+                  <Badge
+                    key={role}
+                    variant="outline"
+                    className={`${ROLE_BADGE_STYLES[role] ?? ''} gap-1.5`}
+                  >
+                    {role}
+                    <span className="ml-0.5 inline-flex size-5 items-center justify-center rounded-full bg-current/10 text-[10px] font-bold">
+                      {count}
+                    </span>
+                  </Badge>
+                )
+              })}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Attendance History ────────────────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <History className="size-5 text-primary" />
+            Attendance History
+          </CardTitle>
+          <CardDescription>View attendance records for any date range</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Date Range Picker */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="history-from" className="text-sm">From Date</Label>
+              <Input
+                id="history-from"
+                type="date"
+                value={historyFromDate}
+                onChange={(e) => setHistoryFromDate(e.target.value)}
+                className="w-full sm:w-auto min-w-[44px] min-h-[44px] touch-manipulation"
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="history-to" className="text-sm">To Date</Label>
+              <Input
+                id="history-to"
+                type="date"
+                value={historyToDate}
+                onChange={(e) => setHistoryToDate(e.target.value)}
+                className="w-full sm:w-auto min-w-[44px] min-h-[44px] touch-manipulation"
+              />
+            </div>
+            <Button
+              onClick={fetchAttendanceHistory}
+              disabled={historyLoading || !historyFromDate || !historyToDate}
+              className="w-full sm:w-auto min-w-[44px] min-h-[44px] touch-manipulation"
+            >
+              {historyLoading ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <CalendarRange className="size-4" />
+              )}
+              View History
+            </Button>
+          </div>
+
+          {/* History Results */}
+          {historyFetched && (
+            historyLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-sm text-muted-foreground">Loading history...</span>
+              </div>
+            ) : historyRecords.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <CalendarRange className="size-10 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">No attendance records found for the selected range.</p>
+                <p className="text-xs mt-1">Try adjusting the date range.</p>
+              </div>
+            ) : (
+              <>
+                {/* Desktop Table */}
+                <div className="hidden md:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="pl-4">Staff Name</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Clock In</TableHead>
+                        <TableHead>Clock Out</TableHead>
+                        <TableHead className="text-right">Total Hours</TableHead>
+                        <TableHead className="pr-4">Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {historyRecords.map((r) => (
+                        <TableRow key={r.id}>
+                          <TableCell className="pl-4 font-medium">{r.staffName}</TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {formatDateShort(r.date)}
+                          </TableCell>
+                          <TableCell className="font-mono text-sm">
+                            {formatTime(r.clockIn)}
+                          </TableCell>
+                          <TableCell className="font-mono text-sm">
+                            {r.clockOut ? formatTime(r.clockOut) : '—'}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-sm tabular-nums">
+                            {formatHoursDecimal(r.hoursWorked)}
+                          </TableCell>
+                          <TableCell className="pr-4">
+                            {r.clockOut ? (
+                              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800">
+                                <CheckCircle2 className="size-3 mr-1" />
+                                Completed
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 border-amber-200 dark:border-amber-800">
+                                <Clock className="size-3 mr-1" />
+                                In-Progress
+                              </Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Mobile Cards */}
+                <div className="space-y-2 md:hidden">
+                  {historyRecords.map((r) => (
+                    <div key={r.id} className="rounded-lg border p-3 space-y-2 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium truncate">{r.staffName}</span>
+                        {r.clockOut ? (
+                          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 text-[10px] shrink-0">
+                            <CheckCircle2 className="size-2.5 mr-0.5" />
+                            Completed
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 border-amber-200 dark:border-amber-800 text-[10px] shrink-0">
+                            <Clock className="size-2.5 mr-0.5" />
+                            In-Progress
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                        <span>Date: <span className="text-foreground font-medium">{formatDateShort(r.date)}</span></span>
+                        <span>In: <span className="text-foreground font-mono">{formatTime(r.clockIn)}</span></span>
+                        <span>Out: <span className="text-foreground font-mono">{r.clockOut ? formatTime(r.clockOut) : '—'}</span></span>
+                        <span>Hours: <span className="text-foreground font-mono tabular-nums">{formatHoursDecimal(r.hoursWorked)}</span></span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )
+          )}
         </CardContent>
       </Card>
 
@@ -1551,10 +1978,11 @@ export default function StaffManagement() {
               variant="outline"
               onClick={() => setDialogOpen(false)}
               disabled={submitting}
+              className="min-w-[44px] min-h-[44px] touch-manipulation"
             >
               Cancel
             </Button>
-            <Button type="button" onClick={handleSubmit} disabled={submitting}>
+            <Button type="button" onClick={handleSubmit} disabled={submitting} className="min-w-[44px] min-h-[44px] touch-manipulation">
               {submitting && <Loader2 className="size-4 animate-spin" />}
               {editingStaff ? 'Update Staff' : 'Add Staff'}
             </Button>
@@ -1579,10 +2007,11 @@ export default function StaffManagement() {
               variant="outline"
               onClick={() => setDeleteDialogOpen(false)}
               disabled={submitting}
+              className="min-w-[44px] min-h-[44px] touch-manipulation"
             >
               Cancel
             </Button>
-            <Button type="button" variant="destructive" onClick={handleDelete} disabled={submitting}>
+            <Button type="button" variant="destructive" onClick={handleDelete} disabled={submitting} className="min-w-[44px] min-h-[44px] touch-manipulation">
               {submitting && <Loader2 className="size-4 animate-spin" />}
               Delete
             </Button>

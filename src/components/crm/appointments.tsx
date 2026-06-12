@@ -30,6 +30,7 @@ import {
   CalendarRange,
   ChevronLeft,
   ChevronRight,
+  Phone,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -142,6 +143,16 @@ const PURPOSE_COLORS: Record<string, string> = {
   'Other': 'bg-gray-100 text-gray-700 dark:bg-gray-800/30 dark:text-gray-400 border-gray-200 dark:border-gray-800',
 }
 
+const PURPOSE_DURATION: Record<string, number> = {
+  'Eye Exam': 30,
+  'Frame Selection': 45,
+  'Lens Fitting': 20,
+  'Delivery': 15,
+  'Follow-up': 15,
+  'Walk-in': 30,
+  'Other': 20,
+}
+
 const STATUS_VARIANTS: Record<string, { label: string; className: string }> = {
   Scheduled: {
     label: 'Scheduled',
@@ -222,6 +233,7 @@ function transformAppointment(raw: Record<string, unknown>): Appointment {
     purpose: (raw.purpose as string) ?? null,
     status: (raw.status as string) ?? 'Scheduled',
     notes: (raw.notes as string) ?? null,
+    recurrence: (raw.recurrence as string) ?? null,
     createdAt: (raw.createdAt as string) ?? '',
     updatedAt: (raw.updatedAt as string) ?? '',
   }
@@ -795,6 +807,30 @@ function CalendarWeekView({ appointments }: { appointments: Appointment[] }) {
     return map
   }, [appointments])
 
+  // For each slot+date, determine if the appointment continues into the next slot
+  const continuationMap = useMemo(() => {
+    const map: Record<string, boolean> = {}
+    appointments.forEach((apt) => {
+      try {
+        const dateStr = apt.date.startsWith('{') ? '' : apt.date
+        if (!dateStr || !apt.time) return
+        const d = toDateString(parseISO(dateStr))
+        const timeKey = apt.time.substring(0, 5)
+        if (!WEEK_TIME_SLOTS.includes(timeKey)) return
+        const duration = PURPOSE_DURATION[apt.purpose ?? ''] ?? 30
+        const slotMinutes = 60 // each slot is 1 hour
+        if (duration > slotMinutes) {
+          // This appointment spans multiple slots
+          const key = `${d}:${timeKey}`
+          map[key] = true
+        }
+      } catch {
+        // skip
+      }
+    })
+    return map
+  }, [appointments])
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -850,7 +886,7 @@ function CalendarWeekView({ appointments }: { appointments: Appointment[] }) {
             </div>
 
             {/* Time rows */}
-            {WEEK_TIME_SLOTS.map((slot) => (
+            {WEEK_TIME_SLOTS.map((slot, slotIndex) => (
               <div key={slot} className="grid grid-cols-8 border-b last:border-b-0 min-h-[3rem]">
                 <div className="p-1.5 text-xs font-mono text-muted-foreground text-center flex items-center justify-center border-r">
                   {formatTime(slot)}
@@ -859,34 +895,43 @@ function CalendarWeekView({ appointments }: { appointments: Appointment[] }) {
                   const key = `${toDateString(d)}:${slot}`
                   const slotApts = slotMap[key] ?? []
                   const isDateToday = isToday(d)
+                  const hasContinuation = continuationMap[key]
                   return (
                     <div
                       key={i}
                       className={cn(
-                        'p-0.5 border-r last:border-r-0 border-b',
+                        'p-0.5 border-r last:border-r-0 border-b relative',
                         isDateToday && 'bg-blue-50/50 dark:bg-blue-950/10'
                       )}
                     >
                       {slotApts.length > 0 ? (
                         <div className="space-y-0.5">
-                          {slotApts.map((apt) => (
-                            <div
-                              key={apt.id}
-                              className="rounded px-1.5 py-0.5 text-[10px] leading-tight truncate"
-                              style={{
-                                backgroundColor: apt.purpose
-                                  ? (apt.status === 'Completed' ? '#dcfce7' : apt.status === 'Cancelled' ? '#fee2e2' : '#dbeafe')
-                                  : '#f3f4f6',
-                              }}
-                            >
-                              <span className="font-semibold">{apt.customerName}</span>
-                              {apt.purpose && (
-                                <span className="text-muted-foreground ml-0.5">· {apt.purpose}</span>
-                              )}
-                            </div>
-                          ))}
+                          {slotApts.map((apt) => {
+                            const duration = PURPOSE_DURATION[apt.purpose ?? ''] ?? 30
+                            const spansMultiple = duration > 60
+                            return (
+                              <div
+                                key={apt.id}
+                                className="rounded px-1.5 py-0.5 text-[10px] leading-tight truncate"
+                                style={{
+                                  backgroundColor: apt.purpose
+                                    ? (apt.status === 'Completed' ? '#dcfce7' : apt.status === 'Cancelled' ? '#fee2e2' : '#dbeafe')
+                                    : '#f3f4f6',
+                                }}
+                              >
+                                <span className="font-semibold">{apt.customerName}</span>
+                                {apt.purpose && (
+                                  <span className="text-muted-foreground ml-0.5">· {apt.purpose}</span>
+                                )}
+                              </div>
+                            )
+                          })}
                         </div>
                       ) : null}
+                      {/* Continuation indicator: a small visual bar at the bottom */}
+                      {hasContinuation && (
+                        <div className="absolute bottom-0 left-1 right-1 h-[3px] rounded-t-full bg-gradient-to-r from-blue-400 to-purple-400 dark:from-blue-500 dark:to-purple-500 opacity-60" />
+                      )}
                     </div>
                   )
                 })}
@@ -924,6 +969,7 @@ export default function Appointments() {
   const [editAppointment, setEditAppointment] = useState<Appointment | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [bulkReminderDialogOpen, setBulkReminderDialogOpen] = useState(false)
 
   // ─── Data Fetching ───────────────────────────────────────────────────────
 
@@ -1042,6 +1088,42 @@ export default function Appointments() {
     }
   }, [allAppointments])
 
+  // ─── Purpose Stats (today's breakdown by purpose) ───────────────────────
+
+  const purposeStats = useMemo(() => {
+    const todayStr = toDateString(new Date())
+    const todayApts = allAppointments.filter((a) => {
+      try {
+        return toDateString(parseISO(a.date)) === todayStr
+      } catch {
+        return false
+      }
+    })
+    const counts: Record<string, number> = {}
+    todayApts.forEach((a) => {
+      const purpose = a.purpose ?? 'Other'
+      counts[purpose] = (counts[purpose] || 0) + 1
+    })
+    return counts
+  }, [allAppointments])
+
+  // ─── Bulk Reminder eligible appointments ────────────────────────────────
+
+  const bulkReminderCount = useMemo(() => {
+    const todayStr = toDateString(new Date())
+    return allAppointments.filter((a) => {
+      try {
+        return (
+          toDateString(parseISO(a.date)) === todayStr &&
+          (a.status === 'Scheduled' || a.status === 'Confirmed') &&
+          (a.customerPhone || a.customer?.phone)
+        )
+      } catch {
+        return false
+      }
+    }).length
+  }, [allAppointments])
+
   // ─── Actions ────────────────────────────────────────────────────────────
 
   const handleCreateAppointment = async (data: {
@@ -1142,6 +1224,34 @@ export default function Appointments() {
     toast.success('WhatsApp reminder opened', { description: 'Send the message in the opened window' })
   }
 
+  const handleSMSReminderPlaceholder = () => {
+    toast.info('SMS gateway integration is not configured. Contact your admin to set up SMS reminders via Twilio/Msg91.')
+  }
+
+  const handleBulkReminder = () => {
+    const todayStr = toDateString(new Date())
+    const eligible = allAppointments.filter((a) => {
+      try {
+        return (
+          toDateString(parseISO(a.date)) === todayStr &&
+          (a.status === 'Scheduled' || a.status === 'Confirmed') &&
+          (a.customerPhone || a.customer?.phone)
+        )
+      } catch {
+        return false
+      }
+    })
+
+    let openedCount = 0
+    eligible.forEach((apt) => {
+      handleSMSReminder(apt)
+      openedCount++
+    })
+
+    setBulkReminderDialogOpen(false)
+    toast.success(`Opened ${openedCount} reminder window(s)`)
+  }
+
   // ─── Render ─────────────────────────────────────────────────────────────
 
   return (
@@ -1175,6 +1285,30 @@ export default function Appointments() {
               {isWalkIn
                 ? 'Walk-in mode: new entries auto-set purpose & status'
                 : 'Switch to Walk-in mode for quick registration'}
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Send Reminders Button */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 min-h-[44px] touch-manipulation"
+                onClick={() => {
+                  if (bulkReminderCount === 0) {
+                    toast.info('No Scheduled/Confirmed appointments with phone numbers for today.')
+                    return
+                  }
+                  setBulkReminderDialogOpen(true)
+                }}
+              >
+                <MessageSquare className="size-3.5" />
+                <span className="hidden sm:inline">Send Reminders</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              Send WhatsApp reminders to all Scheduled/Confirmed appointments for today
             </TooltipContent>
           </Tooltip>
 
@@ -1225,6 +1359,29 @@ export default function Appointments() {
         </Card>
       </div>
 
+      {/* Purpose Stats Card */}
+      {Object.keys(purposeStats).length > 0 && (
+        <Card className="p-4">
+          <p className="text-sm font-medium text-muted-foreground mb-3">Today&apos;s Appointments by Purpose</p>
+          <div className="flex flex-wrap gap-2">
+            {PURPOSE_OPTIONS.map((opt) => {
+              const count = purposeStats[opt.value] || 0
+              if (count === 0) return null
+              return (
+                <Badge
+                  key={opt.value}
+                  variant="outline"
+                  className={cn('text-xs gap-1.5', PURPOSE_COLORS[opt.value])}
+                >
+                  {opt.label}
+                  <span className="font-bold">{count}</span>
+                </Badge>
+              )
+            })}
+          </div>
+        </Card>
+      )}
+
       {/* Today's Appointments Highlighted */}
       {todayAppointments.length > 0 && viewMode === 'list' && (
         <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
@@ -1239,75 +1396,113 @@ export default function Appointments() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {todayAppointments.map((apt) => (
-                <div
-                  key={apt.id}
-                  className="flex items-center gap-3 rounded-lg border border-blue-100 dark:border-blue-900 p-3 bg-white dark:bg-slate-900 hover:bg-accent/50 transition-colors"
-                >
-                  <div className="text-sm font-mono font-medium min-w-[70px]">
-                    {formatTime(apt.time)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{apt.customerName}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <PurposeBadge purpose={apt.purpose} />
-                      {apt.customerPhone && (
-                        <span className="text-xs text-muted-foreground">{apt.customerPhone}</span>
-                      )}
+              {todayAppointments.map((apt) => {
+                const isWalkInApt = apt.purpose === 'Walk-in'
+                return (
+                  <div
+                    key={apt.id}
+                    className="flex items-center gap-3 rounded-lg border border-blue-100 dark:border-blue-900 p-3 bg-white dark:bg-slate-900 hover:bg-accent/50 transition-colors"
+                  >
+                    <div className="text-sm font-mono font-medium min-w-[70px]">
+                      {formatTime(apt.time)}
                     </div>
-                  </div>
-                  <StatusBadge status={apt.status} />
-                  {/* SMS Reminder Button */}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="min-w-[44px] min-h-[44px] touch-manipulation text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400"
-                        onClick={() => handleSMSReminder(apt)}
-                      >
-                        <MessageSquare className="size-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>WhatsApp Reminder</TooltipContent>
-                  </Tooltip>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="min-w-[44px] min-h-[44px] touch-manipulation">
-                        <MoreHorizontal className="size-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setEditAppointment(apt)}>
-                        <Pencil className="size-4 mr-2" /> Edit
-                      </DropdownMenuItem>
-                      {apt.status === 'Scheduled' && (
-                        <DropdownMenuItem onClick={() => handleUpdateStatus(apt.id, 'Confirmed')}>
-                          <CheckCircle2 className="size-4 mr-2" /> Confirm
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-sm truncate">{apt.customerName}</p>
+                        {/* Appointment type badge */}
+                        <span className={cn(
+                          'inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0',
+                          isWalkInApt
+                            ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400'
+                            : 'bg-slate-100 text-slate-600 dark:bg-slate-800/40 dark:text-slate-400'
+                        )}>
+                          {isWalkInApt ? (
+                            <>
+                              <Footprints className="size-2.5" />
+                              Walk-in
+                            </>
+                          ) : (
+                            <>
+                              <CalendarIcon className="size-2.5" />
+                              Scheduled
+                            </>
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <PurposeBadge purpose={apt.purpose} />
+                        {apt.customerPhone && (
+                          <span className="text-xs text-muted-foreground">{apt.customerPhone}</span>
+                        )}
+                      </div>
+                    </div>
+                    <StatusBadge status={apt.status} />
+                    {/* WhatsApp Reminder Button */}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="min-w-[44px] min-h-[44px] touch-manipulation text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400"
+                          onClick={() => handleSMSReminder(apt)}
+                        >
+                          <MessageSquare className="size-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>WhatsApp Reminder</TooltipContent>
+                    </Tooltip>
+                    {/* SMS Reminder Placeholder Button */}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="min-w-[44px] min-h-[44px] touch-manipulation text-muted-foreground hover:text-blue-600 dark:hover:text-blue-400"
+                          onClick={handleSMSReminderPlaceholder}
+                        >
+                          <Phone className="size-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>SMS Reminder</TooltipContent>
+                    </Tooltip>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="min-w-[44px] min-h-[44px] touch-manipulation">
+                          <MoreHorizontal className="size-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setEditAppointment(apt)}>
+                          <Pencil className="size-4 mr-2" /> Edit
                         </DropdownMenuItem>
-                      )}
-                      {(apt.status === 'Scheduled' || apt.status === 'Confirmed') && (
-                        <DropdownMenuItem onClick={() => handleUpdateStatus(apt.id, 'Completed')}>
-                          <CheckCircle2 className="size-4 mr-2" /> Mark Completed
-                        </DropdownMenuItem>
-                      )}
-                      {(apt.status === 'Scheduled' || apt.status === 'Confirmed') && (
-                        <DropdownMenuItem onClick={() => handleUpdateStatus(apt.id, 'No-Show')}>
-                          <AlertTriangle className="size-4 mr-2" /> Mark No-Show
-                        </DropdownMenuItem>
-                      )}
-                      {apt.status !== 'Cancelled' && apt.status !== 'Completed' && (
-                        <>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleUpdateStatus(apt.id, 'Cancelled')} className="text-destructive">
-                            <XCircle className="size-4 mr-2" /> Cancel
+                        {apt.status === 'Scheduled' && (
+                          <DropdownMenuItem onClick={() => handleUpdateStatus(apt.id, 'Confirmed')}>
+                            <CheckCircle2 className="size-4 mr-2" /> Confirm
                           </DropdownMenuItem>
-                        </>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              ))}
+                        )}
+                        {(apt.status === 'Scheduled' || apt.status === 'Confirmed') && (
+                          <DropdownMenuItem onClick={() => handleUpdateStatus(apt.id, 'Completed')}>
+                            <CheckCircle2 className="size-4 mr-2" /> Mark Completed
+                          </DropdownMenuItem>
+                        )}
+                        {(apt.status === 'Scheduled' || apt.status === 'Confirmed') && (
+                          <DropdownMenuItem onClick={() => handleUpdateStatus(apt.id, 'No-Show')}>
+                            <AlertTriangle className="size-4 mr-2" /> Mark No-Show
+                          </DropdownMenuItem>
+                        )}
+                        {apt.status !== 'Cancelled' && apt.status !== 'Completed' && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleUpdateStatus(apt.id, 'Cancelled')} className="text-destructive">
+                              <XCircle className="size-4 mr-2" /> Cancel
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                )
+              })}
             </div>
           </CardContent>
         </Card>
@@ -1444,6 +1639,7 @@ export default function Appointments() {
                     <TableHead>Time</TableHead>
                     <TableHead className="hidden md:table-cell">Purpose</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead className="hidden lg:table-cell">Duration</TableHead>
                     <TableHead className="hidden lg:table-cell">Notes</TableHead>
                     <TableHead className="hidden xl:table-cell">Repeat</TableHead>
                     <TableHead className="pr-4 text-right">Actions</TableHead>
@@ -1473,6 +1669,11 @@ export default function Appointments() {
                         <StatusBadge status={apt.status} />
                       </TableCell>
                       <TableCell className="hidden lg:table-cell">
+                        <span className="text-xs text-muted-foreground">
+                          {PURPOSE_DURATION[apt.purpose ?? ''] ?? 30} min
+                        </span>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
                         <p className="text-xs text-muted-foreground max-w-[200px] truncate">
                           {apt.notes || '—'}
                         </p>
@@ -1486,7 +1687,7 @@ export default function Appointments() {
                       </TableCell>
                       <TableCell className="pr-4 text-right">
                         <div className="flex items-center justify-end gap-0.5">
-                          {/* SMS Reminder Button */}
+                          {/* WhatsApp Reminder Button */}
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
@@ -1499,6 +1700,20 @@ export default function Appointments() {
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>WhatsApp Reminder</TooltipContent>
+                          </Tooltip>
+                          {/* SMS Reminder Placeholder Button */}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="min-w-[44px] min-h-[44px] touch-manipulation text-muted-foreground hover:text-blue-600 dark:hover:text-blue-400"
+                                onClick={handleSMSReminderPlaceholder}
+                              >
+                                <Phone className="size-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>SMS Reminder</TooltipContent>
                           </Tooltip>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -1584,6 +1799,29 @@ export default function Appointments() {
             <Button variant="destructive" onClick={handleDeleteAppointment}>
               <Trash2 className="size-4 mr-2" />
               Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Reminder Confirmation Dialog */}
+      <Dialog open={bulkReminderDialogOpen} onOpenChange={setBulkReminderDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="size-5" />
+              Send Reminders
+            </DialogTitle>
+            <DialogDescription>
+              Send reminders to all Scheduled/Confirmed appointments for today?
+              This will open {bulkReminderCount} WhatsApp window{bulkReminderCount !== 1 ? 's' : ''}.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkReminderDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleBulkReminder}>
+              <MessageSquare className="size-4 mr-2" />
+              Send {bulkReminderCount} Reminder{bulkReminderCount !== 1 ? 's' : ''}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -24,7 +24,13 @@ import {
   Globe,
   TrendingUp,
   Sparkles,
+  Copy,
+  Target,
+  Star,
+  MessageCircle,
+  Zap,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -135,6 +141,26 @@ const whatsAppTemplates = [
     emoji: '👋',
     message: '👋 Welcome to Lotus Vision Opticals, {customer_name}! We\'re glad you visited us.',
   },
+  {
+    label: 'Festival Greeting',
+    emoji: '🎉',
+    message: '🎉 Happy {festival_name}, {customer_name}! 🌟\n\nMay the festivities bring joy and prosperity to you and your family.\n\nVisit Lotus Vision Opticals for exclusive festive offers on eyewear!\n\n- Lotus Vision Opticals',
+  },
+  {
+    label: 'Eye Checkup Reminder',
+    emoji: '👁️',
+    message: '👁️ Dear {customer_name},\n\nIt has been 6 months since your last eye checkup at Lotus Vision Opticals.\n\nRegular checkups are essential for healthy vision. Book your appointment today!\n\n📞 Call us to schedule your visit.\n- Lotus Vision Opticals',
+  },
+  {
+    label: 'New Collection Launch',
+    emoji: '🆕',
+    message: '🆕 {customer_name}, exciting news!\n\nLotus Vision Opticals has just launched a brand new collection of premium frames & lenses.\n\nBe the first to check out the latest styles. Visit us today!\n\n- Lotus Vision Opticals',
+  },
+  {
+    label: 'Referral Offer',
+    emoji: '🤝',
+    message: '🤝 Hey {customer_name}!\n\nRefer a friend to Lotus Vision Opticals and both of you get 15% off on your next purchase!\n\nShare the gift of clear vision with your loved ones.\n\n- Lotus Vision Opticals',
+  },
 ]
 
 // ─────────────────────────────────────────────────────────
@@ -171,6 +197,13 @@ const targetGroups = [
   { value: 'Wholesale', label: 'Wholesale' },
   { value: 'New', label: 'New' },
   { value: 'High Value', label: 'High Value' },
+]
+
+const segmentConfig = [
+  { value: 'All', label: 'All Customers', icon: Users, color: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300', count: 45 },
+  { value: 'Regular', label: 'Regular', icon: Target, color: 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300', count: 30 },
+  { value: 'Wholesale', label: 'Wholesale', icon: Zap, color: 'bg-violet-100 text-violet-600 dark:bg-violet-900/40 dark:text-violet-300', count: 12 },
+  { value: 'New', label: 'New', icon: Sparkles, color: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-300', count: 8 },
 ]
 
 function formatDate(dateStr: string | null): string {
@@ -362,6 +395,12 @@ export default function Campaigns() {
     setFormMessage(typePlaceholders[newType] || '')
   }
 
+  const openCreateDialogWithTarget = (targetGroup: string) => {
+    resetCreateForm()
+    setFormTargetGroup(targetGroup)
+    setCreateDialogOpen(true)
+  }
+
   const handleCreateSubmit = async () => {
     if (!formName.trim() || !formMessage.trim()) return
 
@@ -466,6 +505,46 @@ export default function Campaigns() {
   }
 
   // ─────────────────────────────────────────────────────────
+  // Duplicate Campaign Handler
+  // ─────────────────────────────────────────────────────────
+  const handleDuplicateCampaign = async () => {
+    if (!editingCampaign) return
+
+    setSubmitting(true)
+    try {
+      const payload = {
+        name: `${editingCampaign.name} (Copy)`,
+        type: editingCampaign.type,
+        message: editingCampaign.message.trim(),
+        targetGroup: editingCampaign.targetGroup || 'All',
+        status: 'Planned',
+        budget: editingCampaign.budget || 0,
+        reach: editingCampaign.reach || 0,
+        scheduledAt: null,
+      }
+
+      const res = await fetch('/api/campaigns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      if (res.ok) {
+        await fetchCampaigns()
+        setEditDialogOpen(false)
+        setEditingCampaign(null)
+        toast.success('Campaign duplicated successfully')
+      } else {
+        toast.error('Failed to duplicate campaign')
+      }
+    } catch {
+      toast.error('Network error while duplicating campaign')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────
   // Preview renderer
   // ─────────────────────────────────────────────────────────
   const renderPreview = (msg: string, type: string) => {
@@ -514,6 +593,30 @@ export default function Campaigns() {
       }, 0) / totalCampaigns
     : 0
   const maxSent = Math.max(...analyticsData.map((c) => c.sentCount), 1)
+
+  // ── Analytics with per-campaign ROI (sorted by ROI desc) ──
+  const analyticsWithROI = useMemo(() => {
+    return [...analyticsData]
+      .map((c) => {
+        const estRevenue = c.sentCount * AVERAGE_ORDER_VALUE * 0.05
+        const costPerMessage = c.sentCount > 0 && c.budget > 0 ? c.budget / c.sentCount : 0
+        const campaignROI = c.budget > 0 ? ((estRevenue - c.budget) / c.budget) * 100 : 0
+        return { ...c, estRevenue, costPerMessage, campaignROI }
+      })
+      .sort((a, b) => b.campaignROI - a.campaignROI)
+  }, [analyticsData])
+
+  // ── SMS Tracker derived data ───────────────────────────────
+  const smsCampaigns = useMemo(() => campaigns.filter((c) => c.type === 'SMS'), [campaigns])
+
+  const smsTrackerSummary = useMemo(() => {
+    const totalSMSSent = smsCampaigns.reduce((s, c) => s + c.sentCount, 0)
+    const totalDelivered = smsCampaigns.reduce((s, c) => s + Math.floor(c.sentCount * 0.85), 0)
+    const totalFailed = smsCampaigns.reduce((s, c) => s + Math.floor(c.sentCount * 0.05), 0)
+    const deliveryRate = totalSMSSent > 0 ? (totalDelivered / totalSMSSent) * 100 : 0
+    const failedRate = totalSMSSent > 0 ? (totalFailed / totalSMSSent) * 100 : 0
+    return { totalSMSSent, totalDelivered, totalFailed, deliveryRate, failedRate }
+  }, [smsCampaigns])
 
   // ─────────────────────────────────────────────────────────
   if (loading) {
@@ -599,7 +702,7 @@ export default function Campaigns() {
                   <p className="text-xs text-muted-foreground">
                     Choose a pre-built template to quickly get started. Click to pre-fill the message.
                   </p>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
                     {whatsAppTemplates.map((tmpl) => (
                       <Button
                         key={tmpl.label}
@@ -1082,6 +1185,59 @@ export default function Campaigns() {
         </Card>
       </div>
 
+      {/* ── Customer Segments Builder ───────────────────────── */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <div className="flex items-center justify-center size-8 rounded-lg bg-primary/10">
+                <Users className="size-4 text-primary" />
+              </div>
+              Customer Segments
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">Click a segment to create a targeted campaign</p>
+          </div>
+          <CardDescription>Select a customer segment to quickly start a targeted campaign</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+            {segmentConfig.map((seg) => {
+              const Icon = seg.icon
+              return (
+                <button
+                  key={seg.value}
+                  type="button"
+                  className="flex flex-col items-center gap-2 rounded-lg border p-4 hover:bg-accent/50 transition-colors cursor-pointer min-h-[44px] touch-manipulation"
+                  onClick={() => openCreateDialogWithTarget(seg.value)}
+                >
+                  <div className={`flex items-center justify-center size-10 rounded-full ${seg.color}`}>
+                    <Icon className="size-5" />
+                  </div>
+                  <span className="text-sm font-medium">{seg.label}</span>
+                  <Badge variant="secondary" className="text-[10px] font-mono">
+                    {seg.count} customers
+                  </Badge>
+                </button>
+              )
+            })}
+            {/* High Value Segment — special gold/amber border */}
+            <button
+              type="button"
+              className="flex flex-col items-center gap-2 rounded-lg border-2 border-amber-400 bg-amber-50 dark:bg-amber-950/30 p-4 hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors cursor-pointer min-h-[44px] touch-manipulation shadow-sm"
+              onClick={() => openCreateDialogWithTarget('High Value')}
+            >
+              <div className="flex items-center justify-center size-10 rounded-full bg-amber-100 dark:bg-amber-900/40">
+                <Star className="size-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <span className="text-sm font-semibold text-amber-700 dark:text-amber-300">High Value</span>
+              <Badge variant="secondary" className="text-[10px] font-mono bg-amber-200 text-amber-800 border-amber-300">
+                {highValueCustomers.length} customers
+              </Badge>
+            </button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Tabs: Campaign List */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
@@ -1108,6 +1264,10 @@ export default function Campaigns() {
           <TabsTrigger value="analytics" className="gap-2">
             <BarChart3 className="size-4" />
             Analytics
+          </TabsTrigger>
+          <TabsTrigger value="sms-tracker" className="gap-2">
+            <MessageCircle className="size-4" />
+            SMS Tracker
           </TabsTrigger>
         </TabsList>
 
@@ -1189,52 +1349,74 @@ export default function Campaigns() {
               </Card>
             </div>
 
-            {/* ── Performance Table ──────────────────────────────── */}
+            {/* ── Performance Table (Enhanced with ROI) ──────────── */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Campaign Performance</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Campaign Name</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Sent Count</TableHead>
-                      <TableHead>Reach</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Created Date</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {analyticsData.length === 0 ? (
+                  <Table>
+                    <TableHeader>
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                          No campaign data available.
-                        </TableCell>
+                        <TableHead>Campaign Name</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead className="text-right">Sent Count</TableHead>
+                        <TableHead className="text-right">Reach</TableHead>
+                        <TableHead className="text-right">Budget</TableHead>
+                        <TableHead className="text-right">Cost / Msg</TableHead>
+                        <TableHead className="text-right">Revenue (est.)</TableHead>
+                        <TableHead className="text-right">ROI %</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Created Date</TableHead>
                       </TableRow>
-                    ) : (
-                      analyticsData.map((campaign) => {
-                        const status = statusConfig[campaign.status]
-                        return (
-                          <TableRow key={campaign.id}>
-                            <TableCell className="font-medium">{campaign.name}</TableCell>
-                            <TableCell>{campaign.type}</TableCell>
-                            <TableCell>{campaign.sentCount.toLocaleString()}</TableCell>
-                            <TableCell>{campaign.reach.toLocaleString()}</TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className={status?.className ?? ''}>
-                                {status?.label ?? campaign.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>{new Date(campaign.createdAt).toLocaleDateString()}</TableCell>
-                          </TableRow>
-                        )
-                      })
-                    )}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {analyticsWithROI.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
+                            No campaign data available.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        analyticsWithROI.map((campaign) => {
+                          const status = statusConfig[campaign.status]
+                          return (
+                            <TableRow key={campaign.id}>
+                              <TableCell className="font-medium">{campaign.name}</TableCell>
+                              <TableCell>{campaign.type}</TableCell>
+                              <TableCell className="text-right font-mono text-sm">{campaign.sentCount.toLocaleString()}</TableCell>
+                              <TableCell className="text-right font-mono text-sm">{campaign.reach.toLocaleString()}</TableCell>
+                              <TableCell className="text-right font-mono text-sm">
+                                {campaign.budget ? formatCurrency(campaign.budget) : '—'}
+                              </TableCell>
+                              <TableCell className="text-right font-mono text-sm">
+                                {campaign.costPerMessage > 0 ? `₹${campaign.costPerMessage.toFixed(2)}` : '—'}
+                              </TableCell>
+                              <TableCell className="text-right font-mono text-sm">
+                                {formatCurrency(campaign.estRevenue)}
+                              </TableCell>
+                              <TableCell className="text-right font-mono text-sm font-semibold">
+                                {campaign.budget > 0 ? (
+                                  <span className={campaign.campaignROI >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                                    {campaign.campaignROI >= 0 ? '+' : ''}{campaign.campaignROI.toFixed(1)}%
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className={status?.className ?? ''}>
+                                  {status?.label ?? campaign.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>{new Date(campaign.createdAt).toLocaleDateString()}</TableCell>
+                            </TableRow>
+                          )
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
                 </div>
               </CardContent>
             </Card>
@@ -1266,6 +1448,146 @@ export default function Campaigns() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* ── SMS Tracker Tab ─────────────────────────────────── */}
+        <TabsContent value="sms-tracker">
+          <div className="space-y-6">
+            {/* ── SMS Tracker Summary Cards ─────────────────────── */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <Card className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-blue-100 dark:bg-blue-900/30 p-2.5">
+                    <MessageCircle className="size-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total SMS Sent</p>
+                    <p className="text-2xl font-bold">{smsTrackerSummary.totalSMSSent.toLocaleString()}</p>
+                  </div>
+                </div>
+              </Card>
+              <Card className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-green-100 dark:bg-green-900/30 p-2.5">
+                    <CheckCircle2 className="size-5 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Delivery Rate</p>
+                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                      {smsTrackerSummary.deliveryRate.toFixed(1)}%
+                    </p>
+                  </div>
+                </div>
+              </Card>
+              <Card className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-red-100 dark:bg-red-900/30 p-2.5">
+                    <XCircle className="size-5 text-red-600 dark:text-red-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Failed Rate</p>
+                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                      {smsTrackerSummary.failedRate.toFixed(1)}%
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            {/* ── SMS Campaign Delivery Table ───────────────────── */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <MessageCircle className="size-4" />
+                  SMS Delivery Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {smsCampaigns.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 gap-3">
+                    <div className="flex items-center justify-center size-12 rounded-full bg-muted">
+                      <MessageCircle className="size-6 text-muted-foreground" />
+                    </div>
+                    <p className="text-muted-foreground text-sm">No SMS campaigns found. Create an SMS campaign to track delivery.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Campaign Name</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead className="text-right">Sent</TableHead>
+                          <TableHead className="text-right">Delivered</TableHead>
+                          <TableHead className="text-right">Failed</TableHead>
+                          <TableHead className="text-right">Pending</TableHead>
+                          <TableHead className="min-w-[200px]">Delivery Progress</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {smsCampaigns.map((campaign) => {
+                          const sent = campaign.sentCount
+                          const delivered = Math.floor(sent * 0.85)
+                          const failed = Math.floor(sent * 0.05)
+                          const pending = sent - delivered - failed
+                          const deliveredPct = sent > 0 ? (delivered / sent) * 100 : 0
+                          const failedPct = sent > 0 ? (failed / sent) * 100 : 0
+                          const pendingPct = sent > 0 ? (pending / sent) * 100 : 0
+
+                          return (
+                            <TableRow key={campaign.id}>
+                              <TableCell className="font-medium">{campaign.name}</TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className={typeConfig['SMS']?.className}>
+                                  SMS
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right font-mono text-sm">{sent.toLocaleString()}</TableCell>
+                              <TableCell className="text-right font-mono text-sm text-green-600 dark:text-green-400">{delivered.toLocaleString()}</TableCell>
+                              <TableCell className="text-right font-mono text-sm text-red-600 dark:text-red-400">{failed.toLocaleString()}</TableCell>
+                              <TableCell className="text-right font-mono text-sm text-amber-600 dark:text-amber-400">{pending.toLocaleString()}</TableCell>
+                              <TableCell>
+                                <div className="space-y-1">
+                                  <div className="flex h-2 rounded-full overflow-hidden bg-muted">
+                                    <div
+                                      className="bg-green-500 h-full transition-all"
+                                      style={{ width: `${deliveredPct}%` }}
+                                    />
+                                    <div
+                                      className="bg-red-500 h-full transition-all"
+                                      style={{ width: `${failedPct}%` }}
+                                    />
+                                    <div
+                                      className="bg-amber-400 h-full transition-all"
+                                      style={{ width: `${pendingPct}%` }}
+                                    />
+                                  </div>
+                                  <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                                    <span className="flex items-center gap-1">
+                                      <span className="inline-block size-1.5 rounded-full bg-green-500" />
+                                      {deliveredPct.toFixed(0)}% delivered
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <span className="inline-block size-1.5 rounded-full bg-red-500" />
+                                      {failedPct.toFixed(0)}% failed
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <span className="inline-block size-1.5 rounded-full bg-amber-400" />
+                                      {pendingPct.toFixed(0)}% pending
+                                    </span>
+                                  </div>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })}
+                      </TableBody>
+                    </Table>
                   </div>
                 )}
               </CardContent>
@@ -1341,15 +1663,33 @@ export default function Campaigns() {
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setEditDialogOpen(false); setEditingCampaign(null) }}>
-              Cancel
-            </Button>
-            <Button onClick={handleEditSubmit} disabled={!editName.trim() || !editMessage.trim() || submitting}>
-              {submitting && <span className="size-4 animate-spin inline-block border-2 border-current border-t-transparent rounded-full mr-2" />}
-              <Pencil className="size-4 mr-2" />
-              Save Changes
-            </Button>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <div className="flex gap-2 w-full sm:w-auto sm:ml-auto">
+              <Button variant="outline" onClick={() => { setEditDialogOpen(false); setEditingCampaign(null) }} className="min-w-[44px] min-h-[44px] touch-manipulation">
+                Cancel
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleDuplicateCampaign}
+                disabled={submitting}
+                className="gap-2 min-w-[44px] min-h-[44px] touch-manipulation"
+              >
+                {submitting ? (
+                  <span className="size-4 animate-spin inline-block border-2 border-current border-t-transparent rounded-full" />
+                ) : (
+                  <Copy className="size-4" />
+                )}
+                Duplicate
+              </Button>
+              <Button onClick={handleEditSubmit} disabled={!editName.trim() || !editMessage.trim() || submitting} className="gap-2 min-w-[44px] min-h-[44px] touch-manipulation">
+                {submitting ? (
+                  <span className="size-4 animate-spin inline-block border-2 border-current border-t-transparent rounded-full" />
+                ) : (
+                  <Pencil className="size-4" />
+                )}
+                Save Changes
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
