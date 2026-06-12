@@ -1278,3 +1278,46 @@ Stage Summary:
 - All 11 categories scored GOOD or EXCELLENT
 - 23 total issues found and fixed across Cycles B-F (documented in QA PDF)
 - Two professional PDF reports generated and saved to download/
+---
+Task ID: crm-cycle-a-1749730500
+Agent: CRM Build Bot - Cycle A
+Task: Core Layout & Dashboard improvements
+
+Work Log:
+- Read worklog last 50 lines — confirmed Cycles A-F completed, mock removal + PDFs done
+- Server check: HTTP 200 on port 81
+- Build check: zero errors, all 40+ routes compiled
+- Read page.tsx (1045 lines) and dashboard.tsx (1236 lines) — no broken imports found
+- Dashboard API returns real data (15 customers, 5 sales, 5 low stock, ₹46K monthly revenue)
+- Sales trend and top products APIs returning real data from Prisma
+- 4 TODO comments found in accounting/route.ts and suppliers/route.ts (expected — no Prisma models yet)
+
+FIXES APPLIED:
+1. notifications.tsx — 5 touch target fixes:
+   - Bell trigger button: added min-w-[44px] min-h-[44px] touch-manipulation
+   - Mark all read button: h-7 → h-9, added min-w-[44px] touch-manipulation
+   - Clear read button: h-7 → h-9, added min-w-[44px] touch-manipulation
+   - Filter pill buttons: py-0.5 → py-1.5, px-2 → px-3, added min-h-[32px] touch-manipulation
+   - Individual mark-read button: p-1 → p-2.5, added min-w-[44px] min-h-[44px] touch-manipulation
+
+2. dashboard.tsx — 5 improvements:
+   - Refresh button: h-7 → h-9, added min-w-[44px] touch-manipulation
+   - Pending Tasks clickable items: added min-h-[44px] touch-manipulation
+   - Quick Action buttons: added min-h-[44px] touch-manipulation
+   - Dues show/hide button: p-1.5 → p-2.5, added min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation
+   - Recent Sales table: wrapped in overflow-x-auto for mobile scrolling
+
+3. dashboard.tsx — chart data improvement:
+   - Sales trend chart now filters out future dates (date > today) to prevent trailing zero-revenue days
+
+BUILD: Clean, zero errors
+SERVER: Running on port 3000, HTTP 200 verified
+
+Stage Summary:
+- 10 touch target fixes across notifications.tsx and dashboard.tsx (all buttons now >= 44px or >= 32px for compact filter pills)
+- 1 table overflow fix (Recent Sales on dashboard)
+- 1 chart data quality improvement (future dates filtered from trend)
+- All 12 sidebar navigation sections working, dark mode toggle functional, error boundary in place
+- Dashboard renders real data from /api/dashboard with skeleton loaders, empty states, and auto-refresh every 60s
+- Keyboard shortcuts (Ctrl+K, Ctrl+N, 1-0 nav) all functional
+

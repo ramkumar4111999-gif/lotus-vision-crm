@@ -162,7 +162,7 @@ export default function Notifications() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative shrink-0">
+        <Button variant="ghost" size="icon" className="relative shrink-0 min-w-[44px] min-h-[44px] touch-manipulation">
           <Bell className="h-4.5 w-4.5 text-slate-600 dark:text-slate-400" />
           {unreadCount > 0 && (
             <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-white dark:ring-slate-950">
@@ -190,7 +190,7 @@ export default function Notifications() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 px-2 text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300"
+                className="h-9 px-2.5 text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 min-w-[44px] touch-manipulation"
                 onClick={markAllRead}
               >
                 <CheckCheck className="h-3 w-3 mr-1" />
@@ -201,7 +201,7 @@ export default function Notifications() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 px-2 text-xs text-slate-500 hover:text-red-600 dark:hover:text-red-400"
+                className="h-9 px-2.5 text-xs text-slate-500 hover:text-red-600 dark:hover:text-red-400 min-w-[44px] touch-manipulation"
                 onClick={clearRead}
               >
                 <Trash2 className="h-3 w-3 mr-1" />
@@ -214,10 +214,10 @@ export default function Notifications() {
 
         {/* Filter pills */}
         {notifications.length > 0 && (
-          <div className="flex items-center gap-1 px-4 py-2 flex-wrap">
+          <div className="flex items-center gap-1.5 px-4 py-2 flex-wrap">
             <button
               onClick={() => setFilterType('all')}
-              className={`text-[11px] px-2 py-0.5 rounded-full transition-colors ${filterType === 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+              className={`text-[11px] px-3 py-1.5 rounded-full transition-colors min-h-[32px] touch-manipulation ${filterType === 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
             >All ({typeCounts.all})</button>
             {Object.entries(typeCounts).filter(([k]) => k !== 'all').map(([type, count]) => {
               const cfg = typeConfig[type];
@@ -225,7 +225,7 @@ export default function Notifications() {
                 <button
                   key={type}
                   onClick={() => setFilterType(type)}
-                  className={`text-[11px] px-2 py-0.5 rounded-full transition-colors ${filterType === type ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+                  className={`text-[11px] px-3 py-1.5 rounded-full transition-colors min-h-[32px] touch-manipulation ${filterType === type ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
                 >{type} ({count})</button>
               ) : null;
             })}
@@ -273,10 +273,10 @@ export default function Notifications() {
                           e.stopPropagation();
                           markAsRead(n.id);
                         }}
-                        className="shrink-0 mt-0.5 p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                        className="shrink-0 mt-0.5 p-2.5 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation"
                         aria-label="Mark as read"
                       >
-                        <Check className="h-3.5 w-3.5 text-slate-400" />
+                        <Check className="h-4 w-4 text-slate-400" />
                       </button>
                     )}
                   </div>

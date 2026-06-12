@@ -490,10 +490,17 @@ export default function Dashboard() {
   // ─── Derived chart data ───
 
   // API returns { date, total } but chart expects revenue as dataKey
-  const trendChartData = salesTrend.map((point) => ({
-    date: format(parseISO(point.date), 'MMM dd'),
-    revenue: (point as { total?: number; revenue?: number }).revenue ?? (point as { total?: number }).total ?? 0,
-  }));
+  // Filter out trailing future dates (revenue=0, date > today) for clean chart
+  const todayStr = new Date().toISOString().split('T')[0];
+  const trendChartData = salesTrend
+    .filter((point) => {
+      const ptDate = (point as { date?: string }).date ?? '';
+      return ptDate <= todayStr; // exclude future dates
+    })
+    .map((point) => ({
+      date: format(parseISO(point.date), 'MMM dd'),
+      revenue: (point as { total?: number; revenue?: number }).revenue ?? (point as { total?: number }).total ?? 0,
+    }));
 
   // API returns { name, totalQtySold } but chart uses salesCount
   const productsChartData = topProducts.map((p) => {
@@ -657,6 +664,7 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent>
           {recentSales.length > 0 ? (
+            <div className="overflow-x-auto -mx-1">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -693,6 +701,7 @@ export default function Dashboard() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           ) : (
             <div className="flex h-32 items-center justify-center text-muted-foreground text-sm">
               No recent sales
@@ -1025,7 +1034,7 @@ export default function Dashboard() {
               <button
                 key={t.section}
                 onClick={() => setActiveSection(t.section)}
-                className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all hover:shadow-md ${t.bg} border-transparent hover:border-border cursor-pointer text-left`}
+                className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all hover:shadow-md min-h-[44px] touch-manipulation ${t.bg} border-transparent hover:border-border cursor-pointer text-left`}
               >
                 <span className={`text-2xl font-bold ${t.color}`}>{t.count}</span>
                 <span className="text-xs text-muted-foreground text-center leading-tight">{t.label}</span>
@@ -1055,7 +1064,7 @@ export default function Dashboard() {
             <Button
               key={action.section}
               onClick={() => setActiveSection(action.section)}
-              className={`${action.color} h-auto py-4 flex flex-col items-center gap-2 rounded-xl shadow-sm transition-all hover:shadow-md`}
+              className={`${action.color} h-auto py-4 min-h-[44px] flex flex-col items-center gap-2 rounded-xl shadow-sm transition-all hover:shadow-md touch-manipulation`}
             >
               <Icon className="size-5" />
               <span className="text-sm font-medium">{action.label}</span>
@@ -1145,7 +1154,7 @@ export default function Dashboard() {
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Clock className="h-3.5 w-3.5" />
             <span>Updated {format(lastRefresh, 'hh:mm a')}</span>
-            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={fetchData} disabled={loading}>
+            <Button variant="ghost" size="sm" className="h-9 min-w-[44px] px-2 text-xs touch-manipulation" onClick={fetchData} disabled={loading}>
               {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Eye className="h-3 w-3" />}
             </Button>
           </div>
@@ -1201,7 +1210,7 @@ export default function Dashboard() {
               </span>
               <button
                 onClick={() => setDuesVisible(!duesVisible)}
-                className="p-1.5 rounded-md hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+                className="p-2.5 rounded-md hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation"
                 aria-label={duesVisible ? 'Hide dues amount' : 'Show dues amount'}
               >
                 {duesVisible ? (

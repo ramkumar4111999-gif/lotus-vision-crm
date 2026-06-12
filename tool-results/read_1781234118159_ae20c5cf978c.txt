@@ -1,0 +1,1236 @@
+     1→'use client';
+     2→
+     3→import { useEffect, useState, useCallback } from 'react';
+     4→import {
+     5→  Users,
+     6→  IndianRupee,
+     7→  TrendingUp,
+     8→  AlertTriangle,
+     9→  FlaskConical,
+    10→  Wallet,
+    11→  Clock,
+    12→  Eye,
+    13→  EyeOff,
+    14→  ShoppingCart,
+    15→  UserPlus,
+    16→  CalendarDays,
+    17→  TestTube,
+    18→  Target,
+    19→  CheckCircle2,
+    20→  ArrowUpRight,
+    21→  ArrowDownRight,
+    22→  ChevronRight,
+    23→  Loader2,
+    24→} from 'lucide-react';
+    25→import { getSettings } from '@/lib/settings';
+    26→import {
+    27→  Card,
+    28→  CardContent,
+    29→  CardDescription,
+    30→  CardHeader,
+    31→  CardTitle,
+    32→} from '@/components/ui/card';
+    33→import { Badge } from '@/components/ui/badge';
+    34→import { Skeleton } from '@/components/ui/skeleton';
+    35→import { Button } from '@/components/ui/button';
+    36→import { Progress } from '@/components/ui/progress';
+    37→import { Alert, AlertDescription } from '@/components/ui/alert';
+    38→import {
+    39→  Table,
+    40→  TableBody,
+    41→  TableCell,
+    42→  TableHead,
+    43→  TableHeader,
+    44→  TableRow,
+    45→} from '@/components/ui/table';
+    46→import { Separator } from '@/components/ui/separator';
+    47→import {
+    48→  ChartContainer,
+    49→  ChartTooltip,
+    50→  ChartTooltipContent,
+    51→  type ChartConfig,
+    52→} from '@/components/ui/chart';
+    53→import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
+    54→import { format, parseISO, isToday, startOfDay } from 'date-fns';
+    55→import { useCrmStore } from '@/components/crm/store';
+    56→
+    57→// ───────────────────────────────────────────────
+    58→// Types
+    59→// ───────────────────────────────────────────────
+    60→
+    61→interface DashboardStats {
+    62→  totalCustomers: number;
+    63→  todaySales: number;
+    64→  monthlyRevenue: number;
+    65→  lowStockAlerts: number;
+    66→  pendingLabOrders: number;
+    67→  pendingDues: number;
+    68→  overdueAppointments?: number;
+    69→}
+    70→
+    71→interface CustomerAcquisition {
+    72→  thisMonth: number;
+    73→  lastMonth: number;
+    74→  byGroup: { New: number; Regular: number; Wholesale: number; Premium: number };
+    75→}
+    76→
+    77→interface DayRevenue {
+    78→  day: string;
+    79→  revenue: number;
+    80→}
+    81→
+    82→interface Comparison {
+    83→  revenueChange: number;
+    84→  customerChange: number;
+    85→}
+    86→
+    87→interface PendingTasks {
+    88→  labOrdersPending: number;
+    89→  duesOverdue: number;
+    90→  appointmentsToday: number;
+    91→  lowStockItems: number;
+    92→}
+    93→
+    94→interface SalesTrendPoint {
+    95→  date: string;
+    96→  revenue: number;
+    97→}
+    98→
+    99→interface TopProduct {
+   100→  name: string;
+   101→  salesCount: number;
+   102→}
+   103→
+   104→interface RecentSale {
+   105→  invoiceNo: string;
+   106→  customerName: string;
+   107→  amount: number;
+   108→  date: string;
+   109→  paymentMode: string;
+   110→}
+   111→
+   112→interface Appointment {
+   113→  time: string;
+   114→  customerName: string;
+   115→  purpose: string;
+   116→  status: 'confirmed' | 'pending' | 'cancelled' | 'completed';
+   117→}
+   118→
+   119→interface LowStockProduct {
+   120→  name: string;
+   121→  stock: number;
+   122→  minStock: number;
+   123→}
+   124→
+   125→// ───────────────────────────────────────────────
+   126→// Helpers
+   127→// ───────────────────────────────────────────────
+   128→
+   129→function formatCurrency(amount: number): string {
+   130→  return new Intl.NumberFormat('en-IN', {
+   131→    style: 'currency',
+   132→    currency: 'INR',
+   133→    minimumFractionDigits: 0,
+   134→    maximumFractionDigits: 0,
+   135→  }).format(amount);
+   136→}
+   137→
+   138→function formatCompact(num: number): string {
+   139→  if (num >= 100000) return `₹${(num / 100000).toFixed(1)}L`;
+   140→  if (num >= 1000) return `₹${(num / 1000).toFixed(1)}K`;
+   141→  return `₹${num.toLocaleString('en-IN')}`;
+   142→}
+   143→
+   144→// ───────────────────────────────────────────────
+   145→// Stat Card Config
+   146→// ───────────────────────────────────────────────
+   147→
+   148→interface StatCardConfig {
+   149→  key: keyof DashboardStats;
+   150→  label: string;
+   151→  icon: React.ElementType;
+   152→  color: string;
+   153→  bgColor: string;
+   154→  borderColor: string;
+   155→  iconColor: string;
+   156→  format: (val: number) => string;
+   157→}
+   158→
+   159→const statCards: StatCardConfig[] = [
+   160→  {
+   161→    key: 'totalCustomers',
+   162→    label: 'Total Customers',
+   163→    icon: Users,
+   164→    color: 'text-emerald-700 dark:text-emerald-400',
+   165→    bgColor: 'bg-emerald-50 dark:bg-emerald-950/40',
+   166→    borderColor: 'border-emerald-200 dark:border-emerald-800/50',
+   167→    iconColor: 'text-emerald-600 dark:text-emerald-400',
+   168→    format: (v) => v.toLocaleString('en-IN'),
+   169→  },
+   170→  {
+   171→    key: 'todaySales',
+   172→    label: "Today's Sales",
+   173→    icon: IndianRupee,
+   174→    color: 'text-green-700 dark:text-green-400',
+   175→    bgColor: 'bg-green-50 dark:bg-green-950/40',
+   176→    borderColor: 'border-green-200 dark:border-green-800/50',
+   177→    iconColor: 'text-green-600 dark:text-green-400',
+   178→    format: (v) => formatCompact(v),
+   179→  },
+   180→  {
+   181→    key: 'monthlyRevenue',
+   182→    label: 'Monthly Revenue',
+   183→    icon: TrendingUp,
+   184→    color: 'text-sky-700 dark:text-sky-400',
+   185→    bgColor: 'bg-sky-50 dark:bg-sky-950/40',
+   186→    borderColor: 'border-sky-200 dark:border-sky-800/50',
+   187→    iconColor: 'text-sky-600 dark:text-sky-400',
+   188→    format: (v) => formatCompact(v),
+   189→  },
+   190→  {
+   191→    key: 'lowStockAlerts',
+   192→    label: 'Low Stock Alerts',
+   193→    icon: AlertTriangle,
+   194→    color: 'text-amber-700 dark:text-amber-400',
+   195→    bgColor: 'bg-amber-50 dark:bg-amber-950/40',
+   196→    borderColor: 'border-amber-200 dark:border-amber-800/50',
+   197→    iconColor: 'text-amber-600 dark:text-amber-400',
+   198→    format: (v) => v.toString(),
+   199→  },
+   200→  {
+   201→    key: 'pendingLabOrders',
+   202→    label: 'Pending Lab Orders',
+   203→    icon: FlaskConical,
+   204→    color: 'text-purple-700 dark:text-purple-400',
+   205→    bgColor: 'bg-purple-50 dark:bg-purple-950/40',
+   206→    borderColor: 'border-purple-200 dark:border-purple-800/50',
+   207→    iconColor: 'text-purple-600 dark:text-purple-400',
+   208→    format: (v) => v.toString(),
+   209→  },
+   210→  {
+   211→    key: 'pendingDues',
+   212→    label: 'Pending Dues',
+   213→    icon: Wallet,
+   214→    color: 'text-red-700 dark:text-red-400',
+   215→    bgColor: 'bg-red-50 dark:bg-red-950/40',
+   216→    borderColor: 'border-red-200 dark:border-red-800/50',
+   217→    iconColor: 'text-red-600 dark:text-red-400',
+   218→    format: (v) => formatCompact(v),
+   219→  },
+   220→];
+   221→
+   222→// ───────────────────────────────────────────────
+   223→// Chart Configs
+   224→// ───────────────────────────────────────────────
+   225→
+   226→const salesTrendConfig: ChartConfig = {
+   227→  revenue: {
+   228→    label: 'Revenue',
+   229→    color: 'hsl(160, 84%, 39%)',
+   230→  },
+   231→};
+   232→
+   233→const topProductsConfig: ChartConfig = {
+   234→  salesCount: {
+   235→    label: 'Units Sold',
+   236→    color: 'hsl(152, 76%, 36%)',
+   237→  },
+   238→};
+   239→
+   240→const pieChartConfig: ChartConfig = {
+   241→  New: { label: 'New', color: 'hsl(200, 84%, 50%)' },
+   242→  Regular: { label: 'Regular', color: 'hsl(152, 76%, 36%)' },
+   243→  Wholesale: { label: 'Wholesale', color: 'hsl(38, 92%, 50%)' },
+   244→  Premium: { label: 'Premium', color: 'hsl(330, 80%, 55%)' },
+   245→};
+   246→
+   247→const PIE_COLORS = ['hsl(200, 84%, 50%)', 'hsl(152, 76%, 36%)', 'hsl(38, 92%, 50%)', 'hsl(330, 80%, 55%)'];
+   248→
+   249→// ───────────────────────────────────────────────
+   250→// Sub-Components
+   251→// ───────────────────────────────────────────────
+   252→
+   253→function StatCardSkeleton() {
+   254→  return (
+   255→    <Card className="gap-0 py-0 overflow-hidden">
+   256→      <CardContent className="p-4">
+   257→        <div className="flex items-center justify-between">
+   258→          <Skeleton className="h-4 w-24" />
+   259→          <Skeleton className="h-9 w-9 rounded-lg" />
+   260→        </div>
+   261→        <Skeleton className="mt-2 h-7 w-20" />
+   262→      </CardContent>
+   263→    </Card>
+   264→  );
+   265→}
+   266→
+   267→function StatCard({ config, value, comparisonBadge }: { config: StatCardConfig; value: number; comparisonBadge?: { value: number; label: string } }) {
+   268→  const Icon = config.icon;
+   269→  return (
+   270→    <Card className={`gap-0 py-0 overflow-hidden ${config.borderColor}`}>
+   271→      <CardContent className="p-4">
+   272→        <div className="flex items-center justify-between">
+   273→          <p className="text-sm font-medium text-muted-foreground">{config.label}</p>
+   274→          <div className={`rounded-lg p-2 ${config.bgColor}`}>
+   275→            <Icon className={`h-5 w-5 ${config.iconColor}`} />
+   276→          </div>
+   277→        </div>
+   278→        <p className={`mt-2 text-2xl font-bold tracking-tight ${config.color}`}>
+   279→          {config.format(value)}
+   280→        </p>
+   281→        {comparisonBadge && (
+   282→          <div className={`mt-1 flex items-center gap-1 text-xs font-medium ${
+   283→            comparisonBadge.value >= 0
+   284→              ? 'text-emerald-600 dark:text-emerald-400'
+   285→              : 'text-red-600 dark:text-red-400'
+   286→          }`}>
+   287→            {comparisonBadge.value >= 0 ? (
+   288→              <ArrowUpRight className="h-3 w-3" />
+   289→            ) : (
+   290→              <ArrowDownRight className="h-3 w-3" />
+   291→            )}
+   292→            <span>{Math.abs(comparisonBadge.value)}% vs last month</span>
+   293→          </div>
+   294→        )}
+   295→      </CardContent>
+   296→    </Card>
+   297→  );
+   298→}
+   299→
+   300→function SalesChartSkeleton() {
+   301→  return (
+   302→    <Card className="h-[320px]">
+   303→      <CardHeader>
+   304→        <Skeleton className="h-5 w-32" />
+   305→        <Skeleton className="h-4 w-48" />
+   306→      </CardHeader>
+   307→      <CardContent className="flex-1">
+   308→        <Skeleton className="h-full w-full rounded-lg" />
+   309→      </CardContent>
+   310→    </Card>
+   311→  );
+   312→}
+   313→
+   314→function TopProductsChartSkeleton() {
+   315→  return (
+   316→    <Card className="h-[320px]">
+   317→      <CardHeader>
+   318→        <Skeleton className="h-5 w-40" />
+   319→        <Skeleton className="h-4 w-52" />
+   320→      </CardHeader>
+   321→      <CardContent className="flex-1">
+   322→        <Skeleton className="h-full w-full rounded-lg" />
+   323→      </CardContent>
+   324→    </Card>
+   325→  );
+   326→}
+   327→
+   328→function RecentSalesSkeleton() {
+   329→  return (
+   330→    <Card className="h-full">
+   331→      <CardHeader>
+   332→        <Skeleton className="h-5 w-32" />
+   333→        <Skeleton className="h-4 w-48" />
+   334→      </CardHeader>
+   335→      <CardContent>
+   336→        <div className="space-y-3">
+   337→          {Array.from({ length: 5 }).map((_, i) => (
+   338→            <div key={i} className="flex items-center justify-between">
+   339→              <div className="space-y-1.5">
+   340→                <Skeleton className="h-4 w-24" />
+   341→                <Skeleton className="h-3 w-32" />
+   342→              </div>
+   343→              <Skeleton className="h-4 w-20" />
+   344→            </div>
+   345→          ))}
+   346→        </div>
+   347→      </CardContent>
+   348→    </Card>
+   349→  );
+   350→}
+   351→
+   352→function AppointmentsSkeleton() {
+   353→  return (
+   354→    <Card className="h-full">
+   355→      <CardHeader>
+   356→        <Skeleton className="h-5 w-40" />
+   357→        <Skeleton className="h-4 w-48" />
+   358→      </CardHeader>
+   359→      <CardContent>
+   360→        <div className="space-y-4">
+   361→          {Array.from({ length: 4 }).map((_, i) => (
+   362→            <div key={i} className="flex items-start gap-3">
+   363→              <Skeleton className="h-5 w-14 rounded" />
+   364→              <div className="flex-1 space-y-1.5">
+   365→                <Skeleton className="h-4 w-28" />
+   366→                <Skeleton className="h-3 w-40" />
+   367→              </div>
+   368→              <Skeleton className="h-5 w-16 rounded-full" />
+   369→            </div>
+   370→          ))}
+   371→        </div>
+   372→      </CardContent>
+   373→    </Card>
+   374→  );
+   375→}
+   376→
+   377→function LowStockSkeleton() {
+   378→  return (
+   379→    <Card className="h-full">
+   380→      <CardHeader>
+   381→        <Skeleton className="h-5 w-36" />
+   382→        <Skeleton className="h-4 w-52" />
+   383→      </CardHeader>
+   384→      <CardContent>
+   385→        <div className="space-y-3">
+   386→          {Array.from({ length: 4 }).map((_, i) => (
+   387→            <div key={i} className="flex items-center justify-between">
+   388→              <Skeleton className="h-4 w-32" />
+   389→              <div className="flex items-center gap-2">
+   390→                <Skeleton className="h-4 w-8" />
+   391→                <Skeleton className="h-4 w-8" />
+   392→              </div>
+   393→            </div>
+   394→          ))}
+   395→        </div>
+   396→      </CardContent>
+   397→    </Card>
+   398→  );
+   399→}
+   400→
+   401→const appointmentStatusVariant: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+   402→  confirmed: 'default',
+   403→  completed: 'secondary',
+   404→  pending: 'outline',
+   405→  cancelled: 'destructive',
+   406→};
+   407→
+   408→const appointmentStatusClass: Record<string, string> = {
+   409→  confirmed: 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800',
+   410→  completed: 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700',
+   411→  pending: 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800',
+   412→  cancelled: 'bg-red-100 text-red-800 border-red-200 dark:bg-red-950/60 dark:text-red-300 dark:border-red-800',
+   413→};
+   414→
+   415→// ───────────────────────────────────────────────
+   416→// Main Dashboard Component
+   417→// ───────────────────────────────────────────────
+   418→
+   419→export default function Dashboard() {
+   420→  const [loading, setLoading] = useState(true);
+   421→  const [settings, setSettings] = useState(() => getSettings());
+   422→  const DAILY_REVENUE_GOAL = settings.dailyRevenueGoal;
+   423→
+   424→  // Refresh settings on mount (for SSR hydration)
+   425→  useEffect(() => {
+   426→    setSettings(getSettings());
+   427→  }, []);
+   428→  const [stats, setStats] = useState<DashboardStats | null>(null);
+   429→  const [salesTrend, setSalesTrend] = useState<SalesTrendPoint[]>([]);
+   430→  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
+   431→  const [recentSales, setRecentSales] = useState<RecentSale[]>([]);
+   432→  const [appointments, setAppointments] = useState<Appointment[]>([]);
+   433→  const [lowStock, setLowStock] = useState<LowStockProduct[]>([]);
+   434→  const [duesVisible, setDuesVisible] = useState(false);
+   435→  const [customerAcquisition, setCustomerAcquisition] = useState<CustomerAcquisition | null>(null);
+   436→  const [revenueByDayOfWeek, setRevenueByDayOfWeek] = useState<DayRevenue[]>([]);
+   437→  const [comparison, setComparison] = useState<Comparison | null>(null);
+   438→  const [pendingTasks, setPendingTasks] = useState<PendingTasks | null>(null);
+   439→  const { setActiveSection } = useCrmStore();
+   440→  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+   441→
+   442→  const fetchData = useCallback(async () => {
+   443→    setLoading(true);
+   444→    try {
+   445→      const [dashRes, trendRes, productsRes] = await Promise.allSettled([
+   446→        fetch('/api/dashboard'),
+   447→        fetch('/api/reports?type=sales-trend'),
+   448→        fetch('/api/reports?type=top-products'),
+   449→      ]);
+   450→
+   451→      // Dashboard stats
+   452→      if (dashRes.status === 'fulfilled' && dashRes.value.ok) {
+   453→        const dashData = await dashRes.value.json();
+   454→        setStats(dashData.stats ?? dashData);
+   455→        setRecentSales(dashData.recentSales ?? []);
+   456→        setAppointments(dashData.appointments ?? []);
+   457→        setLowStock(dashData.lowStock ?? []);
+   458→        setCustomerAcquisition(dashData.customerAcquisition ?? null);
+   459→        setRevenueByDayOfWeek(dashData.revenueByDayOfWeek ?? []);
+   460→        setComparison(dashData.comparison ?? null);
+   461→        setPendingTasks(dashData.pendingTasks ?? null);
+   462→      }
+   463→
+   464→      // Sales trend
+   465→      if (trendRes.status === 'fulfilled' && trendRes.value.ok) {
+   466→        const trendData = await trendRes.value.json();
+   467→        setSalesTrend(trendData.data ?? trendData ?? []);
+   468→      }
+   469→
+   470→      // Top products
+   471→      if (productsRes.status === 'fulfilled' && productsRes.value.ok) {
+   472→        const prodData = await productsRes.value.json();
+   473→        setTopProducts(prodData.data ?? prodData ?? []);
+   474→      }
+   475→    } catch {
+   476→      // Silently handle — UI shows empty state
+   477→    } finally {
+   478→      setLoading(false);
+   479→      setLastRefresh(new Date());
+   480→    }
+   481→  }, []);
+   482→
+   483→  useEffect(() => {
+   484→    fetchData();
+   485→    // Auto-refresh every 60 seconds
+   486→    const interval = setInterval(fetchData, 60000);
+   487→    return () => clearInterval(interval);
+   488→  }, [fetchData]);
+   489→
+   490→  // ─── Derived chart data ───
+   491→
+   492→  // API returns { date, total } but chart expects revenue as dataKey
+   493→  const trendChartData = salesTrend.map((point) => ({
+   494→    date: format(parseISO(point.date), 'MMM dd'),
+   495→    revenue: (point as { total?: number; revenue?: number }).revenue ?? (point as { total?: number }).total ?? 0,
+   496→  }));
+   497→
+   498→  // API returns { name, totalQtySold } but chart uses salesCount
+   499→  const productsChartData = topProducts.map((p) => {
+   500→    const prod = p as { name: string; salesCount?: number; totalQtySold?: number };
+   501→    const name = prod.name.length > 18 ? prod.name.slice(0, 18) + '…' : prod.name;
+   502→    return {
+   503→      name,
+   504→      salesCount: prod.salesCount ?? prod.totalQtySold ?? 0,
+   505→    };
+   506→  });
+   507→
+   508→  // ─── Render helpers ───
+   509→
+   510→  const renderStatsGrid = () => (
+   511→    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+   512→      {loading
+   513→        ? Array.from({ length: 6 }).map((_, i) => <StatCardSkeleton key={i} />)
+   514→        : stats &&
+   515→          statCards.map((cfg) => {
+   516→            let badge: { value: number; label: string } | undefined;
+   517→            if (comparison) {
+   518→              if (cfg.key === 'monthlyRevenue') badge = { value: comparison.revenueChange, label: 'Revenue' };
+   519→              if (cfg.key === 'totalCustomers') badge = { value: comparison.customerChange, label: 'Customers' };
+   520→            }
+   521→            return <StatCard key={cfg.key} config={cfg} value={stats[cfg.key]} comparisonBadge={badge} />;
+   522→          })}
+   523→    </div>
+   524→  );
+   525→
+   526→  const renderSalesTrendChart = () => {
+   527→    if (loading) return <SalesChartSkeleton />;
+   528→
+   529→    return (
+   530→      <Card className="h-[320px] flex flex-col">
+   531→        <CardHeader className="pb-2">
+   532→          <CardTitle className="text-base">Sales Trend</CardTitle>
+   533→          <CardDescription>Revenue over the last 30 days</CardDescription>
+   534→        </CardHeader>
+   535→        <CardContent className="flex-1 min-h-0">
+   536→          {trendChartData.length > 0 ? (
+   537→            <ChartContainer config={salesTrendConfig} className="h-full w-full">
+   538→              <LineChart data={trendChartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+   539→                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+   540→                <XAxis
+   541→                  dataKey="date"
+   542→                  tickLine={false}
+   543→                  axisLine={false}
+   544→                  tickMargin={8}
+   545→                  fontSize={11}
+   546→                  interval="preserveStartEnd"
+   547→                />
+   548→                <YAxis
+   549→                  tickLine={false}
+   550→                  axisLine={false}
+   551→                  tickMargin={4}
+   552→                  fontSize={11}
+   553→                  tickFormatter={(v: number) => `₹${(v / 1000).toFixed(0)}K`}
+   554→                />
+   555→                <ChartTooltip
+   556→                  content={
+   557→                    <ChartTooltipContent
+   558→                      formatter={(value: number) => (
+   559→                        <span className="font-mono font-medium">{formatCurrency(value)}</span>
+   560→                      )}
+   561→                    />
+   562→                  }
+   563→                />
+   564→                <Line
+   565→                  type="monotone"
+   566→                  dataKey="revenue"
+   567→                  stroke="var(--color-revenue)"
+   568→                  strokeWidth={2}
+   569→                  dot={false}
+   570→                  activeDot={{ r: 4, strokeWidth: 0 }}
+   571→                />
+   572→              </LineChart>
+   573→            </ChartContainer>
+   574→          ) : (
+   575→            <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
+   576→              <div className="rounded-full bg-emerald-100 dark:bg-emerald-900/30 p-3">
+   577→                <TrendingUp className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+   578→              </div>
+   579→              <div className="text-center">
+   580→                <p className="text-sm font-medium">No sales trend data yet</p>
+   581→                <p className="text-xs mt-1">Create your first sale to see trends here.</p>
+   582→              </div>
+   583→              <Button
+   584→                variant="outline"
+   585→                size="sm"
+   586→                className="mt-1"
+   587→                onClick={() => setActiveSection('sales')}
+   588→              >
+   589→                <ShoppingCart className="h-3.5 w-3.5 mr-1.5" />
+   590→                Create your first sale
+   591→              </Button>
+   592→            </div>
+   593→          )}
+   594→        </CardContent>
+   595→      </Card>
+   596→    );
+   597→  };
+   598→
+   599→  const renderTopProductsChart = () => {
+   600→    if (loading) return <TopProductsChartSkeleton />;
+   601→
+   602→    return (
+   603→      <Card className="h-[320px] flex flex-col">
+   604→        <CardHeader className="pb-2">
+   605→          <CardTitle className="text-base">Top Selling Products</CardTitle>
+   606→          <CardDescription>Top 5 products by sales count</CardDescription>
+   607→        </CardHeader>
+   608→        <CardContent className="flex-1 min-h-0">
+   609→          {productsChartData.length > 0 ? (
+   610→            <ChartContainer config={topProductsConfig} className="h-full w-full">
+   611→              <BarChart data={productsChartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+   612→                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+   613→                <XAxis
+   614→                  dataKey="name"
+   615→                  tickLine={false}
+   616→                  axisLine={false}
+   617→                  tickMargin={8}
+   618→                  fontSize={11}
+   619→                  interval={0}
+   620→                  angle={-20}
+   621→                  textAnchor="end"
+   622→                  height={60}
+   623→                />
+   624→                <YAxis
+   625→                  tickLine={false}
+   626→                  axisLine={false}
+   627→                  tickMargin={4}
+   628→                  fontSize={11}
+   629→                />
+   630→                <ChartTooltip content={<ChartTooltipContent />} />
+   631→                <Bar
+   632→                  dataKey="salesCount"
+   633→                  fill="var(--color-salesCount)"
+   634→                  radius={[4, 4, 0, 0]}
+   635→                  maxBarSize={48}
+   636→                />
+   637→              </BarChart>
+   638→            </ChartContainer>
+   639→          ) : (
+   640→            <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
+   641→              No product data available
+   642→            </div>
+   643→          )}
+   644→        </CardContent>
+   645→      </Card>
+   646→    );
+   647→  };
+   648→
+   649→  const renderRecentSales = () => {
+   650→    if (loading) return <RecentSalesSkeleton />;
+   651→
+   652→    return (
+   653→      <Card className="h-full">
+   654→        <CardHeader>
+   655→          <CardTitle className="text-base">Recent Sales</CardTitle>
+   656→          <CardDescription>Last 5 completed transactions</CardDescription>
+   657→        </CardHeader>
+   658→        <CardContent>
+   659→          {recentSales.length > 0 ? (
+   660→            <Table>
+   661→              <TableHeader>
+   662→                <TableRow>
+   663→                  <TableHead>Invoice #</TableHead>
+   664→                  <TableHead>Customer</TableHead>
+   665→                  <TableHead className="text-right">Amount</TableHead>
+   666→                  <TableHead className="hidden sm:table-cell">Date</TableHead>
+   667→                  <TableHead className="hidden md:table-cell">Mode</TableHead>
+   668→                </TableRow>
+   669→              </TableHeader>
+   670→              <TableBody>
+   671→                {recentSales.map((sale) => (
+   672→                  <TableRow key={sale.invoiceNo}>
+   673→                    <TableCell className="font-mono text-xs font-medium">
+   674→                      {sale.invoiceNo}
+   675→                    </TableCell>
+   676→                    <TableCell className="font-medium max-w-[120px] truncate">
+   677→                      {sale.customerName}
+   678→                    </TableCell>
+   679→                    <TableCell className="text-right font-mono font-medium text-emerald-700 dark:text-emerald-400">
+   680→                      {formatCurrency(sale.amount)}
+   681→                    </TableCell>
+   682→                    <TableCell className="hidden sm:table-cell text-muted-foreground">
+   683→                      {isToday(parseISO(sale.date))
+   684→                        ? 'Today'
+   685→                        : format(parseISO(sale.date), 'MMM dd')}
+   686→                    </TableCell>
+   687→                    <TableCell className="hidden md:table-cell">
+   688→                      <Badge variant="outline" className="text-xs font-normal">
+   689→                        {sale.paymentMode}
+   690→                      </Badge>
+   691→                    </TableCell>
+   692→                  </TableRow>
+   693→                ))}
+   694→              </TableBody>
+   695→            </Table>
+   696→          ) : (
+   697→            <div className="flex h-32 items-center justify-center text-muted-foreground text-sm">
+   698→              No recent sales
+   699→            </div>
+   700→          )}
+   701→        </CardContent>
+   702→      </Card>
+   703→    );
+   704→  };
+   705→
+   706→  const renderAppointments = () => {
+   707→    if (loading) return <AppointmentsSkeleton />;
+   708→
+   709→    return (
+   710→      <Card className="h-full">
+   711→        <CardHeader>
+   712→          <CardTitle className="text-base">Today&apos;s Appointments</CardTitle>
+   713→          <CardDescription>
+   714→            {appointments.length > 0
+   715→              ? `${appointments.length} scheduled for today`
+   716→              : 'No appointments scheduled'}
+   717→          </CardDescription>
+   718→        </CardHeader>
+   719→        <CardContent>
+   720→          {appointments.length > 0 ? (
+   721→            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+   722→              {appointments.map((appt, idx) => (
+   723→                <div key={idx}>
+   724→                  <div className="flex items-start gap-3 py-1">
+   725→                    <div className="flex items-center gap-1.5 shrink-0 min-w-[64px]">
+   726→                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+   727→                      <span className="text-sm font-mono font-medium text-foreground">
+   728→                        {appt.time}
+   729→                      </span>
+   730→                    </div>
+   731→                    <div className="flex-1 min-w-0">
+   732→                      <p className="text-sm font-medium truncate">{appt.customerName}</p>
+   733→                      <p className="text-xs text-muted-foreground truncate">{appt.purpose}</p>
+   734→                    </div>
+   735→                    <Badge
+   736→                      variant={appointmentStatusVariant[appt.status] ?? 'outline'}
+   737→                      className={appointmentStatusClass[appt.status] ?? ''}
+   738→                    >
+   739→                      {appt.status.charAt(0).toUpperCase() + appt.status.slice(1)}
+   740→                    </Badge>
+   741→                  </div>
+   742→                  {idx < appointments.length - 1 && <Separator />}
+   743→                </div>
+   744→              ))}
+   745→            </div>
+   746→          ) : (
+   747→            <div className="flex h-32 flex-col items-center justify-center gap-2 text-muted-foreground">
+   748→              <div className="rounded-full bg-emerald-100 dark:bg-emerald-900/30 p-2.5">
+   749→                <CalendarDays className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+   750→              </div>
+   751→              <div className="text-center">
+   752→                <p className="text-sm font-medium">No appointments scheduled</p>
+   753→                <p className="text-xs mt-0.5">Enjoy your day!</p>
+   754→              </div>
+   755→            </div>
+   756→          )}
+   757→        </CardContent>
+   758→      </Card>
+   759→    );
+   760→  };
+   761→
+   762→  const renderLowStock = () => {
+   763→    if (loading) return <LowStockSkeleton />;
+   764→
+   765→    return (
+   766→      <Card className="h-full">
+   767→        <CardHeader>
+   768→          <CardTitle className="text-base flex items-center gap-2">
+   769→            <AlertTriangle className="h-4 w-4 text-amber-500" />
+   770→            Low Stock Products
+   771→          </CardTitle>
+   772→          <CardDescription>
+   773→            {lowStock.length > 0
+   774→              ? `${lowStock.length} products below minimum stock level`
+   775→              : 'All products are well-stocked'}
+   776→          </CardDescription>
+   777→        </CardHeader>
+   778→        <CardContent>
+   779→          {lowStock.length > 0 ? (
+   780→            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+   781→              {lowStock.map((product, idx) => (
+   782→                <div key={idx}>
+   783→                  <div className="flex items-center justify-between py-1">
+   784→                    <div className="min-w-0 flex-1">
+   785→                      <p className="text-sm font-medium truncate">{product.name}</p>
+   786→                    </div>
+   787→                    <div className="flex items-center gap-3 shrink-0 ml-4">
+   788→                      <div className="text-right">
+   789→                        <span
+   790→                          className={`text-sm font-mono font-bold ${
+   791→                            product.stock === 0
+   792→                              ? 'text-red-600 dark:text-red-400'
+   793→                              : 'text-amber-600 dark:text-amber-400'
+   794→                          }`}
+   795→                        >
+   796→                          {product.stock}
+   797→                        </span>
+   798→                        <span className="text-xs text-muted-foreground">
+   799→                          {' / '}
+   800→                          {product.minStock}
+   801→                        </span>
+   802→                      </div>
+   803→                      <Badge
+   804→                        variant={product.stock === 0 ? 'destructive' : 'outline'}
+   805→                        className={`text-xs ${
+   806→                          product.stock === 0
+   807→                            ? ''
+   808→                            : 'border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400'
+   809→                        }`}
+   810→                      >
+   811→                        {product.stock === 0 ? 'Out of Stock' : 'Low'}
+   812→                      </Badge>
+   813→                    </div>
+   814→                  </div>
+   815→                  {idx < lowStock.length - 1 && <Separator />}
+   816→                </div>
+   817→              ))}
+   818→            </div>
+   819→          ) : (
+   820→            <div className="flex h-32 flex-col items-center justify-center gap-2 text-muted-foreground">
+   821→              <div className="rounded-full bg-emerald-100 dark:bg-emerald-900/30 p-2.5">
+   822→                <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+   823→              </div>
+   824→              <div className="text-center">
+   825→                <p className="text-sm font-medium">All products are well stocked!</p>
+   826→                <p className="text-xs mt-0.5">Great job.</p>
+   827→              </div>
+   828→            </div>
+   829→          )}
+   830→        </CardContent>
+   831→      </Card>
+   832→    );
+   833→  };
+   834→
+   835→  // ─── Customer Acquisition Funnel ───
+   836→  const renderCustomerAcquisition = () => {
+   837→    if (loading) {
+   838→      return (
+   839→        <Card className="h-[320px]">
+   840→          <CardHeader><Skeleton className="h-5 w-40" /><Skeleton className="h-4 w-52" /></CardHeader>
+   841→          <CardContent><Skeleton className="h-full w-full rounded-lg" /></CardContent>
+   842→        </Card>
+   843→      );
+   844→    }
+   845→
+   846→    const pieData = customerAcquisition
+   847→      ? Object.entries(customerAcquisition.byGroup)
+   848→          .filter(([, v]) => v > 0)
+   849→          .map(([name, value]) => ({ name, value }))
+   850→      : [];
+   851→
+   852→    const totalGroups = pieData.reduce((s, d) => s + d.value, 0);
+   853→
+   854→    return (
+   855→      <Card className="h-[320px] flex flex-col">
+   856→        <CardHeader className="pb-2">
+   857→          <CardTitle className="text-base">Customer Acquisition</CardTitle>
+   858→          <CardDescription>
+   859→            {customerAcquisition
+   860→              ? `${customerAcquisition.thisMonth} this month vs ${customerAcquisition.lastMonth} last month`
+   861→              : 'No customer data'}
+   862→          </CardDescription>
+   863→        </CardHeader>
+   864→        <CardContent className="flex-1 min-h-0 flex items-center gap-4">
+   865→          {pieData.length > 0 ? (
+   866→            <>
+   867→              <ChartContainer config={pieChartConfig} className="h-full w-1/2">
+   868→                <PieChart>
+   869→                  <Pie
+   870→                    data={pieData}
+   871→                    dataKey="value"
+   872→                    nameKey="name"
+   873→                    cx="50%"
+   874→                    cy="50%"
+   875→                    innerRadius={40}
+   876→                    outerRadius={70}
+   877→                    strokeWidth={2}
+   878→                  >
+   879→                    {pieData.map((_, i) => (
+   880→                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+   881→                    ))}
+   882→                  </Pie>
+   883→                  <ChartTooltip content={<ChartTooltipContent />} />
+   884→                </PieChart>
+   885→              </ChartContainer>
+   886→              <div className="flex-1 space-y-2">
+   887→                {pieData.map((d, i) => (
+   888→                  <div key={d.name} className="flex items-center justify-between text-sm">
+   889→                    <div className="flex items-center gap-2">
+   890→                      <div className="h-3 w-3 rounded-full" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+   891→                      <span className="text-muted-foreground">{d.name}</span>
+   892→                    </div>
+   893→                    <div className="flex items-center gap-2">
+   894→                      <span className="font-medium">{d.value}</span>
+   895→                      <span className="text-xs text-muted-foreground">
+   896→                        ({totalGroups > 0 ? Math.round((d.value / totalGroups) * 100) : 0}%)
+   897→                      </span>
+   898→                    </div>
+   899→                  </div>
+   900→                ))}
+   901→              </div>
+   902→            </>
+   903→          ) : (
+   904→            <div className="flex h-full w-full items-center justify-center text-muted-foreground text-sm">
+   905→              No customer group data
+   906→            </div>
+   907→          )}
+   908→        </CardContent>
+   909→      </Card>
+   910→    );
+   911→  };
+   912→
+   913→  // ─── Revenue Heatmap ───
+   914→  const renderRevenueHeatmap = () => {
+   915→    if (loading) {
+   916→      return (
+   917→        <Card className="h-[320px]">
+   918→          <CardHeader><Skeleton className="h-5 w-40" /><Skeleton className="h-4 w-52" /></CardHeader>
+   919→          <CardContent><Skeleton className="h-full w-full rounded-lg" /></CardContent>
+   920→        </Card>
+   921→      );
+   922→    }
+   923→
+   924→    const maxRev = Math.max(...revenueByDayOfWeek.map((d) => d.revenue), 1);
+   925→
+   926→    return (
+   927→      <Card className="h-[320px] flex flex-col">
+   928→        <CardHeader className="pb-2">
+   929→          <CardTitle className="text-base">Revenue by Day of Week</CardTitle>
+   930→          <CardDescription>Average performance — last 3 months</CardDescription>
+   931→        </CardHeader>
+   932→        <CardContent className="flex-1 min-h-0">
+   933→          {revenueByDayOfWeek.length > 0 ? (
+   934→            <div className="grid grid-cols-7 gap-2 h-full items-end pb-1">
+   935→              {revenueByDayOfWeek.map((d) => {
+   936→                const intensity = d.revenue / maxRev;
+   937→                const isHighest = d.revenue === maxRev && maxRev > 0;
+   938→                return (
+   939→                  <div key={d.day} className="flex flex-col items-center gap-1.5">
+   940→                    <span className="text-[10px] font-mono text-muted-foreground leading-tight">
+   941→                      {d.revenue > 0 ? `₹${(d.revenue / 1000).toFixed(0)}K` : '—'}
+   942→                    </span>
+   943→                    <div
+   944→                      className={`w-full rounded-t-md transition-all ${
+   945→                        isHighest
+   946→                          ? 'ring-2 ring-emerald-500 ring-offset-1 dark:ring-offset-slate-900'
+   947→                          : ''
+   948→                      }`}
+   949→                      style={{
+   950→                        height: `${Math.max(8, intensity * 100)}%`,
+   951→                        backgroundColor: intensity > 0
+   952→                          ? `hsl(152, 76%, ${30 + (1 - intensity) * 50}%)`
+   953→                          : 'hsl(0, 0%, 90%)',
+   954→                      }}
+   955→                    />
+   956→                    <span className="text-[10px] font-medium text-muted-foreground truncate w-full text-center">
+   957→                      {d.day.slice(0, 3)}
+   958→                    </span>
+   959→                  </div>
+   960→                );
+   961→              })}
+   962→            </div>
+   963→          ) : (
+   964→            <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
+   965→              No sales data for heatmap
+   966→            </div>
+   967→          )}
+   968→        </CardContent>
+   969→      </Card>
+   970→    );
+   971→  };
+   972→
+   973→  // ─── Pending Tasks Widget ───
+   974→  const renderPendingTasks = () => {
+   975→    if (loading) return null;
+   976→
+   977→    if (!pendingTasks) return null;
+   978→
+   979→    const tasks = [
+   980→      {
+   981→        label: 'Lab Orders Pending',
+   982→        count: pendingTasks.labOrdersPending,
+   983→        section: 'lab-orders' as const,
+   984→        color: 'text-purple-600 dark:text-purple-400',
+   985→        bg: 'bg-purple-50 dark:bg-purple-900/30',
+   986→      },
+   987→      {
+   988→        label: 'Dues Overdue',
+   989→        count: pendingTasks.duesOverdue,
+   990→        section: 'accounting' as const,
+   991→        color: 'text-red-600 dark:text-red-400',
+   992→        bg: 'bg-red-50 dark:bg-red-900/30',
+   993→      },
+   994→      {
+   995→        label: "Appointments Today",
+   996→        count: pendingTasks.appointmentsToday,
+   997→        section: 'appointments' as const,
+   998→        color: 'text-sky-600 dark:text-sky-400',
+   999→        bg: 'bg-sky-50 dark:bg-sky-900/30',
+  1000→      },
+  1001→      {
+  1002→        label: 'Low Stock Items',
+  1003→        count: pendingTasks.lowStockItems,
+  1004→        section: 'inventory' as const,
+  1005→        color: 'text-amber-600 dark:text-amber-400',
+  1006→        bg: 'bg-amber-50 dark:bg-amber-900/30',
+  1007→      },
+  1008→    ];
+  1009→
+  1010→    const totalPending = tasks.reduce((s, t) => s + t.count, 0);
+  1011→    if (totalPending === 0) return null;
+  1012→
+  1013→    return (
+  1014→      <Card>
+  1015→        <CardHeader className="pb-3">
+  1016→          <CardTitle className="text-base flex items-center gap-2">
+  1017→            <AlertTriangle className="h-4 w-4 text-amber-500" />
+  1018→            Pending Tasks
+  1019→          </CardTitle>
+  1020→          <CardDescription>{totalPending} items need your attention</CardDescription>
+  1021→        </CardHeader>
+  1022→        <CardContent>
+  1023→          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+  1024→            {tasks.map((t) => (
+  1025→              <button
+  1026→                key={t.section}
+  1027→                onClick={() => setActiveSection(t.section)}
+  1028→                className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all hover:shadow-md ${t.bg} border-transparent hover:border-border cursor-pointer text-left`}
+  1029→              >
+  1030→                <span className={`text-2xl font-bold ${t.color}`}>{t.count}</span>
+  1031→                <span className="text-xs text-muted-foreground text-center leading-tight">{t.label}</span>
+  1032→                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60" />
+  1033→              </button>
+  1034→            ))}
+  1035→          </div>
+  1036→        </CardContent>
+  1037→      </Card>
+  1038→    );
+  1039→  };
+  1040→
+  1041→  // ─── Quick Action Buttons ───
+  1042→  const renderQuickActions = () => {
+  1043→    const actions = [
+  1044→      { label: 'New Sale', icon: ShoppingCart, section: 'sales' as const, color: 'bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-700 dark:hover:bg-emerald-800' },
+  1045→      { label: 'Add Customer', icon: UserPlus, section: 'customers' as const, color: 'bg-sky-600 hover:bg-sky-700 text-white dark:bg-sky-700 dark:hover:bg-sky-800' },
+  1046→      { label: 'New Appointment', icon: CalendarDays, section: 'appointments' as const, color: 'bg-purple-600 hover:bg-purple-700 text-white dark:bg-purple-700 dark:hover:bg-purple-800' },
+  1047→      { label: 'Create Lab Order', icon: TestTube, section: 'lab-orders' as const, color: 'bg-orange-600 hover:bg-orange-700 text-white dark:bg-orange-700 dark:hover:bg-orange-800' },
+  1048→    ];
+  1049→
+  1050→    return (
+  1051→      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+  1052→        {actions.map((action) => {
+  1053→          const Icon = action.icon;
+  1054→          return (
+  1055→            <Button
+  1056→              key={action.section}
+  1057→              onClick={() => setActiveSection(action.section)}
+  1058→              className={`${action.color} h-auto py-4 flex flex-col items-center gap-2 rounded-xl shadow-sm transition-all hover:shadow-md`}
+  1059→            >
+  1060→              <Icon className="size-5" />
+  1061→              <span className="text-sm font-medium">{action.label}</span>
+  1062→            </Button>
+  1063→          );
+  1064→        })}
+  1065→      </div>
+  1066→    );
+  1067→  };
+  1068→
+  1069→  // ─── Overdue Appointments Alert ───
+  1070→  const renderOverdueAlert = () => {
+  1071→    const count = stats?.overdueAppointments ?? 0;
+  1072→    if (loading || count === 0) return null;
+  1073→
+  1074→    return (
+  1075→      <Alert className="border-red-200 bg-red-50 dark:border-red-900/50 dark:bg-red-950/20">
+  1076→        <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
+  1077→        <AlertDescription className="text-red-800 dark:text-red-300">
+  1078→          <span className="font-semibold">{count} overdue appointment{count > 1 ? 's' : ''}</span>
+  1079→          {' '}still pending from previous days. Please follow up with the customers.
+  1080→        </AlertDescription>
+  1081→        <Button
+  1082→          variant="outline"
+  1083→          size="sm"
+  1084→          className="ml-auto shrink-0 border-red-300 text-red-700 hover:bg-red-100 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950/50"
+  1085→          onClick={() => setActiveSection('appointments')}
+  1086→        >
+  1087→          View Appointments
+  1088→        </Button>
+  1089→      </Alert>
+  1090→    );
+  1091→  };
+  1092→
+  1093→  // ─── Today's Revenue Goal Progress ───
+  1094→  const renderRevenueGoal = () => {
+  1095→    const todaySalesAmount = stats?.todaySales ?? 0;
+  1096→    const percentage = Math.min(100, Math.round((todaySalesAmount / DAILY_REVENUE_GOAL) * 100));
+  1097→    const isGoalReached = percentage >= 100;
+  1098→
+  1099→    return (
+  1100→      <Card className="overflow-hidden">
+  1101→        <CardContent className="p-4">
+  1102→          <div className="flex items-center justify-between mb-2">
+  1103→            <div className="flex items-center gap-2">
+  1104→              <div className={`rounded-lg p-1.5 ${isGoalReached ? 'bg-emerald-100 dark:bg-emerald-900/40' : 'bg-amber-100 dark:bg-amber-900/40'}`}>
+  1105→                <Target className={`h-4 w-4 ${isGoalReached ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`} />
+  1106→              </div>
+  1107→              <div>
+  1108→                <p className="text-sm font-medium">Today&apos;s Revenue Goal</p>
+  1109→                <p className="text-xs text-muted-foreground">
+  1110→                  Daily target: {formatCurrency(DAILY_REVENUE_GOAL)}
+  1111→                </p>
+  1112→              </div>
+  1113→            </div>
+  1114→            <div className="text-right">
+  1115→              <p className={`text-lg font-bold font-mono ${isGoalReached ? 'text-emerald-700 dark:text-emerald-400' : 'text-foreground'}`}>
+  1116→                {formatCurrency(todaySalesAmount)}
+  1117→              </p>
+  1118→              <p className="text-xs text-muted-foreground">{percentage}%</p>
+  1119→            </div>
+  1120→          </div>
+  1121→          <Progress
+  1122→            value={percentage}
+  1123→            className={`h-2.5 ${isGoalReached ? '[&>div]:bg-emerald-500' : '[&>div]:bg-amber-500'}`}
+  1124→          />
+  1125→        </CardContent>
+  1126→      </Card>
+  1127→    );
+  1128→  };
+  1129→
+  1130→  // ─── Main Render ───
+  1131→
+  1132→  return (
+  1133→    <section className="space-y-6" aria-label="CRM Dashboard">
+  1134→      {/* Page Header */}
+  1135→      <div>
+  1136→        <div className="flex items-center justify-between">
+  1137→          <div>
+  1138→            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+  1139→              Dashboard
+  1140→            </h1>
+  1141→            <p className="text-muted-foreground mt-1">
+  1142→              {format(startOfDay(new Date()), 'EEEE, MMMM d, yyyy')} — Optical Shop CRM
+  1143→            </p>
+  1144→          </div>
+  1145→          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+  1146→            <Clock className="h-3.5 w-3.5" />
+  1147→            <span>Updated {format(lastRefresh, 'hh:mm a')}</span>
+  1148→            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={fetchData} disabled={loading}>
+  1149→              {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Eye className="h-3 w-3" />}
+  1150→            </Button>
+  1151→          </div>
+  1152→        </div>
+  1153→      </div>
+  1154→
+  1155→      {/* Stats Cards */}
+  1156→      {renderStatsGrid()}
+  1157→
+  1158→      {/* Quick Action Buttons */}
+  1159→      {renderQuickActions()}
+  1160→
+  1161→      {/* Charts Section */}
+  1162→      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+  1163→        {renderSalesTrendChart()}
+  1164→        {renderTopProductsChart()}
+  1165→      </div>
+  1166→
+  1167→      {/* Advanced Analytics Row */}
+  1168→      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+  1169→        {renderCustomerAcquisition()}
+  1170→        {renderRevenueHeatmap()}
+  1171→      </div>
+  1172→
+  1173→      {/* Pending Tasks Widget */}
+  1174→      {renderPendingTasks()}
+  1175→
+  1176→      {/* Today's Revenue Goal */}
+  1177→      {renderRevenueGoal()}
+  1178→
+  1179→      {/* Pending Dues Card */}
+  1180→      {!loading && stats && stats.pendingDues > 0 && (
+  1181→        <Card className="border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
+  1182→          <CardContent className="p-4 flex items-center justify-between">
+  1183→            <div className="flex items-center gap-3">
+  1184→              <div className="rounded-lg p-2 bg-red-100 dark:bg-red-950/60">
+  1185→                <Wallet className="h-5 w-5 text-red-600 dark:text-red-400" />
+  1186→              </div>
+  1187→              <div>
+  1188→                <p className="text-sm font-medium text-red-800 dark:text-red-300">
+  1189→                  Outstanding Dues
+  1190→                </p>
+  1191→                <p className="text-xs text-red-600/80 dark:text-red-400/80">
+  1192→                  Total pending payments from customers
+  1193→                </p>
+  1194→              </div>
+  1195→            </div>
+  1196→            <div className="flex items-center gap-2">
+  1197→              <span className="text-lg font-bold text-red-700 dark:text-red-300 font-mono">
+  1198→                {duesVisible
+  1199→                  ? formatCurrency(stats.pendingDues)
+  1200→                  : '₹••••••'}
+  1201→              </span>
+  1202→              <button
+  1203→                onClick={() => setDuesVisible(!duesVisible)}
+  1204→                className="p-1.5 rounded-md hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+  1205→                aria-label={duesVisible ? 'Hide dues amount' : 'Show dues amount'}
+  1206→              >
+  1207→                {duesVisible ? (
+  1208→                  <EyeOff className="h-4 w-4 text-red-500" />
+  1209→                ) : (
+  1210→                  <Eye className="h-4 w-4 text-red-500" />
+  1211→                )}
+  1212→              </button>
+  1213→            </div>
+  1214→          </CardContent>
+  1215→        </Card>
+  1216→      )}
+  1217→
+  1218→      {/* Overdue Appointments Alert */}
+  1219→      {renderOverdueAlert()}
+  1220→
+  1221→      {/* Recent Activity Section */}
+  1222→      <div>
+  1223→        <h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
+  1224→        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+  1225→          {/* Recent Sales — wider on desktop */}
+  1226→          <div className="lg:col-span-1">{renderRecentSales()}</div>
+  1227→
+  1228→          {/* Today's Appointments */}
+  1229→          <div>{renderAppointments()}</div>
+  1230→
+  1231→          <div>{renderLowStock()}</div>
+  1232→        </div>
+  1233→      </div>
+  1234→    </section>
+  1235→  );
+  1236→}
