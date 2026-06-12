@@ -30,24 +30,6 @@ import { Switch } from '@/components/ui/switch';
 import { useCrmStore } from '@/components/crm/store';
 
 // ───────────────────────────────────────────────
-// Types
-// ───────────────────────────────────────────────
-
-interface LensResult {
-  lensType: string;
-  index: string;
-  description: string;
-  basePrice: number;
-  coatingPrice: number;
-  totalPrice: number;
-}
-
-interface FrameResult {
-  frameType: string;
-  price: number;
-}
-
-// ───────────────────────────────────────────────
 // Price Data (Lotus Vision Opticals pricing)
 // ───────────────────────────────────────────────
 

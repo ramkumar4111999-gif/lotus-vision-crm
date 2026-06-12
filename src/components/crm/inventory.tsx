@@ -1613,7 +1613,7 @@ export default function Inventory() {
               {reportData.items.length > 0 ? (
                 <div>
                   <h3 className="text-sm font-semibold mb-2">Items Needing Reorder</h3>
-                  <div className="max-h-[400px] overflow-y-auto rounded-lg border">
+                  <div className="max-h-[400px] overflow-x-auto overflow-y-auto rounded-lg border">
                     <Table>
                       <TableHeader>
                         <TableRow>

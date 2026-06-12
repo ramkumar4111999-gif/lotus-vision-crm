@@ -1442,7 +1442,7 @@ export default function Reports() {
                     <CardDescription>All products ranked by revenue with margin analysis</CardDescription>
                   </CardHeader>
                   <CardContent className="p-0">
-                    <div className="max-h-[500px] overflow-y-auto">
+                    <div className="max-h-[500px] overflow-x-auto overflow-y-auto">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -1483,7 +1483,7 @@ export default function Reports() {
                     <CardTitle className="text-base">Product Revenue Details</CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
-                    <div className="max-h-96 overflow-y-auto">
+                    <div className="max-h-96 overflow-x-auto overflow-y-auto">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -1551,7 +1551,7 @@ export default function Reports() {
                       <p className="text-sm">No customer data available</p>
                     </div>
                   ) : (
-                    <div className="max-h-[480px] overflow-y-auto">
+                    <div className="max-h-[480px] overflow-x-auto overflow-y-auto">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -1608,7 +1608,7 @@ export default function Reports() {
                         <CardDescription>Products below minimum stock level</CardDescription>
                       </CardHeader>
                       <CardContent className="p-0">
-                        <div className="max-h-96 overflow-y-auto">
+                        <div className="max-h-96 overflow-x-auto overflow-y-auto">
                           <Table>
                             <TableHeader>
                               <TableRow>
@@ -1650,7 +1650,7 @@ export default function Reports() {
                       </div>
                     </CardHeader>
                     <CardContent className="p-0">
-                      <div className="max-h-[500px] overflow-y-auto">
+                      <div className="max-h-[500px] overflow-x-auto overflow-y-auto">
                         <Table>
                           <TableHeader>
                             <TableRow>
@@ -1899,7 +1899,7 @@ export default function Reports() {
                 </CardHeader>
                 <CardContent className="p-0">
                   {productPerf && productPerf.productData.length > 0 ? (
-                    <div className="max-h-[500px] overflow-y-auto">
+                    <div className="max-h-[500px] overflow-x-auto overflow-y-auto">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -1928,7 +1928,7 @@ export default function Reports() {
                       </Table>
                     </div>
                   ) : topProductsByRevenue.length > 0 ? (
-                    <div className="max-h-[500px] overflow-y-auto">
+                    <div className="max-h-[500px] overflow-x-auto overflow-y-auto">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -2122,7 +2122,7 @@ export default function Reports() {
                       <p className="text-sm">No customer data available</p>
                     </div>
                   ) : (
-                    <div className="max-h-[500px] overflow-y-auto">
+                    <div className="max-h-[500px] overflow-x-auto overflow-y-auto">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -2317,7 +2317,7 @@ export default function Reports() {
                   <CardDescription>Product Name, Category, Price, Stock, Inventory Value, Status</CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="max-h-96 overflow-y-auto">
+                  <div className="max-h-96 overflow-x-auto overflow-y-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>

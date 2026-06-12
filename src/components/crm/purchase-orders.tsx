@@ -22,7 +22,6 @@ import {
   X,
   FileText,
   Phone,
-  ArrowUpDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCrmStore } from '@/components/crm/store';
@@ -680,7 +679,7 @@ export default function PurchaseOrders() {
                 {parsedItems.length > 0 && (
                   <>
                     <Separator />
-                    <div>
+                    <div className="overflow-x-auto">
                       <Label className="font-medium mb-2 block">Items ({parsedItems.length})</Label>
                       <Table>
                         <TableHeader>

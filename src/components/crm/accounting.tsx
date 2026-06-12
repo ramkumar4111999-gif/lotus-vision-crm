@@ -1393,7 +1393,7 @@ export default function Accounting() {
                 </div>
               ) : (
                 <>
-                  <div className="max-h-[420px] overflow-y-auto rounded-md border">
+                  <div className="max-h-[420px] overflow-x-auto overflow-y-auto rounded-md border">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -1519,7 +1519,7 @@ export default function Accounting() {
                 </div>
               ) : (
                 <>
-                  <div className="max-h-[360px] overflow-y-auto rounded-md border">
+                  <div className="max-h-[360px] overflow-x-auto overflow-y-auto rounded-md border">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -1541,8 +1541,8 @@ export default function Accounting() {
                             <TableCell className="text-xs hidden sm:table-cell max-w-[120px] truncate">{exp.vendor || '—'}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-1">
-                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 touch-manipulation active:scale-95 transition-transform" onClick={() => openEditExpense(exp)}><Pencil className="h-3.5 w-3.5" /><span className="sr-only">Edit</span></Button>
-                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950 touch-manipulation active:scale-95 transition-transform" onClick={() => handleDeleteExpense(exp.id)} disabled={deletingExpenseId === exp.id}>
+                                <Button variant="ghost" size="sm" className="h-9 w-9 min-w-[44px] min-h-[44px] p-0 touch-manipulation active:scale-95 transition-transform" onClick={() => openEditExpense(exp)}><Pencil className="h-3.5 w-3.5" /><span className="sr-only">Edit</span></Button>
+                                <Button variant="ghost" size="sm" className="h-9 w-9 min-w-[44px] min-h-[44px] p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950 touch-manipulation active:scale-95 transition-transform" onClick={() => handleDeleteExpense(exp.id)} disabled={deletingExpenseId === exp.id}>
                                   {deletingExpenseId === exp.id ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <Trash2 className="h-3.5 w-3.5" />}
                                   <span className="sr-only">Delete</span>
                                 </Button>
@@ -1763,7 +1763,7 @@ export default function Accounting() {
                       </div>
                       Revenue
                     </h3>
-                    <div className="rounded-md border">
+                    <div className="rounded-md border overflow-x-auto">
                       <Table>
                         <TableBody>
                           <TableRow>
@@ -1790,7 +1790,7 @@ export default function Accounting() {
                         <p className="text-sm">No expenses recorded for this period.</p>
                       </div>
                     ) : (
-                      <div className="max-h-96 overflow-y-auto rounded-md border">
+                      <div className="max-h-96 overflow-x-auto overflow-y-auto rounded-md border">
                         <Table>
                           <TableHeader>
                             <TableRow>
@@ -1863,7 +1863,7 @@ export default function Accounting() {
                   <div className="flex items-center gap-2">
                     <Label htmlFor="recon-date" className="text-xs whitespace-nowrap">Date:</Label>
                     <Input id="recon-date" type="date" value={reconDate} onChange={(e) => setReconDate(e.target.value)} className="h-8 w-[150px] text-xs" />
-                    <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => setReconDate(getTodayStr())}>Today</Button>
+                    <Button variant="outline" size="sm" className="text-xs h-9 min-w-[44px] min-h-[44px] touch-manipulation" onClick={() => setReconDate(getTodayStr())}>Today</Button>
                   </div>
                 </div>
               </CardHeader>
@@ -1898,7 +1898,7 @@ export default function Accounting() {
                     </div>
 
                     {/* Reconciliation Detail Table */}
-                    <div className="rounded-lg border overflow-hidden">
+                    <div className="rounded-lg border overflow-x-auto overflow-hidden">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -1983,7 +1983,7 @@ export default function Accounting() {
                     {dailyReconciliation.sales.length > 0 && (
                       <div>
                         <h3 className="text-sm font-semibold mb-2">Sales Transactions ({formatDate(reconDate)})</h3>
-                        <div className="max-h-60 overflow-y-auto rounded-md border">
+                        <div className="max-h-60 overflow-x-auto overflow-y-auto rounded-md border">
                           <Table>
                             <TableHeader>
                               <TableRow>
@@ -2113,7 +2113,7 @@ export default function Accounting() {
                   </div>
 
                   {/* Calculation Breakdown Table */}
-                  <div className="rounded-lg border overflow-hidden">
+                  <div className="rounded-lg border overflow-x-auto overflow-hidden">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -2255,7 +2255,7 @@ export default function Accounting() {
                                           target="_blank"
                                           rel="noopener noreferrer"
                                         >
-                                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950">
+                                          <Button variant="ghost" size="sm" className="h-9 w-9 min-w-[44px] min-h-[44px] p-0 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950 touch-manipulation">
                                             <MessageCircle className="h-3.5 w-3.5" />
                                             <span className="sr-only">WhatsApp Reminder</span>
                                           </Button>
@@ -2263,10 +2263,10 @@ export default function Accounting() {
                                       </TooltipTrigger>
                                       <TooltipContent>Send WhatsApp Reminder</TooltipContent>
                                     </Tooltip>
-                                    <Button variant="outline" size="sm" className="h-7 text-xs gap-1 touch-manipulation active:scale-95 transition-transform" onClick={() => openPaymentDialog(due)}>
+                                    <Button variant="outline" size="sm" className="h-9 min-w-[44px] min-h-[44px] text-xs gap-1 touch-manipulation active:scale-95 transition-transform" onClick={() => openPaymentDialog(due)}>
                                       <IndianRupee className="h-3 w-3" /> Pay
                                     </Button>
-                                    <Button variant="ghost" size="sm" className="h-7 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950 gap-1 touch-manipulation active:scale-95 transition-transform" onClick={() => handleMarkPaid(due)} disabled={markPaidLoading}>
+                                    <Button variant="ghost" size="sm" className="h-9 min-w-[44px] min-h-[44px] text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950 gap-1 touch-manipulation active:scale-95 transition-transform" onClick={() => handleMarkPaid(due)} disabled={markPaidLoading}>
                                       <CheckCircle2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">Mark Paid</span>
                                     </Button>
                                   </div>
@@ -2342,7 +2342,7 @@ export default function Accounting() {
                   <Button variant="outline" size="sm" className="mt-3 gap-1.5 touch-manipulation min-h-[44px] active:scale-95 transition-transform" onClick={openCreateReturn}><Plus className="h-3.5 w-3.5" />Create your first return</Button>
                 </div>
               ) : (
-                <div className="max-h-[420px] overflow-y-auto rounded-md border">
+                <div className="max-h-[420px] overflow-x-auto overflow-y-auto rounded-md border">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -2518,7 +2518,7 @@ export default function Accounting() {
                     <p className="text-xs font-mono font-medium">{selectedReturnSale.invoiceNo}</p>
                     <p className="text-xs text-muted-foreground">{selectedReturnSale.customer?.name || selectedReturnSale.customerName}</p>
                   </div>
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setSelectedReturnSale(null); setReturnForm((f) => ({ ...f, saleId: '', saleSearch: '' })); }}>
+                  <Button variant="ghost" size="sm" className="h-9 w-9 min-w-[44px] min-h-[44px] p-0" onClick={() => { setSelectedReturnSale(null); setReturnForm((f) => ({ ...f, saleId: '', saleSearch: '' })); }}>
                     <span className="sr-only">Clear</span>
                     <Trash2 className="h-3 w-3" />
                   </Button>

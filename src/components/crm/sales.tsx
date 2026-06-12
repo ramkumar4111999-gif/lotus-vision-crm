@@ -859,7 +859,7 @@ function CreateSaleDialog({ open, onOpenChange, onCreated }: CreateSaleDialogPro
               </Button>
             </div>
 
-            <div className="rounded-lg border overflow-hidden">
+            <div className="rounded-lg border overflow-x-auto overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
@@ -1206,7 +1206,7 @@ function SaleDetailDialog({ sale, open, onOpenChange, onReturn, onToggleStatus }
           </div>
 
           {/* Items Table */}
-          <div className="rounded-lg border overflow-hidden print:border">
+          <div className="rounded-lg border overflow-x-auto overflow-hidden print:border">
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
@@ -1462,7 +1462,7 @@ function ReturnDialog({ sale, open, onOpenChange, onProcessed }: ReturnDialogPro
 
         <div className="space-y-4">
           {/* Items to return */}
-          <div className="rounded-lg border overflow-hidden">
+          <div className="rounded-lg border overflow-x-auto overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">

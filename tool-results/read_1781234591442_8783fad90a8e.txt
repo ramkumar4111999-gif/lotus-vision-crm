@@ -1,0 +1,252 @@
+     1→/home/z/my-project/src/components/crm/staff.tsx:344:            <Table>
+     2→/home/z/my-project/src/components/crm/staff.tsx:345:              <TableHeader>
+     3→/home/z/my-project/src/components/crm/staff.tsx:346:                <TableRow>
+     4→/home/z/my-project/src/components/crm/staff.tsx:347:                  <TableHead>Staff</TableHead>
+     5→/home/z/my-project/src/components/crm/staff.tsx:348:                  <TableHead className="text-right">Basic</TableHead>
+     6→/home/z/my-project/src/components/crm/staff.tsx:349:                  <TableHead className="text-right">Commission</TableHead>
+     7→/home/z/my-project/src/components/crm/staff.tsx:350:                  <TableHead className="text-right">Deductions</TableHead>
+     8→/home/z/my-project/src/components/crm/staff.tsx:351:                  <TableHead className="text-right">Net Pay</TableHead>
+     9→/home/z/my-project/src/components/crm/staff.tsx:352:                  <TableHead>Status</TableHead>
+    10→/home/z/my-project/src/components/crm/staff.tsx:353:                  <TableHead className="text-right">Action</TableHead>
+    11→/home/z/my-project/src/components/crm/staff.tsx:356:              <TableBody>
+    12→/home/z/my-project/src/components/crm/staff.tsx:358:                  <TableRow key={r.id}>
+    13→/home/z/my-project/src/components/crm/staff.tsx:359:                    <TableCell className="font-medium">{r.staff.name}</TableCell>
+    14→/home/z/my-project/src/components/crm/staff.tsx:360:                    <TableCell className="text-right font-mono text-sm">{formatCurrency(r.basicSalary)}</TableCell>
+    15→/home/z/my-project/src/components/crm/staff.tsx:361:                    <TableCell className="text-right font-mono text-sm text-emerald-600 dark:text-emerald-400">{formatCurrency(r.commission)}</TableCell>
+    16→/home/z/my-project/src/components/crm/staff.tsx:362:                    <TableCell className="text-right font-mono text-sm text-red-600 dark:text-red-400">{r.deductions > 0 ? formatCurrency(r.deductions) : '—'}</TableCell>
+    17→/home/z/my-project/src/components/crm/staff.tsx:363:                    <TableCell className="text-right font-mono text-sm font-semibold">{formatCurrency(r.netPay)}</TableCell>
+    18→/home/z/my-project/src/components/crm/staff.tsx:364:                    <TableCell>
+    19→/home/z/my-project/src/components/crm/staff.tsx:369:                    <TableCell className="text-right">
+    20→/home/z/my-project/src/components/crm/staff.tsx:963:                <Table>
+    21→/home/z/my-project/src/components/crm/staff.tsx:964:                  <TableHeader>
+    22→/home/z/my-project/src/components/crm/staff.tsx:965:                    <TableRow>
+    23→/home/z/my-project/src/components/crm/staff.tsx:966:                      <TableHead className="pl-4">Name</TableHead>
+    24→/home/z/my-project/src/components/crm/staff.tsx:967:                      <TableHead>Phone</TableHead>
+    25→/home/z/my-project/src/components/crm/staff.tsx:968:                      <TableHead>Role</TableHead>
+    26→/home/z/my-project/src/components/crm/staff.tsx:969:                      <TableHead>Join Date</TableHead>
+    27→/home/z/my-project/src/components/crm/staff.tsx:970:                      <TableHead>Status</TableHead>
+    28→/home/z/my-project/src/components/crm/staff.tsx:971:                      <TableHead className="text-right">Salary</TableHead>
+    29→/home/z/my-project/src/components/crm/staff.tsx:972:                      <TableHead className="text-right">Commission</TableHead>
+    30→/home/z/my-project/src/components/crm/staff.tsx:973:                      <TableHead className="text-center">Attendance</TableHead>
+    31→/home/z/my-project/src/components/crm/staff.tsx:974:                      <TableHead className="pr-4 text-right">Actions</TableHead>
+    32→/home/z/my-project/src/components/crm/staff.tsx:977:                  <TableBody>
+    33→/home/z/my-project/src/components/crm/staff.tsx:983:                        <TableRow key={staff.id}>
+    34→/home/z/my-project/src/components/crm/staff.tsx:984:                          <TableCell className="pl-4">
+    35→/home/z/my-project/src/components/crm/staff.tsx:996:                          <TableCell className="text-muted-foreground">{staff.phone}</TableCell>
+    36→/home/z/my-project/src/components/crm/staff.tsx:997:                          <TableCell>
+    37→/home/z/my-project/src/components/crm/staff.tsx:1000:                          <TableCell className="text-muted-foreground text-sm">
+    38→/home/z/my-project/src/components/crm/staff.tsx:1006:                          <TableCell>
+    39→/home/z/my-project/src/components/crm/staff.tsx:1018:                          <TableCell className="text-right font-mono text-sm">
+    40→/home/z/my-project/src/components/crm/staff.tsx:1021:                          <TableCell className="text-right font-mono text-sm">
+    41→/home/z/my-project/src/components/crm/staff.tsx:1024:                          <TableCell className="text-center">
+    42→/home/z/my-project/src/components/crm/staff.tsx:1066:                          <TableCell className="pr-4 text-right">
+    43→/home/z/my-project/src/components/crm/staff.tsx:1248:              <Table>
+    44→/home/z/my-project/src/components/crm/staff.tsx:1249:                <TableHeader>
+    45→/home/z/my-project/src/components/crm/staff.tsx:1250:                  <TableRow>
+    46→/home/z/my-project/src/components/crm/staff.tsx:1251:                    <TableHead className="pl-4">Staff</TableHead>
+    47→/home/z/my-project/src/components/crm/staff.tsx:1252:                    <TableHead>Role</TableHead>
+    48→/home/z/my-project/src/components/crm/staff.tsx:1253:                    <TableHead className="text-right">Total Sales</TableHead>
+    49→/home/z/my-project/src/components/crm/staff.tsx:1254:                    <TableHead className="text-right">This Month&apos;s Commission</TableHead>
+    50→/home/z/my-project/src/components/crm/staff.tsx:1255:                    <TableHead className="pr-4 text-right">Transactions</TableHead>
+    51→/home/z/my-project/src/components/crm/staff.tsx:1258:                <TableBody>
+    52→/home/z/my-project/src/components/crm/staff.tsx:1260:                    <TableRow key={p.staffId}>
+    53→/home/z/my-project/src/components/crm/staff.tsx:1261:                      <TableCell className="pl-4 font-medium">{p.staffName}</TableCell>
+    54→/home/z/my-project/src/components/crm/staff.tsx:1262:                      <TableCell>
+    55→/home/z/my-project/src/components/crm/staff.tsx:1265:                      <TableCell className="text-right font-mono">
+    56→/home/z/my-project/src/components/crm/staff.tsx:1268:                      <TableCell className="text-right font-mono text-emerald-600 dark:text-emerald-400">
+    57→/home/z/my-project/src/components/crm/staff.tsx:1271:                      <TableCell className="pr-4 text-right">
+    58→/home/z/my-project/src/components/crm/staff.tsx:1339:            <Table>
+    59→/home/z/my-project/src/components/crm/staff.tsx:1340:              <TableHeader>
+    60→/home/z/my-project/src/components/crm/staff.tsx:1341:                <TableRow>
+    61→/home/z/my-project/src/components/crm/staff.tsx:1342:                  <TableHead>Role</TableHead>
+    62→/home/z/my-project/src/components/crm/staff.tsx:1343:                  <TableHead className="text-center">Manage Staff</TableHead>
+    63→/home/z/my-project/src/components/crm/staff.tsx:1344:                  <TableHead className="text-center">Access Salary</TableHead>
+    64→/home/z/my-project/src/components/crm/staff.tsx:1345:                  <TableHead className="text-center">Manage Inventory</TableHead>
+    65→/home/z/my-project/src/components/crm/staff.tsx:1346:                  <TableHead className="text-center">View Reports</TableHead>
+    66→/home/z/my-project/src/components/crm/staff.tsx:1347:                  <TableHead className="text-center">Delete Sales</TableHead>
+    67→/home/z/my-project/src/components/crm/staff.tsx:1348:                  <TableHead className="hidden lg:table-cell">Description</TableHead>
+    68→/home/z/my-project/src/components/crm/staff.tsx:1351:              <TableBody>
+    69→/home/z/my-project/src/components/crm/staff.tsx:1356:                    <TableRow key={role}>
+    70→/home/z/my-project/src/components/crm/staff.tsx:1357:                      <TableCell className="font-medium">{renderRoleBadge(role)}</TableCell>
+    71→/home/z/my-project/src/components/crm/staff.tsx:1358:                      <TableCell className="text-center">{perms.canManageStaff ? <CheckCircle2 className="size-4 text-green-600 mx-auto" /> : <XCircle className="size-4 text-red-400 mx-auto" />}</TableCell>
+    72→/home/z/my-project/src/components/crm/staff.tsx:1359:                      <TableCell className="text-center">{perms.canAccessSalary ? <CheckCircle2 className="size-4 text-green-600 mx-auto" /> : <XCircle className="size-4 text-red-400 mx-auto" />}</TableCell>
+    73→/home/z/my-project/src/components/crm/staff.tsx:1360:                      <TableCell className="text-center">{perms.canManageInventory ? <CheckCircle2 className="size-4 text-green-600 mx-auto" /> : <XCircle className="size-4 text-red-400 mx-auto" />}</TableCell>
+    74→/home/z/my-project/src/components/crm/staff.tsx:1361:                      <TableCell className="text-center">{perms.canViewReports ? <CheckCircle2 className="size-4 text-green-600 mx-auto" /> : <XCircle className="size-4 text-red-400 mx-auto" />}</TableCell>
+    75→/home/z/my-project/src/components/crm/staff.tsx:1362:                      <TableCell className="text-center">{perms.canDeleteSales ? <CheckCircle2 className="size-4 text-green-600 mx-auto" /> : <XCircle className="size-4 text-red-400 mx-auto" />}</TableCell>
+    76→/home/z/my-project/src/components/crm/staff.tsx:1363:                      <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">{perms.label}</TableCell>
+    77→/home/z/my-project/src/components/crm/customers.tsx:786:        <TableRow key={i}>
+    78→/home/z/my-project/src/components/crm/customers.tsx:787:          <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+    79→/home/z/my-project/src/components/crm/customers.tsx:788:          <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+    80→/home/z/my-project/src/components/crm/customers.tsx:789:          <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+    81→/home/z/my-project/src/components/crm/customers.tsx:790:          <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+    82→/home/z/my-project/src/components/crm/customers.tsx:791:          <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+    83→/home/z/my-project/src/components/crm/customers.tsx:792:          <TableCell><Skeleton className="h-8 w-16" /></TableCell>
+    84→/home/z/my-project/src/components/crm/customers.tsx:910:          <Table>
+    85→/home/z/my-project/src/components/crm/customers.tsx:911:            <TableHeader>
+    86→/home/z/my-project/src/components/crm/customers.tsx:912:              <TableRow>
+    87→/home/z/my-project/src/components/crm/customers.tsx:913:                <TableHead className="min-w-[160px] cursor-pointer select-none" onClick={() => handleSort('name')}>
+    88→/home/z/my-project/src/components/crm/customers.tsx:916:                <TableHead className="min-w-[200px] cursor-pointer select-none" onClick={() => handleSort('phone')}>
+    89→/home/z/my-project/src/components/crm/customers.tsx:919:                <TableHead className="cursor-pointer select-none" onClick={() => handleSort('group')}>
+    90→/home/z/my-project/src/components/crm/customers.tsx:922:                <TableHead className="text-right cursor-pointer select-none" onClick={() => handleSort('loyaltyPoints')}>
+    91→/home/z/my-project/src/components/crm/customers.tsx:925:                <TableHead className="text-right cursor-pointer select-none" onClick={() => handleSort('totalSpent')}>
+    92→/home/z/my-project/src/components/crm/customers.tsx:928:                <TableHead className="text-right">Actions</TableHead>
+    93→/home/z/my-project/src/components/crm/customers.tsx:931:            <TableBody>
+    94→/home/z/my-project/src/components/crm/customers.tsx:933:                <TableRow>
+    95→/home/z/my-project/src/components/crm/customers.tsx:934:                  <TableCell colSpan={6} className="h-48 text-center">
+    96→/home/z/my-project/src/components/crm/customers.tsx:947:                <TableRow>
+    97→/home/z/my-project/src/components/crm/customers.tsx:948:                  <TableCell colSpan={6} className="h-48 text-center">
+    98→/home/z/my-project/src/components/crm/customers.tsx:965:                  <TableRow
+    99→/home/z/my-project/src/components/crm/customers.tsx:970:                    <TableCell className="font-medium">{customer.name}</TableCell>
+   100→/home/z/my-project/src/components/crm/customers.tsx:971:                    <TableCell>
+   101→/home/z/my-project/src/components/crm/customers.tsx:987:                    <TableCell>{renderGroupBadge(customer.group)}</TableCell>
+   102→/home/z/my-project/src/components/crm/customers.tsx:988:                    <TableCell className="text-right tabular-nums">
+   103→/home/z/my-project/src/components/crm/customers.tsx:991:                    <TableCell className="text-right tabular-nums">
+   104→/home/z/my-project/src/components/crm/customers.tsx:994:                    <TableCell className="text-right">
+   105→/home/z/my-project/src/components/crm/customers.tsx:1372:                        <Table>
+   106→/home/z/my-project/src/components/crm/customers.tsx:1373:                          <TableHeader>
+   107→/home/z/my-project/src/components/crm/customers.tsx:1374:                            <TableRow>
+   108→/home/z/my-project/src/components/crm/customers.tsx:1375:                              <TableHead className="text-xs">Invoice #</TableHead>
+   109→/home/z/my-project/src/components/crm/customers.tsx:1376:                              <TableHead className="text-xs text-right">Total</TableHead>
+   110→/home/z/my-project/src/components/crm/customers.tsx:1377:                              <TableHead className="text-xs">Date</TableHead>
+   111→/home/z/my-project/src/components/crm/customers.tsx:1378:                              <TableHead className="text-xs">Status</TableHead>
+   112→/home/z/my-project/src/components/crm/customers.tsx:1381:                          <TableBody>
+   113→/home/z/my-project/src/components/crm/customers.tsx:1383:                              <TableRow key={p.id}>
+   114→/home/z/my-project/src/components/crm/customers.tsx:1384:                                <TableCell className="font-mono text-xs">{p.invoiceNo}</TableCell>
+   115→/home/z/my-project/src/components/crm/customers.tsx:1385:                                <TableCell className="text-right font-mono text-xs font-medium">
+   116→/home/z/my-project/src/components/crm/customers.tsx:1388:                                <TableCell className="text-xs text-muted-foreground">
+   117→/home/z/my-project/src/components/crm/customers.tsx:1391:                                <TableCell>
+   118→/home/z/my-project/src/components/crm/appointments.tsx:1409:            <TableSkeleton />
+   119→/home/z/my-project/src/components/crm/appointments.tsx:1439:              <Table>
+   120→/home/z/my-project/src/components/crm/appointments.tsx:1440:                <TableHeader>
+   121→/home/z/my-project/src/components/crm/appointments.tsx:1441:                  <TableRow>
+   122→/home/z/my-project/src/components/crm/appointments.tsx:1442:                    <TableHead className="pl-4">Customer</TableHead>
+   123→/home/z/my-project/src/components/crm/appointments.tsx:1443:                    <TableHead className="hidden sm:table-cell">Date</TableHead>
+   124→/home/z/my-project/src/components/crm/appointments.tsx:1444:                    <TableHead>Time</TableHead>
+   125→/home/z/my-project/src/components/crm/appointments.tsx:1445:                    <TableHead className="hidden md:table-cell">Purpose</TableHead>
+   126→/home/z/my-project/src/components/crm/appointments.tsx:1446:                    <TableHead>Status</TableHead>
+   127→/home/z/my-project/src/components/crm/appointments.tsx:1447:                    <TableHead className="hidden lg:table-cell">Notes</TableHead>
+   128→/home/z/my-project/src/components/crm/appointments.tsx:1448:                    <TableHead className="hidden xl:table-cell">Repeat</TableHead>
+   129→/home/z/my-project/src/components/crm/appointments.tsx:1449:                    <TableHead className="pr-4 text-right">Actions</TableHead>
+   130→/home/z/my-project/src/components/crm/appointments.tsx:1452:                <TableBody>
+   131→/home/z/my-project/src/components/crm/appointments.tsx:1454:                    <TableRow key={apt.id}>
+   132→/home/z/my-project/src/components/crm/appointments.tsx:1455:                      <TableCell className="pl-4">
+   133→/home/z/my-project/src/components/crm/appointments.tsx:1463:                      <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
+   134→/home/z/my-project/src/components/crm/appointments.tsx:1466:                      <TableCell className="font-mono text-sm">
+   135→/home/z/my-project/src/components/crm/appointments.tsx:1469:                      <TableCell className="hidden md:table-cell">
+   136→/home/z/my-project/src/components/crm/appointments.tsx:1472:                      <TableCell>
+   137→/home/z/my-project/src/components/crm/appointments.tsx:1475:                      <TableCell className="hidden lg:table-cell">
+   138→/home/z/my-project/src/components/crm/appointments.tsx:1480:                      <TableCell className="hidden xl:table-cell">
+   139→/home/z/my-project/src/components/crm/appointments.tsx:1487:                      <TableCell className="pr-4 text-right">
+   140→/home/z/my-project/src/components/crm/dashboard.tsx:668:            <Table>
+   141→/home/z/my-project/src/components/crm/dashboard.tsx:669:              <TableHeader>
+   142→/home/z/my-project/src/components/crm/dashboard.tsx:670:                <TableRow>
+   143→/home/z/my-project/src/components/crm/dashboard.tsx:671:                  <TableHead>Invoice #</TableHead>
+   144→/home/z/my-project/src/components/crm/dashboard.tsx:672:                  <TableHead>Customer</TableHead>
+   145→/home/z/my-project/src/components/crm/dashboard.tsx:673:                  <TableHead className="text-right">Amount</TableHead>
+   146→/home/z/my-project/src/components/crm/dashboard.tsx:674:                  <TableHead className="hidden sm:table-cell">Date</TableHead>
+   147→/home/z/my-project/src/components/crm/dashboard.tsx:675:                  <TableHead className="hidden md:table-cell">Mode</TableHead>
+   148→/home/z/my-project/src/components/crm/dashboard.tsx:678:              <TableBody>
+   149→/home/z/my-project/src/components/crm/dashboard.tsx:680:                  <TableRow key={sale.invoiceNo}>
+   150→/home/z/my-project/src/components/crm/dashboard.tsx:681:                    <TableCell className="font-mono text-xs font-medium">
+   151→/home/z/my-project/src/components/crm/dashboard.tsx:684:                    <TableCell className="font-medium max-w-[120px] truncate">
+   152→/home/z/my-project/src/components/crm/dashboard.tsx:687:                    <TableCell className="text-right font-mono font-medium text-emerald-700 dark:text-emerald-400">
+   153→/home/z/my-project/src/components/crm/dashboard.tsx:690:                    <TableCell className="hidden sm:table-cell text-muted-foreground">
+   154→/home/z/my-project/src/components/crm/dashboard.tsx:695:                    <TableCell className="hidden md:table-cell">
+   155→/home/z/my-project/src/components/crm/purchase-orders.tsx:398:              <Table>
+   156→/home/z/my-project/src/components/crm/purchase-orders.tsx:399:                <TableHeader>
+   157→/home/z/my-project/src/components/crm/purchase-orders.tsx:400:                  <TableRow>
+   158→/home/z/my-project/src/components/crm/purchase-orders.tsx:401:                    <TableHead>PO #</TableHead>
+   159→/home/z/my-project/src/components/crm/purchase-orders.tsx:402:                    <TableHead>Supplier</TableHead>
+   160→/home/z/my-project/src/components/crm/purchase-orders.tsx:403:                    <TableHead className="text-right">Amount</TableHead>
+   161→/home/z/my-project/src/components/crm/purchase-orders.tsx:404:                    <TableHead>Status</TableHead>
+   162→/home/z/my-project/src/components/crm/purchase-orders.tsx:405:                    <TableHead>Expected</TableHead>
+   163→/home/z/my-project/src/components/crm/purchase-orders.tsx:406:                    <TableHead>Created</TableHead>
+   164→/home/z/my-project/src/components/crm/purchase-orders.tsx:407:                    <TableHead className="text-right">Actions</TableHead>
+   165→/home/z/my-project/src/components/crm/purchase-orders.tsx:410:                <TableBody>
+   166→/home/z/my-project/src/components/crm/purchase-orders.tsx:415:                      <TableRow key={order.id}>
+   167→/home/z/my-project/src/components/crm/purchase-orders.tsx:416:                        <TableCell className="font-mono font-medium">{order.poNumber}</TableCell>
+   168→/home/z/my-project/src/components/crm/purchase-orders.tsx:417:                        <TableCell>
+   169→/home/z/my-project/src/components/crm/purchase-orders.tsx:425:                        <TableCell className="text-right font-medium">
+   170→/home/z/my-project/src/components/crm/purchase-orders.tsx:428:                        <TableCell>
+   171→/home/z/my-project/src/components/crm/purchase-orders.tsx:437:                        <TableCell className="text-sm">{formatDate(order.expectedDate)}</TableCell>
+   172→/home/z/my-project/src/components/crm/purchase-orders.tsx:438:                        <TableCell className="text-sm text-muted-foreground">{formatDate(order.createdAt)}</TableCell>
+   173→/home/z/my-project/src/components/crm/purchase-orders.tsx:439:                        <TableCell className="text-right">
+   174→/home/z/my-project/src/components/crm/purchase-orders.tsx:685:                      <Table>
+   175→/home/z/my-project/src/components/crm/purchase-orders.tsx:686:                        <TableHeader>
+   176→/home/z/my-project/src/components/crm/purchase-orders.tsx:687:                          <TableRow>
+   177→/home/z/my-project/src/components/crm/purchase-orders.tsx:688:                            <TableHead>Product</TableHead>
+   178→/home/z/my-project/src/components/crm/purchase-orders.tsx:689:                            <TableHead className="text-right">Qty</TableHead>
+   179→/home/z/my-project/src/components/crm/purchase-orders.tsx:690:                            <TableHead className="text-right">Cost</TableHead>
+   180→/home/z/my-project/src/components/crm/purchase-orders.tsx:691:                            <TableHead className="text-right">Total</TableHead>
+   181→/home/z/my-project/src/components/crm/purchase-orders.tsx:694:                        <TableBody>
+   182→/home/z/my-project/src/components/crm/purchase-orders.tsx:696:                            <TableRow key={i}>
+   183→/home/z/my-project/src/components/crm/purchase-orders.tsx:697:                              <TableCell>{item.name}</TableCell>
+   184→/home/z/my-project/src/components/crm/purchase-orders.tsx:698:                              <TableCell className="text-right">{item.qty}</TableCell>
+   185→/home/z/my-project/src/components/crm/purchase-orders.tsx:699:                              <TableCell className="text-right">{formatINR(item.costPrice)}</TableCell>
+   186→/home/z/my-project/src/components/crm/purchase-orders.tsx:700:                              <TableCell className="text-right font-medium">{formatINR(item.qty * item.costPrice)}</TableCell>
+   187→/home/z/my-project/src/components/crm/reports.tsx:1446:                      <Table>
+   188→/home/z/my-project/src/components/crm/reports.tsx:1447:                        <TableHeader>
+   189→/home/z/my-project/src/components/crm/reports.tsx:1448:                          <TableRow>
+   190→/home/z/my-project/src/components/crm/reports.tsx:1449:                            <TableHead>#</TableHead>
+   191→/home/z/my-project/src/components/crm/reports.tsx:1450:                            <TableHead>Product Name</TableHead>
+   192→/home/z/my-project/src/components/crm/reports.tsx:1451:                            <TableHead className="hidden sm:table-cell">Category</TableHead>
+   193→/home/z/my-project/src/components/crm/reports.tsx:1452:                            <TableHead className="text-right">Qty Sold</TableHead>
+   194→/home/z/my-project/src/components/crm/reports.tsx:1453:                            <TableHead className="text-right">Revenue</TableHead>
+   195→/home/z/my-project/src/components/crm/reports.tsx:1454:                            <TableHead className="hidden md:table-cell text-right">Margin</TableHead>
+   196→/home/z/my-project/src/components/crm/reports.tsx:1457:                        <TableBody>
+   197→/home/z/my-project/src/components/crm/reports.tsx:1459:                            <TableRow key={p.productId}>
+   198→/home/z/my-project/src/components/crm/reports.tsx:1460:                              <TableCell className="text-muted-foreground font-mono text-xs">{i + 1}</TableCell>
+   199→/home/z/my-project/src/components/crm/reports.tsx:1461:                              <TableCell className="font-medium text-sm">{p.name}</TableCell>
+   200→/home/z/my-project/src/components/crm/reports.tsx:1462:                              <TableCell className="hidden sm:table-cell"><Badge variant="secondary" className="text-xs">{p.category}</Badge></TableCell>
+   201→/home/z/my-project/src/components/crm/reports.tsx:1463:                              <TableCell className="text-right font-mono text-sm">{formatNumber(p.totalQtySold)}</TableCell>
+   202→/home/z/my-project/src/components/crm/reports.tsx:1464:                              <TableCell className="text-right font-mono text-sm font-semibold">{formatCurrency(p.totalRevenue)}</TableCell>
+   203→/home/z/my-project/src/components/crm/reports.tsx:1465:                              <TableCell className="hidden md:table-cell text-right">
+   204→/home/z/my-project/src/components/crm/reports.tsx:1487:                      <Table>
+   205→/home/z/my-project/src/components/crm/reports.tsx:1488:                        <TableHeader>
+   206→/home/z/my-project/src/components/crm/reports.tsx:1489:                          <TableRow>
+   207→/home/z/my-project/src/components/crm/reports.tsx:1490:                            <TableHead>#</TableHead>
+   208→/home/z/my-project/src/components/crm/reports.tsx:1491:                            <TableHead>Product Name</TableHead>
+   209→/home/z/my-project/src/components/crm/reports.tsx:1492:                            <TableHead>Category</TableHead>
+   210→/home/z/my-project/src/components/crm/reports.tsx:1493:                            <TableHead className="text-right">Qty Sold</TableHead>
+   211→/home/z/my-project/src/components/crm/reports.tsx:1494:                            <TableHead className="text-right">Revenue</TableHead>
+   212→/home/z/my-project/src/components/crm/reports.tsx:1497:                        <TableBody>
+   213→/home/z/my-project/src/components/crm/reports.tsx:1499:                            <TableRow key={i}>
+   214→/home/z/my-project/src/components/crm/reports.tsx:1500:                              <TableCell className="text-muted-foreground font-mono text-xs">{i + 1}</TableCell>
+   215→/home/z/my-project/src/components/crm/reports.tsx:1501:                              <TableCell className="font-medium text-sm">{p.name}</TableCell>
+   216→/home/z/my-project/src/components/crm/reports.tsx:1502:                              <TableCell><Badge variant="secondary" className="text-xs">{p.category}</Badge></TableCell>
+   217→/home/z/my-project/src/components/crm/reports.tsx:1503:                              <TableCell className="text-right font-mono text-sm">{formatNumber(p.quantity)}</TableCell>
+   218→/home/z/my-project/src/components/crm/reports.tsx:1504:                              <TableCell className="text-right font-mono text-sm font-semibold">{formatCurrency(p.revenue)}</TableCell>
+   219→/home/z/my-project/src/components/crm/reports.tsx:1555:                      <Table>
+   220→/home/z/my-project/src/components/crm/reports.tsx:1556:                        <TableHeader>
+   221→/home/z/my-project/src/components/crm/reports.tsx:1557:                          <TableRow>
+   222→/home/z/my-project/src/components/crm/reports.tsx:1558:                            <TableHead>#</TableHead>
+   223→/home/z/my-project/src/components/crm/reports.tsx:1559:                            <TableHead>Customer Name</TableHead>
+   224→/home/z/my-project/src/components/crm/reports.tsx:1560:                            <TableHead className="hidden sm:table-cell">Phone</TableHead>
+   225→/home/z/my-project/src/components/crm/reports.tsx:1561:                            <TableHead className="hidden md:table-cell">Group</TableHead>
+   226→/home/z/my-project/src/components/crm/reports.tsx:1562:                            <TableHead className="text-right">Orders</TableHead>
+   227→/home/z/my-project/src/components/crm/reports.tsx:1563:                            <TableHead className="text-right">Total Spent</TableHead>
+   228→/home/z/my-project/src/components/crm/reports.tsx:1566:                        <TableBody>
+   229→/home/z/my-project/src/components/crm/reports.tsx:1568:                            <TableRow key={c.id}>
+   230→/home/z/my-project/src/components/crm/reports.tsx:1569:                              <TableCell className="text-muted-foreground font-mono text-xs">{i + 1}</TableCell>
+   231→/home/z/my-project/src/components/crm/reports.tsx:1570:                              <TableCell className="font-medium text-sm">{c.name}</TableCell>
+   232→/home/z/my-project/src/components/crm/reports.tsx:1571:                              <TableCell className="hidden sm:table-cell text-xs text-muted-foreground">{c.phone || "—"}</TableCell>
+   233→/home/z/my-project/src/components/crm/reports.tsx:1572:                              <TableCell className="hidden md:table-cell">
+   234→/home/z/my-project/src/components/crm/reports.tsx:1575:                              <TableCell className="text-right font-mono text-sm">{c._count?.sales ?? 0}</TableCell>
+   235→/home/z/my-project/src/components/crm/reports.tsx:1576:                              <TableCell className="text-right font-mono text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(c.totalSpent || 0)}</TableCell>
+   236→/home/z/my-project/src/components/crm/reports.tsx:1612:                          <Table>
+   237→/home/z/my-project/src/components/crm/reports.tsx:1613:                            <TableHeader>
+   238→/home/z/my-project/src/components/crm/reports.tsx:1614:                              <TableRow>
+   239→/home/z/my-project/src/components/crm/reports.tsx:1615:                                <TableHead>Product</TableHead>
+   240→/home/z/my-project/src/components/crm/reports.tsx:1616:                                <TableHead className="hidden sm:table-cell">SKU</TableHead>
+   241→/home/z/my-project/src/components/crm/reports.tsx:1617:                                <TableHead className="hidden md:table-cell">Category</TableHead>
+   242→/home/z/my-project/src/components/crm/reports.tsx:1618:                                <TableHead className="text-right">Current Stock</TableHead>
+   243→/home/z/my-project/src/components/crm/reports.tsx:1619:                                <TableHead className="text-right">Min Stock</TableHead>
+   244→/home/z/my-project/src/components/crm/reports.tsx:1622:                            <TableBody>
+   245→/home/z/my-project/src/components/crm/reports.tsx:1624:                                <TableRow key={p.productId}>
+   246→/home/z/my-project/src/components/crm/reports.tsx:1625:                                  <TableCell className="font-medium text-sm">{p.name}</TableCell>
+   247→/home/z/my-project/src/components/crm/reports.tsx:1626:                                  <TableCell className="hidden sm:table-cell text-xs text-muted-foreground font-mono">{p.sku}</TableCell>
+   248→/home/z/my-project/src/components/crm/reports.tsx:1627:                                  <TableCell className="hidden md:table-cell"><Badge variant="secondary" className="text-xs">{p.category}</Badge></TableCell>
+   249→/home/z/my-project/src/components/crm/reports.tsx:1628:                                  <TableCell className="text-right font-mono text-sm text-red-600 dark:text-red-400 font-semibold">{p.currentStock}</TableCell>
+   250→/home/z/my-project/src/components/crm/reports.tsx:1629:                                  <TableCell className="text-right font-mono text-sm text-muted-foreground">{p.minStock}</TableCell>
+   251→
+   252→[Showing results with pagination = limit: 250]

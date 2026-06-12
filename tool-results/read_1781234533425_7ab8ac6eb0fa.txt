@@ -1,0 +1,2002 @@
+     1→"use client";
+     2→
+     3→import React, { useMemo, useState, useCallback, useEffect } from "react";
+     4→import { useQuery } from "@tanstack/react-query";
+     5→import {
+     6→  AreaChart,
+     7→  Area,
+     8→  LineChart,
+     9→  Line,
+    10→  BarChart,
+    11→  Bar,
+    12→  PieChart,
+    13→  Pie,
+    14→  Cell,
+    15→  XAxis,
+    16→  YAxis,
+    17→  Tooltip,
+    18→  Tooltip as RechartsTooltip,
+    19→  Legend,
+    20→  ResponsiveContainer,
+    21→  CartesianGrid,
+    22→} from "recharts";
+    23→import {
+    24→  TrendingUp,
+    25→  DollarSign,
+    26→  ShoppingCart,
+    27→  Users,
+    28→  IndianRupee,
+    29→  ArrowUpRight,
+    30→  ArrowDownRight,
+    31→  CalendarDays,
+    32→  BarChart3,
+    33→  Download,
+    34→  Loader2,
+    35→  Printer,
+    36→  Package,
+    37→  AlertTriangle,
+    38→  UserPlus,
+    39→  Trophy,
+    40→  Crown,
+    41→  Hash,
+    42→} from "lucide-react";
+    43→import { format, subDays, parseISO, isWithinInterval, startOfMonth, endOfMonth, subMonths } from "date-fns";
+    44→
+    45→import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+    46→import {
+    47→  Card,
+    48→  CardContent,
+    49→  CardDescription,
+    50→  CardHeader,
+    51→  CardTitle,
+    52→} from "@/components/ui/card";
+    53→import {
+    54→  Table,
+    55→  TableBody,
+    56→  TableCell,
+    57→  TableHead,
+    58→  TableHeader,
+    59→  TableRow,
+    60→} from "@/components/ui/table";
+    61→import { Input } from "@/components/ui/input";
+    62→import { Label } from "@/components/ui/label";
+    63→import { Button } from "@/components/ui/button";
+    64→import { Badge } from "@/components/ui/badge";
+    65→import { Separator } from "@/components/ui/separator";
+    66→import { Skeleton } from "@/components/ui/skeleton";
+    67→import { toast } from "sonner";
+    68→
+    69→// ─── Color Palette ───────────────────────────────────────────────────────────
+    70→
+    71→const COLORS = [
+    72→  "#059669",
+    73→  "#10b981",
+    74→  "#34d399",
+    75→  "#6ee7b7",
+    76→  "#a7f3d0",
+    77→  "#047857",
+    78→  "#065f46",
+    79→  "#d1fae5",
+    80→  "#16a34a",
+    81→  "#22c55e",
+    82→  "#4ade80",
+    83→  "#86efac",
+    84→];
+    85→
+    86→const PAYMENT_COLORS: Record<string, string> = {
+    87→  Cash: "#059669",
+    88→  UPI: "#7c3aed",
+    89→  Card: "#2563eb",
+    90→  Credit: "#dc2626",
+    91→};
+    92→
+    93→const CHART_GRADIENT_ID = "emeraldGradient";
+    94→const THIS_MONTH_COLOR = "#059669";
+    95→const LAST_MONTH_COLOR = "#94a3b8";
+    96→
+    97→// ─── Types ───────────────────────────────────────────────────────────────────
+    98→
+    99→interface SalesTrendPoint {
+   100→  date: string;
+   101→  revenue: number;
+   102→  orders: number;
+   103→}
+   104→
+   105→interface ProductSale {
+   106→  productId: string;
+   107→  name: string;
+   108→  sku: string;
+   109→  category: string;
+   110→  brand: string;
+   111→  price: number;
+   112→  currentStock: number;
+   113→  totalQtySold: number;
+   114→  totalRevenue: number;
+   115→}
+   116→
+   117→interface TopCustomer {
+   118→  id: string;
+   119→  name: string;
+   120→  phone: string;
+   121→  email: string | null;
+   122→  group: string;
+   123→  loyaltyPoints: number;
+   124→  totalSpent: number;
+   125→  _count: { sales: number; visits: number; prescriptions: number };
+   126→}
+   127→
+   128→interface SaleRecord {
+   129→  id: string;
+   130→  total: number;
+   131→  totalAmount?: number;
+   132→  paymentMode: string;
+   133→  createdAt: string;
+   134→  customerName: string;
+   135→  invoiceNo?: string;
+   136→  discount?: number;
+   137→  cgst?: number;
+   138→  sgst?: number;
+   139→  igst?: number;
+   140→  status?: string;
+   141→  customer?: { name: string; phone: string } | null;
+   142→  itemsCount?: number;
+   143→  subtotal?: number;
+   144→}
+   145→
+   146→interface Product {
+   147→  id: string;
+   148→  name: string;
+   149→  category: string;
+   150→  stock: number;
+   151→  minStock: number;
+   152→  costPrice: number | null;
+   153→  price: number;
+   154→}
+   155→
+   156→interface RevenueComparisonSummary {
+   157→  thisMonth: { total: number; orders: number; cgst: number; sgst: number; igst: number };
+   158→  lastMonth: { total: number; orders: number; cgst: number; sgst: number; igst: number };
+   159→  changePercent: number;
+   160→}
+   161→
+   162→interface RevenueComparisonDay {
+   163→  day: number;
+   164→  revenue: number;
+   165→  orders: number;
+   166→}
+   167→
+   168→interface ProductPerformanceCategory {
+   169→  category: string;
+   170→  revenue: number;
+   171→  qty: number;
+   172→  products: number;
+   173→}
+   174→
+   175→interface ProductPerformanceItem {
+   176→  productId: string;
+   177→  name: string;
+   178→  category: string;
+   179→  brand: string;
+   180→  price: number;
+   181→  costPrice: number;
+   182→  currentStock: number;
+   183→  totalQtySold: number;
+   184→  totalRevenue: number;
+   185→  profitMargin: number;
+   186→}
+   187→
+   188→interface CustomerAcquisitionResponse {
+   189→  report: string;
+   190→  period: string;
+   191→  totalNew: number;
+   192→  thisWeekNew: number;
+   193→  data: Array<{ date: string; newCustomers: number }>;
+   194→}
+   195→
+   196→interface DashboardComparisonData {
+   197→  comparison?: {
+   198→    revenueChange: number;
+   199→    customerChange: number;
+   200→  };
+   201→}
+   202→
+   203→interface InventoryTurnoverItem {
+   204→  productId: string;
+   205→  name: string;
+   206→  sku: string;
+   207→  category: string;
+   208→  brand: string;
+   209→  price: number;
+   210→  costPrice: number;
+   211→  currentStock: number;
+   212→  minStock: number;
+   213→  totalQtySold: number;
+   214→  isActive: boolean;
+   215→  isLowStock: boolean;
+   216→  turnoverRatio: number;
+   217→}
+   218→
+   219→// ─── Helpers ─────────────────────────────────────────────────────────────────
+   220→
+   221→function formatCurrency(value: number): string {
+   222→  return new Intl.NumberFormat("en-IN", {
+   223→    style: "currency",
+   224→    currency: "INR",
+   225→    minimumFractionDigits: 0,
+   226→    maximumFractionDigits: 0,
+   227→  }).format(value);
+   228→}
+   229→
+   230→function formatNumber(value: number): string {
+   231→  return new Intl.NumberFormat("en-IN").format(value);
+   232→}
+   233→
+   234→const RADIAN = Math.PI / 180;
+   235→
+   236→function renderCustomLabel({
+   237→  cx,
+   238→  cy,
+   239→  midAngle,
+   240→  innerRadius,
+   241→  outerRadius,
+   242→  percent,
+   243→}: {
+   244→  cx: number;
+   245→  cy: number;
+   246→  midAngle: number;
+   247→  innerRadius: number;
+   248→  outerRadius: number;
+   249→  percent: number;
+   250→}) {
+   251→  if (percent < 0.06) return null;
+   252→  const radius = innerRadius + (outerRadius - innerRadius) * 1.35;
+   253→  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+   254→  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+   255→  return (
+   256→    <text x={x} y={y} fill="#374151" textAnchor={x > cx ? "start" : "end"} dominantBaseline="central" className="text-xs">
+   257→      {`${(percent * 100).toFixed(0)}%`}
+   258→    </text>
+   259→  );
+   260→}
+   261→
+   262→// ─── Chart Tooltip ───────────────────────────────────────────────────────────
+   263→
+   264→function ChartTooltip({
+   265→  active,
+   266→  payload,
+   267→  label,
+   268→  valuePrefix = "",
+   269→}: {
+   270→  active?: boolean;
+   271→  payload?: Array<{ name: string; value: number; color: string }>;
+   272→  label?: string;
+   273→  valuePrefix?: string;
+   274→}) {
+   275→  if (!active || !payload?.length) return null;
+   276→  return (
+   277→    <div className="rounded-lg border bg-background px-3 py-2 shadow-md">
+   278→      <p className="mb-1 text-sm font-medium text-foreground">{label}</p>
+   279→      {payload.map((entry, i) => (
+   280→        <div key={i} className="flex items-center gap-2 text-sm">
+   281→          <span className="inline-block size-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
+   282→          <span className="text-muted-foreground">{entry.name}:</span>
+   283→          <span className="font-medium text-foreground">
+   284→            {valuePrefix}{formatNumber(entry.value)}
+   285→          </span>
+   286→        </div>
+   287→      ))}
+   288→    </div>
+   289→  );
+   290→}
+   291→
+   292→// ─── Skeletons ────────────────────────────────────────────────────────────────
+   293→
+   294→function ChartSkeleton({ height = 300 }: { height?: number }) {
+   295→  return (
+   296→    <div className="flex flex-col items-center justify-center gap-3" style={{ height }}>
+   297→      <Skeleton className="size-10 rounded-full" />
+   298→      <Skeleton className="h-4 w-48" />
+   299→      <Skeleton className="h-4 w-32" />
+   300→      <div className="mt-4 flex w-full items-end justify-center gap-3">
+   301→        {Array.from({ length: 8 }).map((_, i) => (
+   302→          <Skeleton key={i} className="w-8 rounded-t" style={{ height: `${Math.max(40, 60 + Math.random() * 120)}px` }} />
+   303→        ))}
+   304→      </div>
+   305→    </div>
+   306→  );
+   307→}
+   308→
+   309→// ─── Stat Card ────────────────────────────────────────────────────────────────
+   310→
+   311→interface StatCardProps {
+   312→  title: string;
+   313→  value: string;
+   314→  change?: number;
+   315→  icon: React.ReactNode;
+   316→  iconBg: string;
+   317→}
+   318→
+   319→function StatCard({ title, value, change, icon, iconBg }: StatCardProps) {
+   320→  return (
+   321→    <Card>
+   322→      <CardContent className="p-4">
+   323→        <div className="flex items-center justify-between">
+   324→          <div className={`flex size-10 items-center justify-center rounded-lg ${iconBg}`}>{icon}</div>
+   325→          {change !== undefined && (
+   326→            <div className={`flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium ${
+   327→              change >= 0 ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400" : "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-400"
+   328→            }`}>
+   329→              {change >= 0 ? <ArrowUpRight className="size-3" /> : <ArrowDownRight className="size-3" />}
+   330→              {Math.abs(change).toFixed(1)}%
+   331→            </div>
+   332→          )}
+   333→        </div>
+   334→        <p className="mt-3 text-2xl font-bold tracking-tight">{value}</p>
+   335→        <p className="mt-1 text-sm text-muted-foreground">{title}</p>
+   336→      </CardContent>
+   337→    </Card>
+   338→  );
+   339→}
+   340→
+   341→// ─── Data Hooks ───────────────────────────────────────────────────────────────
+   342→
+   343→function useReportsData<T>(type: string, fallbackData: T, dateFrom?: string, dateTo?: string) {
+   344→  return useQuery<T>({
+   345→    queryKey: ["reports", type, dateFrom, dateTo],
+   346→    queryFn: () => {
+   347→      const params = new URLSearchParams({ type });
+   348→      if (dateFrom) params.set("from", dateFrom);
+   349→      if (dateTo) params.set("to", dateTo);
+   350→      return fetch(`/api/reports?${params}`).then((r) => r.json());
+   351→    },
+   352→    placeholderData: fallbackData,
+   353→    staleTime: 30_000,
+   354→  });
+   355→}
+   356→
+   357→function useSalesData(dateFrom?: string, dateTo?: string) {
+   358→  return useQuery<{ sales?: SaleRecord[]; data?: SaleRecord[] }>({
+   359→    queryKey: ["sales-all", dateFrom, dateTo],
+   360→    queryFn: () => {
+   361→      const params = new URLSearchParams({ limit: "1000" });
+   362→      if (dateFrom) params.set("fromDate", dateFrom);
+   363→      if (dateTo) params.set("toDate", dateTo);
+   364→      return fetch(`/api/sales?${params}`).then((r) => r.json());
+   365→    },
+   366→    staleTime: 30_000,
+   367→  });
+   368→}
+   369→
+   370→function useProductsData() {
+   371→  return useQuery<{ products?: Product[]; data?: Product[] }>({
+   372→    queryKey: ["products"],
+   373→    queryFn: () => fetch("/api/products").then((r) => r.json()),
+   374→    staleTime: 60_000,
+   375→  });
+   376→}
+   377→
+   378→function useTopCustomers() {
+   379→  return useQuery<{ data: TopCustomer[] }>({
+   380→    queryKey: ["top-customers"],
+   381→    queryFn: () => fetch("/api/reports?type=top-customers").then((r) => r.json()),
+   382→    staleTime: 60_000,
+   383→  });
+   384→}
+   385→
+   386→function useRevenueComparison() {
+   387→  return useQuery<{
+   388→    summary: RevenueComparisonSummary;
+   389→    thisMonthData: RevenueComparisonDay[];
+   390→    lastMonthData: RevenueComparisonDay[];
+   391→  }>({
+   392→    queryKey: ["revenue-comparison"],
+   393→    queryFn: () => fetch("/api/reports?type=revenue-comparison").then((r) => r.json()),
+   394→    staleTime: 60_000,
+   395→  });
+   396→}
+   397→
+   398→function useProductPerformance() {
+   399→  return useQuery<{
+   400→    categoryData: ProductPerformanceCategory[];
+   401→    productData: ProductPerformanceItem[];
+   402→    totalProducts: number;
+   403→    totalRevenue: number;
+   404→  }>({
+   405→    queryKey: ["product-performance"],
+   406→    queryFn: () => fetch("/api/reports?type=product-performance").then((r) => r.json()),
+   407→    staleTime: 60_000,
+   408→  });
+   409→}
+   410→
+   411→function useCustomerAcquisitionReport() {
+   412→  return useQuery<CustomerAcquisitionResponse>({
+   413→    queryKey: ["customer-acquisition-report"],
+   414→    queryFn: () => fetch("/api/reports?type=customer-acquisition").then((r) => r.json()),
+   415→    staleTime: 60_000,
+   416→  });
+   417→}
+   418→
+   419→function useDashboardComparison() {
+   420→  return useQuery<DashboardComparisonData>({
+   421→    queryKey: ["dashboard-comparison"],
+   422→    queryFn: () => fetch("/api/dashboard").then((r) => r.json()),
+   423→    staleTime: 60_000,
+   424→  });
+   425→}
+   426→
+   427→// ─── New Feature Hooks ────────────────────────────────────────────────────
+   428→
+   429→function useAllCustomersForReport() {
+   430→  return useQuery<Array<Record<string, unknown>>>({ 
+   431→    queryKey: ["all-customers-report"],
+   432→    queryFn: () =>
+   433→      fetch("/api/customers?limit=999")
+   434→        .then((r) => r.json())
+   435→        .then((d) => d.data || d.customers || (Array.isArray(d) ? d : [])),
+   436→    staleTime: 60_000,
+   437→  });
+   438→}
+   439→
+   440→// ─── Fallback Data ───────────────────────────────────────────────────────────
+   441→
+   442→const FALLBACK_SALES_TREND: SalesTrendPoint[] = [];
+   443→const FALLBACK_PRODUCTS: ProductSale[] = [];
+   444→const FALLBACK_CUSTOMERS: TopCustomer[] = [];
+   445→
+   446→// ─── PDF Export ───────────────────────────────────────────────────────────────
+   447→
+   448→function usePDFExport() {
+   449→  const [exporting, setExporting] = useState(false);
+   450→
+   451→  const exportPDF = useCallback(async (
+   452→    title: string,
+   453→    elementId: string,
+   454→  ) => {
+   455→    setExporting(true);
+   456→    try {
+   457→      const element = document.getElementById(elementId);
+   458→      if (!element) {
+   459→        toast.error("Could not find report content to export");
+   460→        return;
+   461→      }
+   462→
+   463→      // Use browser print as PDF — works universally without extra libs
+   464→      const printWindow = window.open("", "_blank");
+   465→      if (!printWindow) {
+   466→        toast.error("Please allow popups for PDF export");
+   467→        return;
+   468→      }
+   469→
+   470→      const styles = Array.from(document.styleSheets)
+   471→        .map((sheet) => {
+   472→          try {
+   473→            return Array.from(sheet.cssRules).map((rule) => rule.cssText).join("\n");
+   474→          } catch {
+   475→            return "";
+   476→          }
+   477→        })
+   478→        .join("\n");
+   479→
+   480→      printWindow.document.write(`
+   481→        <!DOCTYPE html>
+   482→        <html>
+   483→        <head>
+   484→          <title>${title} - Lotus Vision Opticals</title>
+   485→          <style>
+   486→            ${styles}
+   487→            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 20px; color: #111; background: #fff; }
+   488→            .print-header { text-align: center; margin-bottom: 24px; border-bottom: 2px solid #059669; padding-bottom: 12px; }
+   489→            .print-header h1 { font-size: 20px; margin: 0; color: #059669; }
+   490→            .print-header p { font-size: 12px; color: #666; margin: 4px 0 0; }
+   491→            table { width: 100%; border-collapse: collapse; font-size: 12px; }
+   492→            th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
+   493→            th { background: #f3f4f6; font-weight: 600; }
+   494→            tr:nth-child(even) { background: #f9fafb; }
+   495→            .text-right { text-align: right; }
+   496→            .font-mono { font-family: monospace; }
+   497→            .no-print { display: none !important; }
+   498→            @media print { body { padding: 0; } }
+   499→          </style>
+   500→        </head>
+   501→        <body>
+   502→          <div class="print-header">
+   503→            <h1>Lotus Vision Opticals</h1>
+   504→            <p>${title} | Generated: ${new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</p>
+   505→          </div>
+   506→          ${element.innerHTML}
+   507→          <script>
+   508→            setTimeout(() => { window.print(); window.close(); }, 500);
+   509→          </script>
+   510→        </body>
+   511→        </html>
+   512→      `);
+   513→      printWindow.document.close();
+   514→    } catch {
+   515→      toast.error("Failed to generate PDF");
+   516→    } finally {
+   517→      setExporting(false);
+   518→    }
+   519→  }, []);
+   520→
+   521→  return { exporting, exportPDF };
+   522→}
+   523→
+   524→// ─── Main Component ──────────────────────────────────────────────────────────
+   525→
+   526→export default function Reports() {
+   527→  const today = new Date();
+   528→  const defaultFrom = format(startOfMonth(today), "yyyy-MM-dd");
+   529→  const defaultTo = format(today, "yyyy-MM-dd");
+   530→
+   531→  const [dateFromInput, setDateFromInput] = useState(defaultFrom);
+   532→  const [dateToInput, setDateToInput] = useState(defaultTo);
+   533→  const [dateFrom, setDateFrom] = useState(defaultFrom);
+   534→  const [dateTo, setDateTo] = useState(defaultTo);
+   535→
+   536→  const handleApplyDateRange = useCallback(() => {
+   537→    setDateFrom(dateFromInput);
+   538→    setDateTo(dateToInput);
+   539→  }, [dateFromInput, dateToInput]);
+   540→
+   541→  const { exporting: csvExporting, exportPDF } = usePDFExport();
+   542→
+   543→  // Fetch data
+   544→  const salesTrendQuery = useReportsData<{ data: SalesTrendPoint[] }>("sales-trend", { data: FALLBACK_SALES_TREND }, dateFrom, dateTo);
+   545→  const topProductsQuery = useReportsData<{ data: ProductSale[] }>("top-products", { data: FALLBACK_PRODUCTS }, dateFrom, dateTo);
+   546→  const topCustomersQuery = useTopCustomers();
+   547→  const salesQuery = useSalesData(dateFrom, dateTo);
+   548→  const productsQuery = useProductsData();
+   549→  const revenueCompQuery = useRevenueComparison();
+   550→  const productPerfQuery = useProductPerformance();
+   551→  const inventoryTurnoverQuery = useReportsData<{ report: string; totalProducts: number; data: InventoryTurnoverItem[] }>("inventory-turnover", { report: "inventory-turnover", totalProducts: 0, data: [] });
+   552→  const customerAcqQuery = useCustomerAcquisitionReport();
+   553→  const dashboardQuery = useDashboardComparison();
+   554→  const allCustomersQuery = useAllCustomersForReport();
+   555→
+   556→  // Parse raw data with fallbacks
+   557→  const salesTrendData = useMemo(() => {
+   558→    const raw = salesTrendQuery.data;
+   559→    if (raw && "data" in raw && Array.isArray(raw.data)) return raw.data;
+   560→    if (Array.isArray(raw)) return raw;
+   561→    return FALLBACK_SALES_TREND;
+   562→  }, [salesTrendQuery.data]);
+   563→
+   564→  const topProducts = useMemo(() => {
+   565→    const raw = topProductsQuery.data;
+   566→    if (raw && "data" in raw && Array.isArray(raw.data)) return raw.data;
+   567→    if (Array.isArray(raw)) return raw;
+   568→    return FALLBACK_PRODUCTS;
+   569→  }, [topProductsQuery.data]);
+   570→
+   571→  const topCustomers = useMemo(() => {
+   572→    const raw = topCustomersQuery.data;
+   573→    if (raw && "data" in raw && Array.isArray(raw.data)) return raw.data;
+   574→    if (Array.isArray(raw)) return raw;
+   575→    return FALLBACK_CUSTOMERS;
+   576→  }, [topCustomersQuery.data]);
+   577→
+   578→  const allSales = useMemo(() => {
+   579→    const raw = salesQuery.data;
+   580→    if (raw && "sales" in raw && Array.isArray(raw.sales)) return raw.sales;
+   581→    if (raw && "data" in raw && Array.isArray(raw.data)) return raw.data;
+   582→    if (Array.isArray(raw)) return raw;
+   583→    return [] as SaleRecord[];
+   584→  }, [salesQuery.data]);
+   585→
+   586→  const allProducts = useMemo(() => {
+   587→    const raw = productsQuery.data;
+   588→    if (raw && "products" in raw && Array.isArray(raw.products)) return raw.products;
+   589→    if (raw && "data" in raw && Array.isArray(raw.data)) return raw.data;
+   590→    if (Array.isArray(raw)) return raw;
+   591→    return [] as Product[];
+   592→  }, [productsQuery.data]);
+   593→
+   594→  // Revenue comparison data
+   595→  const revenueComp = useMemo(() => {
+   596→    const raw = revenueCompQuery.data;
+   597→    if (!raw || !raw.summary) return null;
+   598→    return raw as { summary: RevenueComparisonSummary; thisMonthData: RevenueComparisonDay[]; lastMonthData: RevenueComparisonDay[] };
+   599→  }, [revenueCompQuery.data]);
+   600→
+   601→  // Product performance data
+   602→  const productPerf = useMemo(() => {
+   603→    const raw = productPerfQuery.data;
+   604→    if (!raw) return null;
+   605→    return raw as { categoryData: ProductPerformanceCategory[]; productData: ProductPerformanceItem[]; totalProducts: number; totalRevenue: number };
+   606→  }, [productPerfQuery.data]);
+   607→
+   608→  // Customer acquisition report data
+   609→  const customerAcqReport = useMemo(() => {
+   610→    const raw = customerAcqQuery.data;
+   611→    if (!raw || !raw.data) return null;
+   612→    return raw;
+   613→  }, [customerAcqQuery.data]);
+   614→
+   615→  // Dashboard comparison data
+   616→  const dashboardComp = useMemo(() => {
+   617→    const raw = dashboardQuery.data;
+   618→    if (!raw || !raw.comparison) return null;
+   619→    return raw.comparison;
+   620→  }, [dashboardQuery.data]);
+   621→
+   622→  // Customer acquisition: this month vs last month from API data
+   623→  const customerAcqComparison = useMemo(() => {
+   624→    if (!customerAcqReport) return null;
+   625→    const now = new Date();
+   626→    const thisMonthStart = startOfMonth(now);
+   627→    const lastMonthStart = startOfMonth(subMonths(now, 1));
+   628→    const lastMonthEnd = endOfMonth(subMonths(now, 1));
+   629→
+   630→    let thisMonthNew = 0;
+   631→    let lastMonthNew = 0;
+   632→
+   633→    for (const d of customerAcqReport.data) {
+   634→      const date = parseISO(d.date);
+   635→      if (date >= thisMonthStart) {
+   636→        thisMonthNew += d.newCustomers;
+   637→      } else if (date >= lastMonthStart && date <= lastMonthEnd) {
+   638→        lastMonthNew += d.newCustomers;
+   639→      }
+   640→    }
+   641→
+   642→    const changePercent = lastMonthNew > 0
+   643→      ? Math.round(((thisMonthNew - lastMonthNew) / lastMonthNew) * 100)
+   644→      : thisMonthNew > 0 ? 100 : 0;
+   645→
+   646→    return { thisMonthNew, lastMonthNew, changePercent, totalNew: customerAcqReport.totalNew, thisWeekNew: customerAcqReport.thisWeekNew };
+   647→  }, [customerAcqReport]);
+   648→
+   649→  // Inventory turnover data
+   650→  const inventoryTurnover = useMemo(() => {
+   651→    const raw = inventoryTurnoverQuery.data;
+   652→    if (!raw || !Array.isArray(raw.data)) return [];
+   653→    return raw.data;
+   654→  }, [inventoryTurnoverQuery.data]);
+   655→
+   656→  // ─── Revenue Summary from all sales ────────────────────────────────────
+   657→
+   658→  const revenueSummary = useMemo(() => {
+   659→    const from = parseISO(dateFrom);
+   660→    const to = new Date(dateTo + "T23:59:59");
+   661→    const filtered = allSales.filter((s) => {
+   662→      try { return isWithinInterval(new Date(s.createdAt), { start: from, end: to }); }
+   663→      catch { return false; }
+   664→    });
+   665→    const totalRevenue = filtered.reduce((sum, s) => sum + (s.total || s.totalAmount || 0), 0);
+   666→    const numTx = filtered.length;
+   667→    const avgValue = numTx > 0 ? Math.round(totalRevenue / numTx) : 0;
+   668→    return { totalRevenue, numTx, avgValue };
+   669→  }, [allSales, dateFrom, dateTo]);
+   670→
+   671→  // ─── Payment Modes from real sales data ─────────────────────────────────
+   672→
+   673→  const paymentModes = useMemo(() => {
+   674→    const from = parseISO(dateFrom);
+   675→    const to = new Date(dateTo + "T23:59:59");
+   676→    const filtered = allSales.filter((s) => {
+   677→      try { return isWithinInterval(new Date(s.createdAt), { start: from, end: to }); }
+   678→      catch { return false; }
+   679→    });
+   680→    const map: Record<string, { mode: string; count: number; amount: number }> = {};
+   681→    filtered.forEach((s) => {
+   682→      const mode = s.paymentMode || "Cash";
+   683→      if (!map[mode]) map[mode] = { mode, count: 0, amount: 0 };
+   684→      map[mode].count += 1;
+   685→      map[mode].amount += s.total || s.totalAmount || 0;
+   686→    });
+   687→    return Object.values(map).sort((a, b) => b.amount - a.amount);
+   688→  }, [allSales, dateFrom, dateTo]);
+   689→
+   690→  // ─── Daily revenue from real data ────────────────────────────────────────
+   691→
+   692→  const dailyRevenue = useMemo((): SalesTrendPoint[] => {
+   693→    const from = parseISO(dateFrom);
+   694→    const to = new Date(dateTo + "T23:59:59");
+   695→    const filtered = allSales.filter((s) => {
+   696→      try { return isWithinInterval(new Date(s.createdAt), { start: from, end: to }); }
+   697→      catch { return false; }
+   698→    });
+   699→    const dayMap = new Map<string, { date: string; revenue: number; orders: number }>();
+   700→    filtered.forEach((s) => {
+   701→      const day = format(new Date(s.createdAt), "yyyy-MM-dd");
+   702→      const existing = dayMap.get(day) || { date: day, revenue: 0, orders: 0 };
+   703→      existing.revenue += s.total || s.totalAmount || 0;
+   704→      existing.orders += 1;
+   705→      dayMap.set(day, existing);
+   706→    });
+   707→    return Array.from(dayMap.values()).sort((a, b) => a.date.localeCompare(b.date)).map((d) => ({
+   708→      ...d,
+   709→      date: format(parseISO(d.date), "MMM dd"),
+   710→    }));
+   711→  }, [allSales, dateFrom, dateTo]);
+   712→
+   713→  // ─── Customer acquisition from real sales data ─────────────────────────
+   714→
+   715→  const customerAcquisition = useMemo(() => {
+   716→    const seen = new Set<string>();
+   717→    const dailyNew: Record<string, number> = {};
+   718→    const from = parseISO(dateFrom);
+   719→    const to = new Date(dateTo + "T23:59:59");
+   720→    allSales
+   721→      .filter((s) => {
+   722→        try { return isWithinInterval(new Date(s.createdAt), { start: from, end: to }); }
+   723→        catch { return false; }
+   724→      })
+   725→      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+   726→      .forEach((s) => {
+   727→        const key = s.customer?.name || s.customerName || `anon-${s.id}`;
+   728→        if (!seen.has(key)) {
+   729→          seen.add(key);
+   730→          const day = format(new Date(s.createdAt), "yyyy-MM-dd");
+   731→          dailyNew[day] = (dailyNew[day] || 0) + 1;
+   732→        }
+   733→      });
+   734→    return Object.entries(dailyNew)
+   735→      .sort(([a], [b]) => a.localeCompare(b))
+   736→      .slice(-14)
+   737→      .map(([date, newCustomers]) => ({
+   738→        date: format(parseISO(date), "MMM dd"),
+   739→        newCustomers,
+   740→      }));
+   741→  }, [allSales, dateFrom, dateTo]);
+   742→
+   743→  // ─── Monthly Customer Acquisition (last 6 months) from /api/customers ──
+   744→  const allCustomersList = useMemo(() => {
+   745→    const raw = allCustomersQuery.data;
+   746→    if (!Array.isArray(raw)) return [];
+   747→    return raw;
+   748→  }, [allCustomersQuery.data]);
+   749→
+   750→  const monthlyCustomerAcq = useMemo(() => {
+   751→    const now = new Date();
+   752→    const months: { month: string; newCustomers: number }[] = [];
+   753→    for (let i = 5; i >= 0; i--) {
+   754→      const mDate = subMonths(now, i);
+   755→      const mStart = startOfMonth(mDate);
+   756→      const mEnd = endOfMonth(mDate);
+   757→      const mLabel = format(mDate, "MMM yyyy");
+   758→      const count = allCustomersList.filter((c) => {
+   759→        const createdAt = c.createdAt as string | undefined;
+   760→        if (!createdAt) return false;
+   761→        try {
+   762→          const d = new Date(createdAt);
+   763→          return d >= mStart && d <= mEnd;
+   764→        } catch {
+   765→          return false;
+   766→        }
+   767→      }).length;
+   768→      months.push({ month: mLabel, newCustomers: count });
+   769→    }
+   770→    return months;
+   771→  }, [allCustomersList]);
+   772→
+   773→  const thisMonthNewCustomers = monthlyCustomerAcq[monthlyCustomerAcq.length - 1]?.newCustomers || 0;
+   774→  const lastMonthNewCustomers = monthlyCustomerAcq[monthlyCustomerAcq.length - 2]?.newCustomers || 0;
+   775→  const customerGrowthPercent = lastMonthNewCustomers > 0
+   776→    ? Math.round(((thisMonthNewCustomers - lastMonthNewCustomers) / lastMonthNewCustomers) * 100)
+   777→    : thisMonthNewCustomers > 0 ? 100 : 0;
+   778→
+   779→  // ─── Top 10 Products by Inventory Value (price * stock) ────────────────
+   780→  const top10InventoryValue = useMemo(() => {
+   781→    return [...allProducts]
+   782→      .map((p) => ({
+   783→        name: p.name,
+   784→        category: p.category,
+   785→        price: p.price,
+   786→        stock: p.stock,
+   787→        minStock: p.minStock,
+   788→        inventoryValue: p.price * p.stock,
+   789→        status: p.stock <= p.minStock ? ("Low Stock" as const) : p.stock > p.minStock * 3 ? ("Overstocked" as const) : ("In Stock" as const),
+   790→      }))
+   791→      .sort((a, b) => b.inventoryValue - a.inventoryValue)
+   792→      .slice(0, 10);
+   793→  }, [allProducts]);
+   794→
+   795→  // ─── Top 5 Customers by Spend (from /api/customers) ───────────────────
+   796→  const top5CustomersBySpend = useMemo(() => {
+   797→    if (!Array.isArray(allCustomersList) || allCustomersList.length === 0) return [];
+   798→    return [...allCustomersList]
+   799→      .sort((a, b) => ((b.totalSpent as number) || 0) - ((a.totalSpent as number) || 0))
+   800→      .slice(0, 5);
+   801→  }, [allCustomersList]);
+   802→
+   803→  // ─── Top products by revenue (from real API data) ─────────────────────
+   804→
+   805→  const topProductsByRevenue = useMemo(() => {
+   806→    if (topProducts.length === 0) return [];
+   807→    return [...topProducts]
+   808→      .sort((a, b) => (b.totalRevenue || 0) - (a.totalRevenue || 0))
+   809→      .slice(0, 10)
+   810→      .map((p) => ({
+   811→        name: p.name || "Unknown",
+   812→        revenue: p.totalRevenue || 0,
+   813→        quantity: p.totalQtySold || 0,
+   814→        category: p.category || "",
+   815→      }));
+   816→  }, [topProducts]);
+   817→
+   818→  // ─── Monthly revenue for area chart ────────────────────────────────────
+   819→
+   820→  const monthlyRevenue = useMemo((): SalesTrendPoint[] => {
+   821→    if (salesTrendData.length === 0) {
+   822→      const monthMap = new Map<string, { date: string; revenue: number; orders: number }>();
+   823→      allSales.forEach((s) => {
+   824→        const month = format(new Date(s.createdAt), "MMM yyyy");
+   825→        const existing = monthMap.get(month) || { date: month, revenue: 0, orders: 0 };
+   826→        existing.revenue += s.total || s.totalAmount || 0;
+   827→        existing.orders += 1;
+   828→        monthMap.set(month, existing);
+   829→      });
+   830→      return Array.from(monthMap.values()).slice(-12);
+   831→    }
+   832→    return salesTrendData.slice(0, 12).map((d) => ({
+   833→      ...d,
+   834→      date: format(parseISO(d.date), "MMM yyyy"),
+   835→    }));
+   836→  }, [salesTrendData, allSales]);
+   837→
+   838→  const totalMonthlyRevenue = monthlyRevenue.reduce((s, d) => s + d.revenue, 0);
+   839→  const totalMonthlyOrders = monthlyRevenue.reduce((s, d) => s + d.orders, 0);
+   840→  const avgMonthlySaleValue = totalMonthlyOrders > 0 ? Math.round(totalMonthlyRevenue / totalMonthlyOrders) : 0;
+   841→
+   842→  // ─── Revenue Comparison Chart Data (merge this month & last month by day) ───
+   843→
+   844→  const comparisonChartData = useMemo(() => {
+   845→    if (!revenueComp) return [];
+   846→    const maxDays = Math.max(revenueComp.thisMonthData.length, revenueComp.lastMonthData.length);
+   847→    const data: { day: number; thisMonth: number; lastMonth: number }[] = [];
+   848→    for (let d = 1; d <= maxDays; d++) {
+   849→      const tm = revenueComp.thisMonthData.find((x) => x.day === d);
+   850→      const lm = revenueComp.lastMonthData.find((x) => x.day === d);
+   851→      data.push({
+   852→        day: d,
+   853→        thisMonth: tm?.revenue || 0,
+   854→        lastMonth: lm?.revenue || 0,
+   855→      });
+   856→    }
+   857→    return data;
+   858→  }, [revenueComp]);
+   859→
+   860→  // ─── Customer Acquisition Chart Data (this month vs last month daily) ──
+   861→
+   862→  const customerAcqChartData = useMemo(() => {
+   863→    if (!customerAcqReport) return [];
+   864→    const now = new Date();
+   865→    const thisMonthStart = startOfMonth(now);
+   866→    const lastMonthStart = startOfMonth(subMonths(now, 1));
+   867→    const lastMonthEnd = endOfMonth(subMonths(now, 1));
+   868→    const daysInThisMonth = endOfMonth(now).getDate();
+   869→    const daysInLastMonth = lastMonthEnd.getDate();
+   870→    const maxDays = Math.max(daysInThisMonth, daysInLastMonth);
+   871→
+   872→    const data: { day: number; thisMonth: number; lastMonth: number }[] = [];
+   873→    for (let d = 1; d <= maxDays; d++) {
+   874→      // Find this month data
+   875→      const thisMonthDate = format(new Date(now.getFullYear(), now.getMonth(), d), "yyyy-MM-dd");
+   876→      const thisMonthEntry = customerAcqReport.data.find((x) => x.date === thisMonthDate);
+   877→      // Find last month data
+   878→      const lastMonthDate = format(new Date(now.getFullYear(), now.getMonth() - 1, d), "yyyy-MM-dd");
+   879→      const lastMonthEntry = customerAcqReport.data.find((x) => x.date === lastMonthDate);
+   880→
+   881→      data.push({
+   882→        day: d,
+   883→        thisMonth: thisMonthEntry?.newCustomers || 0,
+   884→        lastMonth: lastMonthEntry?.newCustomers || 0,
+   885→      });
+   886→    }
+   887→    return data;
+   888→  }, [customerAcqReport]);
+   889→
+   890→  // ─── CSV Export ──────────────────────────────────────────────────────
+   891→  const [exporting, setExporting] = useState(false);
+   892→
+   893→  const handleDownloadCSV = useCallback(async () => {
+   894→    setExporting(true);
+   895→    try {
+   896→      const [salesRes, custRes, prodRes] = await Promise.allSettled([
+   897→        fetch("/api/sales?limit=999"),
+   898→        fetch("/api/customers?limit=999"),
+   899→        fetch("/api/products?pageSize=999"),
+   900→      ]);
+   901→
+   902→      // ─── Section 1: Sales Summary ───────────────────────────────────
+   903→      let salesSheet = "SALES SUMMARY\n";
+   904→      salesSheet += "Date,Invoice#,Customer,Items,Subtotal,Discount,Tax,Total,Mode,Status\n";
+   905→      if (salesRes.status === "fulfilled" && salesRes.value.ok) {
+   906→        const salesData = await salesRes.value.json();
+   907→        const list: SaleRecord[] = Array.isArray(salesData.sales) ? salesData.sales : [];
+   908→        for (const s of list) {
+   909→          const dateStr = s.createdAt ? format(new Date(s.createdAt), "dd-MMM-yyyy") : "";
+   910→          const items = s.itemsCount || 0;
+   911→          const disc = s.discount || 0;
+   912→          const tax = (s.cgst || 0) + (s.sgst || 0) + (s.igst || 0);
+   913→          const line = [
+   914→            dateStr,
+   915→            `"${s.invoiceNo || ""}"`,
+   916→            `"${(s.customer?.name || s.customerName || "").replace(/"/g, '""')}"`,
+   917→            items,
+   918→            s.subtotal || 0,
+   919→            disc,
+   920→            tax,
+   921→            s.total || s.totalAmount || 0,
+   922→            s.paymentMode || "",
+   923→            s.status || "",
+   924→          ].join(",");
+   925→          salesSheet += line + "\n";
+   926→        }
+   927→      }
+   928→
+   929→      // ─── Section 2: Customer Summary ────────────────────────────────
+   930→      let customerSheet = "\nCUSTOMER SUMMARY\n";
+   931→      customerSheet += "Name,Phone,Group,Orders,Total Spent\n";
+   932→      const customersMap = new Map<string, { orders: number; spent: number }>();
+   933→      if (salesRes.status === "fulfilled" && salesRes.value.ok) {
+   934→        const salesData = await salesRes.value.json();
+   935→        const list: SaleRecord[] = Array.isArray(salesData.sales) ? salesData.sales : [];
+   936→        for (const s of list) {
+   937→          const name = s.customer?.name || s.customerName || "Walk-in";
+   938→          const existing = customersMap.get(name) || { orders: 0, spent: 0 };
+   939→          existing.orders += 1;
+   940→          existing.spent += s.total || s.totalAmount || 0;
+   941→          customersMap.set(name, existing);
+   942→        }
+   943→      }
+   944→      if (custRes.status === "fulfilled" && custRes.value.ok) {
+   945→        const custData = await custRes.value.json();
+   946→        const custList = Array.isArray(custData.data) ? custData.data : [];
+   947→        for (const c of custList) {
+   948→          const r = c as Record<string, unknown>;
+   949→          const stats = customersMap.get(r.name as string) || { orders: 0, spent: 0 };
+   950→          const line = [
+   951→            `"${(r.name || "").toString().replace(/"/g, '""')}"`,
+   952→            `"${(r.phone || "").toString()}"`,
+   953→            `"${(r.group || "New").toString()}"`,
+   954→            stats.orders,
+   955→            stats.spent,
+   956→          ].join(",");
+   957→          customerSheet += line + "\n";
+   958→        }
+   959→      }
+   960→
+   961→      // ─── Section 3: Product Performance ─────────────────────────────
+   962→      let productSheet = "\nPRODUCT PERFORMANCE\n";
+   963→      productSheet += "Name,Category,Price,Stock,Qty Sold,Revenue\n";
+   964→      if (prodRes.status === "fulfilled" && prodRes.value.ok) {
+   965→        try {
+   966→          const perfRes = await fetch("/api/reports?type=product-performance");
+   967→          if (perfRes.ok) {
+   968→            const perfData = await perfRes.json();
+   969→            const perfList = Array.isArray(perfData.data) ? perfData.data : [];
+   970→            const perfMap = new Map<string, { qty: number; revenue: number }>();
+   971→            if (Array.isArray(perfData.productData)) {
+   972→              for (const p of perfData.productData) {
+   973→                perfMap.set(p.name, { qty: p.totalQtySold, revenue: p.totalRevenue });
+   974→              }
+   975→            }
+   976→            const prodData = await prodRes.value.json();
+   977→            const prodList = Array.isArray(prodData.products) ? prodData.products : [];
+   978→            for (const p of prodList) {
+   979→              const pr = p as Record<string, unknown>;
+   980→              const perf = perfMap.get(pr.name as string) || { qty: 0, revenue: 0 };
+   981→              const line = [
+   982→                `"${(pr.name || "").toString().replace(/"/g, '""')}"`,
+   983→                `"${(pr.category || "").toString()}"`,
+   984→                pr.price || 0,
+   985→                pr.stock || 0,
+   986→                perf.qty,
+   987→                perf.revenue,
+   988→              ].join(",");
+   989→              productSheet += line + "\n";
+   990→            }
+   991→          }
+   992→        } catch {
+   993→          for (const p of (await prodRes.value.json()).products || []) {
+   994→            const pr = p as Record<string, unknown>;
+   995→            const line = [
+   996→              `"${(pr.name || "").toString().replace(/"/g, '""')}"`,
+   997→              `"${(pr.category || "").toString()}"`,
+   998→              pr.price || 0,
+   999→              pr.stock || 0,
+  1000→              0, 0,
+  1001→            ].join(",");
+  1002→            productSheet += line + "\n";
+  1003→          }
+  1004→        }
+  1005→      }
+  1006→
+  1007→      const csvContent = salesSheet + "\n" + customerSheet + "\n" + productSheet;
+  1008→      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  1009→      const url = URL.createObjectURL(blob);
+  1010→      const a = document.createElement("a");
+  1011→      a.href = url;
+  1012→      a.download = `crm-report-${format(new Date(), "yyyy-MM-dd")}.csv`;
+  1013→      document.body.appendChild(a);
+  1014→      a.click();
+  1015→      document.body.removeChild(a);
+  1016→      URL.revokeObjectURL(url);
+  1017→      toast.success("Report downloaded successfully!");
+  1018→    } catch {
+  1019→      toast.error("Failed to download report");
+  1020→    } finally {
+  1021→      setExporting(false);
+  1022→    }
+  1023→  }, []);
+  1024→
+  1025→  return (
+  1026→    <div className="space-y-6 p-4 md:p-6">
+  1027→      {/* Page Header */}
+  1028→      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  1029→        <div>
+  1030→          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+  1031→            <BarChart3 className="h-6 w-6" />
+  1032→            Reports &amp; Analytics
+  1033→          </h1>
+  1034→          <p className="text-muted-foreground text-sm mt-1">
+  1035→            Business insights for Lotus Vision Opticals
+  1036→          </p>
+  1037→        </div>
+  1038→        <div className="flex items-center gap-2 flex-wrap">
+  1039→          <Button
+  1040→            variant="outline"
+  1041→            size="sm"
+  1042→            className="gap-2 min-h-[44px] touch-manipulation"
+  1043→            onClick={() => exportPDF("Reports & Analytics", "reports-content")}
+  1044→            disabled={csvExporting}
+  1045→          >
+  1046→            {csvExporting ? (
+  1047→              <Loader2 className="h-4 w-4 animate-spin" />
+  1048→            ) : (
+  1049→              <Printer className="h-4 w-4" />
+  1050→            )}
+  1051→            Export PDF
+  1052→          </Button>
+  1053→          <Button
+  1054→            variant="outline"
+  1055→            size="sm"
+  1056→            className="gap-2 min-h-[44px] touch-manipulation"
+  1057→            onClick={handleDownloadCSV}
+  1058→            disabled={exporting}
+  1059→          >
+  1060→            {exporting ? (
+  1061→              <Loader2 className="h-4 w-4 animate-spin" />
+  1062→            ) : (
+  1063→              <Download className="h-4 w-4" />
+  1064→            )}
+  1065→            Download CSV
+  1066→          </Button>
+  1067→        </div>
+  1068→      </div>
+  1069→
+  1070→      {/* Date Range Picker */}
+  1071→      <Card>
+  1072→        <CardContent className="p-4">
+  1073→          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+  1074→            <div className="flex items-center gap-2">
+  1075→              <CalendarDays className="h-4 w-4 text-muted-foreground" />
+  1076→              <span className="text-sm font-medium">Date Range:</span>
+  1077→            </div>
+  1078→            <div className="flex items-center gap-2 flex-wrap">
+  1079→              <div className="flex items-center gap-1.5">
+  1080→                <Label htmlFor="rpt-from" className="text-xs">From</Label>
+  1081→                <Input id="rpt-from" type="date" value={dateFromInput} onChange={(e) => setDateFromInput(e.target.value)} className="h-9 w-[150px] text-xs" />
+  1082→              </div>
+  1083→              <div className="flex items-center gap-1.5">
+  1084→                <Label htmlFor="rpt-to" className="text-xs">To</Label>
+  1085→                <Input id="rpt-to" type="date" value={dateToInput} onChange={(e) => setDateToInput(e.target.value)} className="h-9 w-[150px] text-xs" />
+  1086→              </div>
+  1087→              <Button variant="default" size="sm" className="text-xs min-h-[44px] touch-manipulation gap-1.5" onClick={handleApplyDateRange}>
+  1088→                Apply
+  1089→              </Button>
+  1090→              <Separator orientation="vertical" className="h-6 hidden sm:block" />
+  1091→              <Button variant="outline" size="sm" className="text-xs min-h-[44px] touch-manipulation" onClick={() => {
+  1092→                const from = format(startOfMonth(today), "yyyy-MM-dd");
+  1093→                setDateFromInput(from); setDateToInput(defaultTo);
+  1094→                setDateFrom(from); setDateTo(defaultTo);
+  1095→              }}>
+  1096→                This Month
+  1097→              </Button>
+  1098→              <Button variant="outline" size="sm" className="text-xs min-h-[44px] touch-manipulation" onClick={() => {
+  1099→                const from = format(subDays(today, 30), "yyyy-MM-dd");
+  1100→                setDateFromInput(from); setDateToInput(defaultTo);
+  1101→                setDateFrom(from); setDateTo(defaultTo);
+  1102→              }}>
+  1103→                Last 30 Days
+  1104→              </Button>
+  1105→              <Button variant="outline" size="sm" className="text-xs min-h-[44px] touch-manipulation" onClick={() => {
+  1106→                const from = format(subDays(today, 7), "yyyy-MM-dd");
+  1107→                setDateFromInput(from); setDateToInput(defaultTo);
+  1108→                setDateFrom(from); setDateTo(defaultTo);
+  1109→              }}>
+  1110→                Last 7 Days
+  1111→              </Button>
+  1112→            </div>
+  1113→          </div>
+  1114→        </CardContent>
+  1115→      </Card>
+  1116→
+  1117→      {/* Revenue Summary Cards */}
+  1118→      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+  1119→        <StatCard title="Total Revenue" value={formatCurrency(revenueSummary.totalRevenue)} icon={<DollarSign className="size-5 text-white" />} iconBg="bg-emerald-600" />
+  1120→        <StatCard title="Avg Sale Value" value={formatCurrency(revenueSummary.avgValue)} icon={<IndianRupee className="size-5 text-white" />} iconBg="bg-teal-600" />
+  1121→        <StatCard title="Transactions" value={formatNumber(revenueSummary.numTx)} icon={<ShoppingCart className="size-5 text-white" />} iconBg="bg-emerald-700" />
+  1122→      </div>
+  1123→
+  1124→      {/* Revenue Comparison: This Month vs Last Month */}
+  1125→      {revenueComp && (
+  1126→        <Card>
+  1127→          <CardHeader>
+  1128→            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+  1129→              <div>
+  1130→                <CardTitle className="text-base flex items-center gap-2">
+  1131→                  <TrendingUp className="h-4 w-4" />
+  1132→                  Revenue Comparison
+  1133→                </CardTitle>
+  1134→                <CardDescription>This month vs last month</CardDescription>
+  1135→              </div>
+  1136→              <div className="flex items-center gap-4 flex-wrap">
+  1137→                <div className="text-right">
+  1138→                  <p className="text-xs text-muted-foreground">This Month</p>
+  1139→                  <p className="text-lg font-bold font-mono text-emerald-600 dark:text-emerald-400">{formatCurrency(revenueComp.summary.thisMonth.total)}</p>
+  1140→                </div>
+  1141→                <div className="text-right">
+  1142→                  <p className="text-xs text-muted-foreground">Last Month</p>
+  1143→                  <p className="text-lg font-bold font-mono text-muted-foreground">{formatCurrency(revenueComp.summary.lastMonth.total)}</p>
+  1144→                </div>
+  1145→                <Badge className={`text-xs ${revenueComp.summary.changePercent >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'}`}>
+  1146→                  {revenueComp.summary.changePercent >= 0 ? <ArrowUpRight className="h-3 w-3 inline mr-0.5" /> : <ArrowDownRight className="h-3 w-3 inline mr-0.5" />}
+  1147→                  {Math.abs(revenueComp.summary.changePercent)}%
+  1148→                </Badge>
+  1149→              </div>
+  1150→            </div>
+  1151→          </CardHeader>
+  1152→          <CardContent>
+  1153→            {comparisonChartData.length === 0 ? (
+  1154→              <ChartSkeleton height={300} />
+  1155→            ) : (
+  1156→              <div className="space-y-4">
+  1157→                {/* Dual-bar chart comparing this month vs last month */}
+  1158→                <ResponsiveContainer width="100%" height={300}>
+  1159→                  <BarChart data={comparisonChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+  1160→                    <CartesianGrid vertical={false} strokeDasharray="3 3" />
+  1161→                    <XAxis dataKey="day" tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+  1162→                    <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+  1163→                    <Tooltip
+  1164→                      content={<ChartTooltip valuePrefix="₹" />}
+  1165→                      formatter={(value: number, name: string) => [formatCurrency(value), name === "thisMonth" ? "This Month" : "Last Month"]}
+  1166→                    />
+  1167→                    <Legend formatter={(v: string) => <span className="text-xs">{v === "thisMonth" ? "This Month" : "Last Month"}</span>} />
+  1168→                    <Bar dataKey="lastMonth" fill={LAST_MONTH_COLOR} radius={[2, 2, 0, 0]} barSize={14} name="Last Month" opacity={0.7} />
+  1169→                    <Bar dataKey="thisMonth" fill={THIS_MONTH_COLOR} radius={[2, 2, 0, 0]} barSize={14} name="This Month" />
+  1170→                  </BarChart>
+  1171→                </ResponsiveContainer>
+  1172→
+  1173→                {/* Comparison details */}
+  1174→                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+  1175→                  <div className="rounded-lg border p-3">
+  1176→                    <p className="text-[10px] text-muted-foreground">This Month Orders</p>
+  1177→                    <p className="text-sm font-bold font-mono">{revenueComp.summary.thisMonth.orders}</p>
+  1178→                  </div>
+  1179→                  <div className="rounded-lg border p-3">
+  1180→                    <p className="text-[10px] text-muted-foreground">Last Month Orders</p>
+  1181→                    <p className="text-sm font-bold font-mono text-muted-foreground">{revenueComp.summary.lastMonth.orders}</p>
+  1182→                  </div>
+  1183→                  <div className="rounded-lg border p-3">
+  1184→                    <p className="text-[10px] text-muted-foreground">Avg Order Value (This)</p>
+  1185→                    <p className="text-sm font-bold font-mono">
+  1186→                      {revenueComp.summary.thisMonth.orders > 0 ? formatCurrency(Math.round(revenueComp.summary.thisMonth.total / revenueComp.summary.thisMonth.orders)) : "—"}
+  1187→                    </p>
+  1188→                  </div>
+  1189→                  <div className="rounded-lg border p-3">
+  1190→                    <p className="text-[10px] text-muted-foreground">Avg Order Value (Last)</p>
+  1191→                    <p className="text-sm font-bold font-mono text-muted-foreground">
+  1192→                      {revenueComp.summary.lastMonth.orders > 0 ? formatCurrency(Math.round(revenueComp.summary.lastMonth.total / revenueComp.summary.lastMonth.orders)) : "—"}
+  1193→                    </p>
+  1194→                  </div>
+  1195→                </div>
+  1196→
+  1197→                {/* Customer Change from Dashboard */}
+  1198→                {dashboardComp && (
+  1199→                  <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/30 p-4">
+  1200→                    <div className="flex items-center gap-2 mb-1">
+  1201→                      <Users className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+  1202→                      <span className="text-sm font-semibold">Customer Growth</span>
+  1203→                    </div>
+  1204→                    <p className="text-xs text-muted-foreground">
+  1205→                      Customer acquisitions changed by{" "}
+  1206→                      <span className={`font-semibold ${dashboardComp.customerChange >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+  1207→                        {dashboardComp.customerChange >= 0 ? '+' : ''}{dashboardComp.customerChange}%
+  1208→                      </span>{" "}
+  1209→                      compared to last month
+  1210→                    </p>
+  1211→                  </div>
+  1212→                )}
+  1213→              </div>
+  1214→            )}
+  1215→          </CardContent>
+  1216→        </Card>
+  1217→      )}
+  1218→
+  1219→      <div id="reports-content">
+  1220→        <Tabs defaultValue="overview" className="space-y-4">
+  1221→          <TabsList className="flex-wrap h-auto gap-1">
+  1222→            <TabsTrigger value="overview" className="gap-1.5 min-h-[44px] touch-manipulation"><TrendingUp className="h-4 w-4" /><span className="hidden sm:inline">Overview</span></TabsTrigger>
+  1223→            <TabsTrigger value="products" className="gap-1.5 min-h-[44px] touch-manipulation"><ShoppingCart className="h-4 w-4" /><span className="hidden sm:inline">Products</span></TabsTrigger>
+  1224→            <TabsTrigger value="customers" className="gap-1.5 min-h-[44px] touch-manipulation"><Users className="h-4 w-4" /><span className="hidden sm:inline">Customers</span></TabsTrigger>
+  1225→            <TabsTrigger value="inventory" className="gap-1.5 min-h-[44px] touch-manipulation"><Package className="h-4 w-4" /><span className="hidden sm:inline">Inventory</span></TabsTrigger>
+  1226→            <TabsTrigger value="acquisition" className="gap-1.5 min-h-[44px] touch-manipulation"><UserPlus className="h-4 w-4" /><span className="hidden sm:inline">Acquisition</span></TabsTrigger>
+  1227→            <TabsTrigger value="product-perf" className="gap-1.5 min-h-[44px] touch-manipulation"><Trophy className="h-4 w-4" /><span className="hidden sm:inline">Performance</span></TabsTrigger>
+  1228→            <TabsTrigger value="top-spenders" className="gap-1.5 min-h-[44px] touch-manipulation"><Crown className="h-4 w-4" /><span className="hidden sm:inline">Top Spenders</span></TabsTrigger>
+  1229→            <TabsTrigger value="monthly-acq" className="gap-1.5 min-h-[44px] touch-manipulation"><CalendarDays className="h-4 w-4" /><span className="hidden sm:inline">Monthly Acq.</span></TabsTrigger>
+  1230→            <TabsTrigger value="inventory-value" className="gap-1.5 min-h-[44px] touch-manipulation"><BarChart3 className="h-4 w-4" /><span className="hidden sm:inline">Inventory Val.</span></TabsTrigger>
+  1231→          </TabsList>
+  1232→
+  1233→          {/* ─── Overview Tab ──────────────────────────────────────────── */}
+  1234→          <TabsContent value="overview">
+  1235→            <div className="space-y-6">
+  1236→              {/* Revenue Trend + Payment Modes */}
+  1237→              <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+  1238→                <Card className="lg:col-span-2">
+  1239→                  <CardHeader>
+  1240→                    <CardTitle className="text-base">Monthly Revenue Trend</CardTitle>
+  1241→                    <CardDescription>Revenue over the past 12 months</CardDescription>
+  1242→                  </CardHeader>
+  1243→                  <CardContent>
+  1244→                    {monthlyRevenue.length === 0 ? (
+  1245→                      <ChartSkeleton height={320} />
+  1246→                    ) : (
+  1247→                      <ResponsiveContainer width="100%" height={320}>
+  1248→                        <AreaChart data={monthlyRevenue} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+  1249→                          <defs>
+  1250→                            <linearGradient id={CHART_GRADIENT_ID} x1="0" y1="0" x2="0" y2="1">
+  1251→                              <stop offset="5%" stopColor="#059669" stopOpacity={0.3} />
+  1252→                              <stop offset="95%" stopColor="#059669" stopOpacity={0.02} />
+  1253→                            </linearGradient>
+  1254→                          </defs>
+  1255→                          <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+  1256→                          <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+  1257→                          <Tooltip content={<ChartTooltip valuePrefix="₹" />} formatter={(value: number) => [formatCurrency(value), "Revenue"]} />
+  1258→                          <Area type="monotone" dataKey="revenue" stroke="#059669" strokeWidth={2} fill={`url(#${CHART_GRADIENT_ID})`} name="Revenue" />
+  1259→                        </AreaChart>
+  1260→                      </ResponsiveContainer>
+  1261→                    )}
+  1262→                  </CardContent>
+  1263→                </Card>
+  1264→
+  1265→                {/* Payment Mode Pie Chart */}
+  1266→                <Card>
+  1267→                  <CardHeader>
+  1268→                    <CardTitle className="text-base">Sales by Payment Mode</CardTitle>
+  1269→                    <CardDescription>UPI, Cash, Card distribution</CardDescription>
+  1270→                  </CardHeader>
+  1271→                  <CardContent>
+  1272→                    {paymentModes.length === 0 ? (
+  1273→                      <div className="flex items-center justify-center h-[320px] text-muted-foreground text-sm">No sales data in selected period</div>
+  1274→                    ) : (
+  1275→                      <ResponsiveContainer width="100%" height={320}>
+  1276→                        <PieChart>
+  1277→                          <Pie
+  1278→                            data={paymentModes}
+  1279→                            cx="50%"
+  1280→                            cy="45%"
+  1281→                            outerRadius={85}
+  1282→                            innerRadius={40}
+  1283→                            dataKey="amount"
+  1284→                            nameKey="mode"
+  1285→                            labelLine={false}
+  1286→                            label={renderCustomLabel}
+  1287→                          >
+  1288→                            {paymentModes.map((entry) => (
+  1289→                              <Cell key={entry.mode} fill={PAYMENT_COLORS[entry.mode] || COLORS[paymentModes.indexOf(entry) % COLORS.length]} />
+  1290→                            ))}
+  1291→                          </Pie>
+  1292→                          <Tooltip
+  1293→                            content={<ChartTooltip valuePrefix="₹" />}
+  1294→                            formatter={(value: number, name: string) => [formatCurrency(value), name]}
+  1295→                          />
+  1296→                          <Legend verticalAlign="bottom" iconType="circle" iconSize={8} formatter={(v: string) => <span className="text-xs text-foreground">{v}</span>} />
+  1297→                        </PieChart>
+  1298→                      </ResponsiveContainer>
+  1299→                    )}
+  1300→                  </CardContent>
+  1301→                </Card>
+  1302→              </div>
+  1303→
+  1304→              {/* Payment Mode Bar Chart */}
+  1305→              {paymentModes.length > 0 && (
+  1306→                <Card>
+  1307→                  <CardHeader>
+  1308→                    <CardTitle className="text-base">Payment Mode Breakdown</CardTitle>
+  1309→                    <CardDescription>Transaction count and revenue by payment method</CardDescription>
+  1310→                  </CardHeader>
+  1311→                  <CardContent>
+  1312→                    <ResponsiveContainer width="100%" height={280}>
+  1313→                      <BarChart data={paymentModes} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+  1314→                        <XAxis dataKey="mode" tick={{ fontSize: 12, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+  1315→                        <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+  1316→                        <Tooltip
+  1317→                          content={<ChartTooltip valuePrefix="₹" />}
+  1318→                          formatter={(value: number, name: string) => {
+  1319→                            if (name === "amount") return [formatCurrency(value), "Revenue"];
+  1320→                            return [formatNumber(value), "Count"];
+  1321→                          }}
+  1322→                        />
+  1323→                        <Legend />
+  1324→                        <Bar dataKey="amount" radius={[4, 4, 0, 0]} barSize={40} name="Revenue (₹)">
+  1325→                          {paymentModes.map((entry) => (
+  1326→                            <Cell key={entry.mode} fill={PAYMENT_COLORS[entry.mode] || COLORS[0]} />
+  1327→                          ))}
+  1328→                        </Bar>
+  1329→                      </BarChart>
+  1330→                    </ResponsiveContainer>
+  1331→                  </CardContent>
+  1332→                </Card>
+  1333→              )}
+  1334→
+  1335→              {/* Daily Revenue Line Chart */}
+  1336→              <Card>
+  1337→                <CardHeader>
+  1338→                  <CardTitle className="text-base">Daily Revenue ({format(parseISO(dateFrom), "dd MMM")} - {format(parseISO(dateTo), "dd MMM yyyy")})</CardTitle>
+  1339→                  <CardDescription>Daily revenue and transaction count</CardDescription>
+  1340→                </CardHeader>
+  1341→                <CardContent>
+  1342→                  {dailyRevenue.length === 0 ? (
+  1343→                    <div className="flex items-center justify-center h-[300px] text-muted-foreground text-sm">No sales data in selected period</div>
+  1344→                  ) : (
+  1345→                    <ResponsiveContainer width="100%" height={300}>
+  1346→                      <LineChart data={dailyRevenue} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+  1347→                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+  1348→                        <YAxis yAxisId="left" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+  1349→                        <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+  1350→                        <Tooltip
+  1351→                          content={<ChartTooltip valuePrefix="₹" />}
+  1352→                          formatter={(value: number, name: string) => {
+  1353→                            if (name === "revenue") return [formatCurrency(value), "Revenue"];
+  1354→                            return [formatNumber(value), "Orders"];
+  1355→                          }}
+  1356→                        />
+  1357→                        <Legend />
+  1358→                        <Line yAxisId="left" type="monotone" dataKey="revenue" stroke="#059669" strokeWidth={2} dot={false} activeDot={{ r: 5, fill: "#059669" }} name="Revenue" />
+  1359→                        <Line yAxisId="right" type="monotone" dataKey="orders" stroke="#34d399" strokeWidth={2} strokeDasharray="5 5" dot={false} activeDot={{ r: 5, fill: "#34d399" }} name="Orders" />
+  1360→                      </LineChart>
+  1361→                    </ResponsiveContainer>
+  1362→                  )}
+  1363→                </CardContent>
+  1364→              </Card>
+  1365→            </div>
+  1366→          </TabsContent>
+  1367→
+  1368→          {/* ─── Products Tab ──────────────────────────────────────────── */}
+  1369→          <TabsContent value="products">
+  1370→            <div className="space-y-6">
+  1371→              {/* Product Performance by Category */}
+  1372→              {productPerf && productPerf.categoryData.length > 0 && (
+  1373→                <Card>
+  1374→                  <CardHeader>
+  1375→                    <div className="flex items-center justify-between">
+  1376→                      <div>
+  1377→                        <CardTitle className="text-base">Revenue by Category</CardTitle>
+  1378→                        <CardDescription>Total revenue and quantity by product category</CardDescription>
+  1379→                      </div>
+  1380→                      <Badge variant="outline" className="text-xs">
+  1381→                        {formatCurrency(productPerf.totalRevenue)} total
+  1382→                      </Badge>
+  1383→                    </div>
+  1384→                  </CardHeader>
+  1385→                  <CardContent>
+  1386→                    <ResponsiveContainer width="100%" height={Math.max(280, productPerf.categoryData.length * 40 + 20)}>
+  1387→                      <BarChart data={productPerf.categoryData} layout="vertical" margin={{ top: 5, right: 30, left: 100, bottom: 5 }}>
+  1388→                        <XAxis type="number" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+  1389→                        <YAxis type="category" dataKey="category" tick={{ fontSize: 11, fill: "#374151" }} axisLine={false} tickLine={false} width={95} />
+  1390→                        <Tooltip
+  1391→                          content={<ChartTooltip valuePrefix="₹" />}
+  1392→                          formatter={(value: number, name: string) => {
+  1393→                            if (name === "revenue") return [formatCurrency(value), "Revenue"];
+  1394→                            return [formatNumber(value), "Products"];
+  1395→                          }}
+  1396→                        />
+  1397→                        <Legend />
+  1398→                        <Bar dataKey="revenue" radius={[0, 4, 4, 0]} barSize={18} name="Revenue">
+  1399→                          {productPerf.categoryData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+  1400→                        </Bar>
+  1401→                      </BarChart>
+  1402→                    </ResponsiveContainer>
+  1403→                  </CardContent>
+  1404→                </Card>
+  1405→              )}
+  1406→
+  1407→              <Card>
+  1408→                <CardHeader>
+  1409→                  <CardTitle className="text-base">Top 10 Products by Revenue</CardTitle>
+  1410→                  <CardDescription>Highest revenue-generating products</CardDescription>
+  1411→                </CardHeader>
+  1412→                <CardContent>
+  1413→                  {topProductsByRevenue.length === 0 ? (
+  1414→                    <div className="flex items-center justify-center h-[400px] text-muted-foreground text-sm">No product sales data available</div>
+  1415→                  ) : (
+  1416→                    <ResponsiveContainer width="100%" height={Math.max(350, topProductsByRevenue.length * 38 + 20)}>
+  1417→                      <BarChart data={topProductsByRevenue} layout="vertical" margin={{ top: 5, right: 30, left: 120, bottom: 5 }}>
+  1418→                        <XAxis type="number" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+  1419→                        <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#374151" }} axisLine={false} tickLine={false} width={115} />
+  1420→                        <Tooltip
+  1421→                          content={<ChartTooltip valuePrefix="₹" />}
+  1422→                          formatter={(value: number, name: string) => {
+  1423→                            if (name === "revenue") return [formatCurrency(value), "Revenue"];
+  1424→                            return [formatNumber(value), "Qty Sold"];
+  1425→                          }}
+  1426→                        />
+  1427→                        <Legend />
+  1428→                        <Bar dataKey="revenue" fill="#059669" radius={[0, 4, 4, 0]} barSize={18} name="Revenue (₹)">
+  1429→                          {topProductsByRevenue.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+  1430→                        </Bar>
+  1431→                      </BarChart>
+  1432→                    </ResponsiveContainer>
+  1433→                  )}
+  1434→                </CardContent>
+  1435→              </Card>
+  1436→
+  1437→              {/* Full Product Performance Table */}
+  1438→              {productPerf && productPerf.productData.length > 0 && (
+  1439→                <Card>
+  1440→                  <CardHeader>
+  1441→                    <CardTitle className="text-base">Product Performance Details</CardTitle>
+  1442→                    <CardDescription>All products ranked by revenue with margin analysis</CardDescription>
+  1443→                  </CardHeader>
+  1444→                  <CardContent className="p-0">
+  1445→                    <div className="max-h-[500px] overflow-y-auto">
+  1446→                      <Table>
+  1447→                        <TableHeader>
+  1448→                          <TableRow>
+  1449→                            <TableHead>#</TableHead>
+  1450→                            <TableHead>Product Name</TableHead>
+  1451→                            <TableHead className="hidden sm:table-cell">Category</TableHead>
+  1452→                            <TableHead className="text-right">Qty Sold</TableHead>
+  1453→                            <TableHead className="text-right">Revenue</TableHead>
+  1454→                            <TableHead className="hidden md:table-cell text-right">Margin</TableHead>
+  1455→                          </TableRow>
+  1456→                        </TableHeader>
+  1457→                        <TableBody>
+  1458→                          {productPerf.productData.slice(0, 30).map((p, i) => (
+  1459→                            <TableRow key={p.productId}>
+  1460→                              <TableCell className="text-muted-foreground font-mono text-xs">{i + 1}</TableCell>
+  1461→                              <TableCell className="font-medium text-sm">{p.name}</TableCell>
+  1462→                              <TableCell className="hidden sm:table-cell"><Badge variant="secondary" className="text-xs">{p.category}</Badge></TableCell>
+  1463→                              <TableCell className="text-right font-mono text-sm">{formatNumber(p.totalQtySold)}</TableCell>
+  1464→                              <TableCell className="text-right font-mono text-sm font-semibold">{formatCurrency(p.totalRevenue)}</TableCell>
+  1465→                              <TableCell className="hidden md:table-cell text-right">
+  1466→                                <Badge variant="outline" className={`text-xs ${p.profitMargin > 40 ? 'text-emerald-600' : p.profitMargin > 20 ? 'text-amber-600' : 'text-red-600'}`}>
+  1467→                                  {p.profitMargin}%
+  1468→                                </Badge>
+  1469→                              </TableCell>
+  1470→                            </TableRow>
+  1471→                          ))}
+  1472→                        </TableBody>
+  1473→                      </Table>
+  1474→                    </div>
+  1475→                  </CardContent>
+  1476→                </Card>
+  1477→              )}
+  1478→
+  1479→              {/* Product table */}
+  1480→              {topProductsByRevenue.length > 0 && !productPerf && (
+  1481→                <Card>
+  1482→                  <CardHeader>
+  1483→                    <CardTitle className="text-base">Product Revenue Details</CardTitle>
+  1484→                  </CardHeader>
+  1485→                  <CardContent className="p-0">
+  1486→                    <div className="max-h-96 overflow-y-auto">
+  1487→                      <Table>
+  1488→                        <TableHeader>
+  1489→                          <TableRow>
+  1490→                            <TableHead>#</TableHead>
+  1491→                            <TableHead>Product Name</TableHead>
+  1492→                            <TableHead>Category</TableHead>
+  1493→                            <TableHead className="text-right">Qty Sold</TableHead>
+  1494→                            <TableHead className="text-right">Revenue</TableHead>
+  1495→                          </TableRow>
+  1496→                        </TableHeader>
+  1497→                        <TableBody>
+  1498→                          {topProductsByRevenue.map((p, i) => (
+  1499→                            <TableRow key={i}>
+  1500→                              <TableCell className="text-muted-foreground font-mono text-xs">{i + 1}</TableCell>
+  1501→                              <TableCell className="font-medium text-sm">{p.name}</TableCell>
+  1502→                              <TableCell><Badge variant="secondary" className="text-xs">{p.category}</Badge></TableCell>
+  1503→                              <TableCell className="text-right font-mono text-sm">{formatNumber(p.quantity)}</TableCell>
+  1504→                              <TableCell className="text-right font-mono text-sm font-semibold">{formatCurrency(p.revenue)}</TableCell>
+  1505→                            </TableRow>
+  1506→                          ))}
+  1507→                        </TableBody>
+  1508→                      </Table>
+  1509→                    </div>
+  1510→                  </CardContent>
+  1511→                </Card>
+  1512→              )}
+  1513→            </div>
+  1514→          </TabsContent>
+  1515→
+  1516→          {/* ─── Customers Tab ────────────────────────────────────────── */}
+  1517→          <TabsContent value="customers">
+  1518→            <div className="space-y-6">
+  1519→              {/* Customer Acquisition Chart */}
+  1520→              <Card>
+  1521→                <CardHeader>
+  1522→                  <CardTitle className="text-base">Customer Acquisition</CardTitle>
+  1523→                  <CardDescription>New customers per day in the selected period</CardDescription>
+  1524→                </CardHeader>
+  1525→                <CardContent>
+  1526→                  {customerAcquisition.length === 0 ? (
+  1527→                    <div className="flex items-center justify-center h-[280px] text-muted-foreground text-sm">No customer acquisition data in selected period</div>
+  1528→                  ) : (
+  1529→                    <ResponsiveContainer width="100%" height={280}>
+  1530→                      <LineChart data={customerAcquisition} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+  1531→                        <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+  1532→                        <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+  1533→                        <Tooltip content={<ChartTooltip />} formatter={(value: number) => [formatNumber(value), "New Customers"]} />
+  1534→                        <Line type="monotone" dataKey="newCustomers" stroke="#059669" strokeWidth={2.5} dot={{ fill: "#059669", r: 4 }} activeDot={{ r: 6, fill: "#059669" }} name="New Customers" />
+  1535→                      </LineChart>
+  1536→                    </ResponsiveContainer>
+  1537→                  )}
+  1538→                </CardContent>
+  1539→              </Card>
+  1540→
+  1541→              {/* Top Customers Table */}
+  1542→              <Card>
+  1543→                <CardHeader>
+  1544→                  <CardTitle className="text-base">Top Customers by Total Spend</CardTitle>
+  1545→                  <CardDescription>Highest spending customers in the selected period</CardDescription>
+  1546→                </CardHeader>
+  1547→                <CardContent className="p-0">
+  1548→                  {topCustomers.length === 0 ? (
+  1549→                    <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+  1550→                      <Users className="h-10 w-10 mb-2 opacity-40" />
+  1551→                      <p className="text-sm">No customer data available</p>
+  1552→                    </div>
+  1553→                  ) : (
+  1554→                    <div className="max-h-[480px] overflow-y-auto">
+  1555→                      <Table>
+  1556→                        <TableHeader>
+  1557→                          <TableRow>
+  1558→                            <TableHead>#</TableHead>
+  1559→                            <TableHead>Customer Name</TableHead>
+  1560→                            <TableHead className="hidden sm:table-cell">Phone</TableHead>
+  1561→                            <TableHead className="hidden md:table-cell">Group</TableHead>
+  1562→                            <TableHead className="text-right">Orders</TableHead>
+  1563→                            <TableHead className="text-right">Total Spent</TableHead>
+  1564→                          </TableRow>
+  1565→                        </TableHeader>
+  1566→                        <TableBody>
+  1567→                          {topCustomers.map((c, i) => (
+  1568→                            <TableRow key={c.id}>
+  1569→                              <TableCell className="text-muted-foreground font-mono text-xs">{i + 1}</TableCell>
+  1570→                              <TableCell className="font-medium text-sm">{c.name}</TableCell>
+  1571→                              <TableCell className="hidden sm:table-cell text-xs text-muted-foreground">{c.phone || "—"}</TableCell>
+  1572→                              <TableCell className="hidden md:table-cell">
+  1573→                                <Badge variant="secondary" className="text-xs">{c.group || "New"}</Badge>
+  1574→                              </TableCell>
+  1575→                              <TableCell className="text-right font-mono text-sm">{c._count?.sales ?? 0}</TableCell>
+  1576→                              <TableCell className="text-right font-mono text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(c.totalSpent || 0)}</TableCell>
+  1577→                            </TableRow>
+  1578→                          ))}
+  1579→                        </TableBody>
+  1580→                      </Table>
+  1581→                    </div>
+  1582→                  )}
+  1583→                </CardContent>
+  1584→              </Card>
+  1585→            </div>
+  1586→          </TabsContent>
+  1587→
+  1588→          {/* ─── Inventory Tab ────────────────────────────────────────── */}
+  1589→          <TabsContent value="inventory">
+  1590→            <div className="space-y-6">
+  1591→              {inventoryTurnover.length === 0 ? (
+  1592→                <Card>
+  1593→                  <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+  1594→                    <Package className="h-10 w-10 mb-2 opacity-40" />
+  1595→                    <p className="text-sm">No inventory data available</p>
+  1596→                  </CardContent>
+  1597→                </Card>
+  1598→              ) : (
+  1599→                <>
+  1600→                  {/* Low Stock Alerts */}
+  1601→                  {inventoryTurnover.filter((p) => p.isLowStock).length > 0 && (
+  1602→                    <Card>
+  1603→                      <CardHeader>
+  1604→                        <CardTitle className="text-base flex items-center gap-2">
+  1605→                          <AlertTriangle className="h-4 w-4 text-amber-500" />
+  1606→                          Low Stock Alerts
+  1607→                        </CardTitle>
+  1608→                        <CardDescription>Products below minimum stock level</CardDescription>
+  1609→                      </CardHeader>
+  1610→                      <CardContent className="p-0">
+  1611→                        <div className="max-h-96 overflow-y-auto">
+  1612→                          <Table>
+  1613→                            <TableHeader>
+  1614→                              <TableRow>
+  1615→                                <TableHead>Product</TableHead>
+  1616→                                <TableHead className="hidden sm:table-cell">SKU</TableHead>
+  1617→                                <TableHead className="hidden md:table-cell">Category</TableHead>
+  1618→                                <TableHead className="text-right">Current Stock</TableHead>
+  1619→                                <TableHead className="text-right">Min Stock</TableHead>
+  1620→                              </TableRow>
+  1621→                            </TableHeader>
+  1622→                            <TableBody>
+  1623→                              {inventoryTurnover.filter((p) => p.isLowStock).slice(0, 20).map((p) => (
+  1624→                                <TableRow key={p.productId}>
+  1625→                                  <TableCell className="font-medium text-sm">{p.name}</TableCell>
+  1626→                                  <TableCell className="hidden sm:table-cell text-xs text-muted-foreground font-mono">{p.sku}</TableCell>
+  1627→                                  <TableCell className="hidden md:table-cell"><Badge variant="secondary" className="text-xs">{p.category}</Badge></TableCell>
+  1628→                                  <TableCell className="text-right font-mono text-sm text-red-600 dark:text-red-400 font-semibold">{p.currentStock}</TableCell>
+  1629→                                  <TableCell className="text-right font-mono text-sm text-muted-foreground">{p.minStock}</TableCell>
+  1630→                                </TableRow>
+  1631→                              ))}
+  1632→                            </TableBody>
+  1633→                          </Table>
+  1634→                        </div>
+  1635→                      </CardContent>
+  1636→                    </Card>
+  1637→                  )}
+  1638→
+  1639→                  {/* Inventory Turnover Table */}
+  1640→                  <Card>
+  1641→                    <CardHeader>
+  1642→                      <div className="flex items-center justify-between">
+  1643→                        <div>
+  1644→                          <CardTitle className="text-base">Inventory Turnover</CardTitle>
+  1645→                          <CardDescription>Products ranked by quantity sold</CardDescription>
+  1646→                        </div>
+  1647→                        <Badge variant="outline" className="text-xs">
+  1648→                          {inventoryTurnover.length} products
+  1649→                        </Badge>
+  1650→                      </div>
+  1651→                    </CardHeader>
+  1652→                    <CardContent className="p-0">
+  1653→                      <div className="max-h-[500px] overflow-y-auto">
+  1654→                        <Table>
+  1655→                          <TableHeader>
+  1656→                            <TableRow>
+  1657→                              <TableHead>#</TableHead>
+  1658→                              <TableHead>Product Name</TableHead>
+  1659→                              <TableHead className="hidden sm:table-cell">SKU</TableHead>
+  1660→                              <TableHead className="hidden md:table-cell">Category</TableHead>
+  1661→                              <TableHead className="text-right">Qty Sold</TableHead>
+  1662→                              <TableHead className="text-right">In Stock</TableHead>
+  1663→                              <TableHead className="hidden lg:table-cell text-right">Turnover</TableHead>
+  1664→                            </TableRow>
+  1665→                          </TableHeader>
+  1666→                          <TableBody>
+  1667→                            {inventoryTurnover.slice(0, 50).map((p, i) => (
+  1668→                              <TableRow key={p.productId}>
+  1669→                                <TableCell className="text-muted-foreground font-mono text-xs">{i + 1}</TableCell>
+  1670→                                <TableCell className="font-medium text-sm">{p.name}</TableCell>
+  1671→                                <TableCell className="hidden sm:table-cell text-xs text-muted-foreground font-mono">{p.sku}</TableCell>
+  1672→                                <TableCell className="hidden md:table-cell"><Badge variant="secondary" className="text-xs">{p.category}</Badge></TableCell>
+  1673→                                <TableCell className="text-right font-mono text-sm">{formatNumber(p.totalQtySold)}</TableCell>
+  1674→                                <TableCell className="text-right font-mono text-sm">
+  1675→                                  <span className={p.isLowStock ? 'text-red-600 dark:text-red-400 font-semibold' : ''}>{p.currentStock}</span>
+  1676→                                </TableCell>
+  1677→                                <TableCell className="hidden lg:table-cell text-right font-mono text-sm">
+  1678→                                  {p.turnoverRatio === Infinity ? '∞' : p.turnoverRatio.toFixed(1)}
+  1679→                                </TableCell>
+  1680→                              </TableRow>
+  1681→                            ))}
+  1682→                          </TableBody>
+  1683→                        </Table>
+  1684→                      </div>
+  1685→                    </CardContent>
+  1686→                  </Card>
+  1687→                </>
+  1688→              )}
+  1689→            </div>
+  1690→          </TabsContent>
+  1691→
+  1692→          {/* ─── Customer Acquisition Tab ─────────────────────────────── */}
+  1693→          <TabsContent value="acquisition">
+  1694→            <div className="space-y-6">
+  1695→              {/* Summary Cards: This Month vs Last Month */}
+  1696→              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+  1697→                <StatCard
+  1698→                  title="New Customers (This Month)"
+  1699→                  value={formatNumber(customerAcqComparison?.thisMonthNew ?? 0)}
+  1700→                  change={customerAcqComparison?.changePercent}
+  1701→                  icon={<UserPlus className="size-5 text-white" />}
+  1702→                  iconBg="bg-emerald-600"
+  1703→                />
+  1704→                <Card>
+  1705→                  <CardContent className="p-4">
+  1706→                    <div className="flex items-center gap-2 mb-2">
+  1707→                      <Users className="h-4 w-4 text-muted-foreground" />
+  1708→                      <span className="text-sm text-muted-foreground">New (Last Month)</span>
+  1709→                    </div>
+  1710→                    <p className="text-2xl font-bold tracking-tight">{formatNumber(customerAcqComparison?.lastMonthNew ?? 0)}</p>
+  1711→                    <p className="mt-1 text-sm text-muted-foreground">Previous month</p>
+  1712→                  </CardContent>
+  1713→                </Card>
+  1714→                <Card>
+  1715→                  <CardContent className="p-4">
+  1716→                    <div className="flex items-center gap-2 mb-2">
+  1717→                      <TrendingUp className="h-4 w-4 text-muted-foreground" />
+  1718→                      <span className="text-sm text-muted-foreground">This Week</span>
+  1719→                    </div>
+  1720→                    <p className="text-2xl font-bold tracking-tight">{formatNumber(customerAcqReport?.thisWeekNew ?? 0)}</p>
+  1721→                    <p className="mt-1 text-sm text-muted-foreground">New this week</p>
+  1722→                  </CardContent>
+  1723→                </Card>
+  1724→                <Card>
+  1725→                  <CardContent className="p-4">
+  1726→                    <div className="flex items-center gap-2 mb-2">
+  1727→                      <Hash className="h-4 w-4 text-muted-foreground" />
+  1728→                      <span className="text-sm text-muted-foreground">30-Day Total</span>
+  1729→                    </div>
+  1730→                    <p className="text-2xl font-bold tracking-tight">{formatNumber(customerAcqReport?.totalNew ?? 0)}</p>
+  1731→                    <p className="mt-1 text-sm text-muted-foreground">Last 30 days</p>
+  1732→                  </CardContent>
+  1733→                </Card>
+  1734→              </div>
+  1735→
+  1736→              {/* Comparison Display */}
+  1737→              {customerAcqComparison && (
+  1738→                <Card>
+  1739→                  <CardHeader>
+  1740→                    <CardTitle className="text-base flex items-center gap-2">
+  1741→                      <UserPlus className="h-4 w-4" />
+  1742→                      Month-over-Month Comparison
+  1743→                    </CardTitle>
+  1744→                    <CardDescription>This month vs last month new customer acquisition</CardDescription>
+  1745→                  </CardHeader>
+  1746→                  <CardContent>
+  1747→                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-center">
+  1748→                      {/* Last Month */}
+  1749→                      <div className="text-center p-4 rounded-lg border bg-muted/30">
+  1750→                        <p className="text-xs text-muted-foreground mb-1">Last Month</p>
+  1751→                        <p className="text-3xl font-bold font-mono text-muted-foreground">{customerAcqComparison.lastMonthNew}</p>
+  1752→                        <p className="text-xs text-muted-foreground mt-1">new customers</p>
+  1753→                      </div>
+  1754→                      {/* Change Arrow */}
+  1755→                      <div className="flex flex-col items-center gap-1">
+  1756→                        <div className={`flex items-center gap-1 rounded-full px-4 py-2 text-sm font-bold ${
+  1757→                          customerAcqComparison.changePercent >= 0
+  1758→                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+  1759→                            : 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'
+  1760→                        }`}>
+  1761→                          {customerAcqComparison.changePercent >= 0
+  1762→                            ? <ArrowUpRight className="h-5 w-5" />
+  1763→                            : <ArrowDownRight className="h-5 w-5" />
+  1764→                          }
+  1765→                          {Math.abs(customerAcqComparison.changePercent)}%
+  1766→                        </div>
+  1767→                        <p className="text-xs text-muted-foreground">change</p>
+  1768→                      </div>
+  1769→                      {/* This Month */}
+  1770→                      <div className="text-center p-4 rounded-lg border bg-emerald-50/50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800">
+  1771→                        <p className="text-xs text-muted-foreground mb-1">This Month</p>
+  1772→                        <p className="text-3xl font-bold font-mono text-emerald-600 dark:text-emerald-400">{customerAcqComparison.thisMonthNew}</p>
+  1773→                        <p className="text-xs text-muted-foreground mt-1">new customers</p>
+  1774→                      </div>
+  1775→                    </div>
+  1776→                  </CardContent>
+  1777→                </Card>
+  1778→              )}
+  1779→
+  1780→              {/* BarChart: This Month vs Last Month Daily Acquisition */}
+  1781→              {customerAcqChartData.length > 0 && (
+  1782→                <Card>
+  1783→                  <CardHeader>
+  1784→                    <CardTitle className="text-base">Daily Customer Acquisition Comparison</CardTitle>
+  1785→                    <CardDescription>This month vs last month — daily new customers</CardDescription>
+  1786→                  </CardHeader>
+  1787→                  <CardContent>
+  1788→                    <ResponsiveContainer width="100%" height={300}>
+  1789→                      <BarChart data={customerAcqChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+  1790→                        <CartesianGrid vertical={false} strokeDasharray="3 3" />
+  1791→                        <XAxis dataKey="day" tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+  1792→                        <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} allowDecimals={false} />
+  1793→                        <RechartsTooltip
+  1794→                          content={({ active, payload, label }) => {
+  1795→                            if (!active || !payload?.length) return null;
+  1796→                            return (
+  1797→                              <div className="rounded-lg border bg-background px-3 py-2 shadow-md">
+  1798→                                <p className="mb-1 text-sm font-medium text-foreground">Day {label}</p>
+  1799→                                {payload.map((entry, i) => (
+  1800→                                  <div key={i} className="flex items-center gap-2 text-sm">
+  1801→                                    <span className="inline-block size-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
+  1802→                                    <span className="text-muted-foreground">{entry.name}:</span>
+  1803→                                    <span className="font-medium text-foreground">{entry.value}</span>
+  1804→                                  </div>
+  1805→                                ))}
+  1806→                              </div>
+  1807→                            );
+  1808→                          }}
+  1809→                        />
+  1810→                        <Legend formatter={(v: string) => <span className="text-xs">{v === "thisMonth" ? "This Month" : "Last Month"}</span>} />
+  1811→                        <Bar dataKey="lastMonth" fill={LAST_MONTH_COLOR} radius={[2, 2, 0, 0]} barSize={14} name="Last Month" opacity={0.7} />
+  1812→                        <Bar dataKey="thisMonth" fill={THIS_MONTH_COLOR} radius={[2, 2, 0, 0]} barSize={14} name="This Month" />
+  1813→                      </BarChart>
+  1814→                    </ResponsiveContainer>
+  1815→                  </CardContent>
+  1816→                </Card>
+  1817→              )}
+  1818→
+  1819→              {/* Daily Trend from API */}
+  1820→              {customerAcqReport && customerAcqReport.data.length > 0 && (
+  1821→                <Card>
+  1822→                  <CardHeader>
+  1823→                    <CardTitle className="text-base">Customer Acquisition Trend (Last 30 Days)</CardTitle>
+  1824→                    <CardDescription>Daily new customer registrations</CardDescription>
+  1825→                  </CardHeader>
+  1826→                  <CardContent>
+  1827→                    <ResponsiveContainer width="100%" height={280}>
+  1828→                      <LineChart
+  1829→                        data={customerAcqReport.data.map((d) => ({
+  1830→                          date: format(parseISO(d.date), "MMM dd"),
+  1831→                          newCustomers: d.newCustomers,
+  1832→                        }))}
+  1833→                        margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+  1834→                      >
+  1835→                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+  1836→                        <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} allowDecimals={false} />
+  1837→                        <Tooltip content={<ChartTooltip />} formatter={(value: number) => [formatNumber(value), "New Customers"]} />
+  1838→                        <Line type="monotone" dataKey="newCustomers" stroke="#059669" strokeWidth={2.5} dot={{ fill: "#059669", r: 3 }} activeDot={{ r: 6, fill: "#059669" }} name="New Customers" />
+  1839→                      </LineChart>
+  1840→                    </ResponsiveContainer>
+  1841→                  </CardContent>
+  1842→                </Card>
+  1843→              )}
+  1844→            </div>
+  1845→          </TabsContent>
+  1846→
+  1847→          {/* ─── Product Performance Tab ─────────────────────────────── */}
+  1848→          <TabsContent value="product-perf">
+  1849→            <div className="space-y-6">
+  1850→              {/* Summary Stats */}
+  1851→              {productPerf && (
+  1852→                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+  1853→                  <Card>
+  1854→                    <CardContent className="p-4">
+  1855→                      <div className="flex items-center gap-2 mb-2">
+  1856→                        <Package className="h-4 w-4 text-muted-foreground" />
+  1857→                        <span className="text-sm text-muted-foreground">Products with Sales</span>
+  1858→                      </div>
+  1859→                      <p className="text-2xl font-bold tracking-tight">{formatNumber(productPerf.totalProducts)}</p>
+  1860→                      <p className="mt-1 text-xs text-muted-foreground">of {formatNumber(allProducts.length)} total products</p>
+  1861→                    </CardContent>
+  1862→                  </Card>
+  1863→                  <Card>
+  1864→                    <CardContent className="p-4">
+  1865→                      <div className="flex items-center gap-2 mb-2">
+  1866→                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+  1867→                        <span className="text-sm text-muted-foreground">Total Revenue</span>
+  1868→                      </div>
+  1869→                      <p className="text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">{formatCurrency(productPerf.totalRevenue)}</p>
+  1870→                      <p className="mt-1 text-xs text-muted-foreground">from product sales</p>
+  1871→                    </CardContent>
+  1872→                  </Card>
+  1873→                  <Card>
+  1874→                    <CardContent className="p-4">
+  1875→                      <div className="flex items-center gap-2 mb-2">
+  1876→                        <Trophy className="h-4 w-4 text-muted-foreground" />
+  1877→                        <span className="text-sm text-muted-foreground">Categories</span>
+  1878→                      </div>
+  1879→                      <p className="text-2xl font-bold tracking-tight">{formatNumber(productPerf.categoryData.length)}</p>
+  1880→                      <p className="mt-1 text-xs text-muted-foreground">active categories</p>
+  1881→                    </CardContent>
+  1882→                  </Card>
+  1883→                </div>
+  1884→              )}
+  1885→
+  1886→              {/* Top Selling Products Table */}
+  1887→              <Card>
+  1888→                <CardHeader>
+  1889→                  <div className="flex items-center justify-between">
+  1890→                    <div>
+  1891→                      <CardTitle className="text-base flex items-center gap-2">
+  1892→                        <Trophy className="h-4 w-4" />
+  1893→                        Top Selling Products by Revenue
+  1894→                      </CardTitle>
+  1895→                      <CardDescription>Product Name, Units Sold, and Revenue</CardDescription>
+  1896→                    </div>
+  1897→                    <Badge variant="outline" className="text-xs">Top 10</Badge>
+  1898→                  </div>
+  1899→                </CardHeader>
+  1900→                <CardContent className="p-0">
+  1901→                  {productPerf && productPerf.productData.length > 0 ? (
+  1902→                    <div className="max-h-[500px] overflow-y-auto">
+  1903→                      <Table>
+  1904→                        <TableHeader>
+  1905→                          <TableRow>
+  1906→                            <TableHead className="w-10">#</TableHead>
+  1907→                            <TableHead>Product Name</TableHead>
+  1908→                            <TableHead className="hidden sm:table-cell">Category</TableHead>
+  1909→                            <TableHead className="hidden md:table-cell">Brand</TableHead>
+  1910→                            <TableHead className="text-right">Units Sold</TableHead>
+  1911→                            <TableHead className="text-right">Revenue</TableHead>
+  1912→                          </TableRow>
+  1913→                        </TableHeader>
+  1914→                        <TableBody>
+  1915→                          {productPerf.productData.slice(0, 10).map((p, i) => (
+  1916→                            <TableRow key={p.productId}>
+  1917→                              <TableCell className="text-muted-foreground font-mono text-xs">
+  1918→                                {i === 0 ? <Crown className="h-4 w-4 text-amber-500" /> : i + 1}
+  1919→                              </TableCell>
+  1920→                              <TableCell className="font-medium text-sm">{p.name}</TableCell>
+  1921→                              <TableCell className="hidden sm:table-cell"><Badge variant="secondary" className="text-xs">{p.category || "—"}</Badge></TableCell>
+  1922→                              <TableCell className="hidden md:table-cell text-xs text-muted-foreground">{p.brand || "—"}</TableCell>
+  1923→                              <TableCell className="text-right font-mono text-sm">{formatNumber(p.totalQtySold)}</TableCell>
+  1924→                              <TableCell className="text-right font-mono text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(p.totalRevenue)}</TableCell>
+  1925→                            </TableRow>
+  1926→                          ))}
+  1927→                        </TableBody>
+  1928→                      </Table>
+  1929→                    </div>
+  1930→                  ) : topProductsByRevenue.length > 0 ? (
+  1931→                    <div className="max-h-[500px] overflow-y-auto">
+  1932→                      <Table>
+  1933→                        <TableHeader>
+  1934→                          <TableRow>
+  1935→                            <TableHead className="w-10">#</TableHead>
+  1936→                            <TableHead>Product Name</TableHead>
+  1937→                            <TableHead className="hidden sm:table-cell">Category</TableHead>
+  1938→                            <TableHead className="text-right">Units Sold</TableHead>
+  1939→                            <TableHead className="text-right">Revenue</TableHead>
+  1940→                          </TableRow>
+  1941→                        </TableHeader>
+  1942→                        <TableBody>
+  1943→                          {topProductsByRevenue.map((p, i) => (
+  1944→                            <TableRow key={i}>
+  1945→                              <TableCell className="text-muted-foreground font-mono text-xs">
+  1946→                                {i === 0 ? <Crown className="h-4 w-4 text-amber-500" /> : i + 1}
+  1947→                              </TableCell>
+  1948→                              <TableCell className="font-medium text-sm">{p.name}</TableCell>
+  1949→                              <TableCell className="hidden sm:table-cell"><Badge variant="secondary" className="text-xs">{p.category}</Badge></TableCell>
+  1950→                              <TableCell className="text-right font-mono text-sm">{formatNumber(p.quantity)}</TableCell>
+  1951→                              <TableCell className="text-right font-mono text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(p.revenue)}</TableCell>
+  1952→                            </TableRow>
+  1953→                          ))}
+  1954→                        </TableBody>
+  1955→                      </Table>
+  1956→                    </div>
+  1957→                  ) : (
+  1958→                    <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+  1959→                      <Package className="h-10 w-10 mb-2 opacity-40" />
+  1960→                      <p className="text-sm">No product performance data available</p>
+  1961→                    </div>
+  1962→                  )}
+  1963→                </CardContent>
+  1964→              </Card>
+  1965→
+  1966→              {/* Revenue by Category Horizontal Bar Chart */}
+  1967→              {productPerf && productPerf.categoryData.length > 0 && (
+  1968→                <Card>
+  1969→                  <CardHeader>
+  1970→                    <CardTitle className="text-base">Revenue by Category</CardTitle>
+  1971→                    <CardDescription>Horizontal bar chart of category revenue</CardDescription>
+  1972→                  </CardHeader>
+  1973→                  <CardContent>
+  1974→                    <ResponsiveContainer width="100%" height={Math.max(280, productPerf.categoryData.length * 40 + 20)}>
+  1975→                      <BarChart data={productPerf.categoryData} layout="vertical" margin={{ top: 5, right: 30, left: 100, bottom: 5 }}>
+  1976→                        <XAxis type="number" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+  1977→                        <YAxis type="category" dataKey="category" tick={{ fontSize: 11, fill: "#374151" }} axisLine={false} tickLine={false} width={95} />
+  1978→                        <Tooltip
+  1979→                          content={<ChartTooltip valuePrefix="₹" />}
+  1980→                          formatter={(value: number, name: string) => {
+  1981→                            if (name === "revenue") return [formatCurrency(value), "Revenue"];
+  1982→                            return [formatNumber(value), "Qty"];
+  1983→                          }}
+  1984→                        />
+  1985→                        <Legend />
+  1986→                        <Bar dataKey="revenue" radius={[0, 4, 4, 0]} barSize={18} name="Revenue">
+  1987→                          {productPerf.categoryData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+  1988→                        </Bar>
+  1989→                      </BarChart>
+  1990→                    </ResponsiveContainer>
+  1991→                  </CardContent>
+  1992→                </Card>
+  1993→              )}
+  1994→            </div>
+  1995→          </TabsContent>
+  1996→
+  1997→          {/* ─── Top Spenders Tab ─────────────────────────────────────── */}
+  1998→          <TabsContent value="top-spenders">
+  1999→            <div className="space-y-6">
+  2000→              {/* Summary */}
+
+[showing lines 1-2000 of 2360; use offset=2001 with limit to continue reading]

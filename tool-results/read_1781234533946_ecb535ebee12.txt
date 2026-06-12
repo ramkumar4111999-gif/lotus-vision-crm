@@ -1,0 +1,1962 @@
+     1→'use client';
+     2→
+     3→import React, { useCallback, useEffect, useState } from 'react';
+     4→import { toast } from 'sonner';
+     5→import {
+     6→  Search,
+     7→  Plus,
+     8→  ChevronLeft,
+     9→  ChevronRight,
+    10→  ArrowUpDown,
+    11→  ArrowUp,
+    12→  ArrowDown,
+    13→  Pencil,
+    14→  Eye,
+    15→  ShoppingCart,
+    16→  FileText,
+    17→  Clock,
+    18→  IndianRupee,
+    19→  User,
+    20→  Phone,
+    21→  Mail,
+    22→  MapPin,
+    23→  Calendar,
+    24→  CreditCard,
+    25→  Loader2,
+    26→  AlertCircle,
+    27→  X,
+    28→  Stethoscope,
+    29→  History,
+    30→  Receipt,
+    31→  Download,
+    32→  MessageCircle,
+    33→  AlertTriangle,
+    34→  Upload,
+    35→  Gift,
+    36→  Star,
+    37→} from 'lucide-react';
+    38→
+    39→import { Button } from '@/components/ui/button';
+    40→import { Input } from '@/components/ui/input';
+    41→import { Label } from '@/components/ui/label';
+    42→import { Textarea } from '@/components/ui/textarea';
+    43→import { Badge } from '@/components/ui/badge';
+    44→import { Separator } from '@/components/ui/separator';
+    45→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+    46→import {
+    47→  Dialog,
+    48→  DialogContent,
+    49→  DialogDescription,
+    50→  DialogHeader,
+    51→  DialogTitle,
+    52→  DialogFooter,
+    53→} from '@/components/ui/dialog';
+    54→import {
+    55→  Table,
+    56→  TableBody,
+    57→  TableCell,
+    58→  TableHead,
+    59→  TableHeader,
+    60→  TableRow,
+    61→} from '@/components/ui/table';
+    62→import {
+    63→  Select,
+    64→  SelectContent,
+    65→  SelectItem,
+    66→  SelectTrigger,
+    67→  SelectValue,
+    68→} from '@/components/ui/select';
+    69→import {
+    70→  Card,
+    71→  CardContent,
+    72→  CardDescription,
+    73→  CardHeader,
+    74→  CardTitle,
+    75→} from '@/components/ui/card';
+    76→import { Skeleton } from '@/components/ui/skeleton';
+    77→import { ScrollArea } from '@/components/ui/scroll-area';
+    78→import { Alert, AlertDescription } from '@/components/ui/alert';
+    79→
+    80→// ─── Types ───────────────────────────────────────────────────────────────────
+    81→
+    82→interface Customer {
+    83→  id: string;
+    84→  name: string;
+    85→  phone: string;
+    86→  email?: string | null;
+    87→  dob?: string | null;
+    88→  address?: string | null;
+    89→  aadhar?: string | null;
+    90→  group: 'New' | 'Regular' | 'Wholesale' | 'Premium';
+    91→  loyaltyPoints: number;
+    92→  totalSpent: number;
+    93→  createdAt: string;
+    94→}
+    95→
+    96→interface Prescription {
+    97→  id: string;
+    98→  customerId: string;
+    99→  date: string;
+   100→  leftSph?: number | null;
+   101→  leftCyl?: number | null;
+   102→  leftAxis?: number | null;
+   103→  leftPd?: number | null;
+   104→  rightSph?: number | null;
+   105→  rightCyl?: number | null;
+   106→  rightAxis?: number | null;
+   107→  rightPd?: number | null;
+   108→  notes?: string | null;
+   109→}
+   110→
+   111→interface Visit {
+   112→  id: string;
+   113→  customerId: string;
+   114→  date: string;
+   115→  purpose: string;
+   116→  notes?: string | null;
+   117→}
+   118→
+   119→interface Due {
+   120→  id: string;
+   121→  customerId: string;
+   122→  amount: number;
+   123→  date: string;
+   124→  description?: string | null;
+   125→  status: 'pending' | 'paid' | 'overdue';
+   126→}
+   127→
+   128→interface CustomerFormData {
+   129→  name: string;
+   130→  phone: string;
+   131→  email: string;
+   132→  dob: string;
+   133→  address: string;
+   134→  aadhar: string;
+   135→  group: Customer['group'];
+   136→}
+   137→
+   138→interface PrescriptionFormData {
+   139→  date: string;
+   140→  leftSph: string;
+   141→  leftCyl: string;
+   142→  leftAxis: string;
+   143→  leftPd: string;
+   144→  rightSph: string;
+   145→  rightCyl: string;
+   146→  rightAxis: string;
+   147→  rightPd: string;
+   148→  notes: string;
+   149→}
+   150→
+   151→interface VisitFormData {
+   152→  date: string;
+   153→  purpose: string;
+   154→  notes: string;
+   155→}
+   156→
+   157→interface CustomerPurchase {
+   158→  id: string;
+   159→  invoiceNo: string;
+   160→  total: number;
+   161→  status: string;
+   162→  createdAt: string;
+   163→}
+   164→
+   165→interface PaginatedResponse<T> {
+   166→  data: T[];
+   167→  total: number;
+   168→  page: number;
+   169→  limit: number;
+   170→  totalPages: number;
+   171→}
+   172→
+   173→// ─── Constants ───────────────────────────────────────────────────────────────
+   174→
+   175→const GROUP_BADGE_VARIANT: Record<Customer['group'], 'default' | 'secondary' | 'outline' | 'destructive'> = {
+   176→  New: 'secondary',
+   177→  Regular: 'default',
+   178→  Wholesale: 'outline',
+   179→  Premium: 'destructive',
+   180→};
+   181→
+   182→const GROUP_COLORS: Record<Customer['group'], string> = {
+   183→  New: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+   184→  Regular: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300',
+   185→  Wholesale: 'bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-300',
+   186→  Premium: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300',
+   187→};
+   188→
+   189→const GROUP_LIST: Customer['group'][] = ['New', 'Regular', 'Wholesale', 'Premium'];
+   190→
+   191→const EMPTY_CUSTOMER_FORM: CustomerFormData = {
+   192→  name: '',
+   193→  phone: '',
+   194→  email: '',
+   195→  dob: '',
+   196→  address: '',
+   197→  aadhar: '',
+   198→  group: 'New',
+   199→};
+   200→
+   201→const EMPTY_PRESCRIPTION_FORM: PrescriptionFormData = {
+   202→  date: new Date().toISOString().split('T')[0],
+   203→  leftSph: '',
+   204→  leftCyl: '',
+   205→  leftAxis: '',
+   206→  leftPd: '',
+   207→  rightSph: '',
+   208→  rightCyl: '',
+   209→  rightAxis: '',
+   210→  rightPd: '',
+   211→  notes: '',
+   212→};
+   213→
+   214→const EMPTY_VISIT_FORM: VisitFormData = {
+   215→  date: new Date().toISOString().split('T')[0],
+   216→  purpose: '',
+   217→  notes: '',
+   218→};
+   219→
+   220→const PAGE_LIMIT = 20;
+   221→
+   222→type SortField = 'name' | 'phone' | 'group' | 'loyaltyPoints' | 'totalSpent' | 'createdAt';
+   223→type SortDir = 'asc' | 'desc';
+   224→
+   225→// ─── Helpers ─────────────────────────────────────────────────────────────────
+   226→
+   227→function formatCurrency(amount: number): string {
+   228→  return new Intl.NumberFormat('en-IN', {
+   229→    style: 'currency',
+   230→    currency: 'INR',
+   231→    minimumFractionDigits: 0,
+   232→    maximumFractionDigits: 2,
+   233→  }).format(amount);
+   234→}
+   235→
+   236→function formatDate(dateStr: string): string {
+   237→  if (!dateStr) return '—';
+   238→  try {
+   239→    return new Date(dateStr).toLocaleDateString('en-IN', {
+   240→      day: '2-digit',
+   241→      month: 'short',
+   242→      year: 'numeric',
+   243→    });
+   244→  } catch {
+   245→    return dateStr;
+   246→  }
+   247→}
+   248→
+   249→function formatRelativeTime(dateStr: string): string {
+   250→  if (!dateStr) return '';
+   251→  const now = new Date();
+   252→  const date = new Date(dateStr);
+   253→  const diffMs = now.getTime() - date.getTime();
+   254→  const diffMins = Math.floor(diffMs / 60000);
+   255→  const diffHours = Math.floor(diffMs / 3600000);
+   256→  const diffDays = Math.floor(diffMs / 86400000);
+   257→  if (diffMins < 1) return 'just now';
+   258→  if (diffMins < 60) return `${diffMins}m ago`;
+   259→  if (diffHours < 24) return `${diffHours}h ago`;
+   260→  if (diffDays < 7) return `${diffDays}d ago`;
+   261→  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+   262→  if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo ago`;
+   263→  return `${Math.floor(diffDays / 365)}y ago`;
+   264→}
+   265→
+   266→function formatEyePower(
+   267→  sph?: number | null,
+   268→  cyl?: number | null,
+   269→  axis?: number | null,
+   270→  pd?: number | null
+   271→): string {
+   272→  const parts: string[] = [];
+   273→  if (sph !== null && sph !== undefined) parts.push(`SPH ${sph > 0 ? '+' : ''}${sph}`);
+   274→  if (cyl !== null && cyl !== undefined && cyl !== 0) parts.push(`CYL ${cyl > 0 ? '+' : ''}${cyl}`);
+   275→  if (axis !== null && axis !== undefined && axis !== 0) parts.push(`AX ${axis}°`);
+   276→  if (pd !== null && pd !== undefined) parts.push(`PD ${pd}`);
+   277→  return parts.length > 0 ? parts.join(' / ') : '—';
+   278→}
+   279→
+   280→// ─── Component ───────────────────────────────────────────────────────────────
+   281→
+   282→export default function Customers() {
+   283→  // List state
+   284→  const [customers, setCustomers] = useState<Customer[]>([]);
+   285→  const [loading, setLoading] = useState(true);
+   286→  const [error, setError] = useState<string | null>(null);
+   287→  const [search, setSearch] = useState('');
+   288→  const [searchInput, setSearchInput] = useState('');
+   289→  const [page, setPage] = useState(1);
+   290→  const [totalPages, setTotalPages] = useState(1);
+   291→  const [total, setTotal] = useState(0);
+   292→  const [groupFilter, setGroupFilter] = useState<string>('all');
+   293→  const [sortField, setSortField] = useState<SortField>('name');
+   294→  const [sortDir, setSortDir] = useState<SortDir>('asc');
+   295→  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
+   296→  const [fromDate, setFromDate] = useState('');
+   297→  const [toDate, setToDate] = useState('');
+   298→
+   299→  // Detail panel state
+   300→  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+   301→  const [detailLoading, setDetailLoading] = useState(false);
+   302→  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+   303→  const [visits, setVisits] = useState<Visit[]>([]);
+   304→  const [dues, setDues] = useState<Due[]>([]);
+   305→  const [detailError, setDetailError] = useState<string | null>(null);
+   306→
+   307→  // Customer dialog state
+   308→  const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
+   309→  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+   310→  const [customerForm, setCustomerForm] = useState<CustomerFormData>(EMPTY_CUSTOMER_FORM);
+   311→  const [customerFormErrors, setCustomerFormErrors] = useState<Partial<Record<keyof CustomerFormData, string>>>({});
+   312→  const [customerSubmitting, setCustomerSubmitting] = useState(false);
+   313→
+   314→  // Prescription dialog state
+   315→  const [prescriptionDialogOpen, setPrescriptionDialogOpen] = useState(false);
+   316→  const [prescriptionForm, setPrescriptionForm] = useState<PrescriptionFormData>(EMPTY_PRESCRIPTION_FORM);
+   317→  const [prescriptionSubmitting, setPrescriptionSubmitting] = useState(false);
+   318→
+   319→  // Visit dialog state
+   320→  const [visitDialogOpen, setVisitDialogOpen] = useState(false);
+   321→  const [visitForm, setVisitForm] = useState<VisitFormData>(EMPTY_VISIT_FORM);
+   322→  const [visitSubmitting, setVisitSubmitting] = useState(false);
+   323→
+   324→  // Loyalty dialog state
+   325→  const [loyaltyDialogOpen, setLoyaltyDialogOpen] = useState(false);
+   326→  const [loyaltyType, setLoyaltyType] = useState<'earn' | 'redeem'>('earn');
+   327→  const [loyaltyPoints, setLoyaltyPoints] = useState('');
+   328→  const [loyaltyReason, setLoyaltyReason] = useState('');
+   329→  const [loyaltySubmitting, setLoyaltySubmitting] = useState(false);
+   330→
+   331→  // Purchase history state
+   332→  const [purchases, setPurchases] = useState<CustomerPurchase[]>([]);
+   333→  const [purchasesLoading, setPurchasesLoading] = useState(false);
+   334→
+   335→  // CSV import state
+   336→  const [importing, setImporting] = useState(false);
+   337→  const importInputRef = React.useRef<HTMLInputElement>(null);
+   338→
+   339→  // ─── Fetch customers ───────────────────────────────────────────────────
+   340→
+   341→  const handleGroupFilterChange = (value: string) => {
+   342→    setGroupFilter(value);
+   343→    setPage(1);
+   344→  };
+   345→
+   346→  const handleSort = (field: SortField) => {
+   347→    if (sortField === field) {
+   348→      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+   349→    } else {
+   350→      setSortField(field);
+   351→      setSortDir('asc');
+   352→    }
+   353→  };
+   354→
+   355→  const SortIcon = ({ field }: { field: SortField }) => {
+   356→    if (sortField !== field) return <ArrowUpDown className="ml-1 size-3 opacity-40" />;
+   357→    return sortDir === 'asc' ? <ArrowUp className="ml-1 size-3" /> : <ArrowDown className="ml-1 size-3" />;
+   358→  };
+   359→
+   360→  // ─── WhatsApp helper ──────────────────────────────────────────────────
+   361→  const openWhatsApp = (phone: string, name: string) => {
+   362→    const cleanPhone = phone.replace(/\D/g, '');
+   363→    const url = `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(`Hi ${name}, this is Lotus Vision Opticals. We value your visit!`)}`;
+   364→    window.open(url, '_blank', 'noopener,noreferrer');
+   365→  };
+   366→
+   367→  // ─── CSV Export ───────────────────────────────────────────────────────
+   368→  const [exporting, setExporting] = useState(false);
+   369→
+   370→  const handleExportCSV = async () => {
+   371→    setExporting(true);
+   372→    try {
+   373→      const params = new URLSearchParams({ limit: '9999' });
+   374→      if (search) params.set('search', search);
+   375→      if (groupFilter !== 'all') params.set('group', groupFilter);
+   376→      if (fromDate) params.set('fromDate', fromDate);
+   377→      if (toDate) params.set('toDate', toDate);
+   378→      const res = await fetch(`/api/customers?${params}`);
+   379→      if (!res.ok) throw new Error('Failed to fetch');
+   380→      const json: PaginatedResponse<Customer> = await res.json();
+   381→      const allCustomers = json.data;
+   382→
+   383→      const headers = ['Name', 'Phone', 'Email', 'Group', 'Points', 'Total Spent', 'DOB', 'Address', 'Created At'];
+   384→      const rows = allCustomers.map((c) => [
+   385→        c.name,
+   386→        c.phone,
+   387→        c.email || '',
+   388→        c.group,
+   389→        String(c.loyaltyPoints),
+   390→        String(c.totalSpent),
+   391→        c.dob ? new Date(c.dob).toLocaleDateString('en-IN') : '',
+   392→        c.address || '',
+   393→        new Date(c.createdAt).toLocaleDateString('en-IN'),
+   394→      ]);
+   395→      const csvContent = [headers, ...rows].map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+   396→      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+   397→      const url = URL.createObjectURL(blob);
+   398→      const a = document.createElement('a');
+   399→      a.href = url;
+   400→      a.download = `customers_export_${new Date().toISOString().split('T')[0]}.csv`;
+   401→      a.click();
+   402→      URL.revokeObjectURL(url);
+   403→    } catch {
+   404→      setError('Failed to export CSV');
+   405→    } finally {
+   406→      setExporting(false);
+   407→    }
+   408→  };
+   409→
+   410→  const fetchCustomers = useCallback(async () => {
+   411→    setLoading(true);
+   412→    setError(null);
+   413→    try {
+   414→      const params = new URLSearchParams({
+   415→        page: String(page),
+   416→        limit: String(PAGE_LIMIT),
+   417→      });
+   418→      if (search) params.set('search', search);
+   419→      if (groupFilter !== 'all') params.set('group', groupFilter);
+   420→      if (fromDate) params.set('fromDate', fromDate);
+   421→      if (toDate) params.set('toDate', toDate);
+   422→      params.set('sort', `${sortField}:${sortDir}`);
+   423→
+   424→      const res = await fetch(`/api/customers?${params}`);
+   425→      if (!res.ok) throw new Error(`Failed to fetch customers (HTTP ${res.status})`);
+   426→      const json: PaginatedResponse<Customer> = await res.json();
+   427→      // Duplicate phone detection
+   428→      const phoneMap = new Map<string, number>();
+   429→      json.data.forEach((c) => {
+   430→        const cleaned = c.phone.replace(/\D/g, '');
+   431→        phoneMap.set(cleaned, (phoneMap.get(cleaned) || 0) + 1);
+   432→      });
+   433→      const dupes = Array.from(phoneMap.entries()).filter(([, count]) => count > 1);
+   434→      setDuplicateWarning(dupes.length > 0 ? `${dupes.length} duplicate phone number(s) found` : null);
+   435→      setCustomers(json.data);
+   436→      setTotalPages(json.totalPages);
+   437→      setTotal(json.total);
+   438→    } catch (err) {
+   439→      setError(err instanceof Error ? err.message : 'An error occurred');
+   440→    } finally {
+   441→      setLoading(false);
+   442→    }
+   443→  }, [page, search, groupFilter, sortField, sortDir, fromDate, toDate]);
+   444→
+   445→  useEffect(() => {
+   446→    fetchCustomers();
+   447→  }, [fetchCustomers]);
+   448→
+   449→  // ─── Fetch customer details ────────────────────────────────────────────
+   450→
+   451→  const fetchCustomerDetails = useCallback(async (customerId: string) => {
+   452→    setDetailLoading(true);
+   453→    setDetailError(null);
+   454→    setPurchases([]);
+   455→    try {
+   456→      const [prescRes, visitRes, dueRes, purchaseRes] = await Promise.all([
+   457→        fetch(`/api/prescriptions?customerId=${customerId}`),
+   458→        fetch(`/api/visits?customerId=${customerId}`),
+   459→        fetch(`/api/dues?customerId=${customerId}`),
+   460→        fetch(`/api/sales?customerId=${customerId}&limit=50`),
+   461→      ]);
+   462→
+   463→      if (!prescRes.ok) throw new Error('Failed to fetch prescriptions');
+   464→      if (!visitRes.ok) throw new Error('Failed to fetch visit history');
+   465→      if (!dueRes.ok) throw new Error('Failed to fetch dues');
+   466→
+   467→      const prescJson = await prescRes.json();
+   468→      const visitJson = await visitRes.json();
+   469→      const dueJson = await dueRes.json();
+   470→
+   471→      setPrescriptions(Array.isArray(prescJson.data) ? prescJson.data : prescJson || []);
+   472→      setVisits(Array.isArray(visitJson.data) ? visitJson.data : visitJson || []);
+   473→      setDues(Array.isArray(dueJson.data) ? dueJson.data : dueJson || []);
+   474→
+   475→      // Fetch purchase history
+   476→      if (purchaseRes.ok) {
+   477→        const purchaseJson = await purchaseRes.json();
+   478→        const saleList = Array.isArray(purchaseJson.sales) ? purchaseJson.sales : [];
+   479→        setPurchases(saleList.map((s: { id: string; invoiceNo: string; total: number; status: string; createdAt: string }) => ({
+   480→          id: s.id,
+   481→          invoiceNo: s.invoiceNo,
+   482→          total: s.total,
+   483→          status: s.status,
+   484→          createdAt: s.createdAt,
+   485→        })));
+   486→      }
+   487→    } catch (err) {
+   488→      setDetailError(err instanceof Error ? err.message : 'Failed to load details');
+   489→    } finally {
+   490→      setDetailLoading(false);
+   491→    }
+   492→  }, []);
+   493→
+   494→  // ─── Search handler ────────────────────────────────────────────────────
+   495→
+   496→  const handleSearch = () => {
+   497→    setSearch(searchInput);
+   498→    setPage(1);
+   499→  };
+   500→
+   501→  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+   502→    if (e.key === 'Enter') handleSearch();
+   503→  };
+   504→
+   505→  const handleClearSearch = () => {
+   506→    setSearchInput('');
+   507→    setSearch('');
+   508→    setPage(1);
+   509→  };
+   510→
+   511→  const handleFromDateChange = (value: string) => {
+   512→    setFromDate(value);
+   513→    setPage(1);
+   514→  };
+   515→
+   516→  const handleToDateChange = (value: string) => {
+   517→    setToDate(value);
+   518→    setPage(1);
+   519→  };
+   520→
+   521→  const hasActiveFilters = search || groupFilter !== 'all' || fromDate || toDate;
+   522→
+   523→  const handleClearFilters = () => {
+   524→    setSearchInput('');
+   525→    setSearch('');
+   526→    setGroupFilter('all');
+   527→    setFromDate('');
+   528→    setToDate('');
+   529→    setPage(1);
+   530→  };
+   531→
+   532→  // ─── Customer form handlers ────────────────────────────────────────────
+   533→
+   534→  const openAddCustomerDialog = () => {
+   535→    setEditingCustomer(null);
+   536→    setCustomerForm(EMPTY_CUSTOMER_FORM);
+   537→    setCustomerFormErrors({});
+   538→    setCustomerDialogOpen(true);
+   539→  };
+   540→
+   541→  const openEditCustomerDialog = (customer: Customer) => {
+   542→    setEditingCustomer(customer);
+   543→    setCustomerForm({
+   544→      name: customer.name,
+   545→      phone: customer.phone,
+   546→      email: customer.email || '',
+   547→      dob: customer.dob || '',
+   548→      address: customer.address || '',
+   549→      aadhar: customer.aadhar || '',
+   550→      group: customer.group,
+   551→    });
+   552→    setCustomerFormErrors({});
+   553→    setCustomerDialogOpen(true);
+   554→  };
+   555→
+   556→  const validateCustomerForm = (): boolean => {
+   557→    const errors: Partial<Record<keyof CustomerFormData, string>> = {};
+   558→    if (!customerForm.name.trim()) errors.name = 'Name is required';
+   559→    if (!customerForm.phone.trim()) errors.phone = 'Phone is required';
+   560→    else if (!/^\+?[\d\s-]{7,15}$/.test(customerForm.phone.trim()))
+   561→      errors.phone = 'Enter a valid phone number';
+   562→    if (customerForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerForm.email))
+   563→      errors.email = 'Enter a valid email';
+   564→    // Duplicate phone check (exclude current editing customer)
+   565→    const cleaned = customerForm.phone.replace(/\D/g, '');
+   566→    const isDuplicate = customers.some(
+   567→      (c) => c.phone.replace(/\D/g, '') === cleaned && c.id !== editingCustomer?.id
+   568→    );
+   569→    if (isDuplicate) errors.phone = 'This phone number already exists!';
+   570→    setCustomerFormErrors(errors);
+   571→    return Object.keys(errors).length === 0;
+   572→  };
+   573→
+   574→  const handleCustomerSubmit = async () => {
+   575→    if (!validateCustomerForm()) return;
+   576→    setCustomerSubmitting(true);
+   577→    try {
+   578→      const url = editingCustomer
+   579→        ? `/api/customers/${editingCustomer.id}`
+   580→        : '/api/customers';
+   581→      const method = editingCustomer ? 'PUT' : 'POST';
+   582→      const res = await fetch(url, {
+   583→        method,
+   584→        headers: { 'Content-Type': 'application/json' },
+   585→        body: JSON.stringify(customerForm),
+   586→      });
+   587→      if (!res.ok) {
+   588→        const body = await res.json().catch(() => null);
+   589→        throw new Error(body?.error || `Failed to ${editingCustomer ? 'update' : 'create'} customer`);
+   590→      }
+   591→      setCustomerDialogOpen(false);
+   592→      fetchCustomers();
+   593→      // If we're editing the currently viewed customer, refresh details
+   594→      if (editingCustomer && selectedCustomer?.id === editingCustomer.id) {
+   595→        const updated: Customer = { ...editingCustomer, ...customerForm };
+   596→        setSelectedCustomer(updated);
+   597→      }
+   598→    } catch (err) {
+   599→      setCustomerFormErrors({
+   600→        _form: err instanceof Error ? err.message : 'An error occurred',
+   601→      });
+   602→    } finally {
+   603→      setCustomerSubmitting(false);
+   604→    }
+   605→  };
+   606→
+   607→  // ─── Customer selection (detail panel) ─────────────────────────────────
+   608→
+   609→  const handleSelectCustomer = (customer: Customer) => {
+   610→    setSelectedCustomer(customer);
+   611→    fetchCustomerDetails(customer.id);
+   612→  };
+   613→
+   614→  const handleCloseDetail = () => {
+   615→    setSelectedCustomer(null);
+   616→    setPrescriptions([]);
+   617→    setVisits([]);
+   618→    setDues([]);
+   619→    setDetailError(null);
+   620→  };
+   621→
+   622→  // ─── Prescription handlers ─────────────────────────────────────────────
+   623→
+   624→  const openPrescriptionDialog = () => {
+   625→    setPrescriptionForm(EMPTY_PRESCRIPTION_FORM);
+   626→    setPrescriptionDialogOpen(true);
+   627→  };
+   628→
+   629→  const handlePrescriptionSubmit = async () => {
+   630→    if (!selectedCustomer || !prescriptionForm.date) return;
+   631→    setPrescriptionSubmitting(true);
+   632→    try {
+   633→      const res = await fetch('/api/prescriptions', {
+   634→        method: 'POST',
+   635→        headers: { 'Content-Type': 'application/json' },
+   636→        body: JSON.stringify({
+   637→          customerId: selectedCustomer.id,
+   638→          ...prescriptionForm,
+   639→          leftSph: prescriptionForm.leftSph ? parseFloat(prescriptionForm.leftSph) : null,
+   640→          leftCyl: prescriptionForm.leftCyl ? parseFloat(prescriptionForm.leftCyl) : null,
+   641→          leftAxis: prescriptionForm.leftAxis ? parseFloat(prescriptionForm.leftAxis) : null,
+   642→          leftPd: prescriptionForm.leftPd ? parseFloat(prescriptionForm.leftPd) : null,
+   643→          rightSph: prescriptionForm.rightSph ? parseFloat(prescriptionForm.rightSph) : null,
+   644→          rightCyl: prescriptionForm.rightCyl ? parseFloat(prescriptionForm.rightCyl) : null,
+   645→          rightAxis: prescriptionForm.rightAxis ? parseFloat(prescriptionForm.rightAxis) : null,
+   646→          rightPd: prescriptionForm.rightPd ? parseFloat(prescriptionForm.rightPd) : null,
+   647→        }),
+   648→      });
+   649→      if (!res.ok) {
+   650→        const body = await res.json().catch(() => null);
+   651→        throw new Error(body?.error || 'Failed to add prescription');
+   652→      }
+   653→      setPrescriptionDialogOpen(false);
+   654→      fetchCustomerDetails(selectedCustomer.id);
+   655→    } catch (err) {
+   656→      toast.error(err instanceof Error ? err.message : 'Failed to save prescription');
+   657→    } finally {
+   658→      setPrescriptionSubmitting(false);
+   659→    }
+   660→  };
+   661→
+   662→  // ─── Visit handlers ────────────────────────────────────────────────────
+   663→
+   664→  const openVisitDialog = () => {
+   665→    setVisitForm(EMPTY_VISIT_FORM);
+   666→    setVisitDialogOpen(true);
+   667→  };
+   668→
+   669→  const handleVisitSubmit = async () => {
+   670→    if (!selectedCustomer || !visitForm.date || !visitForm.purpose.trim()) return;
+   671→    setVisitSubmitting(true);
+   672→    try {
+   673→      const res = await fetch('/api/visits', {
+   674→        method: 'POST',
+   675→        headers: { 'Content-Type': 'application/json' },
+   676→        body: JSON.stringify({
+   677→          customerId: selectedCustomer.id,
+   678→          ...visitForm,
+   679→        }),
+   680→      });
+   681→      if (!res.ok) {
+   682→        const body = await res.json().catch(() => null);
+   683→        throw new Error(body?.error || 'Failed to add visit');
+   684→      }
+   685→      setVisitDialogOpen(false);
+   686→      fetchCustomerDetails(selectedCustomer.id);
+   687→    } catch (err) {
+   688→      toast.error(err instanceof Error ? err.message : 'Failed to save visit');
+   689→    } finally {
+   690→      setVisitSubmitting(false);
+   691→    }
+   692→  };
+   693→
+   694→  // ─── Loyalty handlers ────────────────────────────────────────────────
+   695→
+   696→  const openLoyaltyDialog = (type: 'earn' | 'redeem') => {
+   697→    setLoyaltyType(type);
+   698→    setLoyaltyPoints('');
+   699→    setLoyaltyReason('');
+   700→    setLoyaltyDialogOpen(true);
+   701→  };
+   702→
+   703→  const handleLoyaltySubmit = async () => {
+   704→    if (!selectedCustomer) return;
+   705→    const pts = parseInt(loyaltyPoints, 10);
+   706→    if (!pts || pts <= 0) {
+   707→      toast.error('Please enter valid points');
+   708→      return;
+   709→    }
+   710→    if (loyaltyType === 'redeem' && pts > selectedCustomer.loyaltyPoints) {
+   711→      toast.error(`Only ${selectedCustomer.loyaltyPoints} points available`);
+   712→      return;
+   713→    }
+   714→    setLoyaltySubmitting(true);
+   715→    try {
+   716→      const res = await fetch(`/api/customers/${selectedCustomer.id}/loyalty`, {
+   717→        method: 'PATCH',
+   718→        headers: { 'Content-Type': 'application/json' },
+   719→        body: JSON.stringify({
+   720→          points: loyaltyType === 'earn' ? pts : -pts,
+   721→          reason: loyaltyReason.trim(),
+   722→          type: loyaltyType,
+   723→        }),
+   724→      });
+   725→      if (!res.ok) {
+   726→        const body = await res.json().catch(() => null);
+   727→        throw new Error(body?.error || 'Failed to update points');
+   728→      }
+   729→      const result = await res.json();
+   730→      toast.success(result.message);
+   731→      setLoyaltyDialogOpen(false);
+   732→      // Refresh customer data
+   733→      setSelectedCustomer({ ...selectedCustomer, loyaltyPoints: result.loyaltyPoints });
+   734→      fetchCustomers();
+   735→    } catch (err) {
+   736→      toast.error(err instanceof Error ? err.message : 'Failed to update loyalty points');
+   737→    } finally {
+   738→      setLoyaltySubmitting(false);
+   739→    }
+   740→  };
+   741→
+   742→  // ─── CSV Import handler ──────────────────────────────────────────────
+   743→
+   744→  const handleCSVImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+   745→    const file = e.target.files?.[0];
+   746→    if (!file) return;
+   747→    setImporting(true);
+   748→    try {
+   749→      const formData = new FormData();
+   750→      formData.append('file', file);
+   751→      const res = await fetch('/api/customers/import', {
+   752→        method: 'POST',
+   753→        body: formData,
+   754→      });
+   755→      if (!res.ok) {
+   756→        const body = await res.json().catch(() => null);
+   757→        throw new Error(body?.error || 'Import failed');
+   758→      }
+   759→      const result = await res.json();
+   760→      toast.success(`Imported ${result.imported} customers${result.skipped > 0 ? `, ${result.skipped} skipped` : ''}`);
+   761→      if (result.errors?.length) {
+   762→        toast.warning(`${result.errors.length} row(s) had errors and were skipped`);
+   763→      }
+   764→      fetchCustomers();
+   765→    } catch (err) {
+   766→      toast.error(err instanceof Error ? err.message : 'Failed to import CSV');
+   767→    } finally {
+   768→      setImporting(false);
+   769→      if (importInputRef.current) importInputRef.current.value = '';
+   770→    }
+   771→  };
+   772→
+   773→  // ─── Render helpers ────────────────────────────────────────────────────
+   774→
+   775→  const renderGroupBadge = (group: Customer['group']) => (
+   776→    <Badge variant={GROUP_BADGE_VARIANT[group]} className={GROUP_COLORS[group]}>
+   777→      {group}
+   778→    </Badge>
+   779→  );
+   780→
+   781→  // ─── Loading skeleton for table ────────────────────────────────────────
+   782→
+   783→  const renderTableSkeleton = () => (
+   784→    <>
+   785→      {Array.from({ length: 8 }).map((_, i) => (
+   786→        <TableRow key={i}>
+   787→          <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+   788→          <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+   789→          <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+   790→          <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+   791→          <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+   792→          <TableCell><Skeleton className="h-8 w-16" /></TableCell>
+   793→        </TableRow>
+   794→      ))}
+   795→    </>
+   796→  );
+   797→
+   798→  // ─── Main render ───────────────────────────────────────────────────────
+   799→
+   800→  return (
+   801→    <div className="flex flex-col gap-6 p-4 md:p-6">
+   802→      {/* ─── Header ─────────────────────────────────────────────────── */}
+   803→      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+   804→        <div>
+   805→          <h1 className="text-2xl font-bold tracking-tight">Customers</h1>
+   806→          <p className="text-muted-foreground text-sm">
+   807→            {total} customer{total !== 1 ? 's' : ''} total
+   808→          </p>
+   809→        </div>
+   810→        <div className="flex gap-2 w-full sm:w-auto">
+   811→            <Button onClick={openAddCustomerDialog} className="flex-1 sm:flex-none">
+   812→              <Plus className="mr-2 size-4" />
+   813→              Add Customer
+   814→            </Button>
+   815→            <Button variant="outline" className="flex-1 sm:flex-none" disabled={importing} onClick={() => importInputRef.current?.click()}>
+   816→              {importing ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Upload className="mr-2 size-4" />}
+   817→              Import CSV
+   818→            </Button>
+   819→            <input
+   820→              ref={importInputRef}
+   821→              type="file"
+   822→              accept=".csv"
+   823→              className="hidden"
+   824→              onChange={handleCSVImport}
+   825→            />
+   826→            <Button variant="outline" onClick={handleExportCSV} className="flex-1 sm:flex-none" disabled={exporting}>
+   827→              {exporting ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Download className="mr-2 size-4" />}
+   828→              Export CSV
+   829→            </Button>
+   830→          </div>
+   831→      </div>
+   832→
+   833→      {/* ─── Search + Filters Bar ──────────────────────────────────── */}
+   834→      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+   835→        <div className="flex flex-1 gap-2">
+   836→          <div className="relative flex-1">
+   837→            <Search className="text-muted-foreground absolute left-3 top-1/2 size-4 -translate-y-1/2" />
+   838→            <Input
+   839→              placeholder="Search by name or phone..."
+   840→              value={searchInput}
+   841→              onChange={(e) => setSearchInput(e.target.value)}
+   842→              onKeyDown={handleSearchKeyDown}
+   843→              className="pl-9"
+   844→            />
+   845→            {searchInput && (
+   846→              <button
+   847→                onClick={handleClearSearch}
+   848→                className="text-muted-foreground hover:text-foreground absolute right-3 top-1/2 -translate-y-1/2"
+   849→                aria-label="Clear search"
+   850→              >
+   851→                <X className="size-4" />
+   852→              </button>
+   853→            )}
+   854→          </div>
+   855→          <Button variant="outline" onClick={handleSearch}>
+   856→            Search
+   857→          </Button>
+   858→        </div>
+   859→        <div className="flex items-end gap-2 flex-shrink-0">
+   860→          <Select value={groupFilter} onValueChange={handleGroupFilterChange}>
+   861→            <SelectTrigger className="w-36">
+   862→              <SelectValue placeholder="All Groups" />
+   863→            </SelectTrigger>
+   864→            <SelectContent>
+   865→              <SelectItem value="all">All Groups</SelectItem>
+   866→              {GROUP_LIST.map((g) => (
+   867→                <SelectItem key={g} value={g}>{g}</SelectItem>
+   868→              ))}
+   869→            </SelectContent>
+   870→          </Select>
+   871→          <div className="flex flex-col gap-0.5">
+   872→            <span className="text-xs text-muted-foreground">From</span>
+   873→            <Input
+   874→              type="date"
+   875→              value={fromDate}
+   876→              onChange={(e) => handleFromDateChange(e.target.value)}
+   877→              className="w-36"
+   878→            />
+   879→          </div>
+   880→          <div className="flex flex-col gap-0.5">
+   881→            <span className="text-xs text-muted-foreground">To</span>
+   882→            <Input
+   883→              type="date"
+   884→              value={toDate}
+   885→              onChange={(e) => handleToDateChange(e.target.value)}
+   886→              className="w-36"
+   887→            />
+   888→          </div>
+   889→          {hasActiveFilters && (
+   890→            <Button variant="ghost" size="sm" onClick={handleClearFilters}>
+   891→              <X className="mr-1 size-3" />
+   892→              Clear
+   893→            </Button>
+   894→          )}
+   895→        </div>
+   896→      </div>
+   897→      {duplicateWarning && (
+   898→        <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30">
+   899→          <AlertTriangle className="size-4 text-amber-600" />
+   900→          <AlertDescription className="text-amber-800 dark:text-amber-300">
+   901→            {duplicateWarning}
+   902→          </AlertDescription>
+   903→        </Alert>
+   904→      )}
+   905→
+   906→      {/* ─── Customer Table ────────────────────────────────────────── */}
+   907→      <Card>
+   908→        <CardContent className="p-0">
+   909→          <div className="overflow-x-auto">
+   910→          <Table>
+   911→            <TableHeader>
+   912→              <TableRow>
+   913→                <TableHead className="min-w-[160px] cursor-pointer select-none" onClick={() => handleSort('name')}>
+   914→                  <div className="flex items-center gap-1">Name <SortIcon field="name" /></div>
+   915→                </TableHead>
+   916→                <TableHead className="min-w-[200px] cursor-pointer select-none" onClick={() => handleSort('phone')}>
+   917→                  <div className="flex items-center gap-1">Phone <SortIcon field="phone" /></div>
+   918→                </TableHead>
+   919→                <TableHead className="cursor-pointer select-none" onClick={() => handleSort('group')}>
+   920→                  <div className="flex items-center gap-1">Group <SortIcon field="group" /></div>
+   921→                </TableHead>
+   922→                <TableHead className="text-right cursor-pointer select-none" onClick={() => handleSort('loyaltyPoints')}>
+   923→                  <div className="flex items-center justify-end gap-1">Points <SortIcon field="loyaltyPoints" /></div>
+   924→                </TableHead>
+   925→                <TableHead className="text-right cursor-pointer select-none" onClick={() => handleSort('totalSpent')}>
+   926→                  <div className="flex items-center justify-end gap-1">Total Spent <SortIcon field="totalSpent" /></div>
+   927→                </TableHead>
+   928→                <TableHead className="text-right">Actions</TableHead>
+   929→              </TableRow>
+   930→            </TableHeader>
+   931→            <TableBody>
+   932→              {error ? (
+   933→                <TableRow>
+   934→                  <TableCell colSpan={6} className="h-48 text-center">
+   935→                    <div className="flex flex-col items-center gap-2">
+   936→                      <AlertCircle className="size-8 text-destructive" />
+   937→                      <p className="text-sm text-destructive">{error}</p>
+   938→                      <Button variant="outline" size="sm" onClick={fetchCustomers}>
+   939→                        Retry
+   940→                      </Button>
+   941→                    </div>
+   942→                  </TableCell>
+   943→                </TableRow>
+   944→              ) : loading ? (
+   945→                renderTableSkeleton()
+   946→              ) : customers.length === 0 ? (
+   947→                <TableRow>
+   948→                  <TableCell colSpan={6} className="h-48 text-center">
+   949→                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+   950→                      <User className="size-8" />
+   951→                      <p className="text-sm">
+   952→                        {search ? 'No customers found for your search.' : 'No customers yet.'}
+   953→                      </p>
+   954→                      {!search && (
+   955→                        <Button variant="outline" size="sm" onClick={openAddCustomerDialog}>
+   956→                          <Plus className="mr-1 size-3" />
+   957→                          Add your first customer
+   958→                        </Button>
+   959→                      )}
+   960→                    </div>
+   961→                  </TableCell>
+   962→                </TableRow>
+   963→              ) : (
+   964→                customers.map((customer) => (
+   965→                  <TableRow
+   966→                    key={customer.id}
+   967→                    className="cursor-pointer"
+   968→                    onClick={() => handleSelectCustomer(customer)}
+   969→                  >
+   970→                    <TableCell className="font-medium">{customer.name}</TableCell>
+   971→                    <TableCell>
+   972→                      <div className="flex items-center gap-1.5">
+   973→                        <span className="tabular-nums">{customer.phone}</span>
+   974→                        <button
+   975→                          onClick={(e) => {
+   976→                            e.stopPropagation();
+   977→                            openWhatsApp(customer.phone, customer.name);
+   978→                          }}
+   979→                          className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-md text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-950/50 transition-colors shrink-0 touch-manipulation"
+   980→                          aria-label={`WhatsApp ${customer.name}`}
+   981→                          title="Chat on WhatsApp"
+   982→                        >
+   983→                          <MessageCircle className="size-4" />
+   984→                        </button>
+   985→                      </div>
+   986→                    </TableCell>
+   987→                    <TableCell>{renderGroupBadge(customer.group)}</TableCell>
+   988→                    <TableCell className="text-right tabular-nums">
+   989→                      {customer.loyaltyPoints.toLocaleString()}
+   990→                    </TableCell>
+   991→                    <TableCell className="text-right tabular-nums">
+   992→                      {formatCurrency(customer.totalSpent)}
+   993→                    </TableCell>
+   994→                    <TableCell className="text-right">
+   995→                      <div className="flex items-center justify-end gap-1">
+   996→                        <Button
+   997→                          variant="ghost"
+   998→                          size="icon"
+   999→                          className="min-w-[44px] min-h-[44px] touch-manipulation"
+  1000→                          onClick={(e) => {
+  1001→                            e.stopPropagation();
+  1002→                            handleSelectCustomer(customer);
+  1003→                          }}
+  1004→                          aria-label="View details"
+  1005→                        >
+  1006→                          <Eye className="size-4" />
+  1007→                        </Button>
+  1008→                        <Button
+  1009→                          variant="ghost"
+  1010→                          size="icon"
+  1011→                          className="min-w-[44px] min-h-[44px] touch-manipulation"
+  1012→                          onClick={(e) => {
+  1013→                            e.stopPropagation();
+  1014→                            openEditCustomerDialog(customer);
+  1015→                          }}
+  1016→                          aria-label="Edit customer"
+  1017→                        >
+  1018→                          <Pencil className="size-4" />
+  1019→                        </Button>
+  1020→                      </div>
+  1021→                    </TableCell>
+  1022→                  </TableRow>
+  1023→                ))
+  1024→              )}
+  1025→            </TableBody>
+  1026→          </Table>
+  1027→          </div>
+  1028→        </CardContent>
+  1029→
+  1030→        {/* ─── Pagination ──────────────────────────────────────────────── */}
+  1031→        {totalPages > 1 && (
+  1032→          <div className="flex items-center justify-between border-t px-4 py-3">
+  1033→            <p className="text-muted-foreground text-sm">
+  1034→              Page {page} of {totalPages}
+  1035→            </p>
+  1036→            <div className="flex gap-2">
+  1037→              <Button
+  1038→                variant="outline"
+  1039→                size="sm"
+  1040→                disabled={page <= 1}
+  1041→                onClick={() => setPage((p) => Math.max(1, p - 1))}
+  1042→              >
+  1043→                <ChevronLeft className="mr-1 size-4" />
+  1044→                Previous
+  1045→              </Button>
+  1046→              <Button
+  1047→                variant="outline"
+  1048→                size="sm"
+  1049→                disabled={page >= totalPages}
+  1050→                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+  1051→              >
+  1052→                Next
+  1053→                <ChevronRight className="ml-1 size-4" />
+  1054→              </Button>
+  1055→            </div>
+  1056→          </div>
+  1057→        )}
+  1058→      </Card>
+  1059→
+  1060→      {/* ─── Customer Detail Panel (Drawer/Sheet-like) ────────────────── */}
+  1061→      <Dialog
+  1062→        open={!!selectedCustomer}
+  1063→        onOpenChange={(open) => {
+  1064→          if (!open) handleCloseDetail();
+  1065→        }}
+  1066→      >
+  1067→        <DialogContent className="max-h-[90vh] sm:max-w-2xl">
+  1068→          {selectedCustomer ? (
+  1069→            <>
+  1070→              <DialogHeader>
+  1071→                <DialogTitle className="flex items-center gap-2 text-xl">
+  1072→                  {selectedCustomer.name}
+  1073→                  {renderGroupBadge(selectedCustomer.group)}
+  1074→                </DialogTitle>
+  1075→                <DialogDescription>Customer details and history</DialogDescription>
+  1076→              </DialogHeader>
+  1077→
+  1078→              {/* Customer Info Grid */}
+  1079→              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+  1080→                <div className="flex items-center gap-2 text-sm">
+  1081→                  <Phone className="text-muted-foreground size-4 shrink-0" />
+  1082→                  <span>{selectedCustomer.phone}</span>
+  1083→                </div>
+  1084→                {selectedCustomer.email && (
+  1085→                  <div className="flex items-center gap-2 text-sm">
+  1086→                    <Mail className="text-muted-foreground size-4 shrink-0" />
+  1087→                    <span className="truncate">{selectedCustomer.email}</span>
+  1088→                  </div>
+  1089→                )}
+  1090→                {selectedCustomer.dob && (
+  1091→                  <div className="flex items-center gap-2 text-sm">
+  1092→                    <Calendar className="text-muted-foreground size-4 shrink-0" />
+  1093→                    <span>DOB: {formatDate(selectedCustomer.dob)}</span>
+  1094→                  </div>
+  1095→                )}
+  1096→                {selectedCustomer.aadhar && (
+  1097→                  <div className="flex items-center gap-2 text-sm">
+  1098→                    <CreditCard className="text-muted-foreground size-4 shrink-0" />
+  1099→                    <span>Aadhar: {selectedCustomer.aadhar}</span>
+  1100→                  </div>
+  1101→                )}
+  1102→                {selectedCustomer.address && (
+  1103→                  <div className="flex items-start gap-2 text-sm sm:col-span-2">
+  1104→                    <MapPin className="text-muted-foreground mt-0.5 size-4 shrink-0" />
+  1105→                    <span>{selectedCustomer.address}</span>
+  1106→                  </div>
+  1107→                )}
+  1108→              </div>
+  1109→
+  1110→              <Separator />
+  1111→
+  1112→              {/* Summary stats */}
+  1113→              <div className="grid grid-cols-3 gap-4">
+  1114→                <div className="rounded-lg border p-3 text-center">
+  1115→                  <p className="text-muted-foreground text-xs">Points</p>
+  1116→                  <p className="text-lg font-semibold tabular-nums">
+  1117→                    {selectedCustomer.loyaltyPoints.toLocaleString()}
+  1118→                  </p>
+  1119→                </div>
+  1120→                <div className="rounded-lg border p-3 text-center">
+  1121→                  <p className="text-muted-foreground text-xs">Total Spent</p>
+  1122→                  <p className="text-lg font-semibold tabular-nums">
+  1123→                    {formatCurrency(selectedCustomer.totalSpent)}
+  1124→                  </p>
+  1125→                </div>
+  1126→                <div className="rounded-lg border p-3 text-center">
+  1127→                  <p className="text-muted-foreground text-xs">Outstanding</p>
+  1128→                  <p className="text-lg font-semibold tabular-nums text-destructive">
+  1129→                    {formatCurrency(
+  1130→                      dues
+  1131→                        .filter((d) => d.status === 'pending' || d.status === 'overdue')
+  1132→                        .reduce((sum, d) => sum + d.amount, 0)
+  1133→                    )}
+  1134→                  </p>
+  1135→                </div>
+  1136→              </div>
+  1137→
+  1138→              {/* Quick actions */}
+  1139→              <div className="flex flex-wrap gap-2">
+  1140→                <Button
+  1141→                  size="sm"
+  1142→                  variant="outline"
+  1143→                  onClick={() => openPrescriptionDialog()}
+  1144→                >
+  1145→                  <Stethoscope className="mr-1.5 size-3.5" />
+  1146→                  Add Prescription
+  1147→                </Button>
+  1148→                <Button
+  1149→                  size="sm"
+  1150→                  variant="outline"
+  1151→                  onClick={() => openVisitDialog()}
+  1152→                >
+  1153→                  <History className="mr-1.5 size-3.5" />
+  1154→                  Add Visit
+  1155→                </Button>
+  1156→                <Button
+  1157→                  size="sm"
+  1158→                  variant="outline"
+  1159→                  onClick={() => openLoyaltyDialog('earn')}
+  1160→                >
+  1161→                  <Gift className="mr-1.5 size-3.5" />
+  1162→                  Earn Points
+  1163→                </Button>
+  1164→                <Button
+  1165→                  size="sm"
+  1166→                  variant="outline"
+  1167→                  onClick={() => openLoyaltyDialog('redeem')}
+  1168→                >
+  1169→                  <Star className="mr-1.5 size-3.5" />
+  1170→                  Redeem Points
+  1171→                </Button>
+  1172→                <Button size="sm" variant="outline" className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/50" onClick={() => openWhatsApp(selectedCustomer.phone, selectedCustomer.name)}>
+  1173→                  <MessageCircle className="mr-1.5 size-3.5" />
+  1174→                  WhatsApp
+  1175→                </Button>
+  1176→                <Button size="sm">
+  1177→                  <ShoppingCart className="mr-1.5 size-3.5" />
+  1178→                  New Sale
+  1179→                </Button>
+  1180→              </div>
+  1181→
+  1182→              <Separator />
+  1183→
+  1184→              {/* Tabs: Prescriptions, Visit History, Dues */}
+  1185→              {detailLoading ? (
+  1186→                <div className="flex items-center justify-center py-12">
+  1187→                  <Loader2 className="text-muted-foreground size-6 animate-spin" />
+  1188→                  <span className="ml-2 text-sm text-muted-foreground">Loading details...</span>
+  1189→                </div>
+  1190→              ) : detailError ? (
+  1191→                <div className="flex flex-col items-center gap-2 py-8">
+  1192→                  <AlertCircle className="size-6 text-destructive" />
+  1193→                  <p className="text-sm text-destructive">{detailError}</p>
+  1194→                  <Button
+  1195→                    variant="outline"
+  1196→                    size="sm"
+  1197→                    onClick={() => fetchCustomerDetails(selectedCustomer.id)}
+  1198→                  >
+  1199→                    Retry
+  1200→                  </Button>
+  1201→                </div>
+  1202→              ) : (
+  1203→                <Tabs defaultValue="prescriptions" className="w-full">
+  1204→                  <TabsList className="w-full">
+  1205→                    <TabsTrigger value="prescriptions" className="flex-1">
+  1206→                      <FileText className="mr-1.5 size-3.5" />
+  1207→                      Prescriptions
+  1208→                      {prescriptions.length > 0 && (
+  1209→                        <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">
+  1210→                          {prescriptions.length}
+  1211→                        </Badge>
+  1212→                      )}
+  1213→                    </TabsTrigger>
+  1214→                    <TabsTrigger value="visits" className="flex-1">
+  1215→                      <Clock className="mr-1.5 size-3.5" />
+  1216→                      Visits
+  1217→                      {visits.length > 0 && (
+  1218→                        <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">
+  1219→                          {visits.length}
+  1220→                        </Badge>
+  1221→                      )}
+  1222→                    </TabsTrigger>
+  1223→                    <TabsTrigger value="purchases" className="flex-1">
+  1224→                      <Receipt className="mr-1.5 size-3.5" />
+  1225→                      Purchases
+  1226→                      {purchases.length > 0 && (
+  1227→                        <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">
+  1228→                          {purchases.length}
+  1229→                        </Badge>
+  1230→                      )}
+  1231→                    </TabsTrigger>
+  1232→                    <TabsTrigger value="dues" className="flex-1">
+  1233→                      <IndianRupee className="mr-1.5 size-3.5" />
+  1234→                      Dues
+  1235→                      {dues.filter((d) => d.status !== 'paid').length > 0 && (
+  1236→                        <Badge variant="destructive" className="ml-1.5 px-1.5 py-0 text-xs">
+  1237→                          {dues.filter((d) => d.status !== 'paid').length}
+  1238→                        </Badge>
+  1239→                      )}
+  1240→                    </TabsTrigger>
+  1241→                  </TabsList>
+  1242→
+  1243→                  {/* Prescriptions Tab */}
+  1244→                  <TabsContent value="prescriptions">
+  1245→                    <ScrollArea className="max-h-72">
+  1246→                      {prescriptions.length === 0 ? (
+  1247→                        <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
+  1248→                          <FileText className="size-8" />
+  1249→                          <p className="text-sm">No prescriptions recorded yet.</p>
+  1250→                          <Button
+  1251→                            variant="outline"
+  1252→                            size="sm"
+  1253→                            onClick={openPrescriptionDialog}
+  1254→                          >
+  1255→                            <Plus className="mr-1 size-3" />
+  1256→                            Add First Prescription
+  1257→                          </Button>
+  1258→                        </div>
+  1259→                      ) : (
+  1260→                        <div className="flex flex-col gap-3">
+  1261→                          {prescriptions.map((rx) => (
+  1262→                            <Card key={rx.id}>
+  1263→                              <CardHeader className="p-3 pb-0">
+  1264→                                <div className="flex items-center justify-between">
+  1265→                                  <CardTitle className="text-sm font-medium">
+  1266→                                    {formatDate(rx.date)}
+  1267→                                  </CardTitle>
+  1268→                                </div>
+  1269→                              </CardHeader>
+  1270→                              <CardContent className="p-3 pt-2">
+  1271→                                <div className="grid grid-cols-2 gap-3">
+  1272→                                  <div>
+  1273→                                    <p className="text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wider">
+  1274→                                      Left Eye
+  1275→                                    </p>
+  1276→                                    <p className="text-sm">
+  1277→                                      {formatEyePower(
+  1278→                                        rx.leftSph,
+  1279→                                        rx.leftCyl,
+  1280→                                        rx.leftAxis,
+  1281→                                        rx.leftPd
+  1282→                                      )}
+  1283→                                    </p>
+  1284→                                  </div>
+  1285→                                  <div>
+  1286→                                    <p className="text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wider">
+  1287→                                      Right Eye
+  1288→                                    </p>
+  1289→                                    <p className="text-sm">
+  1290→                                      {formatEyePower(
+  1291→                                        rx.rightSph,
+  1292→                                        rx.rightCyl,
+  1293→                                        rx.rightAxis,
+  1294→                                        rx.rightPd
+  1295→                                      )}
+  1296→                                    </p>
+  1297→                                  </div>
+  1298→                                </div>
+  1299→                                {rx.notes && (
+  1300→                                  <p className="text-muted-foreground mt-2 border-t pt-2 text-xs">
+  1301→                                    {rx.notes}
+  1302→                                  </p>
+  1303→                                )}
+  1304→                              </CardContent>
+  1305→                            </Card>
+  1306→                          ))}
+  1307→                        </div>
+  1308→                      )}
+  1309→                    </ScrollArea>
+  1310→                  </TabsContent>
+  1311→
+  1312→                  {/* Visits Tab - Timeline View */}
+  1313→                  <TabsContent value="visits">
+  1314→                    <ScrollArea className="max-h-72">
+  1315→                      {visits.length === 0 ? (
+  1316→                        <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
+  1317→                          <Clock className="size-8" />
+  1318→                          <p className="text-sm">No visit history yet.</p>
+  1319→                          <Button
+  1320→                            variant="outline"
+  1321→                            size="sm"
+  1322→                            onClick={openVisitDialog}
+  1323→                          >
+  1324→                            <Plus className="mr-1 size-3" />
+  1325→                            Add First Visit
+  1326→                          </Button>
+  1327→                        </div>
+  1328→                      ) : (
+  1329→                        <div className="relative pl-6">
+  1330→                          {/* Vertical line */}
+  1331→                          <div className="absolute left-[9px] top-2 bottom-2 w-0.5 bg-border" />
+  1332→                          <div className="flex flex-col gap-4 py-2">
+  1333→                            {visits.map((visit, idx) => (
+  1334→                              <div key={visit.id} className="relative flex gap-3">
+  1335→                                {/* Dot on the line */}
+  1336→                                <div className="absolute left-[-15px] top-1.5 size-3.5 rounded-full border-2 border-background bg-emerald-500 z-10" />
+  1337→                                <div className="flex-1 min-w-0 rounded-lg border p-3">
+  1338→                                  <div className="flex items-center justify-between gap-2 mb-1">
+  1339→                                    <p className="text-sm font-medium truncate">
+  1340→                                      {visit.purpose}
+  1341→                                    </p>
+  1342→                                    <span className="text-muted-foreground shrink-0 text-xs">
+  1343→                                      {formatRelativeTime(visit.date)}
+  1344→                                    </span>
+  1345→                                  </div>
+  1346→                                  <p className="text-muted-foreground text-xs mb-1">
+  1347→                                    {formatDate(visit.date)}
+  1348→                                  </p>
+  1349→                                  {visit.notes && (
+  1350→                                    <p className="text-muted-foreground text-xs line-clamp-2 border-t pt-1 mt-1">
+  1351→                                      {visit.notes}
+  1352→                                    </p>
+  1353→                                  )}
+  1354→                                </div>
+  1355→                              </div>
+  1356→                            ))}
+  1357→                          </div>
+  1358→                        </div>
+  1359→                      )}
+  1360→                    </ScrollArea>
+  1361→                  </TabsContent>
+  1362→
+  1363→                  {/* Purchases Tab */}
+  1364→                  <TabsContent value="purchases">
+  1365→                    <ScrollArea className="max-h-72">
+  1366→                      {purchases.length === 0 ? (
+  1367→                        <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
+  1368→                          <Receipt className="size-8" />
+  1369→                          <p className="text-sm">No purchase history yet.</p>
+  1370→                        </div>
+  1371→                      ) : (
+  1372→                        <Table>
+  1373→                          <TableHeader>
+  1374→                            <TableRow>
+  1375→                              <TableHead className="text-xs">Invoice #</TableHead>
+  1376→                              <TableHead className="text-xs text-right">Total</TableHead>
+  1377→                              <TableHead className="text-xs">Date</TableHead>
+  1378→                              <TableHead className="text-xs">Status</TableHead>
+  1379→                            </TableRow>
+  1380→                          </TableHeader>
+  1381→                          <TableBody>
+  1382→                            {purchases.map((p) => (
+  1383→                              <TableRow key={p.id}>
+  1384→                                <TableCell className="font-mono text-xs">{p.invoiceNo}</TableCell>
+  1385→                                <TableCell className="text-right font-mono text-xs font-medium">
+  1386→                                  {formatCurrency(p.total)}
+  1387→                                </TableCell>
+  1388→                                <TableCell className="text-xs text-muted-foreground">
+  1389→                                  {formatDate(p.createdAt)}
+  1390→                                </TableCell>
+  1391→                                <TableCell>
+  1392→                                  <Badge
+  1393→                                    variant={
+  1394→                                      p.status === 'Completed' ? 'default' : p.status === 'Pending' ? 'secondary' : 'outline'
+  1395→                                    }
+  1396→                                    className="text-[10px] px-1.5 py-0"
+  1397→                                  >
+  1398→                                    {p.status}
+  1399→                                  </Badge>
+  1400→                                </TableCell>
+  1401→                              </TableRow>
+  1402→                            ))}
+  1403→                          </TableBody>
+  1404→                        </Table>
+  1405→                      )}
+  1406→                    </ScrollArea>
+  1407→                  </TabsContent>
+  1408→
+  1409→                  {/* Dues Tab */}
+  1410→                  <TabsContent value="dues">
+  1411→                    <ScrollArea className="max-h-72">
+  1412→                      {dues.length === 0 ? (
+  1413→                        <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
+  1414→                          <Receipt className="size-8" />
+  1415→                          <p className="text-sm">No dues recorded.</p>
+  1416→                        </div>
+  1417→                      ) : (
+  1418→                        <div className="flex flex-col gap-2">
+  1419→                          {dues.map((due) => (
+  1420→                            <div
+  1421→                              key={due.id}
+  1422→                              className="flex items-center justify-between rounded-lg border p-3"
+  1423→                            >
+  1424→                              <div className="flex items-center gap-3">
+  1425→                                <div
+  1426→                                  className={`flex size-8 shrink-0 items-center justify-center rounded-full ${
+  1427→                                    due.status === 'paid'
+  1428→                                      ? 'bg-emerald-100 dark:bg-emerald-900'
+  1429→                                      : due.status === 'overdue'
+  1430→                                      ? 'bg-red-100 dark:bg-red-900'
+  1431→                                      : 'bg-amber-100 dark:bg-amber-900'
+  1432→                                  }`}
+  1433→                                >
+  1434→                                  <IndianRupee
+  1435→                                    className={`size-4 ${
+  1436→                                      due.status === 'paid'
+  1437→                                        ? 'text-emerald-600 dark:text-emerald-400'
+  1438→                                        : due.status === 'overdue'
+  1439→                                        ? 'text-red-600 dark:text-red-400'
+  1440→                                        : 'text-amber-600 dark:text-amber-400'
+  1441→                                    }`}
+  1442→                                  />
+  1443→                                </div>
+  1444→                                <div>
+  1445→                                  <p className="text-sm font-medium">
+  1446→                                    {due.description || 'Due payment'}
+  1447→                                  </p>
+  1448→                                  <p className="text-muted-foreground text-xs">
+  1449→                                    {formatDate(due.date)}
+  1450→                                  </p>
+  1451→                                </div>
+  1452→                              </div>
+  1453→                              <div className="text-right">
+  1454→                                <p className="text-sm font-semibold tabular-nums">
+  1455→                                  {formatCurrency(due.amount)}
+  1456→                                </p>
+  1457→                                <Badge
+  1458→                                  variant={
+  1459→                                    due.status === 'paid'
+  1460→                                      ? 'default'
+  1461→                                      : due.status === 'overdue'
+  1462→                                      ? 'destructive'
+  1463→                                      : 'secondary'
+  1464→                                  }
+  1465→                                  className="text-[10px] px-1.5 py-0"
+  1466→                                >
+  1467→                                  {due.status}
+  1468→                                </Badge>
+  1469→                              </div>
+  1470→                            </div>
+  1471→                          ))}
+  1472→                        </div>
+  1473→                      )}
+  1474→                    </ScrollArea>
+  1475→                  </TabsContent>
+  1476→                </Tabs>
+  1477→              )}
+  1478→            </>
+  1479→          ) : null}
+  1480→        </DialogContent>
+  1481→      </Dialog>
+  1482→
+  1483→      {/* ─── Add/Edit Customer Dialog ────────────────────────────────── */}
+  1484→      <Dialog open={customerDialogOpen} onOpenChange={setCustomerDialogOpen}>
+  1485→        <DialogContent className="max-h-[90vh] sm:max-w-lg">
+  1486→          <DialogHeader>
+  1487→            <DialogTitle>
+  1488→              {editingCustomer ? 'Edit Customer' : 'Add Customer'}
+  1489→            </DialogTitle>
+  1490→            <DialogDescription>
+  1491→              {editingCustomer
+  1492→                ? 'Update customer information below.'
+  1493→                : 'Fill in the details to add a new customer.'}
+  1494→            </DialogDescription>
+  1495→          </DialogHeader>
+  1496→
+  1497→          {customerFormErrors._form && (
+  1498→            <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+  1499→              <AlertCircle className="size-4 shrink-0" />
+  1500→              {customerFormErrors._form}
+  1501→            </div>
+  1502→          )}
+  1503→
+  1504→          <ScrollArea className="max-h-[60vh]">
+  1505→            <div className="flex flex-col gap-4 p-1">
+  1506→              {/* Name */}
+  1507→              <div className="grid gap-2">
+  1508→                <Label htmlFor="cust-name">
+  1509→                  Name <span className="text-destructive">*</span>
+  1510→                </Label>
+  1511→                <Input
+  1512→                  id="cust-name"
+  1513→                  placeholder="Customer name"
+  1514→                  value={customerForm.name}
+  1515→                  onChange={(e) =>
+  1516→                    setCustomerForm((f) => ({ ...f, name: e.target.value }))
+  1517→                  }
+  1518→                  aria-invalid={!!customerFormErrors.name}
+  1519→                />
+  1520→                {customerFormErrors.name && (
+  1521→                  <p className="text-xs text-destructive">{customerFormErrors.name}</p>
+  1522→                )}
+  1523→              </div>
+  1524→
+  1525→              {/* Phone */}
+  1526→              <div className="grid gap-2">
+  1527→                <Label htmlFor="cust-phone">
+  1528→                  Phone <span className="text-destructive">*</span>
+  1529→                </Label>
+  1530→                <Input
+  1531→                  id="cust-phone"
+  1532→                  placeholder="Phone number"
+  1533→                  value={customerForm.phone}
+  1534→                  onChange={(e) =>
+  1535→                    setCustomerForm((f) => ({ ...f, phone: e.target.value }))
+  1536→                  }
+  1537→                  aria-invalid={!!customerFormErrors.phone}
+  1538→                />
+  1539→                {customerFormErrors.phone && (
+  1540→                  <p className="text-xs text-destructive">{customerFormErrors.phone}</p>
+  1541→                )}
+  1542→              </div>
+  1543→
+  1544→              {/* Email */}
+  1545→              <div className="grid gap-2">
+  1546→                <Label htmlFor="cust-email">Email</Label>
+  1547→                <Input
+  1548→                  id="cust-email"
+  1549→                  type="email"
+  1550→                  placeholder="Email address"
+  1551→                  value={customerForm.email}
+  1552→                  onChange={(e) =>
+  1553→                    setCustomerForm((f) => ({ ...f, email: e.target.value }))
+  1554→                  }
+  1555→                  aria-invalid={!!customerFormErrors.email}
+  1556→                />
+  1557→                {customerFormErrors.email && (
+  1558→                  <p className="text-xs text-destructive">{customerFormErrors.email}</p>
+  1559→                )}
+  1560→              </div>
+  1561→
+  1562→              {/* DOB */}
+  1563→              <div className="grid gap-2">
+  1564→                <Label htmlFor="cust-dob">Date of Birth</Label>
+  1565→                <Input
+  1566→                  id="cust-dob"
+  1567→                  type="date"
+  1568→                  value={customerForm.dob}
+  1569→                  onChange={(e) =>
+  1570→                    setCustomerForm((f) => ({ ...f, dob: e.target.value }))
+  1571→                  }
+  1572→                />
+  1573→              </div>
+  1574→
+  1575→              {/* Address */}
+  1576→              <div className="grid gap-2">
+  1577→                <Label htmlFor="cust-address">Address</Label>
+  1578→                <Textarea
+  1579→                  id="cust-address"
+  1580→                  placeholder="Full address"
+  1581→                  rows={2}
+  1582→                  value={customerForm.address}
+  1583→                  onChange={(e) =>
+  1584→                    setCustomerForm((f) => ({ ...f, address: e.target.value }))
+  1585→                  }
+  1586→                />
+  1587→              </div>
+  1588→
+  1589→              {/* Aadhar */}
+  1590→              <div className="grid gap-2">
+  1591→                <Label htmlFor="cust-aadhar">Aadhar Number</Label>
+  1592→                <Input
+  1593→                  id="cust-aadhar"
+  1594→                  placeholder="Aadhar number"
+  1595→                  value={customerForm.aadhar}
+  1596→                  onChange={(e) =>
+  1597→                    setCustomerForm((f) => ({ ...f, aadhar: e.target.value }))
+  1598→                  }
+  1599→                />
+  1600→              </div>
+  1601→
+  1602→              {/* Group */}
+  1603→              <div className="grid gap-2">
+  1604→                <Label htmlFor="cust-group">Group</Label>
+  1605→                <Select
+  1606→                  value={customerForm.group}
+  1607→                  onValueChange={(val) =>
+  1608→                    setCustomerForm((f) => ({
+  1609→                      ...f,
+  1610→                      group: val as Customer['group'],
+  1611→                    }))
+  1612→                  }
+  1613→                >
+  1614→                  <SelectTrigger id="cust-group" className="w-full">
+  1615→                    <SelectValue placeholder="Select group" />
+  1616→                  </SelectTrigger>
+  1617→                  <SelectContent>
+  1618→                    {GROUP_LIST.map((g) => (
+  1619→                      <SelectItem key={g} value={g}>
+  1620→                        {g}
+  1621→                      </SelectItem>
+  1622→                    ))}
+  1623→                  </SelectContent>
+  1624→                </Select>
+  1625→              </div>
+  1626→            </div>
+  1627→          </ScrollArea>
+  1628→
+  1629→          <DialogFooter className="gap-2 sm:gap-0">
+  1630→            <Button
+  1631→              variant="outline"
+  1632→              onClick={() => setCustomerDialogOpen(false)}
+  1633→              disabled={customerSubmitting}
+  1634→            >
+  1635→              Cancel
+  1636→            </Button>
+  1637→            <Button onClick={handleCustomerSubmit} disabled={customerSubmitting}>
+  1638→              {customerSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
+  1639→              {editingCustomer ? 'Update Customer' : 'Add Customer'}
+  1640→            </Button>
+  1641→          </DialogFooter>
+  1642→        </DialogContent>
+  1643→      </Dialog>
+  1644→
+  1645→      {/* ─── Loyalty Points Dialog ───────────────────────────────────── */}
+  1646→      <Dialog open={loyaltyDialogOpen} onOpenChange={setLoyaltyDialogOpen}>
+  1647→        <DialogContent className="sm:max-w-md">
+  1648→          <DialogHeader>
+  1649→            <DialogTitle>
+  1650→              {loyaltyType === 'earn' ? 'Earn Loyalty Points' : 'Redeem Loyalty Points'}
+  1651→            </DialogTitle>
+  1652→            <DialogDescription>
+  1653→              {loyaltyType === 'earn'
+  1654→                ? 'Add loyalty points to this customer manually.'
+  1655→                : `Customer has ${selectedCustomer?.loyaltyPoints ?? 0} points available. 100 points = ₹50 discount.`}
+  1656→            </DialogDescription>
+  1657→          </DialogHeader>
+  1658→          <div className="flex flex-col gap-4">
+  1659→            <div className="grid gap-2">
+  1660→              <Label htmlFor="loyalty-points">
+  1661→                Points {loyaltyType === 'earn' ? 'to Add' : 'to Redeem'}
+  1662→              </Label>
+  1663→              <Input
+  1664→                id="loyalty-points"
+  1665→                type="number"
+  1666→                min={1}
+  1667→                max={loyaltyType === 'redeem' ? (selectedCustomer?.loyaltyPoints ?? 0) : undefined}
+  1668→                placeholder={loyaltyType === 'earn' ? 'e.g. 50' : `Max: ${selectedCustomer?.loyaltyPoints ?? 0}`}
+  1669→                value={loyaltyPoints}
+  1670→                onChange={(e) => setLoyaltyPoints(e.target.value)}
+  1671→              />
+  1672→              {loyaltyType === 'redeem' && loyaltyPoints && (
+  1673→                <p className="text-xs text-muted-foreground">
+  1674→                  Discount value: {formatCurrency(parseInt(loyaltyPoints, 10) * 0.5)}
+  1675→                </p>
+  1676→              )}
+  1677→            </div>
+  1678→            <div className="grid gap-2">
+  1679→              <Label htmlFor="loyalty-reason">Reason</Label>
+  1680→              <Input
+  1681→                id="loyalty-reason"
+  1682→                placeholder={loyaltyType === 'earn' ? 'e.g. Referral bonus' : 'e.g. Points redemption'}
+  1683→                value={loyaltyReason}
+  1684→                onChange={(e) => setLoyaltyReason(e.target.value)}
+  1685→              />
+  1686→            </div>
+  1687→          </div>
+  1688→          <DialogFooter className="gap-2 sm:gap-0 mt-4">
+  1689→            <Button variant="outline" onClick={() => setLoyaltyDialogOpen(false)} disabled={loyaltySubmitting}>
+  1690→              Cancel
+  1691→            </Button>
+  1692→            <Button onClick={handleLoyaltySubmit} disabled={loyaltySubmitting || !loyaltyPoints}>
+  1693→              {loyaltySubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
+  1694→              {loyaltyType === 'earn' ? 'Earn Points' : 'Redeem Points'}
+  1695→            </Button>
+  1696→          </DialogFooter>
+  1697→        </DialogContent>
+  1698→      </Dialog>
+  1699→
+  1700→      {/* ─── Prescription Dialog ────────────────────────────────────── */}
+  1701→      <Dialog open={prescriptionDialogOpen} onOpenChange={setPrescriptionDialogOpen}>
+  1702→        <DialogContent className="max-h-[90vh] sm:max-w-lg">
+  1703→          <DialogHeader>
+  1704→            <DialogTitle>Add Prescription</DialogTitle>
+  1705→            <DialogDescription>
+  1706→              Enter the eye power details for the prescription.
+  1707→            </DialogDescription>
+  1708→          </DialogHeader>
+  1709→
+  1710→          <ScrollArea className="max-h-[60vh]">
+  1711→            <div className="flex flex-col gap-4 p-1">
+  1712→              {/* Date */}
+  1713→              <div className="grid gap-2">
+  1714→                <Label htmlFor="rx-date">
+  1715→                  Date <span className="text-destructive">*</span>
+  1716→                </Label>
+  1717→                <Input
+  1718→                  id="rx-date"
+  1719→                  type="date"
+  1720→                  value={prescriptionForm.date}
+  1721→                  onChange={(e) =>
+  1722→                    setPrescriptionForm((f) => ({ ...f, date: e.target.value }))
+  1723→                  }
+  1724→                />
+  1725→              </div>
+  1726→
+  1727→              <Separator />
+  1728→
+  1729→              {/* Left Eye */}
+  1730→              <div>
+  1731→                <p className="mb-3 text-sm font-medium">Left Eye (OS)</p>
+  1732→                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+  1733→                  <div className="grid gap-1.5">
+  1734→                    <Label htmlFor="rx-l-sph" className="text-xs text-muted-foreground">
+  1735→                      SPH
+  1736→                    </Label>
+  1737→                    <Input
+  1738→                      id="rx-l-sph"
+  1739→                      placeholder="0.00"
+  1740→                      value={prescriptionForm.leftSph}
+  1741→                      onChange={(e) =>
+  1742→                        setPrescriptionForm((f) => ({ ...f, leftSph: e.target.value }))
+  1743→                      }
+  1744→                    />
+  1745→                  </div>
+  1746→                  <div className="grid gap-1.5">
+  1747→                    <Label htmlFor="rx-l-cyl" className="text-xs text-muted-foreground">
+  1748→                      CYL
+  1749→                    </Label>
+  1750→                    <Input
+  1751→                      id="rx-l-cyl"
+  1752→                      placeholder="0.00"
+  1753→                      value={prescriptionForm.leftCyl}
+  1754→                      onChange={(e) =>
+  1755→                        setPrescriptionForm((f) => ({ ...f, leftCyl: e.target.value }))
+  1756→                      }
+  1757→                    />
+  1758→                  </div>
+  1759→                  <div className="grid gap-1.5">
+  1760→                    <Label htmlFor="rx-l-axis" className="text-xs text-muted-foreground">
+  1761→                      AXIS
+  1762→                    </Label>
+  1763→                    <Input
+  1764→                      id="rx-l-axis"
+  1765→                      placeholder="0"
+  1766→                      value={prescriptionForm.leftAxis}
+  1767→                      onChange={(e) =>
+  1768→                        setPrescriptionForm((f) => ({ ...f, leftAxis: e.target.value }))
+  1769→                      }
+  1770→                    />
+  1771→                  </div>
+  1772→                  <div className="grid gap-1.5">
+  1773→                    <Label htmlFor="rx-l-pd" className="text-xs text-muted-foreground">
+  1774→                      PD
+  1775→                    </Label>
+  1776→                    <Input
+  1777→                      id="rx-l-pd"
+  1778→                      placeholder="0"
+  1779→                      value={prescriptionForm.leftPd}
+  1780→                      onChange={(e) =>
+  1781→                        setPrescriptionForm((f) => ({ ...f, leftPd: e.target.value }))
+  1782→                      }
+  1783→                    />
+  1784→                  </div>
+  1785→                </div>
+  1786→              </div>
+  1787→
+  1788→              <Separator />
+  1789→
+  1790→              {/* Right Eye */}
+  1791→              <div>
+  1792→                <p className="mb-3 text-sm font-medium">Right Eye (OD)</p>
+  1793→                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+  1794→                  <div className="grid gap-1.5">
+  1795→                    <Label htmlFor="rx-r-sph" className="text-xs text-muted-foreground">
+  1796→                      SPH
+  1797→                    </Label>
+  1798→                    <Input
+  1799→                      id="rx-r-sph"
+  1800→                      placeholder="0.00"
+  1801→                      value={prescriptionForm.rightSph}
+  1802→                      onChange={(e) =>
+  1803→                        setPrescriptionForm((f) => ({ ...f, rightSph: e.target.value }))
+  1804→                      }
+  1805→                    />
+  1806→                  </div>
+  1807→                  <div className="grid gap-1.5">
+  1808→                    <Label htmlFor="rx-r-cyl" className="text-xs text-muted-foreground">
+  1809→                      CYL
+  1810→                    </Label>
+  1811→                    <Input
+  1812→                      id="rx-r-cyl"
+  1813→                      placeholder="0.00"
+  1814→                      value={prescriptionForm.rightCyl}
+  1815→                      onChange={(e) =>
+  1816→                        setPrescriptionForm((f) => ({ ...f, rightCyl: e.target.value }))
+  1817→                      }
+  1818→                    />
+  1819→                  </div>
+  1820→                  <div className="grid gap-1.5">
+  1821→                    <Label htmlFor="rx-r-axis" className="text-xs text-muted-foreground">
+  1822→                      AXIS
+  1823→                    </Label>
+  1824→                    <Input
+  1825→                      id="rx-r-axis"
+  1826→                      placeholder="0"
+  1827→                      value={prescriptionForm.rightAxis}
+  1828→                      onChange={(e) =>
+  1829→                        setPrescriptionForm((f) => ({ ...f, rightAxis: e.target.value }))
+  1830→                      }
+  1831→                    />
+  1832→                  </div>
+  1833→                  <div className="grid gap-1.5">
+  1834→                    <Label htmlFor="rx-r-pd" className="text-xs text-muted-foreground">
+  1835→                      PD
+  1836→                    </Label>
+  1837→                    <Input
+  1838→                      id="rx-r-pd"
+  1839→                      placeholder="0"
+  1840→                      value={prescriptionForm.rightPd}
+  1841→                      onChange={(e) =>
+  1842→                        setPrescriptionForm((f) => ({ ...f, rightPd: e.target.value }))
+  1843→                      }
+  1844→                    />
+  1845→                  </div>
+  1846→                </div>
+  1847→              </div>
+  1848→
+  1849→              <Separator />
+  1850→
+  1851→              {/* Notes */}
+  1852→              <div className="grid gap-2">
+  1853→                <Label htmlFor="rx-notes">Notes</Label>
+  1854→                <Textarea
+  1855→                  id="rx-notes"
+  1856→                  placeholder="Additional notes (optional)"
+  1857→                  rows={2}
+  1858→                  value={prescriptionForm.notes}
+  1859→                  onChange={(e) =>
+  1860→                    setPrescriptionForm((f) => ({ ...f, notes: e.target.value }))
+  1861→                  }
+  1862→                />
+  1863→              </div>
+  1864→            </div>
+  1865→          </ScrollArea>
+  1866→
+  1867→          <DialogFooter className="gap-2 sm:gap-0">
+  1868→            <Button
+  1869→              variant="outline"
+  1870→              onClick={() => setPrescriptionDialogOpen(false)}
+  1871→              disabled={prescriptionSubmitting}
+  1872→            >
+  1873→              Cancel
+  1874→            </Button>
+  1875→            <Button
+  1876→              onClick={handlePrescriptionSubmit}
+  1877→              disabled={prescriptionSubmitting || !prescriptionForm.date}
+  1878→            >
+  1879→              {prescriptionSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
+  1880→              Save Prescription
+  1881→            </Button>
+  1882→          </DialogFooter>
+  1883→        </DialogContent>
+  1884→      </Dialog>
+  1885→
+  1886→      {/* ─── Visit Dialog ───────────────────────────────────────────── */}
+  1887→      <Dialog open={visitDialogOpen} onOpenChange={setVisitDialogOpen}>
+  1888→        <DialogContent className="sm:max-w-md">
+  1889→          <DialogHeader>
+  1890→            <DialogTitle>Add Visit</DialogTitle>
+  1891→            <DialogDescription>
+  1892→              Record a customer visit entry.
+  1893→            </DialogDescription>
+  1894→          </DialogHeader>
+  1895→
+  1896→          <div className="flex flex-col gap-4">
+  1897→            {/* Date */}
+  1898→            <div className="grid gap-2">
+  1899→              <Label htmlFor="visit-date">
+  1900→                Date <span className="text-destructive">*</span>
+  1901→              </Label>
+  1902→              <Input
+  1903→                id="visit-date"
+  1904→                type="date"
+  1905→                value={visitForm.date}
+  1906→                onChange={(e) =>
+  1907→                  setVisitForm((f) => ({ ...f, date: e.target.value }))
+  1908→                }
+  1909→              />
+  1910→            </div>
+  1911→
+  1912→            {/* Purpose */}
+  1913→            <div className="grid gap-2">
+  1914→              <Label htmlFor="visit-purpose">
+  1915→                Purpose <span className="text-destructive">*</span>
+  1916→              </Label>
+  1917→              <Input
+  1918→                id="visit-purpose"
+  1919→                placeholder="e.g., Eye checkup, Frame fitting, Follow-up"
+  1920→                value={visitForm.purpose}
+  1921→                onChange={(e) =>
+  1922→                  setVisitForm((f) => ({ ...f, purpose: e.target.value }))
+  1923→                }
+  1924→              />
+  1925→            </div>
+  1926→
+  1927→            {/* Notes */}
+  1928→            <div className="grid gap-2">
+  1929→              <Label htmlFor="visit-notes">Notes</Label>
+  1930→              <Textarea
+  1931→                id="visit-notes"
+  1932→                placeholder="Additional notes (optional)"
+  1933→                rows={3}
+  1934→                value={visitForm.notes}
+  1935→                onChange={(e) =>
+  1936→                  setVisitForm((f) => ({ ...f, notes: e.target.value }))
+  1937→                }
+  1938→              />
+  1939→            </div>
+  1940→          </div>
+  1941→
+  1942→          <DialogFooter className="gap-2 sm:gap-0">
+  1943→            <Button
+  1944→              variant="outline"
+  1945→              onClick={() => setVisitDialogOpen(false)}
+  1946→              disabled={visitSubmitting}
+  1947→            >
+  1948→              Cancel
+  1949→            </Button>
+  1950→            <Button
+  1951→              onClick={handleVisitSubmit}
+  1952→              disabled={visitSubmitting || !visitForm.date || !visitForm.purpose.trim()}
+  1953→            >
+  1954→              {visitSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
+  1955→              Save Visit
+  1956→            </Button>
+  1957→          </DialogFooter>
+  1958→        </DialogContent>
+  1959→      </Dialog>
+  1960→    </div>
+  1961→  );
+  1962→}

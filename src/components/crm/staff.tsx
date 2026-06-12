@@ -368,7 +368,7 @@ function SalaryManagementSection({ staffList, performanceData }: { staffList: St
                     </TableCell>
                     <TableCell className="text-right">
                       {r.status === 'Pending' && (
-                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleMarkPaid(r.id)}>
+                        <Button size="sm" variant="outline" className="h-9 min-w-[44px] min-h-[44px] text-xs touch-manipulation active:scale-95 transition-transform" onClick={() => handleMarkPaid(r.id)}>
                           <CheckCircle2 className="size-3 mr-1" /> Mark Paid
                         </Button>
                       )}
@@ -959,7 +959,7 @@ export default function StaffManagement() {
           ) : (
             <>
               {/* Desktop Table */}
-              <div className="hidden md:block">
+              <div className="hidden md:block overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -1244,7 +1244,7 @@ export default function StaffManagement() {
           </CardHeader>
           <CardContent>
             {/* Desktop Performance Table */}
-            <div className="hidden md:block">
+            <div className="hidden md:block overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>

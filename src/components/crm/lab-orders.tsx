@@ -855,7 +855,7 @@ export default function LabOrders() {
               /* ── Table View ── */
               <>
                 <div className="mt-4 rounded-lg border">
-                  <div className="max-h-[600px] overflow-y-auto">
+                  <div className="max-h-[600px] overflow-x-auto overflow-y-auto">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-muted/50">
@@ -932,14 +932,14 @@ export default function LabOrders() {
                                 </TableCell>
                                 <TableCell className="text-right">
                                   <div className="flex items-center justify-end gap-1">
-                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 opacity-70 group-hover:opacity-100" onClick={() => { setSelectedOrder(order); setDetailOpen(true) }} title="View details"><Eye className="h-4 w-4" /></Button>
+                                    <Button variant="ghost" size="sm" className="h-9 w-9 min-w-[44px] min-h-[44px] p-0 opacity-70 group-hover:opacity-100 touch-manipulation" onClick={() => { setSelectedOrder(order); setDetailOpen(true) }} title="View details"><Eye className="h-4 w-4" /></Button>
                                     {canMarkReady && order.status !== 'Pending' && order.status !== 'Received' && (
-                                      <Button variant="outline" size="sm" className="h-8 gap-1 text-xs bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-900/40" disabled={updatingId === order.id} onClick={() => handleMarkReady(order)}>
+                                      <Button variant="outline" size="sm" className="h-9 min-w-[44px] min-h-[44px] gap-1 text-xs bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-900/40 touch-manipulation" disabled={updatingId === order.id} onClick={() => handleMarkReady(order)}>
                                         {updatingId === order.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><ClipboardCheck className="h-3.5 w-3.5" />Ready</>}
                                       </Button>
                                     )}
                                     {next && (
-                                      <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" disabled={updatingId === order.id} onClick={() => handleUpdateStatus(order)}>
+                                      <Button variant="outline" size="sm" className="h-9 min-w-[44px] min-h-[44px] gap-1 text-xs touch-manipulation" disabled={updatingId === order.id} onClick={() => handleUpdateStatus(order)}>
                                         {updatingId === order.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <>{next}<ChevronRight className="h-3 w-3" /></>}
                                       </Button>
                                     )}
