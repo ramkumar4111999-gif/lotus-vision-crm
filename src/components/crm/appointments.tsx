@@ -971,13 +971,33 @@ export default function Appointments() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [bulkReminderDialogOpen, setBulkReminderDialogOpen] = useState(false)
 
+  // Filter states
+  const [purposeFilter, setPurposeFilter] = useState<string>('all')
+  const [datePreset, setDatePreset] = useState<string>('today')
+
+  // Detail dialog
+  const [detailOpen, setDetailOpen] = useState(false)
+  const [detailAppointment, setDetailAppointment] = useState<Appointment | null>(null)
+
   // ─── Data Fetching ───────────────────────────────────────────────────────
 
   const fetchAppointments = useCallback(async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams()
-      params.set('date', toDateString(selectedDate))
+      if (datePreset === 'week') {
+        const ws = startOfWeek(new Date(), { weekStartsOn: 1 })
+        params.set('fromDate', toDateString(ws))
+        params.set('toDate', toDateString(addDays(ws, 6)))
+      } else if (datePreset === 'month') {
+        const now = new Date()
+        const mStart = format(new Date(now.getFullYear(), now.getMonth(), 1), 'yyyy-MM-dd')
+        const mEnd = format(new Date(now.getFullYear(), now.getMonth() + 1, 0), 'yyyy-MM-dd')
+        params.set('fromDate', mStart)
+        params.set('toDate', mEnd)
+      } else {
+        params.set('date', toDateString(selectedDate))
+      }
       if (statusFilter !== 'all') params.set('status', statusFilter)
       params.set('limit', pageSize.toString())
 
@@ -993,7 +1013,7 @@ export default function Appointments() {
     } finally {
       setLoading(false)
     }
-  }, [selectedDate, statusFilter, pageSize])
+  }, [selectedDate, statusFilter, pageSize, datePreset])
 
   const fetchAllAppointments = useCallback(async () => {
     try {
@@ -1041,9 +1061,21 @@ export default function Appointments() {
 
   // ─── Grouped Appointments by Date ─────────────────────────────────────────
 
+  // ─── Filtered Appointments (client-side purpose filter) ───────────────
+
+  const filteredAppointments = useMemo(() => {
+    if (purposeFilter === 'all') return appointments
+    return appointments.filter((apt) => apt.purpose === purposeFilter)
+  }, [appointments, purposeFilter])
+
+  const filteredTodayAppointments = useMemo(() => {
+    if (purposeFilter === 'all') return todayAppointments
+    return todayAppointments.filter((apt) => apt.purpose === purposeFilter)
+  }, [todayAppointments, purposeFilter])
+
   const groupedAppointments = useMemo(() => {
     const groups: Record<string, Appointment[]> = {}
-    appointments.forEach((apt) => {
+    filteredAppointments.forEach((apt) => {
       try {
         const key = toDateString(parseISO(apt.date))
         if (!groups[key]) groups[key] = []
@@ -1053,7 +1085,7 @@ export default function Appointments() {
       }
     })
     return groups
-  }, [appointments])
+  }, [filteredAppointments])
 
   // ─── Today's Appointments ───────────────────────────────────────────────
 
@@ -1382,8 +1414,44 @@ export default function Appointments() {
         </Card>
       )}
 
+      {/* Purpose Filter Chips */}
+      <Card>
+        <CardContent className="p-4">
+          <p className="text-xs font-medium text-muted-foreground mb-2">Filter by Purpose</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => { setPurposeFilter('all'); setPage(1) }}
+              className={cn(
+                'inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-medium transition-colors min-w-[44px] min-h-[44px] touch-manipulation',
+                purposeFilter === 'all'
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
+              )}
+            >
+              All
+            </button>
+            {PURPOSE_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => { setPurposeFilter(opt.value); setPage(1) }}
+                className={cn(
+                  'inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-medium transition-colors min-w-[44px] min-h-[44px] touch-manipulation',
+                  purposeFilter === opt.value
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Today's Appointments Highlighted */}
-      {todayAppointments.length > 0 && viewMode === 'list' && (
+      {filteredTodayAppointments.length > 0 && viewMode === 'list' && (
         <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
@@ -1396,12 +1464,13 @@ export default function Appointments() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {todayAppointments.map((apt) => {
+              {filteredTodayAppointments.map((apt) => {
                 const isWalkInApt = apt.purpose === 'Walk-in'
                 return (
                   <div
                     key={apt.id}
-                    className="flex items-center gap-3 rounded-lg border border-blue-100 dark:border-blue-900 p-3 bg-white dark:bg-slate-900 hover:bg-accent/50 transition-colors"
+                    className="flex items-center gap-3 rounded-lg border border-blue-100 dark:border-blue-900 p-3 bg-white dark:bg-slate-900 hover:bg-accent/50 transition-colors cursor-pointer"
+                    onClick={() => { setDetailAppointment(apt); setDetailOpen(true) }}
                   >
                     <div className="text-sm font-mono font-medium min-w-[70px]">
                       {formatTime(apt.time)}
@@ -1523,11 +1592,15 @@ export default function Appointments() {
                   )}
                 >
                   <CalendarIcon className="size-4" />
-                  {selectedDate
-                    ? isToday(selectedDate)
-                      ? 'Today'
-                      : format(selectedDate, 'MMM d, yyyy')
-                    : 'Pick a date'}
+                  {datePreset === 'today' && selectedDate
+                    ? 'Today'
+                    : datePreset === 'week'
+                      ? 'This Week'
+                      : datePreset === 'month'
+                        ? 'This Month'
+                        : selectedDate
+                          ? format(selectedDate, 'MMM d, yyyy')
+                          : 'Pick a date'}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
@@ -1537,6 +1610,7 @@ export default function Appointments() {
                   onSelect={(date) => {
                     if (date) {
                       setSelectedDate(date)
+                      setDatePreset('today')
                       setPage(1)
                     }
                   }}
@@ -1545,24 +1619,45 @@ export default function Appointments() {
               </PopoverContent>
             </Popover>
 
-            {/* Status Filter Tabs */}
-            <Tabs
-              value={statusFilter}
-              onValueChange={(v) => {
-                setStatusFilter(v as StatusFilter)
-                setPage(1)
-              }}
-            >
-              <TabsList>
-                <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="Scheduled">Scheduled</TabsTrigger>
-                <TabsTrigger value="Confirmed">Confirmed</TabsTrigger>
-                <TabsTrigger value="Completed">Completed</TabsTrigger>
-                <TabsTrigger value="Cancelled">Cancelled</TabsTrigger>
-              </TabsList>
-            </Tabs>
+            {/* Status Filter Chips */}
+            <div className="flex flex-wrap gap-2">
+              {(['all', 'Scheduled', 'Confirmed', 'Completed', 'Cancelled'] as const).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => { setStatusFilter(s as StatusFilter); setPage(1) }}
+                  className={cn(
+                    'inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-medium transition-colors min-w-[44px] min-h-[44px] touch-manipulation',
+                    statusFilter === s
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
+                  )}
+                >
+                  {s === 'all' ? 'All Status' : s}
+                </button>
+              ))}
+            </div>
 
             <div className="flex-1" />
+
+            {/* Date Quick Presets */}
+            <div className="flex gap-2">
+              {(['today', 'week', 'month'] as const).map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => { setDatePreset(preset); setPage(1) }}
+                  className={cn(
+                    'inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-medium transition-colors min-w-[44px] min-h-[44px] touch-manipulation',
+                    datePreset === preset
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
+                  )}
+                >
+                  {preset === 'today' ? 'Today' : preset === 'week' ? 'This Week' : 'This Month'}
+                </button>
+              ))}
+            </div>
 
             {/* View Toggle: List / Calendar / Week */}
             <div className="flex items-center border rounded-md">
@@ -1618,7 +1713,7 @@ export default function Appointments() {
       ) : (
         <Card>
           <CardContent className="p-0">
-            {appointments.length === 0 ? (
+            {filteredAppointments.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 gap-3">
                 <div className="flex items-center justify-center size-12 rounded-full bg-muted">
                   <CalendarDays className="size-6 text-muted-foreground" />
@@ -1646,7 +1741,7 @@ export default function Appointments() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {appointments.map((apt) => (
+                  {filteredAppointments.map((apt) => (
                     <TableRow key={apt.id}>
                       <TableCell className="pl-4">
                         <div>
@@ -1801,6 +1896,109 @@ export default function Appointments() {
               Delete
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Appointment Detail Dialog with Quick Actions */}
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Appointment Details</DialogTitle>
+            <DialogDescription>View details and take quick actions</DialogDescription>
+          </DialogHeader>
+          {detailAppointment && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Customer</span>
+                  <p className="font-medium">{detailAppointment.customerName}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Phone</span>
+                  <p className="font-medium">{detailAppointment.customerPhone || '—'}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Date & Time</span>
+                  <p className="font-medium">{formatDate(detailAppointment.date)} {formatTime(detailAppointment.time)}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Status</span>
+                  <div className="mt-0.5"><StatusBadge status={detailAppointment.status} /></div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Purpose</span>
+                  <div className="mt-0.5"><PurposeBadge purpose={detailAppointment.purpose} /></div>
+                </div>
+                {detailAppointment.recurrence && (
+                  <div>
+                    <span className="text-muted-foreground">Repeat</span>
+                    <p className="font-medium">{detailAppointment.recurrence}</p>
+                  </div>
+                )}
+              </div>
+              {detailAppointment.notes && (
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground mb-1">Notes</p>
+                  <p className="text-sm whitespace-pre-wrap">{detailAppointment.notes}</p>
+                </div>
+              )}
+              {/* Quick Action Buttons */}
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-2">Quick Actions</p>
+                <div className="flex flex-wrap gap-2">
+                  {detailAppointment.customerPhone && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 min-w-[44px] min-h-[44px] touch-manipulation"
+                      onClick={() => {
+                        const phone = detailAppointment.customerPhone || detailAppointment.customer?.phone
+                        if (phone) window.open(`tel:${phone.replace(/\D/g, '')}`, '_self')
+                      }}
+                    >
+                      <Phone className="size-3.5" />
+                      Call Customer
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 min-w-[44px] min-h-[44px] touch-manipulation"
+                    onClick={() => { handleSMSReminder(detailAppointment); setDetailOpen(false) }}
+                  >
+                    <MessageSquare className="size-3.5" />
+                    WhatsApp
+                  </Button>
+                  {(detailAppointment.status === 'Scheduled' || detailAppointment.status === 'Confirmed') && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 min-w-[44px] min-h-[44px] touch-manipulation bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800"
+                      onClick={async () => {
+                        await handleUpdateStatus(detailAppointment.id, 'Completed')
+                        setDetailOpen(false)
+                      }}
+                    >
+                      <CheckCircle2 className="size-3.5" />
+                      Mark Complete
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 min-w-[44px] min-h-[44px] touch-manipulation"
+                    onClick={() => {
+                      setEditAppointment(detailAppointment)
+                      setDetailOpen(false)
+                    }}
+                  >
+                    <CalendarRange className="size-3.5" />
+                    Reschedule
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

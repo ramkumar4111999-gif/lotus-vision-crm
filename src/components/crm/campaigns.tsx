@@ -31,6 +31,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { cn } from '@/lib/utils'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -244,6 +245,10 @@ export default function Campaigns() {
 
   // Analytics state
   const [analyticsData, setAnalyticsData] = useState<Campaign[]>([])
+
+  // Filter states
+  const [segmentFilter, setSegmentFilter] = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
 
   // UI state
   const [loading, setLoading] = useState(true)
@@ -692,33 +697,37 @@ export default function Campaigns() {
                 </div>
               </div>
 
-              {/* WhatsApp Template Section */}
+              {/* WhatsApp Template Section — Visual Template Quick Pick */}
               {formType === 'WhatsApp' && (
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2">
                     <Sparkles className="size-4 text-green-600" />
-                    WhatsApp Template
+                    Quick Template Pick
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    Choose a pre-built template to quickly get started. Click to pre-fill the message.
+                    Choose a pre-built template to quickly get started. Tap to pre-fill the message.
                   </p>
-                  <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-72 overflow-y-auto pr-1">
                     {whatsAppTemplates.map((tmpl) => (
-                      <Button
+                      <button
                         key={tmpl.label}
                         type="button"
-                        variant="outline"
-                        className="justify-start gap-2 h-auto py-2.5 px-3 text-left"
                         onClick={() => setFormMessage(tmpl.message)}
+                        className={cn(
+                          'flex items-start gap-2.5 rounded-lg border p-3 text-left transition-colors min-h-[44px] hover:bg-accent',
+                          formMessage === tmpl.message
+                            ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                            : 'border-input'
+                        )}
                       >
-                        <span className="text-base">{tmpl.emoji}</span>
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-xs font-medium">{tmpl.label}</span>
-                          <span className="text-[10px] text-muted-foreground truncate">
-                            {tmpl.message.slice(0, 45)}…
+                        <span className="text-lg leading-none mt-0.5">{tmpl.emoji}</span>
+                        <div className="flex flex-col min-w-0 gap-0.5">
+                          <span className="text-xs font-semibold">{tmpl.label}</span>
+                          <span className="text-[10px] text-muted-foreground line-clamp-2 leading-tight">
+                            {tmpl.message.slice(0, 80)}…
                           </span>
                         </div>
-                      </Button>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -895,6 +904,48 @@ export default function Campaigns() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+      </div>
+
+      {/* Segment & Status Filter Chips */}
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-muted-foreground">Filter by Segment</p>
+        <div className="flex flex-wrap gap-2">
+          {['All', 'New Customers', 'Regular', 'Premium', 'Wholesale', 'Birthday This Month', 'Inactive 90+ days'].map((seg) => (
+            <button
+              key={seg}
+              type="button"
+              onClick={() => setSegmentFilter(seg === 'All' ? 'all' : seg)}
+              className={cn(
+                'inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-medium transition-colors min-w-[44px] min-h-[44px] touch-manipulation',
+                segmentFilter === (seg === 'All' ? 'all' : seg)
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
+              )}
+            >
+              {seg}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-muted-foreground">Filter by Status</p>
+        <div className="flex flex-wrap gap-2">
+          {['All', 'Draft', 'Sent', 'Completed'].map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setStatusFilter(s === 'All' ? 'all' : s)}
+              className={cn(
+                'inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-medium transition-colors min-w-[44px] min-h-[44px] touch-manipulation',
+                statusFilter === (s === 'All' ? 'all' : s)
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
+              )}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Enhanced Summary Stats */}

@@ -1,0 +1,2002 @@
+     1→     1→'use client';
+     2→     2→
+     3→     3→import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+     4→     4→import { format, parseISO, startOfDay, isToday, isWithinInterval, startOfMonth, endOfMonth, subMonths, isBefore } from 'date-fns';
+     5→     5→import {
+     6→     6→  TrendingUp,
+     7→     7→  TrendingDown,
+     8→     8→  Wallet,
+     9→     9→  AlertTriangle,
+    10→    10→  Plus,
+    11→    11→  Pencil,
+    12→    12→  Trash2,
+    13→    13→  IndianRupee,
+    14→    14→  CalendarDays,
+    15→    15→  Filter,
+    16→    16→  Receipt,
+    17→    17→  CreditCard,
+    18→    18→  PieChart as PieChartIcon,
+    19→    19→  Banknote,
+    20→    20→  CheckCircle2,
+    21→    21→  Check,
+    22→    22→  RotateCcw,
+    23→    23→  MessageCircle,
+    24→    24→  ChevronDown,
+    25→    25→  ChevronUp,
+    26→    26→  Download,
+    27→    27→  Target,
+    28→    28→  ArrowUpRight,
+    29→    29→  ArrowDownRight,
+    30→    30→  Search,
+    31→    31→  FileText,
+    32→    32→  BarChart3,
+    33→    33→  CircleDollarSign,
+    34→    34→  Scale,
+    35→    35→  Calculator,
+    36→    36→} from 'lucide-react';
+    37→    37→import {
+    38→    38→  Card,
+    39→    39→  CardContent,
+    40→    40→  CardDescription,
+    41→    41→  CardHeader,
+    42→    42→  CardTitle,
+    43→    43→} from '@/components/ui/card';
+    44→    44→import { Button } from '@/components/ui/button';
+    45→    45→import { Badge } from '@/components/ui/badge';
+    46→    46→import {
+    47→    47→  Table,
+    48→    48→  TableBody,
+    49→    49→  TableCell,
+    50→    50→  TableFooter,
+    51→    51→  TableHead,
+    52→    52→  TableHeader,
+    53→    53→  TableRow,
+    54→    54→} from '@/components/ui/table';
+    55→    55→import { Input } from '@/components/ui/input';
+    56→    56→import { Label } from '@/components/ui/label';
+    57→    57→import {
+    58→    58→  Select,
+    59→    59→  SelectContent,
+    60→    60→  SelectItem,
+    61→    61→  SelectTrigger,
+    62→    62→  SelectValue,
+    63→    63→} from '@/components/ui/select';
+    64→    64→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+    65→    65→import { Separator } from '@/components/ui/separator';
+    66→    66→import {
+    67→    67→  Dialog,
+    68→    68→  DialogContent,
+    69→    69→  DialogDescription,
+    70→    70→  DialogFooter,
+    71→    71→  DialogHeader,
+    72→    72→  DialogTitle,
+    73→    73→} from '@/components/ui/dialog';
+    74→    74→import {
+    75→    75→  ChartContainer,
+    76→    76→  ChartTooltip,
+    77→    77→  ChartTooltipContent,
+    78→    78→  type ChartConfig,
+    79→    79→} from '@/components/ui/chart';
+    80→    80→import { Progress } from '@/components/ui/progress';
+    81→    81→import {
+    82→    82→  Collapsible,
+    83→    83→  CollapsibleTrigger,
+    84→    84→  CollapsibleContent,
+    85→    85→} from '@/components/ui/collapsible';
+    86→    86→import {
+    87→    87→  Tooltip,
+    88→    88→  TooltipTrigger,
+    89→    89→  TooltipContent,
+    90→    90→} from '@/components/ui/tooltip';
+    91→    91→import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+    92→    92→import { toast } from 'sonner';
+    93→    93→
+    94→    94→// ─── Types ───────────────────────────────────────────────────────────────────
+    95→    95→
+    96→    96→interface Expense {
+    97→    97→  id: string;
+    98→    98→  category: string;
+    99→    99→  description: string;
+   100→   100→  amount: number;
+   101→   101→  date: string;
+   102→   102→  vendor: string | null;
+   103→   103→  createdAt: string;
+   104→   104→}
+   105→   105→
+   106→   106→interface Due {
+   107→   107→  id: string;
+   108→   108→  customer: { name: string; phone: string } | null;
+   109→   109→  amount: number;
+   110→   110→  paid: number;
+   111→   111→  status: string;
+   112→   112→  dueDate: string | null;
+   113→   113→  notes: string | null;
+   114→   114→  createdAt: string;
+   115→   115→  updatedAt?: string;
+   116→   116→}
+   117→   117→
+   118→   118→interface Sale {
+   119→   119→  id: string;
+   120→   120→  invoiceNo: string;
+   121→   121→  customerName: string;
+   122→   122→  customer?: { name: string; phone: string } | null;
+   123→   123→  total: number;
+   124→   124→  paymentMode: string;
+   125→   125→  createdAt: string;
+   126→   126→}
+   127→   127→
+   128→   128→interface CashFlowEntry {
+   129→   129→  date: string;
+   130→   130→  description: string;
+   131→   131→  type: 'Income' | 'Expense';
+   132→   132→  amount: number;
+   133→   133→  balance: number;
+   134→   134→}
+   135→   135→
+   136→   136→interface ReturnItem {
+   137→   137→  id: string;
+   138→   138→  saleId: string;
+   139→   139→  reason: string;
+   140→   140→  amount: number;
+   141→   141→  status: string;
+   142→   142→  createdAt: string;
+   143→   143→  sale?: {
+   144→   144→    id: string;
+   145→   145→    invoiceNo: string;
+   146→   146→    customer?: { id: string; name: string; phone: string } | null;
+   147→   147→  };
+   148→   148→}
+   149→   149→
+   150→   150→// ─── Constants ───────────────────────────────────────────────────────────────
+   151→   151→
+   152→   152→const EXPENSE_CATEGORIES = [
+   153→   153→  'Rent',
+   154→   154→  'Salary',
+   155→   155→  'Supplies',
+   156→   156→  'Marketing',
+   157→   157→  'Utilities',
+   158→   158→  'Maintenance',
+   159→   159→  'Transport',
+   160→   160→  'Other',
+   161→   161→] as const;
+   162→   162→
+   163→   163→const RETURN_REASONS = [
+   164→   164→  'Defective',
+   165→   165→  'Wrong Product',
+   166→   166→  'Customer Changed Mind',
+   167→   167→  'Warranty',
+   168→   168→  'Other',
+   169→   169→] as const;
+   170→   170→
+   171→   171→const PIE_COLORS = [
+   172→   172→  'hsl(var(--chart-1))',
+   173→   173→  'hsl(var(--chart-2))',
+   174→   174→  'hsl(var(--chart-3))',
+   175→   175→  'hsl(var(--chart-4))',
+   176→   176→  'hsl(var(--chart-5))',
+   177→   177→  'hsl(var(--chart-6))',
+   178→   178→  'hsl(var(--chart-1) / 0.6)',
+   179→   179→  'hsl(var(--chart-2) / 0.6)',
+   180→   180→];
+   181→   181→
+   182→   182→const BAR_CHART_CONFIG: ChartConfig = {
+   183→   183→  amount: { label: 'Amount', color: 'hsl(var(--chart-1))' },
+   184→   184→};
+   185→   185→
+   186→   186→const PIE_CHART_CONFIG: ChartConfig = {
+   187→   187→  value: { label: 'Amount' },
+   188→   188→  Rent: { label: 'Rent', color: 'hsl(var(--chart-1))' },
+   189→   189→  Salary: { label: 'Salary', color: 'hsl(var(--chart-2))' },
+   190→   190→  Supplies: { label: 'Supplies', color: 'hsl(var(--chart-3))' },
+   191→   191→  Marketing: { label: 'Marketing', color: 'hsl(var(--chart-4))' },
+   192→   192→  Utilities: { label: 'Utilities', color: 'hsl(var(--chart-5))' },
+   193→   193→  Transport: { label: 'Transport', color: 'hsl(var(--chart-6))' },
+   194→   194→  Maintenance: { label: 'Maintenance', color: 'hsl(var(--chart-1) / 0.6)' },
+   195→   195→  Other: { label: 'Other', color: 'hsl(40, 80%, 55%)' },
+   196→   196→};
+   197→   197→
+   198→   198→// ─── Helpers ─────────────────────────────────────────────────────────────────
+   199→   199→
+   200→   200→function formatINR(amount: number): string {
+   201→   201→  return new Intl.NumberFormat('en-IN', {
+   202→   202→    style: 'currency',
+   203→   203→    currency: 'INR',
+   204→   204→    minimumFractionDigits: 0,
+   205→   205→    maximumFractionDigits: 0,
+   206→   206→  }).format(amount);
+   207→   207→}
+   208→   208→
+   209→   209→function formatDate(dateStr: string | Date): string {
+   210→   210→  try {
+   211→   211→    const d = typeof dateStr === 'string' ? parseISO(dateStr) : dateStr;
+   212→   212→    return format(d, 'dd MMM yyyy');
+   213→   213→  } catch {
+   214→   214→    return String(dateStr);
+   215→   215→  }
+   216→   216→}
+   217→   217→
+   218→   218→function toDateString(dateStr: string | Date): string {
+   219→   219→  try {
+   220→   220→    const d = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
+   221→   221→    return format(d, 'yyyy-MM-dd');
+   222→   222→  } catch {
+   223→   223→    return String(dateStr);
+   224→   224→  }
+   225→   225→}
+   226→   226→
+   227→   227→function getTodayStr(): string {
+   228→   228→  return format(new Date(), 'yyyy-MM-dd');
+   229→   229→}
+   230→   230→
+   231→   231→function getBudgetKey(): string {
+   232→   232→  const now = new Date();
+   233→   233→  return `accounting_budget_${now.getFullYear()}_${now.getMonth() + 1}`;
+   234→   234→}
+   235→   235→
+   236→   236→// ─── Component ───────────────────────────────────────────────────────────────
+   237→   237→
+   238→   238→// ─── Invoice GST Report Sub-Component ──────────────────────────────────
+   239→   239→
+   240→   240→function InvoiceGSTReport() {
+   241→   241→  const [sales, setSales] = useState<Array<Record<string, unknown>>>([]);
+   242→   242→  const [loading, setLoading] = useState(true);
+   243→   243→  const [month, setMonth] = useState(() => {
+   244→   244→    const now = new Date();
+   245→   245→    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+   246→   246→  });
+   247→   247→
+   248→   248→  useEffect(() => {
+   249→   249→    setLoading(true);
+   250→   250→    const start = `${month}-01`;
+   251→   251→    const [y, m] = month.split('-').map(Number);
+   252→   252→    const lastDay = new Date(y, m, 0).getDate();
+   253→   253→    const end = `${month}-${String(lastDay).padStart(2, '0')}`;
+   254→   254→    fetch(`/api/sales?fromDate=${start}&toDate=${end}&limit=500`)
+   255→   255→      .then(r => r.ok ? r.json() : [])
+   256→   256→      .then(json => {
+   257→   257→        const data = json.sales ?? json.data ?? json ?? [];
+   258→   258→        setSales(Array.isArray(data) ? data : []);
+   259→   259→      })
+   260→   260→      .catch(() => {})
+   261→   261→      .finally(() => setLoading(false));
+   262→   262→  }, [month]);
+   263→   263→
+   264→   264→  const gstSales = sales.filter((s: Record<string, unknown>) => ((s.cgst as number) || 0) + ((s.sgst as number) || 0) + ((s.igst as number) || 0) > 0);
+   265→   265→  const totals = gstSales.reduce((acc: Record<string, number>, s: Record<string, unknown>) => {
+   266→   266→    acc.subtotal += (s.subtotal as number) || 0;
+   267→   267→    acc.cgst += (s.cgst as number) || 0;
+   268→   268→    acc.sgst += (s.sgst as number) || 0;
+   269→   269→    acc.igst += (s.igst as number) || 0;
+   270→   270→    acc.total += (s.totalAmount as number) || 0;
+   271→   271→    return acc;
+   272→   272→  }, { subtotal: 0, cgst: 0, sgst: 0, igst: 0, total: 0 });
+   273→   273→
+   274→   274→  if (loading) return <div className="flex items-center justify-center py-8"><span className="size-5 animate-spin inline-block border-2 border-current border-t-transparent rounded-full" /></div>;
+   275→   275→
+   276→   276→  return (
+   277→   277→    <div className="space-y-4">
+   278→   278→      <div className="flex items-center gap-2">
+   279→   279→        <Input type="month" value={month} onChange={e => setMonth(e.target.value)} className="w-auto" />
+   280→   280→        <p className="text-sm text-muted-foreground">{gstSales.length} invoices with GST</p>
+   281→   281→      </div>
+   282→   282→      {gstSales.length === 0 ? (
+   283→   283→        <p className="text-sm text-muted-foreground text-center py-8">No GST invoices for this month.</p>
+   284→   284→      ) : (
+   285→   285→        <>
+   286→   286→          {/* GST Collection Summary Cards (ABOVE table) */}
+   287→   287→          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+   288→   288→            <Card className="py-3">
+   289→   289→              <CardContent className="px-4">
+   290→   290→                <p className="text-xs text-muted-foreground font-medium">Total CGST Collected</p>
+   291→   291→                <p className="text-lg font-bold text-blue-600 dark:text-blue-400 font-mono mt-1">{formatINR(totals.cgst)}</p>
+   292→   292→              </CardContent>
+   293→   293→            </Card>
+   294→   294→            <Card className="py-3">
+   295→   295→              <CardContent className="px-4">
+   296→   296→                <p className="text-xs text-muted-foreground font-medium">Total SGST Collected</p>
+   297→   297→                <p className="text-lg font-bold text-violet-600 dark:text-violet-400 font-mono mt-1">{formatINR(totals.sgst)}</p>
+   298→   298→              </CardContent>
+   299→   299→            </Card>
+   300→   300→            <Card className="py-3">
+   301→   301→              <CardContent className="px-4">
+   302→   302→                <p className="text-xs text-muted-foreground font-medium">Total IGST Collected</p>
+   303→   303→                <p className="text-lg font-bold text-amber-600 dark:text-amber-400 font-mono mt-1">{formatINR(totals.igst)}</p>
+   304→   304→              </CardContent>
+   305→   305→            </Card>
+   306→   306→            <Card className="py-3 bg-emerald-50 dark:bg-emerald-950/30">
+   307→   307→              <CardContent className="px-4">
+   308→   308→                <p className="text-xs text-muted-foreground font-medium">Total GST Collected</p>
+   309→   309→                <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 font-mono mt-1">{formatINR(totals.cgst + totals.sgst + totals.igst)}</p>
+   310→   310→              </CardContent>
+   311→   311→            </Card>
+   312→   312→          </div>
+   313→   313→          <div className="overflow-x-auto">
+   314→   314→          <Table>
+   315→   315→            <TableHeader>
+   316→   316→              <TableRow>
+   317→   317→                <TableHead>Invoice</TableHead>
+   318→   318→                <TableHead>Customer</TableHead>
+   319→   319→                <TableHead className="text-right">Subtotal</TableHead>
+   320→   320→                <TableHead className="text-right">CGST</TableHead>
+   321→   321→                <TableHead className="text-right">SGST</TableHead>
+   322→   322→                <TableHead className="text-right">IGST</TableHead>
+   323→   323→                <TableHead className="text-right">Total</TableHead>
+   324→   324→              </TableRow>
+   325→   325→            </TableHeader>
+   326→   326→            <TableBody>
+   327→   327→              {gstSales.map((s: Record<string, unknown>) => (
+   328→   328→                <TableRow key={s.id}>
+   329→   329→                  <TableCell className="font-mono text-xs">{s.invoiceNo as string}</TableCell>
+   330→   330→                  <TableCell className="text-sm">{(s.customerName as string) || 'Walk-in'}</TableCell>
+   331→   331→                  <TableCell className="text-right font-mono text-sm">{formatINR((s.subtotal as number) || 0)}</TableCell>
+   332→   332→                  <TableCell className="text-right font-mono text-sm text-blue-600 dark:text-blue-400">{formatINR((s.cgst as number) || 0)}</TableCell>
+   333→   333→                  <TableCell className="text-right font-mono text-sm text-blue-600 dark:text-blue-400">{formatINR((s.sgst as number) || 0)}</TableCell>
+   334→   334→                  <TableCell className="text-right font-mono text-sm text-purple-600 dark:text-purple-400">{formatINR((s.igst as number) || 0)}</TableCell>
+   335→   335→                  <TableCell className="text-right font-mono text-sm font-semibold">{formatINR((s.totalAmount as number) || 0)}</TableCell>
+   336→   336→                </TableRow>
+   337→   337→              ))}
+   338→   338→              <TableRow className="bg-muted/50 font-semibold">
+   339→   339→                <TableCell colSpan={2}>Total</TableCell>
+   340→   340→                <TableCell className="text-right font-mono text-sm">{formatINR(totals.subtotal)}</TableCell>
+   341→   341→                <TableCell className="text-right font-mono text-sm">{formatINR(totals.cgst)}</TableCell>
+   342→   342→                <TableCell className="text-right font-mono text-sm">{formatINR(totals.sgst)}</TableCell>
+   343→   343→                <TableCell className="text-right font-mono text-sm">{formatINR(totals.igst)}</TableCell>
+   344→   344→                <TableCell className="text-right font-mono text-sm">{formatINR(totals.total)}</TableCell>
+   345→   345→              </TableRow>
+   346→   346→            </TableBody>
+   347→   347→          </Table>
+   348→   348→          </div>
+   349→   349→          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+   350→   350→            <div className="rounded-lg border p-3 text-center">
+   351→   351→              <p className="text-xs text-muted-foreground">CGST</p>
+   352→   352→              <p className="font-mono font-semibold">{formatINR(totals.cgst)}</p>
+   353→   353→            </div>
+   354→   354→            <div className="rounded-lg border p-3 text-center">
+   355→   355→              <p className="text-xs text-muted-foreground">SGST</p>
+   356→   356→              <p className="font-mono font-semibold">{formatINR(totals.sgst)}</p>
+   357→   357→            </div>
+   358→   358→            <div className="rounded-lg border p-3 text-center">
+   359→   359→              <p className="text-xs text-muted-foreground">IGST</p>
+   360→   360→              <p className="font-mono font-semibold">{formatINR(totals.igst)}</p>
+   361→   361→            </div>
+   362→   362→            <div className="rounded-lg border p-3 text-center bg-emerald-50 dark:bg-emerald-900/20">
+   363→   363→              <p className="text-xs text-muted-foreground">Total GST</p>
+   364→   364→              <p className="font-mono font-semibold text-emerald-700 dark:text-emerald-400">{formatINR(totals.cgst + totals.sgst + totals.igst)}</p>
+   365→   365→            </div>
+   366→   366→          </div>
+   367→   367→        </>
+   368→   368→      )}
+   369→   369→    </div>
+   370→   370→  );
+   371→   371→}
+   372→   372→
+   373→   373→export default function Accounting() {
+   374→   374→  // Data state
+   375→   375→  const [expenses, setExpenses] = useState<Expense[]>([]);
+   376→   376→  const [dues, setDues] = useState<Due[]>([]);
+   377→   377→  const [sales, setSales] = useState<Sale[]>([]);
+   378→   378→  const [returns, setReturns] = useState<ReturnItem[]>([]);
+   379→   379→
+   380→   380→  // Loading states
+   381→   381→  const [loadingExpenses, setLoadingExpenses] = useState(true);
+   382→   382→  const [loadingDues, setLoadingDues] = useState(true);
+   383→   383→  const [loadingSales, setLoadingSales] = useState(true);
+   384→   384→  const [loadingReturns, setLoadingReturns] = useState(true);
+   385→   385→
+   386→   386→  // Dialog states
+   387→   387→  const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
+   388→   388→  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+   389→   389→  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+   390→   390→  const [payingDue, setPayingDue] = useState<Due | null>(null);
+   391→   391→  const [markPaidLoading, setMarkPaidLoading] = useState(false);
+   392→   392→  const [returnDialogOpen, setReturnDialogOpen] = useState(false);
+   393→   393→  const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
+   394→   394→
+   395→   395→  // Expense form state
+   396→   396→  const [expForm, setExpForm] = useState({
+   397→   397→    category: '',
+   398→   398→    description: '',
+   399→   399→    amount: '',
+   400→   400→    date: getTodayStr(),
+   401→   401→    vendor: '',
+   402→   402→  });
+   403→   403→
+   404→   404→  // Payment form state
+   405→   405→  const [paymentAmount, setPaymentAmount] = useState('');
+   406→   406→
+   407→   407→  // Return form state
+   408→   408→  const [returnForm, setReturnForm] = useState({
+   409→   409→    saleSearch: '',
+   410→   410→    saleId: '',
+   411→   411→    refundAmount: '',
+   412→   412→    reason: '',
+   413→   413→  });
+   414→   414→  const [saleSearchResults, setSaleSearchResults] = useState<Sale[]>([]);
+   415→   415→  const [selectedReturnSale, setSelectedReturnSale] = useState<Sale | null>(null);
+   416→   416→  const [creatingReturn, setCreatingReturn] = useState(false);
+   417→   417→  const saleSearchTimeout = useRef<NodeJS.Timeout | null>(null);
+   418→   418→
+   419→   419→  // Budget state
+   420→   420→  const [monthlyBudget, setMonthlyBudget] = useState<number>(0);
+   421→   421→  const [budgetInput, setBudgetInput] = useState('');
+   422→   422→
+   423→   423→  // Expanded due row (payment history)
+   424→   424→  const [expandedDueId, setExpandedDueId] = useState<string | null>(null);
+   425→   425→
+   426→   426→  // P&L collapsible
+   427→   427→  const [plOpen, setPlOpen] = useState(false);
+   428→   428→
+   429→   429→  // Filter states
+   430→   430→  const [cashFlowFrom, setCashFlowFrom] = useState(
+   431→   431→    format(startOfMonth(new Date()), 'yyyy-MM-dd')
+   432→   432→  );
+   433→   433→  const [cashFlowTo, setCashFlowTo] = useState(getTodayStr());
+   434→   434→  const [dueFilter, setDueFilter] = useState<string>('All');
+   435→   435→
+   436→   436→  // Deleting state
+   437→   437→  const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
+   438→   438→
+   439→   439→  // GST state
+   440→   440→  const [gstData, setGstData] = useState<{ cgst: number; sgst: number; igst: number; total: number } | null>(null);
+   441→   441→  const [gstLoading, setGstLoading] = useState(false);
+   442→   442→
+   443→   443→  // Daily reconciliation state
+   444→   444→  const [reconDate, setReconDate] = useState(getTodayStr());
+   445→   445→
+   446→   446→  // P&L Statement state
+   447→   447→  const [plFromDate, setPlFromDate] = useState(() => format(startOfMonth(new Date()), 'yyyy-MM-dd'));
+   448→   448→  const [plToDate, setPlToDate] = useState(getTodayStr());
+   449→   449→  const [plRevenue, setPlRevenue] = useState(0);
+   450→   450→  const [plLoading, setPlLoading] = useState(false);
+   451→   451→
+   452→   452→  // Cash Reconcile state
+   453→   453→  const [actualCashInHand, setActualCashInHand] = useState('');
+   454→   454→
+   455→   455→  // ─── Fetch Data ──────────────────────────────────────────────────────────
+   456→   456→
+   457→   457→  const fetchExpenses = useCallback(async () => {
+   458→   458→    try {
+   459→   459→      setLoadingExpenses(true);
+   460→   460→      const res = await fetch('/api/expenses?limit=200');
+   461→   461→      if (res.ok) {
+   462→   462→        const json = await res.json();
+   463→   463→        setExpenses(Array.isArray(json.data) ? json.data : Array.isArray(json) ? json : []);
+   464→   464→      }
+   465→   465→    } catch {
+   466→   466→      toast.error('Failed to fetch expenses');
+   467→   467→    } finally {
+   468→   468→      setLoadingExpenses(false);
+   469→   469→    }
+   470→   470→  }, []);
+   471→   471→
+   472→   472→  const fetchDues = useCallback(async () => {
+   473→   473→    try {
+   474→   474→      setLoadingDues(true);
+   475→   475→      const res = await fetch('/api/dues?limit=200');
+   476→   476→      if (res.ok) {
+   477→   477→        const json = await res.json();
+   478→   478→        setDues(Array.isArray(json.data) ? json.data : Array.isArray(json) ? json : []);
+   479→   479→      }
+   480→   480→    } catch {
+   481→   481→      toast.error('Failed to fetch dues');
+   482→   482→    } finally {
+   483→   483→      setLoadingDues(false);
+   484→   484→    }
+   485→   485→  }, []);
+   486→   486→
+   487→   487→  const fetchSales = useCallback(async () => {
+   488→   488→    try {
+   489→   489→      setLoadingSales(true);
+   490→   490→      const res = await fetch('/api/sales?limit=500');
+   491→   491→      if (res.ok) {
+   492→   492→        const json = await res.json();
+   493→   493→        const arr = Array.isArray(json.sales) ? json.sales : Array.isArray(json.data) ? json.data : [];
+   494→   494→        setSales(arr);
+   495→   495→      }
+   496→   496→    } catch {
+   497→   497→      toast.error('Failed to fetch sales');
+   498→   498→    } finally {
+   499→   499→      setLoadingSales(false);
+   500→   500→    }
+   501→   501→  }, []);
+   502→   502→
+   503→   503→  const fetchReturns = useCallback(async () => {
+   504→   504→    try {
+   505→   505→      setLoadingReturns(true);
+   506→   506→      const res = await fetch('/api/returns?limit=50');
+   507→   507→      if (res.ok) {
+   508→   508→        const json = await res.json();
+   509→   509→        setReturns(Array.isArray(json.returns) ? json.returns : Array.isArray(json.data) ? json.data : []);
+   510→   510→      }
+   511→   511→    } catch {
+   512→   512→      toast.error('Failed to fetch returns');
+   513→   513→    } finally {
+   514→   514→      setLoadingReturns(false);
+   515→   515→    }
+   516→   516→  }, []);
+   517→   517→
+   518→   518→  // ─── GST Fetch ──────────────────────────────────────────────────────────
+   519→   519→
+   520→   520→  const fetchGST = useCallback(async () => {
+   521→   521→    setGstLoading(true);
+   522→   522→    try {
+   523→   523→      const res = await fetch('/api/reports?type=revenue-comparison');
+   524→   524→      if (res.ok) {
+   525→   525→        const json = await res.json();
+   526→   526→        const summary = json.summary?.thisMonth;
+   527→   527→        if (summary) {
+   528→   528→          setGstData({
+   529→   529→            cgst: summary.cgst || 0,
+   530→   530→            sgst: summary.sgst || 0,
+   531→   531→            igst: summary.igst || 0,
+   532→   532→            total: (summary.cgst || 0) + (summary.sgst || 0) + (summary.igst || 0),
+   533→   533→          });
+   534→   534→        }
+   535→   535→      }
+   536→   536→    } catch { /* ignore */ }
+   537→   537→    finally { setGstLoading(false); }
+   538→   538→  }, []);
+   539→   539→
+   540→   540→  // ─── Daily Cash Reconciliation ──────────────────────────────────────────
+   541→   541→
+   542→   542→  const dailyReconciliation = useMemo(() => {
+   543→   543→    const targetDate = startOfDay(parseISO(reconDate));
+   544→   544→    const nextDay = new Date(targetDate);
+   545→   545→    nextDay.setDate(nextDay.getDate() + 1);
+   546→   546→
+   547→   547→    const daySales = sales.filter((s) => {
+   548→   548→      try {
+   549→   549→        const d = new Date(s.createdAt);
+   550→   550→        return d >= targetDate && d < nextDay;
+   551→   551→      } catch { return false; }
+   552→   552→    });
+   553→   553→
+   554→   554→    const dayExpenses = expenses.filter((e) => {
+   555→   555→      try {
+   556→   556→        const d = new Date(e.date);
+   557→   557→        return d >= targetDate && d < nextDay;
+   558→   558→      } catch { return false; }
+   559→   559→    });
+   560→   560→
+   561→   561→    const cashSales = daySales.filter((s) => (s.paymentMode || '').toLowerCase() === 'cash').reduce((s, x) => s + (x.total || 0), 0);
+   562→   562→    const upiSales = daySales.filter((s) => (s.paymentMode || '').toLowerCase() === 'upi').reduce((s, x) => s + (x.total || 0), 0);
+   563→   563→    const cardSales = daySales.filter((s) => (s.paymentMode || '').toLowerCase() === 'card').reduce((s, x) => s + (x.total || 0), 0);
+   564→   564→    const creditSales = daySales.filter((s) => (s.paymentMode || '').toLowerCase() === 'credit').reduce((s, x) => s + (x.total || 0), 0);
+   565→   565→    const otherSales = daySales.filter((s) => {
+   566→   566→      const m = (s.paymentMode || '').toLowerCase();
+   567→   567→      return !['cash', 'upi', 'card', 'credit'].includes(m);
+   568→   568→    }).reduce((s, x) => s + (x.total || 0), 0);
+   569→   569→
+   570→   570→    const totalDayIncome = daySales.reduce((s, x) => s + (x.total || 0), 0);
+   571→   571→    const totalDayExpenses = dayExpenses.reduce((s, x) => s + (x.amount || 0), 0);
+   572→   572→    const expectedCash = cashSales - totalDayExpenses;
+   573→   573→
+   574→   574→    const dayCGST = daySales.reduce((s, x) => s + ((x as Record<string, unknown>).cgst as number || 0), 0);
+   575→   575→    const daySGST = daySales.reduce((s, x) => s + ((x as Record<string, unknown>).sgst as number || 0), 0);
+   576→   576→    const dayIGST = daySales.reduce((s, x) => s + ((x as Record<string, unknown>).igst as number || 0), 0);
+   577→   577→
+   578→   578→    return {
+   579→   579→      date: reconDate,
+   580→   580→      totalTransactions: daySales.length,
+   581→   581→      totalIncome: totalDayIncome,
+   582→   582→      totalExpenses: totalDayExpenses,
+   583→   583→      cashSales,
+   584→   584→      upiSales,
+   585→   585→      cardSales,
+   586→   586→      creditSales,
+   587→   587→      otherSales,
+   588→   588→      expectedCash,
+   589→   589→      dayCGST,
+   590→   590→      daySGST,
+   591→   591→      dayIGST,
+   592→   592→      totalGST: dayCGST + daySGST + dayIGST,
+   593→   593→      sales: daySales,
+   594→   594→      expenses: dayExpenses,
+   595→   595→    };
+   596→   596→  }, [sales, expenses, reconDate]);
+   597→   597→
+   598→   598→  // ─── P&L Revenue Fetch ─────────────────────────────────────────────────
+   599→   599→
+   600→   600→  const fetchPLRevenue = useCallback(async () => {
+   601→   601→    setPlLoading(true);
+   602→   602→    try {
+   603→   603→      const res = await fetch(`/api/reports?type=revenue&fromDate=${plFromDate}&toDate=${plToDate}`);
+   604→   604→      if (res.ok) {
+   605→   605→        const json = await res.json();
+   606→   606→        const total = json.total ?? json.revenue ?? json.data?.total ?? json.data?.revenue ?? 0;
+   607→   607→        setPlRevenue(typeof total === 'number' ? total : 0);
+   608→   608→      }
+   609→   609→    } catch { /* ignore */ }
+   610→   610→    finally { setPlLoading(false); }
+   611→   611→  }, [plFromDate, plToDate]);
+   612→   612→
+   613→   613→  // ─── P&L Expense Grouping ──────────────────────────────────────────────
+   614→   614→
+   615→   615→  const plExpensesByCategory = useMemo(() => {
+   616→   616→    const from = startOfDay(parseISO(plFromDate));
+   617→   617→    const to = new Date(plToDate + 'T23:59:59');
+   618→   618→    const filtered = expenses.filter((e) => {
+   619→   619→      try {
+   620→   620→        const d = new Date(e.date);
+   621→   621→        return d >= from && d <= to;
+   622→   622→      } catch { return false; }
+   623→   623→    });
+   624→   624→    const map: Record<string, number> = {};
+   625→   625→    filtered.forEach((e) => {
+   626→   626→      const cat = e.category || 'Other';
+   627→   627→      map[cat] = (map[cat] || 0) + (e.amount || 0);
+   628→   628→    });
+   629→   629→    return EXPENSE_CATEGORIES.map((cat) => ({
+   630→   630→      category: cat,
+   631→   631→      total: map[cat] || 0,
+   632→   632→    })).filter((c) => c.total > 0);
+   633→   633→  }, [expenses, plFromDate, plToDate]);
+   634→   634→
+   635→   635→  const plTotalExpenses = useMemo(() => {
+   636→   636→    return plExpensesByCategory.reduce((s, c) => s + c.total, 0);
+   637→   637→  }, [plExpensesByCategory]);
+   638→   638→
+   639→   639→  const plNetProfit = plRevenue - plTotalExpenses;
+   640→   640→
+   641→   641→  // ─── 6-Month P&L Trend Data ──────────────────────────────────────────
+   642→   642→  const plTrendData = useMemo(() => {
+   643→   643→    const months: { month: string; revenue: number; expenses: number; netProfit: number }[] = [];
+   644→   644→    for (let i = 5; i >= 0; i--) {
+   645→   645→      const mDate = subMonths(new Date(), i);
+   646→   646→      const mStart = startOfMonth(mDate);
+   647→   647→      const mEnd = new Date(endOfMonth(mDate).getTime() + 86399999); // include last day
+   648→   648→      const mLabel = format(mDate, 'MMM yy');
+   649→   649→
+   650→   650→      const mRevenue = sales
+   651→   651→        .filter((s) => { try { const d = new Date(s.createdAt); return d >= mStart && d <= mEnd; } catch { return false; } })
+   652→   652→        .reduce((sum, s) => sum + (s.total || 0), 0);
+   653→   653→
+   654→   654→      const mExpenses = expenses
+   655→   655→        .filter((e) => { try { const d = new Date(e.date); return d >= mStart && d <= mEnd; } catch { return false; } })
+   656→   656→        .reduce((sum, e) => sum + (e.amount || 0), 0);
+   657→   657→
+   658→   658→      months.push({ month: mLabel, revenue: mRevenue, expenses: mExpenses, netProfit: mRevenue - mExpenses });
+   659→   659→    }
+   660→   660→    return months;
+   661→   661→  }, [sales, expenses]);
+   662→   662→
+   663→   663→  // ─── Today's Cash Data (for Cash Reconcile) ────────────────────────────
+   664→   664→
+   665→   665→  const todayCashData = useMemo(() => {
+   666→   666→    const targetDate = startOfDay(new Date());
+   667→   667→    const nextDay = new Date(targetDate);
+   668→   668→    nextDay.setDate(nextDay.getDate() + 1);
+   669→   669→
+   670→   670→    const todaySales = sales.filter((s) => {
+   671→   671→      try {
+   672→   672→        const d = new Date(s.createdAt);
+   673→   673→        return d >= targetDate && d < nextDay;
+   674→   674→      } catch { return false; }
+   675→   675→    });
+   676→   676→
+   677→   677→    const todayExpenses = expenses.filter((e) => {
+   678→   678→      try {
+   679→   679→        const d = new Date(e.date);
+   680→   680→        return d >= targetDate && d < nextDay;
+   681→   681→      } catch { return false; }
+   682→   682→    });
+   683→   683→
+   684→   684→    const cashSales = todaySales
+   685→   685→      .filter((s) => (s.paymentMode || '').toLowerCase() === 'cash')
+   686→   686→      .reduce((s, x) => s + (x.total || 0), 0);
+   687→   687→
+   688→   688→    const cashExpenses = todayExpenses.reduce((s, x) => s + (x.amount || 0), 0);
+   689→   689→
+   690→   690→    return {
+   691→   691→      cashSales,
+   692→   692→      cashExpenses,
+   693→   693→      expectedCash: cashSales - cashExpenses,
+   694→   694→    };
+   695→   695→  }, [sales, expenses]);
+   696→   696→
+   697→   697→  const cashVariance = useMemo(() => {
+   698→   698→    const actual = parseFloat(actualCashInHand);
+   699→   699→    if (isNaN(actual)) return null;
+   700→   700→    return actual - todayCashData.expectedCash;
+   701→   701→  }, [actualCashInHand, todayCashData.expectedCash]);
+   702→   702→
+   703→   703→  // Load budget from localStorage
+   704→   704→  useEffect(() => {
+   705→   705→    try {
+   706→   706→      const stored = localStorage.getItem(getBudgetKey());
+   707→   707→      if (stored) setMonthlyBudget(parseFloat(stored) || 0);
+   708→   708→    } catch { /* ignore */ }
+   709→   709→  }, []);
+   710→   710→
+   711→   711→  useEffect(() => {
+   712→   712→    fetchExpenses();
+   713→   713→    fetchDues();
+   714→   714→    fetchSales();
+   715→   715→    fetchReturns();
+   716→   716→    fetchGST();
+   717→   717→  }, [fetchExpenses, fetchDues, fetchSales, fetchReturns, fetchGST]);
+   718→   718→
+   719→   719→  // Fetch P&L revenue on mount and date change
+   720→   720→  useEffect(() => {
+   721→   721→    fetchPLRevenue();
+   722→   722→  }, [fetchPLRevenue]);
+   723→   723→
+   724→   724→  // Cash variance toast (debounced via ref key)
+   725→   725→  const cashVarianceToastKey = useRef<string | null>(null);
+   726→   726→  useEffect(() => {
+   727→   727→    if (cashVariance !== null && Math.abs(cashVariance) > 500) {
+   728→   728→      const key = actualCashInHand;
+   729→   729→      if (cashVarianceToastKey.current !== key) {
+   730→   730→        cashVarianceToastKey.current = key;
+   731→   731→        toast.warning(`Cash variance of ${formatINR(Math.abs(cashVariance))} detected!`, {
+   732→   732→          description: `Expected: ${formatINR(todayCashData.expectedCash)}, Actual: ${formatINR(parseFloat(actualCashInHand))}`,
+   733→   733→        });
+   734→   734→      }
+   735→   735→    } else {
+   736→   736→      cashVarianceToastKey.current = null;
+   737→   737→    }
+   738→   738→  }, [cashVariance, todayCashData.expectedCash, actualCashInHand]);
+   739→   739→
+   740→   740→  // ─── Summary Calculations ────────────────────────────────────────────────
+   741→   741→
+   742→   742→  const todayIncome = useMemo(() => {
+   743→   743→    return sales
+   744→   744→      .filter((s) => {
+   745→   745→        try { return isToday(new Date(s.createdAt)); } catch { return false; }
+   746→   746→      })
+   747→   747→      .reduce((sum, s) => sum + (s.total || 0), 0);
+   748→   748→  }, [sales]);
+   749→   749→
+   750→   750→  const monthlyIncome = useMemo(() => {
+   751→   751→    const mStart = startOfMonth(new Date());
+   752→   752→    return sales
+   753→   753→      .filter((s) => {
+   754→   754→        try { return new Date(s.createdAt) >= mStart; } catch { return false; }
+   755→   755→      })
+   756→   756→      .reduce((sum, s) => sum + (s.total || 0), 0);
+   757→   757→  }, [sales]);
+   758→   758→
+   759→   759→  const lastMonthIncome = useMemo(() => {
+   760→   760→    const lastMStart = startOfMonth(subMonths(new Date(), 1));
+   761→   761→    const lastMEnd = endOfMonth(subMonths(new Date(), 1));
+   762→   762→    return sales
+   763→   763→      .filter((s) => {
+   764→   764→        try {
+   765→   765→          const d = new Date(s.createdAt);
+   766→   766→          return d >= lastMStart && d <= lastMEnd;
+   767→   767→        } catch { return false; }
+   768→   768→      })
+   769→   769→      .reduce((sum, s) => sum + (s.total || 0), 0);
+   770→   770→  }, [sales]);
+   771→   771→
+   772→   772→  const monthlyExpensesTotal = useMemo(() => {
+   773→   773→    const mStart = startOfMonth(new Date());
+   774→   774→    return expenses
+   775→   775→      .filter((e) => {
+   776→   776→        try { return new Date(e.date) >= mStart; } catch { return false; }
+   777→   777→      })
+   778→   778→      .reduce((sum, e) => sum + (e.amount || 0), 0);
+   779→   779→  }, [expenses]);
+   780→   780→
+   781→   781→  const totalExpenses = useMemo(() => {
+   782→   782→    return expenses.reduce((s, e) => s + (e.amount || 0), 0);
+   783→   783→  }, [expenses]);
+   784→   784→
+   785→   785→  const todayExpenses = useMemo(() => {
+   786→   786→    return expenses
+   787→   787→      .filter((e) => {
+   788→   788→        try { return isToday(new Date(e.date)); } catch { return false; }
+   789→   789→      })
+   790→   790→      .reduce((sum, e) => sum + (e.amount || 0), 0);
+   791→   791→  }, [expenses]);
+   792→   792→
+   793→   793→  const totalPendingDues = useMemo(() => {
+   794→   794→    return dues
+   795→   795→      .filter((d) => d.status !== 'Paid')
+   796→   796→      .reduce((sum, d) => sum + ((d.amount || 0) - (d.paid || 0)), 0);
+   797→   797→  }, [dues]);
+   798→   798→
+   799→   799→  // ─── Returns Summary ────────────────────────────────────────────────────
+   800→   800→
+   801→   801→  const totalReturnRefund = useMemo(() => {
+   802→   802→    return returns.reduce((s, r) => s + (r.amount || 0), 0);
+   803→   803→  }, [returns]);
+   804→   804→
+   805→   805→  const thisMonthReturns = useMemo(() => {
+   806→   806→    const mStart = startOfMonth(new Date());
+   807→   807→    return returns.filter((r) => {
+   808→   808→      try { return new Date(r.createdAt) >= mStart; } catch { return false; }
+   809→   809→    });
+   810→   810→  }, [returns]);
+   811→   811→
+   812→   812→  const thisMonthReturnAmount = useMemo(() => {
+   813→   813→    return thisMonthReturns.reduce((s, r) => s + (r.amount || 0), 0);
+   814→   814→  }, [thisMonthReturns]);
+   815→   815→
+   816→   816→  // ─── P&L Calculations ───────────────────────────────────────────────────
+   817→   817→
+   818→   818→  const netProfit = useMemo(() => {
+   819→   819→    return monthlyIncome - monthlyExpensesTotal;
+   820→   820→  }, [monthlyIncome, monthlyExpensesTotal]);
+   821→   821→
+   822→   822→  const momChangePercent = useMemo(() => {
+   823→   823→    if (lastMonthIncome === 0) return monthlyIncome > 0 ? 100 : 0;
+   824→   824→    return Math.round(((monthlyIncome - lastMonthIncome) / lastMonthIncome) * 100);
+   825→   825→  }, [monthlyIncome, lastMonthIncome]);
+   826→   826→
+   827→   827→  // ─── Cash Flow Calculations ──────────────────────────────────────────────
+   828→   828→
+   829→   829→  const cashFlowData = useMemo((): CashFlowEntry[] => {
+   830→   830→    const fromDate = startOfDay(parseISO(cashFlowFrom));
+   831→   831→    const toDate = startOfDay(parseISO(cashFlowTo));
+   832→   832→
+   833→   833→    const incomeEntries: CashFlowEntry[] = sales
+   834→   834→      .filter((s) => {
+   835→   835→        try {
+   836→   836→          const d = new Date(s.createdAt);
+   837→   837→          return isWithinInterval(d, { start: fromDate, end: new Date(cashFlowTo + 'T23:59:59') });
+   838→   838→        } catch { return false; }
+   839→   839→      })
+   840→   840→      .map((s) => ({
+   841→   841→        date: toDateString(s.createdAt),
+   842→   842→        description: `Sale - ${s.customer?.name || s.customerName || 'Customer'} (${s.invoiceNo || ''})`,
+   843→   843→        type: 'Income' as const,
+   844→   844→        amount: s.total || 0,
+   845→   845→        balance: 0,
+   846→   846→      }));
+   847→   847→
+   848→   848→    const expenseEntries: CashFlowEntry[] = expenses
+   849→   849→      .filter((e) => {
+   850→   850→        try {
+   851→   851→          const d = new Date(e.date);
+   852→   852→          return isWithinInterval(d, { start: fromDate, end: new Date(cashFlowTo + 'T23:59:59') });
+   853→   853→        } catch { return false; }
+   854→   854→      })
+   855→   855→      .map((e) => ({
+   856→   856→        date: toDateString(e.date),
+   857→   857→        description: `${e.category} - ${e.description || e.vendor || 'Expense'}`,
+   858→   858→        type: 'Expense' as const,
+   859→   859→        amount: e.amount,
+   860→   860→        balance: 0,
+   861→   861→      }));
+   862→   862→
+   863→   863→    const allEntries = [...incomeEntries, ...expenseEntries].sort((a, b) => {
+   864→   864→      const dc = a.date.localeCompare(b.date);
+   865→   865→      if (dc !== 0) return dc;
+   866→   866→      return a.type === 'Income' ? -1 : 1;
+   867→   867→    });
+   868→   868→
+   869→   869→    let runningBalance = 0;
+   870→   870→    return allEntries.map((entry) => {
+   871→   871→      if (entry.type === 'Income') runningBalance += entry.amount;
+   872→   872→      else runningBalance -= entry.amount;
+   873→   873→      return { ...entry, balance: runningBalance };
+   874→   874→    });
+   875→   875→  }, [sales, expenses, cashFlowFrom, cashFlowTo]);
+   876→   876→
+   877→   877→  const cashFlowSummary = useMemo(() => {
+   878→   878→    const totalIncome = cashFlowData.filter((e) => e.type === 'Income').reduce((s, e) => s + e.amount, 0);
+   879→   879→    const totalExpense = cashFlowData.filter((e) => e.type === 'Expense').reduce((s, e) => s + e.amount, 0);
+   880→   880→    return { totalIncome, totalExpense, net: totalIncome - totalExpense };
+   881→   881→  }, [cashFlowData]);
+   882→   882→
+   883→   883→  // ─── Expense Category Summary ────────────────────────────────────────────
+   884→   884→
+   885→   885→  const categorySummary = useMemo(() => {
+   886→   886→    const map: Record<string, number> = {};
+   887→   887→    expenses.forEach((e) => {
+   888→   888→      const cat = e.category || 'Other';
+   889→   889→      map[cat] = (map[cat] || 0) + (e.amount || 0);
+   890→   890→    });
+   891→   891→    return EXPENSE_CATEGORIES.map((cat) => ({
+   892→   892→      name: cat,
+   893→   893→      value: map[cat] || 0,
+   894→   894→    })).filter((c) => c.value > 0);
+   895→   895→  }, [expenses]);
+   896→   896→
+   897→   897→  // ─── Filtered Dues (with overdue detection) ──────────────────────────────
+   898→   898→
+   899→   899→  const filteredDues = useMemo(() => {
+   900→   900→    let filtered = dues;
+   901→   901→    if (dueFilter === 'All') {
+   902→   902→      // no filter
+   903→   903→    } else if (dueFilter === 'Overdue') {
+   904→   904→      const todayStr = getTodayStr();
+   905→   905→      filtered = dues.filter((d) => {
+   906→   906→        if (d.status === 'Paid') return false;
+   907→   907→        if (!d.dueDate) return false;
+   908→   908→        try {
+   909→   909→          return isBefore(parseISO(toDateString(d.dueDate)), parseISO(todayStr));
+   910→   910→        } catch { return false; }
+   911→   911→      });
+   912→   912→    } else {
+   913→   913→      filtered = dues.filter((d) => d.status === dueFilter);
+   914→   914→    }
+   915→   915→    return filtered;
+   916→   916→  }, [dues, dueFilter]);
+   917→   917→
+   918→   918→  // ─── Overdue check helper ────────────────────────────────────────────────
+   919→   919→
+   920→   920→  const isDueOverdue = useCallback((due: Due): boolean => {
+   921→   921→    if (due.status === 'Paid') return false;
+   922→   922→    if (!due.dueDate) return false;
+   923→   923→    try {
+   924→   924→      return isBefore(parseISO(toDateString(due.dueDate)), parseISO(getTodayStr()));
+   925→   925→    } catch { return false; }
+   926→   926→  }, []);
+   927→   927→
+   928→   928→  // ─── Expense Form Handlers ───────────────────────────────────────────────
+   929→   929→
+   930→   930→  const resetExpForm = () => {
+   931→   931→    setExpForm({ category: '', description: '', amount: '', date: getTodayStr(), vendor: '' });
+   932→   932→    setEditingExpense(null);
+   933→   933→  };
+   934→   934→
+   935→   935→  const openAddExpense = () => { resetExpForm(); setExpenseDialogOpen(true); };
+   936→   936→
+   937→   937→  const openEditExpense = (expense: Expense) => {
+   938→   938→    setEditingExpense(expense);
+   939→   939→    setExpForm({
+   940→   940→      category: expense.category || '',
+   941→   941→      description: expense.description || '',
+   942→   942→      amount: String(expense.amount || ''),
+   943→   943→      date: toDateString(expense.date),
+   944→   944→      vendor: expense.vendor || '',
+   945→   945→    });
+   946→   946→    setExpenseDialogOpen(true);
+   947→   947→  };
+   948→   948→
+   949→   949→  const handleSaveExpense = async () => {
+   950→   950→    const amount = parseFloat(expForm.amount);
+   951→   951→    if (!expForm.category || !expForm.description || isNaN(amount) || amount <= 0 || !expForm.date) {
+   952→   952→      toast.error('Please fill in all required fields with valid data');
+   953→   953→      return;
+   954→   954→    }
+   955→   955→    try {
+   956→   956→      const isEdit = !!editingExpense;
+   957→   957→      const url = editingExpense ? `/api/expenses?id=${editingExpense.id}` : '/api/expenses';
+   958→   958→      const res = await fetch(url, {
+   959→   959→        method: isEdit ? 'PUT' : 'POST',
+   960→   960→        headers: { 'Content-Type': 'application/json' },
+   961→   961→        body: JSON.stringify({
+   962→   962→          category: expForm.category,
+   963→   963→          description: expForm.description,
+   964→   964→          amount,
+   965→   965→          date: expForm.date,
+   966→   966→          vendor: expForm.vendor || null,
+   967→   967→        }),
+   968→   968→      });
+   969→   969→      if (res.ok) {
+   970→   970→        toast.success(isEdit ? 'Expense updated' : 'Expense added');
+   971→   971→        setExpenseDialogOpen(false);
+   972→   972→        resetExpForm();
+   973→   973→        fetchExpenses();
+   974→   974→      } else {
+   975→   975→        const err = await res.json().catch(() => ({}));
+   976→   976→        toast.error(err.error || 'Failed to save expense');
+   977→   977→      }
+   978→   978→    } catch { toast.error('Network error'); }
+   979→   979→  };
+   980→   980→
+   981→   981→  const handleDeleteExpense = async (id: string) => {
+   982→   982→    setDeletingExpenseId(id);
+   983→   983→    try {
+   984→   984→      const res = await fetch(`/api/expenses?id=${id}`, { method: 'DELETE' });
+   985→   985→      if (res.ok) { toast.success('Expense deleted'); fetchExpenses(); }
+   986→   986→      else toast.error('Failed to delete expense');
+   987→   987→    } catch { toast.error('Network error'); }
+   988→   988→    finally { setDeletingExpenseId(null); }
+   989→   989→  };
+   990→   990→
+   991→   991→  // ─── Payment Handlers ────────────────────────────────────────────────────
+   992→   992→
+   993→   993→  const openPaymentDialog = (due: Due) => {
+   994→   994→    setPayingDue(due);
+   995→   995→    setPaymentAmount('');
+   996→   996→    setPaymentDialogOpen(true);
+   997→   997→  };
+   998→   998→
+   999→   999→  const handleRecordPayment = async () => {
+  1000→  1000→    if (!payingDue) return;
+  1001→  1001→    const amount = parseFloat(paymentAmount);
+  1002→  1002→    const balance = (payingDue.amount || 0) - (payingDue.paid || 0);
+  1003→  1003→    if (isNaN(amount) || amount <= 0) { toast.error('Please enter a valid amount'); return; }
+  1004→  1004→    if (amount > balance) { toast.error('Amount exceeds pending balance'); return; }
+  1005→  1005→
+  1006→  1006→    setMarkPaidLoading(true);
+  1007→  1007→    try {
+  1008→  1008→      const res = await fetch(`/api/dues?id=${payingDue.id}`, {
+  1009→  1009→        method: 'PUT',
+  1010→  1010→        headers: { 'Content-Type': 'application/json' },
+  1011→  1011→        body: JSON.stringify({ paidAmount: amount }),
+  1012→  1012→      });
+  1013→  1013→      if (res.ok) {
+  1014→  1014→        toast.success(`Payment of ${formatINR(amount)} recorded`);
+  1015→  1015→        setPaymentDialogOpen(false);
+  1016→  1016→        setPayingDue(null);
+  1017→  1017→        fetchDues();
+  1018→  1018→      } else toast.error('Failed to record payment');
+  1019→  1019→    } catch { toast.error('Network error'); }
+  1020→  1020→    finally { setMarkPaidLoading(false); }
+  1021→  1021→  };
+  1022→  1022→
+  1023→  1023→  const handleMarkPaid = async (due: Due) => {
+  1024→  1024→    setMarkPaidLoading(true);
+  1025→  1025→    try {
+  1026→  1026→      const res = await fetch(`/api/dues?id=${due.id}`, {
+  1027→  1027→        method: 'PUT',
+  1028→  1028→        headers: { 'Content-Type': 'application/json' },
+  1029→  1029→        body: JSON.stringify({ status: 'Paid' }),
+  1030→  1030→      });
+  1031→  1031→      if (res.ok) { toast.success(`${due.customer?.name || 'Customer'} marked as paid`); fetchDues(); }
+  1032→  1032→      else toast.error('Failed to update');
+  1033→  1033→    } catch { toast.error('Network error'); }
+  1034→  1034→    finally { setMarkPaidLoading(false); }
+  1035→  1035→  };
+  1036→  1036→
+  1037→  1037→  // ─── Return Handlers ─────────────────────────────────────────────────────
+  1038→  1038→
+  1039→  1039→  const openCreateReturn = () => {
+  1040→  1040→    setReturnForm({ saleSearch: '', saleId: '', refundAmount: '', reason: '' });
+  1041→  1041→    setSaleSearchResults([]);
+  1042→  1042→    setSelectedReturnSale(null);
+  1043→  1043→    setReturnDialogOpen(true);
+  1044→  1044→  };
+  1045→  1045→
+  1046→  1046→  const handleSaleSearch = (query: string) => {
+  1047→  1047→    setReturnForm((f) => ({ ...f, saleSearch: query }));
+  1048→  1048→    if (saleSearchTimeout.current) clearTimeout(saleSearchTimeout.current);
+  1049→  1049→    if (!query.trim()) { setSaleSearchResults([]); return; }
+  1050→  1050→    saleSearchTimeout.current = setTimeout(async () => {
+  1051→  1051→      try {
+  1052→  1052→        const res = await fetch(`/api/sales?search=${encodeURIComponent(query)}&limit=10`);
+  1053→  1053→        if (res.ok) {
+  1054→  1054→          const json = await res.json();
+  1055→  1055→          const arr = Array.isArray(json.sales) ? json.sales : Array.isArray(json.data) ? json.data : [];
+  1056→  1056→          setSaleSearchResults(arr);
+  1057→  1057→        }
+  1058→  1058→      } catch { /* ignore */ }
+  1059→  1059→    }, 300);
+  1060→  1060→  };
+  1061→  1061→
+  1062→  1062→  const selectReturnSale = (sale: Sale) => {
+  1063→  1063→    setSelectedReturnSale(sale);
+  1064→  1064→    setReturnForm((f) => ({ ...f, saleId: sale.id, refundAmount: String(sale.total || 0) }));
+  1065→  1065→    setSaleSearchResults([]);
+  1066→  1066→  };
+  1067→  1067→
+  1068→  1068→  const handleCreateReturn = async () => {
+  1069→  1069→    if (!returnForm.saleId || !returnForm.reason) {
+  1070→  1070→      toast.error('Please select a sale and a reason');
+  1071→  1071→      return;
+  1072→  1072→    }
+  1073→  1073→    const amount = parseFloat(returnForm.refundAmount);
+  1074→  1074→    if (isNaN(amount) || amount <= 0) {
+  1075→  1075→      toast.error('Please enter a valid refund amount');
+  1076→  1076→      return;
+  1077→  1077→    }
+  1078→  1078→    setCreatingReturn(true);
+  1079→  1079→    try {
+  1080→  1080→      const res = await fetch('/api/returns', {
+  1081→  1081→        method: 'POST',
+  1082→  1082→        headers: { 'Content-Type': 'application/json' },
+  1083→  1083→        body: JSON.stringify({
+  1084→  1084→          saleId: returnForm.saleId,
+  1085→  1085→          reason: returnForm.reason,
+  1086→  1086→          refundAmount: amount,
+  1087→  1087→        }),
+  1088→  1088→      });
+  1089→  1089→      if (res.ok) {
+  1090→  1090→        toast.success('Return created successfully');
+  1091→  1091→        setReturnDialogOpen(false);
+  1092→  1092→        fetchReturns();
+  1093→  1093→      } else {
+  1094→  1094→        const err = await res.json().catch(() => ({}));
+  1095→  1095→        toast.error(err.error || 'Failed to create return');
+  1096→  1096→      }
+  1097→  1097→    } catch { toast.error('Network error'); }
+  1098→  1098→    finally { setCreatingReturn(false); }
+  1099→  1099→  };
+  1100→  1100→
+  1101→  1101→  // ─── CSV Export ──────────────────────────────────────────────────────────
+  1102→  1102→
+  1103→  1103→  const handleExportCSV = () => {
+  1104→  1104→    const rows = expenses.map((e) => [
+  1105→  1105→      formatDate(e.date),
+  1106→  1106→      e.category,
+  1107→  1107→      `"${(e.description || '').replace(/"/g, '""')}"`,
+  1108→  1108→      e.amount,
+  1109→  1109→      `"${(e.vendor || '').replace(/"/g, '""')}"`,
+  1110→  1110→    ]);
+  1111→  1111→    const csv = ['Date,Category,Description,Amount,Vendor', ...rows.map((r) => r.join(','))].join('\n');
+  1112→  1112→    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  1113→  1113→    const url = URL.createObjectURL(blob);
+  1114→  1114→    const a = document.createElement('a');
+  1115→  1115→    a.href = url;
+  1116→  1116→    a.download = `expenses_${getTodayStr()}.csv`;
+  1117→  1117→    a.click();
+  1118→  1118→    URL.revokeObjectURL(url);
+  1119→  1119→    toast.success('CSV exported successfully');
+  1120→  1120→  };
+  1121→  1121→
+  1122→  1122→  // ─── Budget Handlers ─────────────────────────────────────────────────────
+  1123→  1123→
+  1124→  1124→  const handleSetBudget = () => {
+  1125→  1125→    const val = parseFloat(budgetInput);
+  1126→  1126→    if (isNaN(val) || val <= 0) {
+  1127→  1127→      toast.error('Please enter a valid budget amount');
+  1128→  1128→      return;
+  1129→  1129→    }
+  1130→  1130→    setMonthlyBudget(val);
+  1131→  1131→    localStorage.setItem(getBudgetKey(), String(val));
+  1132→  1132→    setBudgetDialogOpen(false);
+  1133→  1133→    setBudgetInput('');
+  1134→  1134→    toast.success('Monthly budget set to ' + formatINR(val));
+  1135→  1135→  };
+  1136→  1136→
+  1137→  1137→  const budgetPercent = monthlyBudget > 0 ? Math.min((monthlyExpensesTotal / monthlyBudget) * 100, 100) : 0;
+  1138→  1138→  const budgetRemaining = monthlyBudget - monthlyExpensesTotal;
+  1139→  1139→
+  1140→  1140→  // ─── Status Badges ───────────────────────────────────────────────────────
+  1141→  1141→
+  1142→  1142→  const DueStatusBadge = ({ status }: { status: string }) => {
+  1143→  1143→    const styles: Record<string, string> = {
+  1144→  1144→      Pending: 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800',
+  1145→  1145→      Partial: 'bg-sky-100 text-sky-800 border-sky-200 hover:bg-sky-100 dark:bg-sky-950 dark:text-sky-300 dark:border-sky-800',
+  1146→  1146→      Paid: 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800',
+  1147→  1147→      Overdue: 'bg-red-100 text-red-800 border-red-200 hover:bg-red-100 dark:bg-red-950 dark:text-red-300 dark:border-red-800',
+  1148→  1148→    };
+  1149→  1149→    return (
+  1150→  1150→      <Badge className={styles[status] || 'border'}>
+  1151→  1151→        {status}
+  1152→  1152→      </Badge>
+  1153→  1153→    );
+  1154→  1154→  };
+  1155→  1155→
+  1156→  1156→  const ReturnStatusBadge = ({ status }: { status: string }) => {
+  1157→  1157→    const styles: Record<string, string> = {
+  1158→  1158→      Completed: 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800',
+  1159→  1159→      Pending: 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800',
+  1160→  1160→      Rejected: 'bg-red-100 text-red-800 border-red-200 hover:bg-red-100 dark:bg-red-950 dark:text-red-300 dark:border-red-800',
+  1161→  1161→    };
+  1162→  1162→    return (
+  1163→  1163→      <Badge className={styles[status] || 'border'}>
+  1164→  1164→        {status}
+  1165→  1165→      </Badge>
+  1166→  1166→    );
+  1167→  1167→  };
+  1168→  1168→
+  1169→  1169→  // ─── Skeleton ─────────────────────────────────────────────────────────────
+  1170→  1170→
+  1171→  1171→  const TableSkeleton = ({ rows = 5, cols = 6 }: { rows?: number; cols?: number }) => (
+  1172→  1172→    <div className="space-y-2 p-4">
+  1173→  1173→      {Array.from({ length: rows }).map((_, i) => (
+  1174→  1174→        <div key={i} className="flex gap-4">
+  1175→  1175→          {Array.from({ length: cols }).map((_, j) => (
+  1176→  1176→            <div key={j} className="h-8 bg-muted rounded animate-pulse flex-1" />
+  1177→  1177→          ))}
+  1178→  1178→        </div>
+  1179→  1179→      ))}
+  1180→  1180→    </div>
+  1181→  1181→  );
+  1182→  1182→
+  1183→  1183→  // ─── Render ──────────────────────────────────────────────────────────────
+  1184→  1184→
+  1185→  1185→  return (
+  1186→  1186→    <div className="space-y-6 p-4 md:p-6">
+  1187→  1187→      {/* Page Header */}
+  1188→  1188→      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  1189→  1189→        <div>
+  1190→  1190→          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+  1191→  1191→            <IndianRupee className="h-6 w-6" />
+  1192→  1192→            Accounting & Finance
+  1193→  1193→          </h1>
+  1194→  1194→          <p className="text-muted-foreground text-sm mt-1">
+  1195→  1195→            Track income, expenses, and pending dues
+  1196→  1196→          </p>
+  1197→  1197→        </div>
+  1198→  1198→        <Button onClick={openAddExpense} size="sm" className="gap-1.5 w-fit touch-manipulation min-h-[44px] active:scale-95 transition-transform">
+  1199→  1199→          <Plus className="h-4 w-4" />
+  1200→  1200→          Add Expense
+  1201→  1201→        </Button>
+  1202→  1202→      </div>
+  1203→  1203→
+  1204→  1204→      {/* ─── Profit & Loss Card ─────────────────────────────────────────── */}
+  1205→  1205→      <Collapsible open={plOpen} onOpenChange={setPlOpen}>
+  1206→  1206→        <Card>
+  1207→  1207→          <CollapsibleTrigger className="w-full">
+  1208→  1208→            <CardHeader className="pb-2 cursor-pointer">
+  1209→  1209→              <div className="flex items-center justify-between">
+  1210→  1210→                <div className="flex items-center gap-2">
+  1211→  1211→                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-950">
+  1212→  1212→                    <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+  1213→  1213→                  </div>
+  1214→  1214→                  <div>
+  1215→  1215→                    <CardTitle className="text-base">Profit &amp; Loss Summary</CardTitle>
+  1216→  1216→                    <CardDescription className="text-xs">
+  1217→  1217→                      {format(new Date(), 'MMMM yyyy')} &bull; Net: <span className={netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-red-600 dark:text-red-400 font-semibold'}>{formatINR(netProfit)}</span>
+  1218→  1218→                    </CardDescription>
+  1219→  1219→                  </div>
+  1220→  1220→                </div>
+  1221→  1221→                <div className="flex items-center gap-3">
+  1222→  1222→                  {lastMonthIncome > 0 && (
+  1223→  1223→                    <div className={`flex items-center gap-0.5 text-xs font-medium ${momChangePercent >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+  1224→  1224→                      {momChangePercent >= 0 ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
+  1225→  1225→                      {Math.abs(momChangePercent)}% vs last month
+  1226→  1226→                    </div>
+  1227→  1227→                  )}
+  1228→  1228→                  {plOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+  1229→  1229→                </div>
+  1230→  1230→              </div>
+  1231→  1231→            </CardHeader>
+  1232→  1232→          </CollapsibleTrigger>
+  1233→  1233→          <CollapsibleContent>
+  1234→  1234→            <CardContent className="pt-0 space-y-4">
+  1235→  1235→              {/* P&L Header Row */}
+  1236→  1236→              <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+  1237→  1237→                <div className="rounded-lg border p-3">
+  1238→  1238→                  <p className="text-xs text-muted-foreground">Revenue</p>
+  1239→  1239→                  <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">{formatINR(monthlyIncome)}</p>
+  1240→  1240→                  <p className="text-[10px] text-muted-foreground mt-0.5">Monthly collections</p>
+  1241→  1241→                </div>
+  1242→  1242→                <div className="rounded-lg border p-3">
+  1243→  1243→                  <p className="text-xs text-muted-foreground">Cost of Goods</p>
+  1244→  1244→                  <p className="text-sm font-bold text-muted-foreground font-mono">Not tracked</p>
+  1245→  1245→                  <p className="text-[10px] text-muted-foreground mt-0.5">Enable product costing</p>
+  1246→  1246→                </div>
+  1247→  1247→                <div className="rounded-lg border p-3">
+  1248→  1248→                  <p className="text-xs text-muted-foreground">Gross Profit</p>
+  1249→  1249→                  <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">{formatINR(monthlyIncome)}</p>
+  1250→  1250→                  <p className="text-[10px] text-muted-foreground mt-0.5">Revenue (COGS not tracked)</p>
+  1251→  1251→                </div>
+  1252→  1252→                <div className="rounded-lg border p-3">
+  1253→  1253→                  <p className="text-xs text-muted-foreground">Total Expenses</p>
+  1254→  1254→                  <p className="text-sm font-bold text-red-600 dark:text-red-400 font-mono">{formatINR(monthlyExpensesTotal)}</p>
+  1255→  1255→                  <p className="text-[10px] text-muted-foreground mt-0.5">This month</p>
+  1256→  1256→                </div>
+  1257→  1257→                <div className={`rounded-lg border p-3 ${netProfit >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-red-50 dark:bg-red-950/30'}`}>
+  1258→  1258→                  <p className="text-xs text-muted-foreground">Net Profit</p>
+  1259→  1259→                  <p className={`text-sm font-bold font-mono ${netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{formatINR(netProfit)}</p>
+  1260→  1260→                  <p className="text-[10px] text-muted-foreground mt-0.5">Revenue - Expenses</p>
+  1261→  1261→                </div>
+  1262→  1262→              </div>
+  1263→  1263→
+  1264→  1264→              {/* P&L Detail: Expense Category Breakdown */}
+  1265→  1265→              <Separator />
+  1266→  1266→              <div>
+  1267→  1267→                <h3 className="text-sm font-semibold mb-3">Expense Breakdown by Category</h3>
+  1268→  1268→                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+  1269→  1269→                  {EXPENSE_CATEGORIES.map((cat) => {
+  1270→  1270→                    const catTotal = expenses
+  1271→  1271→                      .filter((e) => {
+  1272→  1272→                        if (e.category !== cat) return false;
+  1273→  1273→                        try { return new Date(e.date) >= startOfMonth(new Date()); } catch { return false; }
+  1274→  1274→                      })
+  1275→  1275→                      .reduce((s, e) => s + (e.amount || 0), 0);
+  1276→  1276→                    if (catTotal === 0) return null;
+  1277→  1277→                    const pct = monthlyExpensesTotal > 0 ? ((catTotal / monthlyExpensesTotal) * 100).toFixed(1) : '0.0';
+  1278→  1278→                    return (
+  1279→  1279→                      <div key={cat} className="rounded-lg border p-3">
+  1280→  1280→                        <div className="flex items-center justify-between mb-1">
+  1281→  1281→                          <p className="text-xs font-medium text-muted-foreground">{cat}</p>
+  1282→  1282→                          <span className="text-[10px] text-muted-foreground">{pct}%</span>
+  1283→  1283→                        </div>
+  1284→  1284→                        <p className="text-sm font-bold text-red-600 dark:text-red-400 font-mono">{formatINR(catTotal)}</p>
+  1285→  1285→                        <Progress value={parseFloat(pct)} className="mt-1.5 h-1" />
+  1286→  1286→                      </div>
+  1287→  1287→                    );
+  1288→  1288→                  })}
+  1289→  1289→                </div>
+  1290→  1290→              </div>
+  1291→  1291→
+  1292→  1292→              {/* P&L Bar Chart: Income vs Expenses by category */}
+  1293→  1293→              {categorySummary.length > 0 && (
+  1294→  1294→                <div>
+  1295→  1295→                  <h3 className="text-sm font-semibold mb-3">Income vs Expenses (This Month)</h3>
+  1296→  1296→                  <div className="h-[220px]">
+  1297→  1297→                    <ChartContainer config={BAR_CHART_CONFIG} className="h-full w-full">
+  1298→  1298→                      <BarChart data={categorySummary} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+  1299→  1299→                        <CartesianGrid vertical={false} strokeDasharray="3 3" />
+  1300→  1300→                        <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+  1301→  1301→                        <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+  1302→  1302→                        <ChartTooltip content={<ChartTooltipContent />} />
+  1303→  1303→                        <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={28} fill="hsl(var(--chart-1))" />
+  1304→  1304→                      </BarChart>
+  1305→  1305→                    </ChartContainer>
+  1306→  1306→                  </div>
+  1307→  1307→                </div>
+  1308→  1308→              )}
+  1309→  1309→            </CardContent>
+  1310→  1310→          </CollapsibleContent>
+  1311→  1311→        </Card>
+  1312→  1312→      </Collapsible>
+  1313→  1313→
+  1314→  1314→      {/* Summary Cards */}
+  1315→  1315→      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+  1316→  1316→        <Card className="py-4">
+  1317→  1317→          <CardContent className="px-4">
+  1318→  1318→            <div className="flex items-center gap-3">
+  1319→  1319→              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-950">
+  1320→  1320→                <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+  1321→  1321→              </div>
+  1322→  1322→              <div className="min-w-0">
+  1323→  1323→                <p className="text-xs text-muted-foreground font-medium">Today&apos;s Collections</p>
+  1324→  1324→                <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 truncate">{formatINR(todayIncome)}</p>
+  1325→  1325→              </div>
+  1326→  1326→            </div>
+  1327→  1327→          </CardContent>
+  1328→  1328→        </Card>
+  1329→  1329→
+  1330→  1330→        <Card className="py-4">
+  1331→  1331→          <CardContent className="px-4">
+  1332→  1332→            <div className="flex items-center gap-3">
+  1333→  1333→              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-100 dark:bg-teal-950">
+  1334→  1334→                <Wallet className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+  1335→  1335→              </div>
+  1336→  1336→              <div className="min-w-0">
+  1337→  1337→                <p className="text-xs text-muted-foreground font-medium">Monthly Collections</p>
+  1338→  1338→                <p className="text-lg font-bold text-teal-600 dark:text-teal-400 truncate">{formatINR(monthlyIncome)}</p>
+  1339→  1339→              </div>
+  1340→  1340→            </div>
+  1341→  1341→          </CardContent>
+  1342→  1342→        </Card>
+  1343→  1343→
+  1344→  1344→        <Card className="py-4">
+  1345→  1345→          <CardContent className="px-4">
+  1346→  1346→            <div className="flex items-center gap-3">
+  1347→  1347→              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-950">
+  1348→  1348→                <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+  1349→  1349→              </div>
+  1350→  1350→              <div className="min-w-0">
+  1351→  1351→                <p className="text-xs text-muted-foreground font-medium">Outstanding Dues</p>
+  1352→  1352→                <p className="text-lg font-bold text-amber-600 dark:text-amber-400 truncate">{formatINR(totalPendingDues)}</p>
+  1353→  1353→              </div>
+  1354→  1354→            </div>
+  1355→  1355→          </CardContent>
+  1356→  1356→        </Card>
+  1357→  1357→
+  1358→  1358→        <Card className="py-4">
+  1359→  1359→          <CardContent className="px-4">
+  1360→  1360→            <div className="flex items-center gap-3">
+  1361→  1361→              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-100 dark:bg-red-950">
+  1362→  1362→                <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
+  1363→  1363→              </div>
+  1364→  1364→              <div className="min-w-0">
+  1365→  1365→                <p className="text-xs text-muted-foreground font-medium">Total Expenses</p>
+  1366→  1366→                <p className="text-lg font-bold text-red-600 dark:text-red-400 truncate">{formatINR(totalExpenses)}</p>
+  1367→  1367→              </div>
+  1368→  1368→            </div>
+  1369→  1369→          </CardContent>
+  1370→  1370→        </Card>
+  1371→  1371→      </div>
+  1372→  1372→
+  1373→  1373→      {/* Tabs */}
+  1374→  1374→      <Tabs defaultValue="cashflow" className="space-y-4">
+  1375→  1375→        <TabsList className="flex-wrap">
+  1376→  1376→          <TabsTrigger value="cashflow" className="gap-1.5 touch-manipulation min-h-[44px]"><Banknote className="h-4 w-4" /><span className="hidden sm:inline">Cash Flow</span></TabsTrigger>
+  1377→  1377→          <TabsTrigger value="expenses" className="gap-1.5 touch-manipulation min-h-[44px]"><Receipt className="h-4 w-4" /><span className="hidden sm:inline">Expenses</span></TabsTrigger>
+  1378→  1378→          <TabsTrigger value="gst" className="gap-1.5 touch-manipulation min-h-[44px]"><Target className="h-4 w-4" /><span className="hidden sm:inline">GST</span></TabsTrigger>
+  1379→  1379→          <TabsTrigger value="pl-statement" className="gap-1.5 touch-manipulation min-h-[44px]"><BarChart3 className="h-4 w-4" /><span className="hidden sm:inline">P&L Statement</span></TabsTrigger>
+  1380→  1380→          <TabsTrigger value="reconciliation" className="gap-1.5 touch-manipulation min-h-[44px]"><CheckCircle2 className="h-4 w-4" /><span className="hidden sm:inline">Cash Recon</span></TabsTrigger>
+  1381→  1381→          <TabsTrigger value="cash-reconcile" className="gap-1.5 touch-manipulation min-h-[44px]"><Calculator className="h-4 w-4" /><span className="hidden sm:inline">Reconcile</span></TabsTrigger>
+  1382→  1382→          <TabsTrigger value="dues" className="gap-1.5 touch-manipulation min-h-[44px]"><CreditCard className="h-4 w-4" /><span className="hidden sm:inline">Dues</span></TabsTrigger>
+  1383→  1383→          <TabsTrigger value="returns" className="gap-1.5 touch-manipulation min-h-[44px]"><RotateCcw className="h-4 w-4" /><span className="hidden sm:inline">Returns</span></TabsTrigger>
+  1384→  1384→          <TabsTrigger value="invoice-gst" className="gap-1.5 touch-manipulation min-h-[44px]"><FileText className="h-4 w-4" /><span className="hidden sm:inline">Invoice GST</span></TabsTrigger>
+  1385→  1385→        </TabsList>
+  1386→  1386→
+  1387→  1387→        {/* ─── Cash Flow Tab ────────────────────────────────────────────── */}
+  1388→  1388→        <TabsContent value="cashflow">
+  1389→  1389→          <Card>
+  1390→  1390→            <CardHeader>
+  1391→  1391→              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  1392→  1392→                <div>
+  1393→  1393→                  <CardTitle className="text-lg">Cash Flow Statement</CardTitle>
+  1394→  1394→                  <CardDescription>Track all income and expense transactions</CardDescription>
+  1395→  1395→                </div>
+  1396→  1396→                <div className="flex items-center gap-2 flex-wrap">
+  1397→  1397→                  <div className="flex items-center gap-1.5">
+  1398→  1398→                    <Label htmlFor="cf-from" className="text-xs whitespace-nowrap"><CalendarDays className="h-3.5 w-3.5 inline mr-1" />From</Label>
+  1399→  1399→                    <Input id="cf-from" type="date" value={cashFlowFrom} onChange={(e) => setCashFlowFrom(e.target.value)} className="h-8 w-[140px] text-xs" />
+  1400→  1400→                  </div>
+  1401→  1401→                  <div className="flex items-center gap-1.5">
+  1402→  1402→                    <Label htmlFor="cf-to" className="text-xs whitespace-nowrap">To</Label>
+  1403→  1403→                    <Input id="cf-to" type="date" value={cashFlowTo} onChange={(e) => setCashFlowTo(e.target.value)} className="h-8 w-[140px] text-xs" />
+  1404→  1404→                  </div>
+  1405→  1405→                </div>
+  1406→  1406→              </div>
+  1407→  1407→            </CardHeader>
+  1408→  1408→            <CardContent>
+  1409→  1409→              {loadingSales || loadingExpenses ? (
+  1410→  1410→                <TableSkeleton rows={6} cols={5} />
+  1411→  1411→              ) : cashFlowData.length === 0 ? (
+  1412→  1412→                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+  1413→  1413→                  <Wallet className="h-10 w-10 mb-2 opacity-40" />
+  1414→  1414→                  <p className="text-sm">No transactions found in this period</p>
+  1415→  1415→                </div>
+  1416→  1416→              ) : (
+  1417→  1417→                <>
+  1418→  1418→                  <div className="max-h-[420px] overflow-x-auto overflow-y-auto rounded-md border">
+  1419→  1419→                    <Table>
+  1420→  1420→                      <TableHeader>
+  1421→  1421→                        <TableRow>
+  1422→  1422→                          <TableHead className="text-xs">Date</TableHead>
+  1423→  1423→                          <TableHead className="text-xs">Description</TableHead>
+  1424→  1424→                          <TableHead className="text-xs">Type</TableHead>
+  1425→  1425→                          <TableHead className="text-xs text-right">Amount</TableHead>
+  1426→  1426→                          <TableHead className="text-xs text-right">Balance</TableHead>
+  1427→  1427→                        </TableRow>
+  1428→  1428→                      </TableHeader>
+  1429→  1429→                      <TableBody>
+  1430→  1430→                        {cashFlowData.map((entry, i) => (
+  1431→  1431→                          <TableRow key={`cf-${i}`}>
+  1432→  1432→                            <TableCell className="text-xs">{formatDate(entry.date)}</TableCell>
+  1433→  1433→                            <TableCell className="text-xs max-w-[200px] truncate">{entry.description}</TableCell>
+  1434→  1434→                            <TableCell>
+  1435→  1435→                              {entry.type === 'Income' ? (
+  1436→  1436→                                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800">Income</Badge>
+  1437→  1437→                              ) : (
+  1438→  1438→                                <Badge className="bg-red-100 text-red-700 border-red-200 text-xs dark:bg-red-950 dark:text-red-300 dark:border-red-800">Expense</Badge>
+  1439→  1439→                              )}
+  1440→  1440→                            </TableCell>
+  1441→  1441→                            <TableCell className={`text-xs text-right font-mono font-medium ${entry.type === 'Income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+  1442→  1442→                              {entry.type === 'Income' ? '+' : '-'}{formatINR(entry.amount)}
+  1443→  1443→                            </TableCell>
+  1444→  1444→                            <TableCell className={`text-xs text-right font-mono font-medium ${entry.balance >= 0 ? 'text-foreground' : 'text-red-600 dark:text-red-400'}`}>
+  1445→  1445→                              {formatINR(entry.balance)}
+  1446→  1446→                            </TableCell>
+  1447→  1447→                          </TableRow>
+  1448→  1448→                        ))}
+  1449→  1449→                      </TableBody>
+  1450→  1450→                      <TableFooter>
+  1451→  1451→                        <TableRow>
+  1452→  1452→                          <TableCell colSpan={3} className="text-xs font-semibold">Summary</TableCell>
+  1453→  1453→                          <TableCell className="text-xs text-right">
+  1454→  1454→                            <div className="space-y-0.5">
+  1455→  1455→                              <span className="block text-emerald-600 dark:text-emerald-400 font-mono">+{formatINR(cashFlowSummary.totalIncome)}</span>
+  1456→  1456→                              <span className="block text-red-600 dark:text-red-400 font-mono">-{formatINR(cashFlowSummary.totalExpense)}</span>
+  1457→  1457→                            </div>
+  1458→  1458→                          </TableCell>
+  1459→  1459→                          <TableCell className={`text-xs text-right font-mono font-bold ${cashFlowSummary.net >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+  1460→  1460→                            {cashFlowSummary.net >= 0 ? '+' : ''}{formatINR(cashFlowSummary.net)}
+  1461→  1461→                          </TableCell>
+  1462→  1462→                        </TableRow>
+  1463→  1463→                      </TableFooter>
+  1464→  1464→                    </Table>
+  1465→  1465→                  </div>
+  1466→  1466→                  <div className="grid grid-cols-3 gap-3 mt-4">
+  1467→  1467→                    <div className="rounded-lg border bg-emerald-50 dark:bg-emerald-950/30 p-3 text-center">
+  1468→  1468→                      <p className="text-xs text-muted-foreground">Total Income</p>
+  1469→  1469→                      <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">{formatINR(cashFlowSummary.totalIncome)}</p>
+  1470→  1470→                    </div>
+  1471→  1471→                    <div className="rounded-lg border bg-red-50 dark:bg-red-950/30 p-3 text-center">
+  1472→  1472→                      <p className="text-xs text-muted-foreground">Total Expense</p>
+  1473→  1473→                      <p className="text-sm font-bold text-red-600 dark:text-red-400 font-mono">{formatINR(cashFlowSummary.totalExpense)}</p>
+  1474→  1474→                    </div>
+  1475→  1475→                    <div className={`rounded-lg border p-3 text-center ${cashFlowSummary.net >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-red-50 dark:bg-red-950/30'}`}>
+  1476→  1476→                      <p className="text-xs text-muted-foreground">Net</p>
+  1477→  1477→                      <p className={`text-sm font-bold font-mono ${cashFlowSummary.net >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+  1478→  1478→                        {cashFlowSummary.net >= 0 ? '+' : ''}{formatINR(cashFlowSummary.net)}
+  1479→  1479→                      </p>
+  1480→  1480→                    </div>
+  1481→  1481→                  </div>
+  1482→  1482→                </>
+  1483→  1483→              )}
+  1484→  1484→            </CardContent>
+  1485→  1485→          </Card>
+  1486→  1486→        </TabsContent>
+  1487→  1487→
+  1488→  1488→        {/* ─── Expenses Tab ─────────────────────────────────────────────── */}
+  1489→  1489→        <TabsContent value="expenses">
+  1490→  1490→          <Card>
+  1491→  1491→            <CardHeader>
+  1492→  1492→              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  1493→  1493→                <div>
+  1494→  1494→                  <CardTitle className="text-lg flex items-center gap-2"><Receipt className="h-5 w-5" />Expense Management</CardTitle>
+  1495→  1495→                  <CardDescription>{expenses.length} expense{expenses.length !== 1 ? 's' : ''} totaling {formatINR(totalExpenses)}</CardDescription>
+  1496→  1496→                </div>
+  1497→  1497→                <div className="flex items-center gap-2">
+  1498→  1498→                  <Button variant="outline" size="sm" className="gap-1.5 touch-manipulation min-h-[44px] active:scale-95 transition-transform" onClick={() => { setBudgetInput(monthlyBudget > 0 ? String(monthlyBudget) : ''); setBudgetDialogOpen(true); }}>
+  1499→  1499→                    <Target className="h-3.5 w-3.5" />Set Budget
+  1500→  1500→                  </Button>
+  1501→  1501→                  <Button variant="outline" size="sm" className="gap-1.5 touch-manipulation min-h-[44px] active:scale-95 transition-transform" onClick={handleExportCSV} disabled={expenses.length === 0}>
+  1502→  1502→                    <Download className="h-3.5 w-3.5" />CSV
+  1503→  1503→                  </Button>
+  1504→  1504→                  <Button onClick={openAddExpense} size="sm" className="gap-1.5 touch-manipulation min-h-[44px] active:scale-95 transition-transform"><Plus className="h-4 w-4" />Add Expense</Button>
+  1505→  1505→                </div>
+  1506→  1506→              </div>
+  1507→  1507→            </CardHeader>
+  1508→  1508→            <CardContent>
+  1509→  1509→              {/* Monthly Budget Tracking */}
+  1510→  1510→              {monthlyBudget > 0 && (
+  1511→  1511→                <div className="mb-4 rounded-lg border p-4">
+  1512→  1512→                  <div className="flex items-center justify-between mb-2">
+  1513→  1513→                    <div className="flex items-center gap-2">
+  1514→  1514→                      <Target className="h-4 w-4 text-muted-foreground" />
+  1515→  1515→                      <span className="text-xs font-medium">Monthly Budget: {formatINR(monthlyBudget)}</span>
+  1516→  1516→                    </div>
+  1517→  1517→                    <span className={`text-xs font-semibold ${budgetRemaining >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+  1518→  1518→                      {budgetRemaining >= 0 ? `${formatINR(budgetRemaining)} remaining` : `${formatINR(Math.abs(budgetRemaining))} over budget`}
+  1519→  1519→                    </span>
+  1520→  1520→                  </div>
+  1521→  1521→                  <div className="relative">
+  1522→  1522→                    <Progress
+  1523→  1523→                      value={budgetPercent}
+  1524→  1524→                      className={`h-3 ${budgetPercent < 75 ? '[&>div]:bg-emerald-500' : budgetPercent < 100 ? '[&>div]:bg-amber-500' : '[&>div]:bg-red-500'}`}
+  1525→  1525→                    />
+  1526→  1526→                  </div>
+  1527→  1527→                  <div className="flex items-center justify-between mt-1.5">
+  1528→  1528→                    <span className="text-[11px] text-muted-foreground">{formatINR(monthlyExpensesTotal)} spent this month</span>
+  1529→  1529→                    <span className="text-[11px] text-muted-foreground">{Math.round(budgetPercent)}% used</span>
+  1530→  1530→                  </div>
+  1531→  1531→                </div>
+  1532→  1532→              )}
+  1533→  1533→
+  1534→  1534→              {/* Per-Category Spending Alerts */}
+  1535→  1535→              {monthlyExpensesTotal > 0 && (
+  1536→  1536→                <div className="mt-4">
+  1537→  1537→                  <Separator className="mb-4" />
+  1538→  1538→                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+  1539→  1539→                    <AlertTriangle className="h-4 w-4 text-amber-500" />
+  1540→  1540→                    Category Spending Alerts
+  1541→  1541→                  </h3>
+  1542→  1542→                  <div className="space-y-2">
+  1543→  1543→                    {plExpensesByCategory.map((cat) => {
+  1544→  1544→                      const pct = (cat.total / monthlyExpensesTotal) * 100;
+  1545→  1545→                      const isHigh = pct >= 30;
+  1546→  1546→                      return (
+  1547→  1547→                        <div key={cat.category} className={`rounded-lg border p-3 ${isHigh ? 'border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/20' : ''}`}>
+  1548→  1548→                          <div className="flex items-center justify-between mb-1">
+  1549→  1549→                            <div className="flex items-center gap-2">
+  1550→  1550→                              <span className="text-xs font-medium">{cat.category}</span>
+  1551→  1551→                              {isHigh && <Badge variant="outline" className="text-[10px] text-amber-700 border-amber-300 dark:text-amber-400 dark:border-amber-700">{pct.toFixed(0)}% of total</Badge>}
+  1552→  1552→                            </div>
+  1553→  1553→                            <span className="text-xs font-mono font-semibold">{formatINR(cat.total)}</span>
+  1554→  1554→                          </div>
+  1555→  1555→                          <Progress value={Math.min(pct, 100)} className={`h-1.5 ${isHigh ? '[&>div]:bg-amber-500' : '[&>div]:bg-emerald-500'}`} />
+  1556→  1556→                        </div>
+  1557→  1557→                      );
+  1558→  1558→                    })}
+  1559→  1559→                  </div>
+  1560→  1560→                </div>
+  1561→  1561→              )}
+  1562→  1562→
+  1563→  1563→              {loadingExpenses ? (
+  1564→  1564→                <TableSkeleton rows={6} cols={6} />
+  1565→  1565→              ) : expenses.length === 0 ? (
+  1566→  1566→                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+  1567→  1567→                  <Receipt className="h-10 w-10 mb-2 opacity-40" />
+  1568→  1568→                  <p className="text-sm">No expenses recorded yet</p>
+  1569→  1569→                  <Button variant="outline" size="sm" className="mt-3 gap-1.5 touch-manipulation min-h-[44px] active:scale-95 transition-transform" onClick={openAddExpense}><Plus className="h-3.5 w-3.5" />Add your first expense</Button>
+  1570→  1570→                </div>
+  1571→  1571→              ) : (
+  1572→  1572→                <>
+  1573→  1573→                  <div className="max-h-[360px] overflow-x-auto overflow-y-auto rounded-md border">
+  1574→  1574→                    <Table>
+  1575→  1575→                      <TableHeader>
+  1576→  1576→                        <TableRow>
+  1577→  1577→                          <TableHead className="text-xs">Date</TableHead>
+  1578→  1578→                          <TableHead className="text-xs">Category</TableHead>
+  1579→  1579→                          <TableHead className="text-xs">Description</TableHead>
+  1580→  1580→                          <TableHead className="text-xs text-right">Amount</TableHead>
+  1581→  1581→                          <TableHead className="text-xs hidden sm:table-cell">Vendor</TableHead>
+  1582→  1582→                          <TableHead className="text-xs text-right">Actions</TableHead>
+  1583→  1583→                        </TableRow>
+  1584→  1584→                      </TableHeader>
+  1585→  1585→                      <TableBody>
+  1586→  1586→                        {expenses.map((exp) => (
+  1587→  1587→                          <TableRow key={exp.id}>
+  1588→  1588→                            <TableCell className="text-xs">{formatDate(exp.date)}</TableCell>
+  1589→  1589→                            <TableCell><Badge variant="outline" className="text-xs">{exp.category}</Badge></TableCell>
+  1590→  1590→                            <TableCell className="text-xs max-w-[180px] truncate">{exp.description}</TableCell>
+  1591→  1591→                            <TableCell className="text-xs text-right font-mono font-medium text-red-600 dark:text-red-400">{formatINR(exp.amount)}</TableCell>
+  1592→  1592→                            <TableCell className="text-xs hidden sm:table-cell max-w-[120px] truncate">{exp.vendor || '—'}</TableCell>
+  1593→  1593→                            <TableCell className="text-right">
+  1594→  1594→                              <div className="flex items-center justify-end gap-1">
+  1595→  1595→                                <Button variant="ghost" size="sm" className="h-9 w-9 min-w-[44px] min-h-[44px] p-0 touch-manipulation active:scale-95 transition-transform" onClick={() => openEditExpense(exp)}><Pencil className="h-3.5 w-3.5" /><span className="sr-only">Edit</span></Button>
+  1596→  1596→                                <Button variant="ghost" size="sm" className="h-9 w-9 min-w-[44px] min-h-[44px] p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950 touch-manipulation active:scale-95 transition-transform" onClick={() => handleDeleteExpense(exp.id)} disabled={deletingExpenseId === exp.id}>
+  1597→  1597→                                  {deletingExpenseId === exp.id ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <Trash2 className="h-3.5 w-3.5" />}
+  1598→  1598→                                  <span className="sr-only">Delete</span>
+  1599→  1599→                                </Button>
+  1600→  1600→                              </div>
+  1601→  1601→                            </TableCell>
+  1602→  1602→                          </TableRow>
+  1603→  1603→                        ))}
+  1604→  1604→                      </TableBody>
+  1605→  1605→                    </Table>
+  1606→  1606→                  </div>
+  1607→  1607→
+  1608→  1608→                  {categorySummary.length > 0 && (
+  1609→  1609→                    <div className="mt-6">
+  1610→  1610→                      <Separator className="mb-4" />
+  1611→  1611→                      <h3 className="text-sm font-semibold mb-4 flex items-center gap-2"><PieChartIcon className="h-4 w-4" />Expense Distribution by Category</h3>
+  1612→  1612→                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  1613→  1613→                        <div className="flex items-center justify-center">
+  1614→  1614→                          <ChartContainer config={PIE_CHART_CONFIG} className="h-[250px] w-full max-w-[250px]">
+  1615→  1615→                            <PieChart>
+  1616→  1616→                              <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+  1617→  1617→                              <Pie data={categorySummary} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2} strokeWidth={2}>
+  1618→  1618→                                {categorySummary.map((_, index) => <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+  1619→  1619→                              </Pie>
+  1620→  1620→                            </PieChart>
+  1621→  1621→                          </ChartContainer>
+  1622→  1622→                        </div>
+  1623→  1623→                        <div className="space-y-3">
+  1624→  1624→                          <ChartContainer config={BAR_CHART_CONFIG} className="h-[200px] w-full">
+  1625→  1625→                            <BarChart data={categorySummary} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 60 }}>
+  1626→  1626→                              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+  1627→  1627→                              <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
+  1628→  1628→                              <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} width={65} />
+  1629→  1629→                              <ChartTooltip content={<ChartTooltipContent />} />
+  1630→  1630→                              <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+  1631→  1631→                                {categorySummary.map((_, index) => <Cell key={`bar-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+  1632→  1632→                              </Bar>
+  1633→  1633→                            </BarChart>
+  1634→  1634→                          </ChartContainer>
+  1635→  1635→                        </div>
+  1636→  1636→                      </div>
+  1637→  1637→                    </div>
+  1638→  1638→                  )}
+  1639→  1639→                </>
+  1640→  1640→              )}
+  1641→  1641→            </CardContent>
+  1642→  1642→          </Card>
+  1643→  1643→        </TabsContent>
+  1644→  1644→
+  1645→  1645→        {/* ─── GST Collection Tab ────────────────────────────────────────── */}
+  1646→  1646→        <TabsContent value="gst">
+  1647→  1647→          <div className="space-y-4">
+  1648→  1648→            <Card>
+  1649→  1649→              <CardHeader>
+  1650→  1650→                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  1651→  1651→                  <div>
+  1652→  1652→                    <CardTitle className="text-lg flex items-center gap-2">
+  1653→  1653→                      <Target className="h-5 w-5" />
+  1654→  1654→                      GST Collection Summary
+  1655→  1655→                    </CardTitle>
+  1656→  1656→                    <CardDescription>Current month GST collected on sales</CardDescription>
+  1657→  1657→                  </div>
+  1658→  1658→                  <Badge variant="outline" className="text-xs">
+  1659→  1659→                    {format(new Date(), 'MMMM yyyy')}
+  1660→  1660→                  </Badge>
+  1661→  1661→                </div>
+  1662→  1662→              </CardHeader>
+  1663→  1663→              <CardContent>
+  1664→  1664→                {gstLoading ? (
+  1665→  1665→                  <TableSkeleton rows={3} cols={4} />
+  1666→  1666→                ) : (
+  1667→  1667→                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+  1668→  1668→                    <div className="rounded-lg border p-4">
+  1669→  1669→                      <p className="text-xs text-muted-foreground font-medium">CGST Collected</p>
+  1670→  1670→                      <p className="text-xl font-bold text-blue-600 dark:text-blue-400 font-mono mt-1">{formatINR(gstData?.cgst || 0)}</p>
+  1671→  1671→                      <p className="text-[10px] text-muted-foreground mt-1">Central Goods & Services Tax</p>
+  1672→  1672→                    </div>
+  1673→  1673→                    <div className="rounded-lg border p-4">
+  1674→  1674→                      <p className="text-xs text-muted-foreground font-medium">SGST Collected</p>
+  1675→  1675→                      <p className="text-xl font-bold text-violet-600 dark:text-violet-400 font-mono mt-1">{formatINR(gstData?.sgst || 0)}</p>
+  1676→  1676→                      <p className="text-[10px] text-muted-foreground mt-1">State Goods & Services Tax</p>
+  1677→  1677→                    </div>
+  1678→  1678→                    <div className="rounded-lg border p-4">
+  1679→  1679→                      <p className="text-xs text-muted-foreground font-medium">IGST Collected</p>
+  1680→  1680→                      <p className="text-xl font-bold text-amber-600 dark:text-amber-400 font-mono mt-1">{formatINR(gstData?.igst || 0)}</p>
+  1681→  1681→                      <p className="text-[10px] text-muted-foreground mt-1">Integrated Goods & Services Tax</p>
+  1682→  1682→                    </div>
+  1683→  1683→                    <div className="rounded-lg border p-4 bg-emerald-50 dark:bg-emerald-950/30">
+  1684→  1684→                      <p className="text-xs text-muted-foreground font-medium">Total GST Payable</p>
+  1685→  1685→                      <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400 font-mono mt-1">{formatINR(gstData?.total || 0)}</p>
+  1686→  1686→                      <p className="text-[10px] text-muted-foreground mt-1">CGST + SGST + IGST</p>
+  1687→  1687→                    </div>
+  1688→  1688→                  </div>
+  1689→  1689→                )}
+  1690→  1690→              </CardContent>
+  1691→  1691→            </Card>
+  1692→  1692→
+  1693→  1693→            {/* GST Pie Chart */}
+  1694→  1694→            {gstData && gstData.total > 0 && (
+  1695→  1695→              <Card>
+  1696→  1696→                <CardHeader>
+  1697→  1697→                  <CardTitle className="text-base">GST Distribution</CardTitle>
+  1698→  1698→                  <CardDescription>Breakdown of GST components</CardDescription>
+  1699→  1699→                </CardHeader>
+  1700→  1700→                <CardContent>
+  1701→  1701→                  <div className="h-[250px]">
+  1702→  1702→                    <ChartContainer config={PIE_CHART_CONFIG} className="h-full w-full">
+  1703→  1703→                      <PieChart>
+  1704→  1704→                        <ChartTooltip content={<ChartTooltipContent />} />
+  1705→  1705→                        <Pie
+  1706→  1706→                          data={[
+  1707→  1707→                            { name: 'CGST', value: gstData.cgst },
+  1708→  1708→                            { name: 'SGST', value: gstData.sgst },
+  1709→  1709→                            ...(gstData.igst > 0 ? [{ name: 'IGST', value: gstData.igst }] : []),
+  1710→  1710→                          ]}
+  1711→  1711→                          cx="50%"
+  1712→  1712→                          cy="50%"
+  1713→  1713→                          outerRadius={90}
+  1714→  1714→                          innerRadius={45}
+  1715→  1715→                          dataKey="value"
+  1716→  1716→                          nameKey="name"
+  1717→  1717→                        >
+  1718→  1718→                          <Cell fill="hsl(var(--chart-1))" />
+  1719→  1719→                          <Cell fill="hsl(var(--chart-2))" />
+  1720→  1720→                          {gstData.igst > 0 && <Cell fill="hsl(var(--chart-3))" />}
+  1721→  1721→                        </Pie>
+  1722→  1722→                      </PieChart>
+  1723→  1723→                    </ChartContainer>
+  1724→  1724→                  </div>
+  1725→  1725→                </CardContent>
+  1726→  1726→              </Card>
+  1727→  1727→            )}
+  1728→  1728→          </div>
+  1729→  1729→        </TabsContent>
+  1730→  1730→
+  1731→  1731→        {/* ─── P&L Statement Tab ─────────────────────────────────────────── */}
+  1732→  1732→        <TabsContent value="pl-statement">
+  1733→  1733→          <Card>
+  1734→  1734→            <CardHeader>
+  1735→  1735→              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  1736→  1736→                <div>
+  1737→  1737→                  <CardTitle className="text-lg flex items-center gap-2">
+  1738→  1738→                    <Scale className="h-5 w-5" />
+  1739→  1739→                    P&amp;L Statement
+  1740→  1740→                  </CardTitle>
+  1741→  1741→                  <CardDescription>Profit &amp; Loss for the selected period</CardDescription>
+  1742→  1742→                </div>
+  1743→  1743→                <div className="flex items-center gap-2 flex-wrap">
+  1744→  1744→                  <div className="flex items-center gap-1.5">
+  1745→  1745→                    <Label className="text-xs whitespace-nowrap"><CalendarDays className="h-3.5 w-3.5 inline mr-1" />From</Label>
+  1746→  1746→                    <Input type="date" value={plFromDate} onChange={(e) => setPlFromDate(e.target.value)} className="h-8 w-[140px] text-xs" />
+  1747→  1747→                  </div>
+  1748→  1748→                  <div className="flex items-center gap-1.5">
+  1749→  1749→                    <Label className="text-xs whitespace-nowrap">To</Label>
+  1750→  1750→                    <Input type="date" value={plToDate} onChange={(e) => setPlToDate(e.target.value)} className="h-8 w-[140px] text-xs" />
+  1751→  1751→                  </div>
+  1752→  1752→                  <div className="flex items-center gap-1.5 flex-wrap mt-2 sm:mt-0">
+  1753→  1753→                    {[
+  1754→  1754→                      { label: 'This Month', getRange: () => ({ from: format(startOfMonth(new Date()), 'yyyy-MM-dd'), to: getTodayStr() }) },
+  1755→  1755→                      { label: 'Last Month', getRange: () => { const lm = subMonths(new Date(), 1); return { from: format(startOfMonth(lm), 'yyyy-MM-dd'), to: format(endOfMonth(lm), 'yyyy-MM-dd') }; } },
+  1756→  1756→                      { label: 'Q1', getRange: () => ({ from: `${new Date().getFullYear()}-01-01`, to: `${new Date().getFullYear()}-03-31` }) },
+  1757→  1757→                      { label: 'This Year', getRange: () => ({ from: `${new Date().getFullYear()}-01-01`, to: getTodayStr() }) },
+  1758→  1758→                    ].map((preset) => (
+  1759→  1759→                      <Button key={preset.label} variant="outline" size="sm" className="text-xs h-9 min-w-[44px] min-h-[44px] touch-manipulation active:scale-95 transition-transform"
+  1760→  1760→                        onClick={() => { const r = preset.getRange(); setPlFromDate(r.from); setPlToDate(r.to); }}>
+  1761→  1761→                        {preset.label}
+  1762→  1762→                      </Button>
+  1763→  1763→                    ))}
+  1764→  1764→                  </div>
+  1765→  1765→                </div>
+  1766→  1766→              </div>
+  1767→  1767→            </CardHeader>
+  1768→  1768→            <CardContent>
+  1769→  1769→              {plLoading ? (
+  1770→  1770→                <TableSkeleton rows={6} cols={3} />
+  1771→  1771→              ) : (
+  1772→  1772→                <div className="space-y-6">
+  1773→  1773→                  {/* Summary Cards */}
+  1774→  1774→                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+  1775→  1775→                    <Card className="py-4">
+  1776→  1776→                      <CardContent className="px-4">
+  1777→  1777→                        <div className="flex items-center gap-3">
+  1778→  1778→                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-950">
+  1779→  1779→                            <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+  1780→  1780→                          </div>
+  1781→  1781→                          <div>
+  1782→  1782→                            <p className="text-xs text-muted-foreground font-medium">Total Revenue</p>
+  1783→  1783→                            <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 font-mono">{formatINR(plRevenue)}</p>
+  1784→  1784→                            <p className="text-[10px] text-muted-foreground">Sales revenue for the period</p>
+  1785→  1785→                          </div>
+  1786→  1786→                        </div>
+  1787→  1787→                      </CardContent>
+  1788→  1788→                    </Card>
+  1789→  1789→                    <Card className="py-4">
+  1790→  1790→                      <CardContent className="px-4">
+  1791→  1791→                        <div className="flex items-center gap-3">
+  1792→  1792→                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-100 dark:bg-red-950">
+  1793→  1793→                            <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
+  1794→  1794→                          </div>
+  1795→  1795→                          <div>
+  1796→  1796→                            <p className="text-xs text-muted-foreground font-medium">Total Expenses</p>
+  1797→  1797→                            <p className="text-lg font-bold text-red-600 dark:text-red-400 font-mono">{formatINR(plTotalExpenses)}</p>
+  1798→  1798→                            <p className="text-[10px] text-muted-foreground">{plExpensesByCategory.length} categor{plExpensesByCategory.length !== 1 ? 'ies' : 'y'}</p>
+  1799→  1799→                          </div>
+  1800→  1800→                        </div>
+  1801→  1801→                      </CardContent>
+  1802→  1802→                    </Card>
+  1803→  1803→                    <Card className={`py-4 ${plNetProfit >= 0 ? 'bg-emerald-50/50 dark:bg-emerald-950/20' : 'bg-red-50/50 dark:bg-red-950/20'}`}>
+  1804→  1804→                      <CardContent className="px-4">
+  1805→  1805→                        <div className="flex items-center gap-3">
+  1806→  1806→                          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${plNetProfit >= 0 ? 'bg-emerald-100 dark:bg-emerald-950' : 'bg-red-100 dark:bg-red-950'}`}>
+  1807→  1807→                            {plNetProfit >= 0
+  1808→  1808→                              ? <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+  1809→  1809→                              : <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
+  1810→  1810→                            }
+  1811→  1811→                          </div>
+  1812→  1812→                          <div>
+  1813→  1813→                            <p className="text-xs text-muted-foreground font-medium">Net Profit</p>
+  1814→  1814→                            <p className={`text-lg font-bold font-mono ${plNetProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{formatINR(plNetProfit)}</p>
+  1815→  1815→                            <p className="text-[10px] text-muted-foreground">Revenue - Total Expenses</p>
+  1816→  1816→                          </div>
+  1817→  1817→                        </div>
+  1818→  1818→                      </CardContent>
+  1819→  1819→                    </Card>
+  1820→  1820→                  </div>
+  1821→  1821→
+  1822→  1822→                  {/* Revenue Section */}
+  1823→  1823→                  <div>
+  1824→  1824→                    <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+  1825→  1825→                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-950">
+  1826→  1826→                        <TrendingUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+  1827→  1827→                      </div>
+  1828→  1828→                      Revenue
+  1829→  1829→                    </h3>
+  1830→  1830→                    <div className="rounded-md border overflow-x-auto">
+  1831→  1831→                      <Table>
+  1832→  1832→                        <TableBody>
+  1833→  1833→                          <TableRow>
+  1834→  1834→                            <TableCell className="text-sm font-medium">Total Sales Revenue</TableCell>
+  1835→  1835→                            <TableCell className="text-xs text-muted-foreground">Fetched from reports API</TableCell>
+  1836→  1836→                            <TableCell className="text-sm font-mono font-semibold text-emerald-600 dark:text-emerald-400 text-right">{formatINR(plRevenue)}</TableCell>
+  1837→  1837→                          </TableRow>
+  1838→  1838→                        </TableBody>
+  1839→  1839→                      </Table>
+  1840→  1840→                    </div>
+  1841→  1841→                  </div>
+  1842→  1842→
+  1843→  1843→                  {/* Expense Breakdown by Category */}
+  1844→  1844→                  <div>
+  1845→  1845→                    <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+  1846→  1846→                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-red-100 dark:bg-red-950">
+  1847→  1847→                        <TrendingDown className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+  1848→  1848→                      </div>
+  1849→  1849→                      Expenses (by Category)
+  1850→  1850→                    </h3>
+  1851→  1851→                    {plExpensesByCategory.length === 0 ? (
+  1852→  1852→                      <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+  1853→  1853→                        <Receipt className="h-8 w-8 mb-2 opacity-40" />
+  1854→  1854→                        <p className="text-sm">No expenses recorded for this period.</p>
+  1855→  1855→                      </div>
+  1856→  1856→                    ) : (
+  1857→  1857→                      <div className="max-h-96 overflow-x-auto overflow-y-auto rounded-md border">
+  1858→  1858→                        <Table>
+  1859→  1859→                          <TableHeader>
+  1860→  1860→                            <TableRow>
+  1861→  1861→                              <TableHead className="text-xs">Category</TableHead>
+  1862→  1862→                              <TableHead className="text-xs text-right">Amount</TableHead>
+  1863→  1863→                              <TableHead className="text-xs text-right hidden sm:table-cell">% of Total</TableHead>
+  1864→  1864→                            </TableRow>
+  1865→  1865→                          </TableHeader>
+  1866→  1866→                          <TableBody>
+  1867→  1867→                            {plExpensesByCategory.map((cat) => {
+  1868→  1868→                              const pct = plTotalExpenses > 0 ? ((cat.total / plTotalExpenses) * 100).toFixed(1) : '0.0';
+  1869→  1869→                              return (
+  1870→  1870→                                <TableRow key={cat.category}>
+  1871→  1871→                                  <TableCell className="text-sm font-medium">{cat.category}</TableCell>
+  1872→  1872→                                  <TableCell className="text-sm font-mono text-red-600 dark:text-red-400 text-right">{formatINR(cat.total)}</TableCell>
+  1873→  1873→                                  <TableCell className="text-xs text-muted-foreground text-right font-mono hidden sm:table-cell">{pct}%</TableCell>
+  1874→  1874→                                </TableRow>
+  1875→  1875→                              );
+  1876→  1876→                            })}
+  1877→  1877→                          </TableBody>
+  1878→  1878→                          <TableFooter>
+  1879→  1879→                            <TableRow className="bg-muted/50 font-semibold">
+  1880→  1880→                              <TableCell className="text-sm">Total Expenses</TableCell>
+  1881→  1881→                              <TableCell className="text-sm font-mono text-red-600 dark:text-red-400 text-right">{formatINR(plTotalExpenses)}</TableCell>
+  1882→  1882→                              <TableCell className="text-xs text-right font-mono hidden sm:table-cell">100%</TableCell>
+  1883→  1883→                            </TableRow>
+  1884→  1884→                          </TableFooter>
+  1885→  1885→                        </Table>
+  1886→  1886→                      </div>
+  1887→  1887→                    )}
+  1888→  1888→                  </div>
+  1889→  1889→
+  1890→  1890→                  {/* Net Profit Card */}
+  1891→  1891→                  <div className={`rounded-lg border p-4 ${plNetProfit >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800' : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'}`}>
+  1892→  1892→                    <div className="flex items-center justify-between">
+  1893→  1893→                      <div className="flex items-center gap-2">
+  1894→  1894→                        <CircleDollarSign className={`h-5 w-5 ${plNetProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`} />
+  1895→  1895→                        <span className="text-sm font-semibold">Net Profit</span>
+  1896→  1896→                      </div>
+  1897→  1897→                      <div className="flex items-center gap-4">
+  1898→  1898→                        <div className="text-right">
+  1899→  1899→                          <p className="text-xs text-muted-foreground">Revenue: {formatINR(plRevenue)}</p>
+  1900→  1900→                          <p className="text-xs text-muted-foreground">Expenses: -{formatINR(plTotalExpenses)}</p>
+  1901→  1901→                        </div>
+  1902→  1902→                        <p className={`text-xl font-bold font-mono ${plNetProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+  1903→  1903→                          {formatINR(plNetProfit)}
+  1904→  1904→                        </p>
+  1905→  1905→                      </div>
+  1906→  1906→                    </div>
+  1907→  1907→                  </div>
+  1908→  1908→
+  1909→  1909→                  {/* 6-Month P&L Trend */}
+  1910→  1910→                  {plTrendData.length > 0 && (
+  1911→  1911→                    <div>
+  1912→  1912→                      <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+  1913→  1913→                        <BarChart3 className="h-4 w-4" />
+  1914→  1914→                        6-Month P&amp;L Trend
+  1915→  1915→                      </h3>
+  1916→  1916→                      <ChartContainer config={{ revenue: { label: 'Revenue', color: 'hsl(var(--chart-1))' }, expenses: { label: 'Expenses', color: 'hsl(var(--chart-5))' }, netProfit: { label: 'Net Profit', color: 'hsl(var(--chart-2))' } }} className="h-[260px] w-full">
+  1917→  1917→                        <BarChart data={plTrendData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+  1918→  1918→                          <CartesianGrid vertical={false} strokeDasharray="3 3" />
+  1919→  1919→                          <XAxis dataKey="month" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+  1920→  1920→                          <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+  1921→  1921→                          <ChartTooltip content={<ChartTooltipContent />} />
+  1922→  1922→                          <Bar dataKey="revenue" fill="hsl(var(--chart-1))" radius={[3, 3, 0, 0]} barSize={16} />
+  1923→  1923→                          <Bar dataKey="expenses" fill="hsl(var(--chart-5))" radius={[3, 3, 0, 0]} barSize={16} />
+  1924→  1924→                          <Bar dataKey="netProfit" fill="hsl(var(--chart-2))" radius={[3, 3, 0, 0]} barSize={16} />
+  1925→  1925→                        </BarChart>
+  1926→  1926→                      </ChartContainer>
+  1927→  1927→                    </div>
+  1928→  1928→                  )}
+  1929→  1929→                </div>
+  1930→  1930→              )}
+  1931→  1931→            </CardContent>
+  1932→  1932→          </Card>
+  1933→  1933→        </TabsContent>
+  1934→  1934→
+  1935→  1935→        {/* ─── Daily Cash Reconciliation Tab ─────────────────────────────── */}
+  1936→  1936→        <TabsContent value="reconciliation">
+  1937→  1937→          <div className="space-y-4">
+  1938→  1938→            <Card>
+  1939→  1939→              <CardHeader>
+  1940→  1940→                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  1941→  1941→                  <div>
+  1942→  1942→                    <CardTitle className="text-lg flex items-center gap-2">
+  1943→  1943→                      <CheckCircle2 className="h-5 w-5" />
+  1944→  1944→                      Daily Cash Reconciliation
+  1945→  1945→                    </CardTitle>
+  1946→  1946→                    <CardDescription>Verify daily cash balance against sales and expenses</CardDescription>
+  1947→  1947→                  </div>
+  1948→  1948→                  <div className="flex items-center gap-2">
+  1949→  1949→                    <Label htmlFor="recon-date" className="text-xs whitespace-nowrap">Date:</Label>
+  1950→  1950→                    <Input id="recon-date" type="date" value={reconDate} onChange={(e) => setReconDate(e.target.value)} className="h-8 w-[150px] text-xs" />
+  1951→  1951→                    <Button variant="outline" size="sm" className="text-xs h-9 min-w-[44px] min-h-[44px] touch-manipulation" onClick={() => setReconDate(getTodayStr())}>Today</Button>
+  1952→  1952→                  </div>
+  1953→  1953→                </div>
+  1954→  1954→              </CardHeader>
+  1955→  1955→              <CardContent>
+  1956→  1956→                {loadingSales || loadingExpenses ? (
+  1957→  1957→                  <TableSkeleton rows={4} cols={3} />
+  1958→  1958→                ) : (
+  1959→  1959→                  <div className="space-y-4">
+  1960→  1960→                    {/* Reconciliation Summary Cards */}
+  1961→  1961→                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+  1962→  1962→                      <div className="rounded-lg border p-3">
+  1963→  1963→                        <p className="text-[10px] text-muted-foreground">Total Sales</p>
+  1964→  1964→                        <p className="text-sm font-bold font-mono">{formatINR(dailyReconciliation.totalIncome)}</p>
+  1965→  1965→                        <p className="text-[10px] text-muted-foreground">{dailyReconciliation.totalTransactions} transactions</p>
+  1966→  1966→                      </div>
+  1967→  1967→                      <div className="rounded-lg border p-3">
+  1968→  1968→                        <p className="text-[10px] text-muted-foreground">Cash Sales</p>
+  1969→  1969→                        <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">{formatINR(dailyReconciliation.cashSales)}</p>
+  1970→  1970→                      </div>
+  1971→  1971→                      <div className="rounded-lg border p-3">
+  1972→  1972→                        <p className="text-[10px] text-muted-foreground">UPI Sales</p>
+  1973→  1973→                        <p className="text-sm font-bold text-violet-600 dark:text-violet-400 font-mono">{formatINR(dailyReconciliation.upiSales)}</p>
+  1974→  1974→                      </div>
+  1975→  1975→                      <div className="rounded-lg border p-3">
+  1976→  1976→                        <p className="text-[10px] text-muted-foreground">Card Sales</p>
+  1977→  1977→                        <p className="text-sm font-bold text-blue-600 dark:text-blue-400 font-mono">{formatINR(dailyReconciliation.cardSales)}</p>
+  1978→  1978→                      </div>
+  1979→  1979→                      <div className="rounded-lg border p-3">
+  1980→  1980→                        <p className="text-[10px] text-muted-foreground">Credit Sales</p>
+  1981→  1981→                        <p className="text-sm font-bold text-amber-600 dark:text-amber-400 font-mono">{formatINR(dailyReconciliation.creditSales)}</p>
+  1982→  1982→                      </div>
+  1983→  1983→                    </div>
+  1984→  1984→
+  1985→  1985→                    {/* Reconciliation Detail Table */}
+  1986→  1986→                    <div className="rounded-lg border overflow-x-auto overflow-hidden">
+  1987→  1987→                      <Table>
+  1988→  1988→                        <TableHeader>
+  1989→  1989→                          <TableRow>
+  1990→  1990→                            <TableHead className="text-xs">Item</TableHead>
+  1991→  1991→                            <TableHead className="text-xs text-right">Amount</TableHead>
+  1992→  1992→                            <TableHead className="text-xs text-right hidden sm:table-cell">Notes</TableHead>
+  1993→  1993→                          </TableRow>
+  1994→  1994→                        </TableHeader>
+  1995→  1995→                        <TableBody>
+  1996→  1996→                          <TableRow>
+  1997→  1997→                            <TableCell className="text-sm font-medium">Total Income (All Modes)</TableCell>
+  1998→  1998→                            <TableCell className="text-sm font-mono text-emerald-600 dark:text-emerald-400 text-right">{formatINR(dailyReconciliation.totalIncome)}</TableCell>
+  1999→  1999→                            <TableCell className="text-xs text-muted-foreground text-right hidden sm:table-cell">{dailyReconciliation.totalTransactions} sales</TableCell>
+  2000→  2000→                          </TableRow>
+
+[showing lines 1-2000 of 2002; use offset=2001 with limit to continue reading]

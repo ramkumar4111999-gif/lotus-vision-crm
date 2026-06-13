@@ -134,6 +134,7 @@ export default function PurchaseOrders() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [statusChipFilter, setStatusChipFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -168,7 +169,7 @@ export default function PurchaseOrders() {
     try {
       const params = new URLSearchParams({ page: String(page), limit: '20' });
       if (search) params.set('search', search);
-      if (statusFilter !== 'all') params.set('status', statusFilter);
+      if (statusChipFilter !== 'all') params.set('status', statusChipFilter);
       const res = await fetch(`/api/purchase-orders?${params}`);
       if (!res.ok) throw new Error('Failed to fetch');
       const json = await res.json();
@@ -179,7 +180,7 @@ export default function PurchaseOrders() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, statusFilter]);
+  }, [page, search, statusChipFilter]);
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
@@ -334,6 +335,25 @@ export default function PurchaseOrders() {
         <Button onClick={openCreateDialog}>
           <Plus className="mr-1 h-4 w-4" /> New PO
         </Button>
+      </div>
+
+      {/* Status Filter Chips */}
+      <div className="flex flex-wrap gap-2">
+        {['All', 'Pending', 'Ordered', 'Received', 'Cancelled'].map((s) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => { setStatusChipFilter(s === 'All' ? 'all' : s); setPage(1); }}
+            className={cn(
+              'inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-medium transition-colors min-w-[44px] min-h-[44px] touch-manipulation',
+              statusChipFilter === (s === 'All' ? 'all' : s)
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
+            )}
+          >
+            {s}
+          </button>
+        ))}
       </div>
 
       {/* Filters */}
@@ -714,6 +734,54 @@ export default function PurchaseOrders() {
                     </div>
                   </>
                 )}
+
+                {/* Quick Action Buttons */}
+                <Separator />
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Quick Actions</p>
+                  <div className="flex flex-wrap gap-2">
+                    {viewOrder.status !== 'Received' && viewOrder.status !== 'Cancelled' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 min-w-[44px] min-h-[44px] touch-manipulation bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800"
+                        onClick={() => {
+                          if (viewOrder) {
+                            setStatusChangeOrder(viewOrder);
+                            setNewStatus('Received');
+                            setStatusDialogOpen(true);
+                            setViewOrder(null);
+                          }
+                        }}
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Mark Received
+                      </Button>
+                    )}
+                    {parsedItems.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 min-w-[44px] min-h-[44px] touch-manipulation"
+                        disabled
+                      >
+                        <Package className="h-3.5 w-3.5" />
+                        View Items ({parsedItems.length})
+                      </Button>
+                    )}
+                    {viewOrder.supplierPhone && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 min-w-[44px] min-h-[44px] touch-manipulation"
+                        onClick={() => window.open(`tel:${viewOrder.supplierPhone.replace(/\D/g, '')}`, '_self')}
+                      >
+                        <Phone className="h-3.5 w-3.5" />
+                        Contact Supplier
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </div>
             );
           })()}

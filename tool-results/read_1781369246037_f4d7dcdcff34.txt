@@ -1,0 +1,1262 @@
+     1→'use client';
+     2→
+     3→import { useEffect, useState, useCallback, useRef } from 'react';
+     4→import {
+     5→  LayoutDashboard, Users, Package, Receipt, FlaskConical, CalendarDays, Wallet,
+     6→  BarChart3, UserCog, Megaphone, Menu, Moon, Sun, LogOut, X, Search,
+     7→  Database, Settings,
+     8→  Loader, Download, Upload, AlertOctagon, TrendingUp, ChevronDown,
+     9→  ShoppingCart, Calculator, MoreHorizontal,
+    10→  PanelLeftClose, PanelLeftOpen,
+    11→} from 'lucide-react';
+    12→import { Button } from '@/components/ui/button';
+    13→import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+    14→import { Input } from '@/components/ui/input';
+    15→import { Label } from '@/components/ui/label';
+    16→import { ScrollArea } from '@/components/ui/scroll-area';
+    17→import { Badge } from '@/components/ui/badge';
+    18→import { Separator } from '@/components/ui/separator';
+    19→import {
+    20→  Tooltip, TooltipContent, TooltipTrigger,
+    21→} from '@/components/ui/tooltip';
+    22→import {
+    23→  DropdownMenu,
+    24→  DropdownMenuContent,
+    25→  DropdownMenuItem,
+    26→  DropdownMenuSeparator,
+    27→  DropdownMenuTrigger,
+    28→} from '@/components/ui/dropdown-menu';
+    29→import {
+    30→  Dialog,
+    31→  DialogContent,
+    32→  DialogHeader,
+    33→  DialogTitle,
+    34→  DialogDescription,
+    35→  DialogFooter,
+    36→} from '@/components/ui/dialog';
+    37→import {
+    38→  Drawer,
+    39→  DrawerContent,
+    40→  DrawerHeader,
+    41→  DrawerTitle,
+    42→  DrawerDescription,
+    43→} from '@/components/ui/drawer';
+    44→import { CrmProvider, useCrmStore, type SectionKey } from '@/components/crm/store';
+    45→import { getSettings, saveSettings, type CrmSettings } from '@/lib/settings';
+    46→import { toast } from 'sonner';
+    47→import { ErrorBoundary } from '@/components/error-boundary';
+    48→import Dashboard from '@/components/crm/dashboard';
+    49→import Customers from '@/components/crm/customers';
+    50→import Inventory from '@/components/crm/inventory';
+    51→import Sales from '@/components/crm/sales';
+    52→import LabOrders from '@/components/crm/lab-orders';
+    53→import Appointments from '@/components/crm/appointments';
+    54→import Accounting from '@/components/crm/accounting';
+    55→import Reports from '@/components/crm/reports';
+    56→import Staff from '@/components/crm/staff';
+    57→import Campaigns from '@/components/crm/campaigns';
+    58→import Notifications from '@/components/crm/notifications';
+    59→import PurchaseOrders from '@/components/crm/purchase-orders';
+    60→import LensCalculator from '@/components/crm/lens-calculator';
+    61→
+    62→// ─── Navigation config ─────────────────────────────────────────────────
+    63→
+    64→interface NavItem {
+    65→  key: SectionKey;
+    66→  label: string;
+    67→  icon: React.ElementType;
+    68→}
+    69→
+    70→const NAV_ITEMS: NavItem[] = [
+    71→  { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    72→  { key: 'customers', label: 'Customers', icon: Users },
+    73→  { key: 'sales', label: 'Sales', icon: Receipt },
+    74→  { key: 'inventory', label: 'Inventory', icon: Package },
+    75→  { key: 'appointments', label: 'Appointments', icon: CalendarDays },
+    76→  { key: 'lab-orders', label: 'Lab Orders', icon: FlaskConical },
+    77→  { key: 'accounting', label: 'Accounting', icon: Wallet },
+    78→  { key: 'reports', label: 'Reports', icon: BarChart3 },
+    79→  { key: 'staff', label: 'Staff', icon: UserCog },
+    80→  { key: 'campaigns', label: 'Campaigns', icon: Megaphone },
+    81→  { key: 'purchase-orders', label: 'Purchase Orders', icon: ShoppingCart },
+    82→  { key: 'lens-calculator', label: 'Lens Calculator', icon: Calculator },
+    83→];
+    84→
+    85→// ─── Section renderer with transition ─────────────────────────────────
+    86→
+    87→function SectionRenderer() {
+    88→  const { activeSection, setLoadingBar } = useCrmStore();
+    89→
+    90→  const sectionMap: Record<SectionKey, React.ComponentType> = {
+    91→    dashboard: Dashboard,
+    92→    customers: Customers,
+    93→    sales: Sales,
+    94→    inventory: Inventory,
+    95→    appointments: Appointments,
+    96→    'lab-orders': LabOrders,
+    97→    accounting: Accounting,
+    98→    reports: Reports,
+    99→    staff: Staff,
+   100→    campaigns: Campaigns,
+   101→    'purchase-orders': PurchaseOrders,
+   102→    'lens-calculator': LensCalculator,
+   103→  };
+   104→
+   105→  const Component = sectionMap[activeSection] ?? Dashboard;
+   106→
+   107→  useEffect(() => {
+   108→    setLoadingBar(true);
+   109→    const timer = setTimeout(() => setLoadingBar(false), 800);
+   110→    return () => clearTimeout(timer);
+   111→  }, [activeSection, setLoadingBar]);
+   112→
+   113→  return (
+   114→    <div key={activeSection} className="section-enter">
+   115→      <Component />
+   116→    </div>
+   117→  );
+   118→}
+   119→
+   120→// ─── Sidebar (Desktop — supports collapsed & expanded) ─────────────────
+   121→
+   122→function Sidebar({ onNav }: { onNav?: () => void }) {
+   123→  const {
+   124→    activeSection, setActiveSection, darkMode, toggleDarkMode,
+   125→    sidebarCollapsed, toggleSidebarCollapsed,
+   126→  } = useCrmStore();
+   127→  // Quick stats for mobile sidebar
+   128→  const [quickStats, setQuickStats] = useState({ todaySales: 0, pendingLab: 0, lowStock: 0, dueAmount: 0 });
+   129→  const [statsLoaded, setStatsLoaded] = useState(false);
+   130→
+   131→  useEffect(() => {
+   132→    let cancelled = false;
+   133→    (async () => {
+   134→      try {
+   135→        const today = new Date().toISOString().split('T')[0];
+   136→        const [salesRes, labRes, lowStockRes, duesRes] = await Promise.allSettled([
+   137→          fetch(`/api/sales?fromDate=${today}&toDate=${today}&limit=999`),
+   138→          fetch('/api/lab-orders?status=Pending'),
+   139→          fetch('/api/products/low-stock'),
+   140→          fetch('/api/dues'),
+   141→        ]);
+   142→        if (cancelled) return;
+   143→
+   144→        let todaySales = 0;
+   145→        if (salesRes.status === 'fulfilled' && salesRes.value.ok) {
+   146→          const data = await salesRes.value.json();
+   147→          const list = Array.isArray(data.sales) ? data.sales : [];
+   148→          todaySales = list.reduce((sum: number, s: { total: number }) => sum + (s.total || 0), 0);
+   149→        }
+   150→
+   151→        let pendingLab = 0;
+   152→        if (labRes.status === 'fulfilled' && labRes.value.ok) {
+   153→          const data = await labRes.value.json();
+   154→          pendingLab = Array.isArray(data.data) ? data.data.length : Array.isArray(data) ? data.length : 0;
+   155→        }
+   156→
+   157→        let lowStock = 0;
+   158→        if (lowStockRes.status === 'fulfilled' && lowStockRes.value.ok) {
+   159→          const data = await lowStockRes.value.json();
+   160→          lowStock = Array.isArray(data.products) ? data.products.length : Array.isArray(data) ? data.length : 0;
+   161→        }
+   162→
+   163→        let dueAmount = 0;
+   164→        if (duesRes.status === 'fulfilled' && duesRes.value.ok) {
+   165→          const data = await duesRes.value.json();
+   166→          const list = Array.isArray(data.data) ? data.data : [];
+   167→          dueAmount = list.reduce((sum: number, d: { amount: number; paid: number }) => sum + ((d.amount || 0) - (d.paid || 0)), 0);
+   168→        }
+   169→
+   170→        if (!cancelled) {
+   171→          setQuickStats({ todaySales, pendingLab, lowStock, dueAmount });
+   172→          setStatsLoaded(true);
+   173→        }
+   174→      } catch {
+   175→        // silent
+   176→      }
+   177→    })();
+   178→    return () => { cancelled = true; };
+   179→  }, []);
+   180→
+   181→  const navButton = (item: NavItem) => {
+   182→    const Icon = item.icon;
+   183→    const isActive = activeSection === item.key;
+   184→
+   185→    // When collapsed, wrap in tooltip
+   186→    const buttonContent = (
+   187→      <button
+   188→        key={item.key}
+   189→        onClick={() => {
+   190→          setActiveSection(item.key);
+   191→          onNav?.();
+   192→        }}
+   193→        className={`
+   194→          w-full text-left flex items-center gap-3 rounded-lg text-sm font-medium transition-all duration-150 min-h-[44px] touch-manipulation
+   195→          ${sidebarCollapsed ? 'justify-center px-0' : 'px-3'}
+   196→          ${isActive
+   197→            ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200 dark:shadow-emerald-900/40'
+   198→            : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700'
+   199→          }
+   200→        `}
+   201→      >
+   202→        <Icon className="h-5 w-5 shrink-0" />
+   203→        {!sidebarCollapsed && (
+   204→          <>
+   205→            <span className="truncate">{item.label}</span>
+   206→            {item.key === 'lab-orders' && (
+   207→              <Badge variant="secondary" className="ml-auto bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400 text-[10px] px-1.5">
+   208→                3
+   209→              </Badge>
+   210→            )}
+   211→          </>
+   212→        )}
+   213→      </button>
+   214→    );
+   215→
+   216→    if (sidebarCollapsed) {
+   217→      return (
+   218→        <Tooltip key={item.key}>
+   219→          <TooltipTrigger asChild>
+   220→            {buttonContent}
+   221→          </TooltipTrigger>
+   222→          <TooltipContent side="right" sideOffset={8}>
+   223→            <p>{item.label}</p>
+   224→          </TooltipContent>
+   225→        </Tooltip>
+   226→      );
+   227→    }
+   228→
+   229→    return buttonContent;
+   230→  };
+   231→
+   232→  return (
+   233→    <div className="flex h-full flex-col bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-all duration-200">
+   234→      {/* Brand */}
+   235→      <div className={`flex items-center gap-3 ${sidebarCollapsed ? 'px-3 py-4 justify-center' : 'px-5 py-5'}`}>
+   236→        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white font-bold text-sm shadow-lg shadow-emerald-200 dark:shadow-emerald-900/40 shrink-0">
+   237→          LVO
+   238→        </div>
+   239→        {!sidebarCollapsed && (
+   240→          <div className="flex flex-col min-w-0">
+   241→            <span className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight">
+   242→              Lotus Vision
+   243→            </span>
+   244→            <span className="text-xs text-slate-500 dark:text-slate-400 leading-tight">
+   245→              Opticals CRM
+   246→            </span>
+   247→          </div>
+   248→        )}
+   249→      </div>
+   250→
+   251→      <Separator />
+   252→
+   253→      {/* Nav items */}
+   254→      <ScrollArea className="flex-1 px-3 py-3">
+   255→        {/* Quick Stats - visible on mobile sidebar */}
+   256→        {statsLoaded && (
+   257→          <div className="mb-3 lg:hidden">
+   258→            <button
+   259→              className="w-full flex items-center justify-between rounded-lg bg-emerald-50 dark:bg-emerald-950/30 px-3 py-2 text-xs font-medium text-emerald-700 dark:text-emerald-400"
+   260→              onClick={(e) => {
+   261→                const el = e.currentTarget.nextElementSibling;
+   262→                if (el) el.classList.toggle('hidden');
+   263→              }}
+   264→            >
+   265→              <span className="flex items-center gap-1.5">
+   266→                <TrendingUp className="h-3.5 w-3.5" />
+   267→                Quick Stats
+   268→              </span>
+   269→              <ChevronDown className="h-3.5 w-3.5" />
+   270→            </button>
+   271→            <div className="mt-2 grid grid-cols-2 gap-2">
+   272→              <div className="rounded-md bg-white dark:bg-slate-800 border dark:border-slate-700 p-2.5">
+   273→                <p className="text-[10px] text-muted-foreground leading-tight">Today&apos;s Sales</p>
+   274→                <p className="text-sm font-bold font-mono text-emerald-600 dark:text-emerald-400">
+   275→                  ₹{quickStats.todaySales.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+   276→                </p>
+   277→              </div>
+   278→              <div className="rounded-md bg-white dark:bg-slate-800 border dark:border-slate-700 p-2.5">
+   279→                <p className="text-[10px] text-muted-foreground leading-tight">Pending Lab</p>
+   280→                <p className="text-sm font-bold font-mono text-amber-600 dark:text-amber-400">
+   281→                  {quickStats.pendingLab}
+   282→                </p>
+   283→              </div>
+   284→              <div className="rounded-md bg-white dark:bg-slate-800 border dark:border-slate-700 p-2.5">
+   285→                <p className="text-[10px] text-muted-foreground leading-tight">Low Stock</p>
+   286→                <p className="text-sm font-bold font-mono text-red-600 dark:text-red-400">
+   287→                  {quickStats.lowStock}
+   288→                </p>
+   289→              </div>
+   290→              <div className="rounded-md bg-white dark:bg-slate-800 border dark:border-slate-700 p-2.5">
+   291→                <p className="text-[10px] text-muted-foreground leading-tight">Due Amount</p>
+   292→                <p className="text-sm font-bold font-mono text-orange-600 dark:text-orange-400">
+   293→                  ₹{quickStats.dueAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+   294→                </p>
+   295→              </div>
+   296→            </div>
+   297→          </div>
+   298→        )}
+   299→
+   300→        <nav className="flex flex-col gap-1">
+   301→          {NAV_ITEMS.map((item) => navButton(item))}
+   302→        </nav>
+   303→      </ScrollArea>
+   304→
+   305→      <Separator />
+   306→
+   307→      {/* Footer */}
+   308→      <div className="p-3 space-y-1">
+   309→        <button
+   310→          onClick={toggleDarkMode}
+   311→          className={`flex items-center rounded-lg text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 transition-colors min-h-[44px] touch-manipulation ${sidebarCollapsed ? 'justify-center px-0' : 'w-full gap-3 px-3'}`}
+   312→          aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+   313→        >
+   314→          {darkMode ? <Sun className="h-5 w-5 shrink-0" /> : <Moon className="h-5 w-5 shrink-0" />}
+   315→          {!sidebarCollapsed && (darkMode ? 'Light Mode' : 'Dark Mode')}
+   316→        </button>
+   317→        <div className={`flex items-center gap-3 min-h-[44px] ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'px-3 py-2.5'}`}>
+   318→          <Avatar className="h-9 w-9 shrink-0">
+   319→            <AvatarFallback className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 text-xs font-semibold">
+   320→              RK
+   321→            </AvatarFallback>
+   322→          </Avatar>
+   323→          {!sidebarCollapsed && (
+   324→            <>
+   325→              <div className="flex-1 min-w-0">
+   326→                <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">Ram Kumar</p>
+   327→                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">Owner</p>
+   328→              </div>
+   329→              <button className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors h-10 w-10 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 touch-manipulation" aria-label="Log out" onClick={() => toast.info('Session management is not configured. Contact your admin.')}>
+   330→                <LogOut className="h-4.5 w-4.5" />
+   331→              </button>
+   332→            </>
+   333→          )}
+   334→        </div>
+   335→
+   336→        {/* Collapse toggle — desktop only */}
+   337→        <button
+   338→          onClick={toggleSidebarCollapsed}
+   339→          className="hidden lg:flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 transition-colors min-h-[44px] touch-manipulation"
+   340→          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+   341→        >
+   342→          {sidebarCollapsed ? <PanelLeftOpen className="h-5 w-5 shrink-0 mx-auto" /> : (
+   343→            <>
+   344→              <PanelLeftClose className="h-5 w-5 shrink-0" />
+   345→              <span>Collapse</span>
+   346→            </>
+   347→          )}
+   348→        </button>
+   349→      </div>
+   350→    </div>
+   351→  );
+   352→}
+   353→
+   354→// ─── Global Search ─────────────────────────────────────────────────────
+   355→
+   356→interface SearchResult {
+   357→  type: 'customer' | 'product' | 'sale';
+   358→  id: string;
+   359→  primary: string;
+   360→  secondary: string;
+   361→  tertiary?: string;
+   362→}
+   363→
+   364→function GlobalSearch() {
+   365→  const [query, setQuery] = useState('');
+   366→  const [results, setResults] = useState<SearchResult[]>([]);
+   367→  const [open, setOpen] = useState(false);
+   368→  const [searching, setSearching] = useState(false);
+   369→  const [mobileExpanded, setMobileExpanded] = useState(false);
+   370→  const inputRef = useRef<HTMLInputElement>(null);
+   371→  const containerRef = useRef<HTMLDivElement>(null);
+   372→  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+   373→  const { setActiveSection, setSearchInputRef } = useCrmStore();
+   374→
+   375→  // Expose the ref to the store for keyboard shortcut focus
+   376→  useEffect(() => {
+   377→    setSearchInputRef(inputRef);
+   378→  }, [inputRef, setSearchInputRef]);
+   379→
+   380→  const doSearch = useCallback(async (q: string) => {
+   381→    if (q.length < 2) {
+   382→      setResults([]);
+   383→      setOpen(false);
+   384→      return;
+   385→    }
+   386→    setSearching(true);
+   387→    try {
+   388→      const [custRes, prodRes, saleRes] = await Promise.allSettled([
+   389→        fetch(`/api/customers?search=${encodeURIComponent(q)}&limit=5`),
+   390→        fetch(`/api/products?search=${encodeURIComponent(q)}&pageSize=5`),
+   391→        fetch(`/api/sales?search=${encodeURIComponent(q)}&limit=5`),
+   392→      ]);
+   393→
+   394→      const found: SearchResult[] = [];
+   395→
+   396→      if (custRes.status === 'fulfilled' && custRes.value.ok) {
+   397→        const data = await custRes.value.json();
+   398→        const list = Array.isArray(data.data) ? data.data : [];
+   399→        list.forEach((c: { id: string; name: string; phone: string }) => {
+   400→          found.push({ type: 'customer', id: c.id, primary: c.name, secondary: c.phone });
+   401→        });
+   402→      }
+   403→
+   404→      if (prodRes.status === 'fulfilled' && prodRes.value.ok) {
+   405→        const data = await prodRes.value.json();
+   406→        const list = Array.isArray(data.products) ? data.products : [];
+   407→        list.forEach((p: { id: string; name: string; price: number; stock: number }) => {
+   408→          found.push({
+   409→            type: 'product',
+   410→            id: p.id,
+   411→            primary: p.name,
+   412→            secondary: `₹${p.price.toLocaleString('en-IN')}`,
+   413→            tertiary: `Stock: ${p.stock}`,
+   414→          });
+   415→        });
+   416→      }
+   417→
+   418→      if (saleRes.status === 'fulfilled' && saleRes.value.ok) {
+   419→        const data = await saleRes.value.json();
+   420→        const list = Array.isArray(data.sales) ? data.sales : [];
+   421→        list.forEach((s: { id: string; invoiceNo: string; customerName: string; total: number }) => {
+   422→          found.push({
+   423→            type: 'sale',
+   424→            id: s.id,
+   425→            primary: s.invoiceNo,
+   426→            secondary: s.customerName,
+   427→            tertiary: `₹${s.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+   428→          });
+   429→        });
+   430→      }
+   431→
+   432→      setResults(found);
+   433→      setOpen(found.length > 0);
+   434→    } catch {
+   435→      // ignore
+   436→    } finally {
+   437→      setSearching(false);
+   438→    }
+   439→  }, []);
+   440→
+   441→  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+   442→    const val = e.target.value;
+   443→    setQuery(val);
+   444→    if (debounceRef.current) clearTimeout(debounceRef.current);
+   445→    debounceRef.current = setTimeout(() => doSearch(val), 300);
+   446→  }, [doSearch]);
+   447→
+   448→  const handleSelect = useCallback((result: SearchResult) => {
+   449→    const sectionMap: Record<string, SectionKey> = {
+   450→      customer: 'customers',
+   451→      product: 'inventory',
+   452→      sale: 'sales',
+   453→    };
+   454→    setActiveSection(sectionMap[result.type] ?? 'dashboard');
+   455→    setQuery('');
+   456→    setOpen(false);
+   457→    setMobileExpanded(false);
+   458→  }, [setActiveSection]);
+   459→
+   460→  // Close on click outside
+   461→  useEffect(() => {
+   462→    function handleClick(e: Event) {
+   463→      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+   464→        setOpen(false);
+   465→        setMobileExpanded(false);
+   466→      }
+   467→    }
+   468→    document.addEventListener('mousedown', handleClick);
+   469→    document.addEventListener('touchstart', handleClick, { passive: true });
+   470→    return () => {
+   471→      document.removeEventListener('mousedown', handleClick);
+   472→      document.removeEventListener('touchstart', handleClick);
+   473→    };
+   474→  }, []);
+   475→
+   476→  // Close on Escape
+   477→  useEffect(() => {
+   478→    function handleKey(e: KeyboardEvent) {
+   479→      if (e.key === 'Escape') {
+   480→        setOpen(false);
+   481→        setMobileExpanded(false);
+   482→        inputRef.current?.blur();
+   483→      }
+   484→    }
+   485→    document.addEventListener('keydown', handleKey);
+   486→    return () => document.removeEventListener('keydown', handleKey);
+   487→  }, []);
+   488→
+   489→  const customers = results.filter((r) => r.type === 'customer');
+   490→  const products = results.filter((r) => r.type === 'product');
+   491→  const sales = results.filter((r) => r.type === 'sale');
+   492→  const hasResults = customers.length > 0 || products.length > 0 || sales.length > 0;
+   493→
+   494→  const typeIcon = (type: string) => {
+   495→    switch (type) {
+   496→      case 'customer': return <Users className="h-3.5 w-3.5 text-emerald-500" />;
+   497→      case 'product': return <Package className="h-3.5 w-3.5 text-sky-500" />;
+   498→      case 'sale': return <Receipt className="h-3.5 w-3.5 text-amber-500" />;
+   499→    }
+   500→  };
+   501→
+   502→  const typeLabel = (type: string) => {
+   503→    switch (type) {
+   504→      case 'customer': return 'Customers';
+   505→      case 'product': return 'Products';
+   506→      case 'sale': return 'Sales';
+   507→    }
+   508→  };
+   509→
+   510→  return (
+   511→    <div ref={containerRef} className="relative">
+   512→      {/* Mobile: icon-only, expandable */}
+   513→      <div className="lg:hidden">
+   514→        {mobileExpanded ? (
+   515→          <div className="flex items-center gap-1">
+   516→            <Input
+   517→              ref={inputRef}
+   518→              placeholder="Search..."
+   519→              value={query}
+   520→              onChange={handleChange}
+   521→              autoFocus
+   522→              className="h-9 w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-sm"
+   523→            />
+   524→            <Button
+   525→              variant="ghost"
+   526→              size="icon"
+   527→              className="shrink-0 min-w-[44px] min-h-[44px] touch-manipulation"
+   528→              onClick={() => { setMobileExpanded(false); setQuery(''); setOpen(false); }}
+   529→            >
+   530→              <X className="h-4 w-4" />
+   531→            </Button>
+   532→          </div>
+   533→        ) : (
+   534→          <Tooltip>
+   535→            <TooltipTrigger asChild>
+   536→              <Button
+   537→                variant="ghost"
+   538→                size="icon"
+   539→                className="shrink-0 min-w-[44px] min-h-[44px] touch-manipulation"
+   540→                onClick={() => setMobileExpanded(true)}
+   541→              >
+   542→                <Search className="h-4.5 w-4.5 text-slate-600 dark:text-slate-400" />
+   543→              </Button>
+   544→            </TooltipTrigger>
+   545→            <TooltipContent>Search (Ctrl+K)</TooltipContent>
+   546→          </Tooltip>
+   547→        )}
+   548→      </div>
+   549→
+   550→      {/* Desktop: full search input */}
+   551→      <div className="hidden lg:block">
+   552→        <Tooltip>
+   553→          <TooltipTrigger asChild>
+   554→            <div className="relative w-64">
+   555→              <Input
+   556→                ref={inputRef}
+   557→                placeholder="Search... (Ctrl+K)"
+   558→                value={query}
+   559→                onChange={handleChange}
+   560→                onFocus={() => { if (results.length > 0) setOpen(true); }}
+   561→                className="h-9 pl-9 pr-8 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-sm"
+   562→              />
+   563→              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+   564→              {searching && (
+   565→                <Loader className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 animate-spin" />
+   566→              )}
+   567→            </div>
+   568→          </TooltipTrigger>
+   569→          <TooltipContent>Ctrl+K to search</TooltipContent>
+   570→        </Tooltip>
+   571→      </div>
+   572→
+   573→      {/* Dropdown */}
+   574→      {open && hasResults && (
+   575→        <div className="absolute right-0 lg:right-auto lg:left-0 top-full mt-1.5 w-[calc(100vw-1.5rem)] lg:w-80 z-50 rounded-lg border bg-popover shadow-lg max-h-80 overflow-y-auto">
+   576→          {/* Customers group */}
+   577→          {customers.length > 0 && (
+   578→            <div>
+   579→              <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+   580→                <Users className="h-3 w-3" /> Customers
+   581→              </div>
+   582→              {customers.map((r) => (
+   583→                <button
+   584→                  key={`cust-${r.id}`}
+   585→                  className="w-full px-3 py-2.5 text-left text-sm hover:bg-accent active:bg-accent/80 flex items-center gap-2.5 transition-colors min-h-[44px] touch-manipulation"
+   586→                  onClick={() => handleSelect(r)}
+   587→                >
+   588→                  <div className="rounded-full bg-emerald-100 dark:bg-emerald-900/40 p-1.5 shrink-0">
+   589→                    {typeIcon(r.type)}
+   590→                  </div>
+   591→                  <div className="min-w-0 flex-1">
+   592→                    <p className="font-medium truncate">{r.primary}</p>
+   593→                    <p className="text-xs text-muted-foreground truncate">{r.secondary}</p>
+   594→                  </div>
+   595→                </button>
+   596→              ))}
+   597→              {products.length > 0 && <Separator />}
+   598→            </div>
+   599→          )}
+   600→
+   601→          {/* Products group */}
+   602→          {products.length > 0 && (
+   603→            <div>
+   604→              <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+   605→                <Package className="h-3 w-3" /> Products
+   606→              </div>
+   607→              {products.map((r) => (
+   608→                <button
+   609→                  key={`prod-${r.id}`}
+   610→                  className="w-full px-3 py-2.5 text-left text-sm hover:bg-accent active:bg-accent/80 flex items-center gap-2.5 transition-colors min-h-[44px] touch-manipulation"
+   611→                  onClick={() => handleSelect(r)}
+   612→                >
+   613→                  <div className="rounded-full bg-sky-100 dark:bg-sky-900/40 p-1.5 shrink-0">
+   614→                    {typeIcon(r.type)}
+   615→                  </div>
+   616→                  <div className="min-w-0 flex-1">
+   617→                    <p className="font-medium truncate">{r.primary}</p>
+   618→                    <p className="text-xs text-muted-foreground truncate">
+   619→                      {r.secondary} {r.tertiary ? `· ${r.tertiary}` : ''}
+   620→                    </p>
+   621→                  </div>
+   622→                </button>
+   623→              ))}
+   624→              {sales.length > 0 && <Separator />}
+   625→            </div>
+   626→          )}
+   627→
+   628→          {/* Sales group */}
+   629→          {sales.length > 0 && (
+   630→            <div>
+   631→              <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+   632→                <Receipt className="h-3 w-3" /> Sales
+   633→              </div>
+   634→              {sales.map((r) => (
+   635→                <button
+   636→                  key={`sale-${r.id}`}
+   637→                  className="w-full px-3 py-2.5 text-left text-sm hover:bg-accent active:bg-accent/80 flex items-center gap-2.5 transition-colors min-h-[44px] touch-manipulation"
+   638→                  onClick={() => handleSelect(r)}
+   639→                >
+   640→                  <div className="rounded-full bg-amber-100 dark:bg-amber-900/40 p-1.5 shrink-0">
+   641→                    {typeIcon(r.type)}
+   642→                  </div>
+   643→                  <div className="min-w-0 flex-1">
+   644→                    <p className="font-medium truncate">{r.primary}</p>
+   645→                    <p className="text-xs text-muted-foreground truncate">
+   646→                      {r.secondary} {r.tertiary ? `· ${r.tertiary}` : ''}
+   647→                    </p>
+   648→                  </div>
+   649→                </button>
+   650→              ))}
+   651→            </div>
+   652→          )}
+   653→        </div>
+   654→      )}
+   655→
+   656→      {/* No results message */}
+   657→      {open && query.length >= 2 && !searching && !hasResults && (
+   658→        <div className="absolute right-0 lg:right-auto lg:left-0 top-full mt-1.5 w-[340px] lg:w-80 z-50 rounded-lg border bg-popover shadow-lg p-4 text-center">
+   659→          <p className="text-sm text-muted-foreground">No results found for &ldquo;{query}&rdquo;</p>
+   660→        </div>
+   661→      )}
+   662→    </div>
+   663→  );
+   664→}
+   665→
+   666→// ─── Settings Dialog ───────────────────────────────────────────────────
+   667→
+   668→function SettingsDialog() {
+   669→  const { settingsOpen, setSettingsOpen } = useCrmStore();
+   670→  const [form, setForm] = useState<CrmSettings>(getSettings());
+   671→  const [saving, setSaving] = useState(false);
+   672→
+   673→  useEffect(() => {
+   674→    if (settingsOpen) {
+   675→      setForm(getSettings());
+   676→    }
+   677→  }, [settingsOpen]);
+   678→
+   679→  const handleSave = useCallback(() => {
+   680→    setSaving(true);
+   681→    // Simulate a tiny delay for UX
+   682→    setTimeout(() => {
+   683→      saveSettings(form);
+   684→      setSaving(false);
+   685→      setSettingsOpen(false);
+   686→      toast.success('Settings saved successfully');
+   687→    }, 200);
+   688→  }, [form, setSettingsOpen]);
+   689→
+   690→  const updateField = <K extends keyof CrmSettings>(key: K, value: CrmSettings[K]) => {
+   691→    setForm((prev) => ({ ...prev, [key]: value }));
+   692→  };
+   693→
+   694→  return (
+   695→    <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+   696→      <DialogContent className="sm:max-w-md">
+   697→        <DialogHeader>
+   698→          <DialogTitle className="flex items-center gap-2">
+   699→            <Settings className="h-5 w-5" />
+   700→            Settings
+   701→          </DialogTitle>
+   702→          <DialogDescription>
+   703→            Configure your shop details and preferences. These are used across invoices and reports.
+   704→          </DialogDescription>
+   705→        </DialogHeader>
+   706→
+   707→        <div className="space-y-4 py-2">
+   708→          <div className="space-y-2">
+   709→            <Label htmlFor="setting-shop-name">Shop Name</Label>
+   710→            <Input
+   711→              id="setting-shop-name"
+   712→              value={form.shopName}
+   713→              onChange={(e) => updateField('shopName', e.target.value)}
+   714→              placeholder="Shop name"
+   715→            />
+   716→          </div>
+   717→
+   718→          <div className="space-y-2">
+   719→            <Label htmlFor="setting-revenue-goal">Daily Revenue Goal (₹)</Label>
+   720→            <Input
+   721→              id="setting-revenue-goal"
+   722→              type="number"
+   723→              min={0}
+   724→              value={form.dailyRevenueGoal}
+   725→              onChange={(e) => updateField('dailyRevenueGoal', parseFloat(e.target.value) || 0)}
+   726→              placeholder="25000"
+   727→            />
+   728→            <p className="text-xs text-muted-foreground">Used by the Dashboard&apos;s revenue goal progress bar.</p>
+   729→          </div>
+   730→
+   731→          <div className="space-y-2">
+   732→            <Label htmlFor="setting-gstin">GSTIN</Label>
+   733→            <Input
+   734→              id="setting-gstin"
+   735→              value={form.gstin}
+   736→              onChange={(e) => updateField('gstin', e.target.value)}
+   737→              placeholder="GST identification number"
+   738→            />
+   739→            <p className="text-xs text-muted-foreground">Displayed on printed invoices.</p>
+   740→          </div>
+   741→
+   742→          <div className="space-y-2">
+   743→            <Label htmlFor="setting-phone">Phone</Label>
+   744→            <Input
+   745→              id="setting-phone"
+   746→              value={form.phone}
+   747→              onChange={(e) => updateField('phone', e.target.value)}
+   748→              placeholder="+91 94432 12345"
+   749→            />
+   750→            <p className="text-xs text-muted-foreground">Displayed on printed invoices.</p>
+   751→          </div>
+   752→
+   753→          <div className="space-y-2">
+   754→            <Label htmlFor="setting-address">Address</Label>
+   755→            <Input
+   756→              id="setting-address"
+   757→              value={form.address}
+   758→              onChange={(e) => updateField('address', e.target.value)}
+   759→              placeholder="Full shop address"
+   760→            />
+   761→            <p className="text-xs text-muted-foreground">Displayed on printed invoices.</p>
+   762→          </div>
+   763→        </div>
+   764→
+   765→        <Separator />
+   766→
+   767→        {/* Data Management Section */}
+   768→        <div className="space-y-3">
+   769→          <Label className="text-sm font-semibold flex items-center gap-2">
+   770→            <Database className="h-4 w-4" />
+   771→            Data Management
+   772→          </Label>
+   773→          <p className="text-xs text-muted-foreground">
+   774→            Export or import your entire CRM database as a JSON backup file.
+   775→          </p>
+   776→          <div className="flex flex-col sm:flex-row gap-2">
+   777→            <Button
+   778→              variant="outline"
+   779→              size="sm"
+   780→              className="gap-2"
+   781→              onClick={async () => {
+   782→                try {
+   783→                  const res = await fetch('/api/backup');
+   784→                  if (!res.ok) throw new Error('Export failed');
+   785→                  const blob = await res.json();
+   786→                  const dataStr = JSON.stringify(blob, null, 2);
+   787→                  const fileBlob = new Blob([dataStr], { type: 'application/json' });
+   788→                  const url = URL.createObjectURL(fileBlob);
+   789→                  const a = document.createElement('a');
+   790→                  const today = new Date().toISOString().split('T')[0];
+   791→                  a.href = url;
+   792→                  a.download = `sko-crm-backup-${today}.json`;
+   793→                  document.body.appendChild(a);
+   794→                  a.click();
+   795→                  document.body.removeChild(a);
+   796→                  URL.revokeObjectURL(url);
+   797→                  toast.success('Backup exported successfully!');
+   798→                } catch {
+   799→                  toast.error('Failed to export backup');
+   800→                }
+   801→              }}
+   802→            >
+   803→              <Download className="h-4 w-4" />
+   804→              Export Backup
+   805→            </Button>
+   806→
+   807→            <label className="cursor-pointer">
+   808→              <input
+   809→                type="file"
+   810→                accept=".json"
+   811→                className="hidden"
+   812→                onChange={async (e) => {
+   813→                  const file = e.target.files?.[0];
+   814→                  if (!file) return;
+   815→                  try {
+   816→                    const text = await file.text();
+   817→                    const data = JSON.parse(text);
+   818→                    if (!data.version || !data.data) {
+   819→                      toast.error('Invalid backup file format');
+   820→                      return;
+   821→                    }
+   822→                    const res = await fetch('/api/restore', {
+   823→                      method: 'POST',
+   824→                      headers: { 'Content-Type': 'application/json' },
+   825→                      body: JSON.stringify(data),
+   826→                    });
+   827→                    if (res.ok) {
+   828→                      const result = await res.json().catch(() => ({}));
+   829→                      const counts = result.restored;
+   830→                      const parts = Object.entries(counts || {}).map(([k, v]) => `${k}: ${v}`).join(', ');
+   831→                      toast.success(`Data restored successfully! ${parts ? '(' + parts + ')' : ''} Refreshing...`);
+   832→                      setTimeout(() => window.location.reload(), 1500);
+   833→                    } else {
+   834→                      const err = await res.json().catch(() => ({}));
+   835→                      toast.error(err.error || 'Failed to restore backup');
+   836→                    }
+   837→                  } catch {
+   838→                    toast.error('Failed to read or restore backup file');
+   839→                  }
+   840→                  // Reset input
+   841→                  e.target.value = '';
+   842→                }}
+   843→              />
+   844→              <span
+   845→                role="button"
+   846→                tabIndex={0}
+   847→                className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+   848→              >
+   849→                <Upload className="h-4 w-4" />
+   850→                Import Backup
+   851→              </span>
+   852→            </label>
+   853→          </div>
+   854→          <div className="flex items-start gap-2 rounded-md border border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20 p-2.5">
+   855→            <AlertOctagon className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+   856→            <p className="text-xs text-amber-800 dark:text-amber-300">
+   857→              <span className="font-semibold">Warning:</span> Importing a backup will REPLACE all current data.
+   858→              This action cannot be undone.
+   859→            </p>
+   860→          </div>
+   861→        </div>
+   862→
+   863→        <DialogFooter className="gap-2">
+   864→          <Button variant="outline" onClick={() => setSettingsOpen(false)} className="min-h-[44px] min-w-[44px] touch-manipulation">
+   865→            Cancel
+   866→          </Button>
+   867→          <Button onClick={handleSave} disabled={saving} className="min-h-[44px] min-w-[44px] touch-manipulation">
+   868→            {saving ? <Loader className="h-4 w-4 animate-spin mr-1.5" /> : null}
+   869→            Save Settings
+   870→          </Button>
+   871→        </DialogFooter>
+   872→      </DialogContent>
+   873→    </Dialog>
+   874→  );
+   875→}
+   876→
+   877→// ─── Loading Bar ───────────────────────────────────────────────────────
+   878→
+   879→function LoadingBar() {
+   880→  const { loadingBar } = useCrmStore();
+   881→
+   882→  return (
+   883→    <div
+   884→      className={`h-0.5 bg-emerald-500 transition-all duration-500 ease-out ${
+   885→        loadingBar ? 'w-full opacity-100' : 'w-0 opacity-0'
+   886→      }`}
+   887→      role="progressbar"
+   888→      aria-label="Loading"
+   889→    />
+   890→  );
+   891→}
+   892→
+   893→// ─── Top Bar ────────────────────────────────────────────────────────────
+   894→
+   895→function TopBar() {
+   896→  const { activeSection, setSidebarOpen, darkMode, toggleDarkMode, setSettingsOpen, sidebarCollapsed, toggleSidebarCollapsed } = useCrmStore();
+   897→
+   898→  const currentLabel = NAV_ITEMS.find((n) => n.key === activeSection)?.label ?? 'Dashboard';
+   899→
+   900→  return (
+   901→    <header className="sticky top-0 z-30 flex h-12 lg:h-14 items-center gap-2 sm:gap-4 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md px-3 sm:px-4 md:px-6 pb-0">
+   902→      {/* Desktop: hamburger for md→lg range where sidebar is hidden */}
+   903→      <Button
+   904→        variant="ghost"
+   905→        size="icon"
+   906→        className="hidden md:flex lg:hidden shrink-0 h-11 w-11 touch-manipulation"
+   907→        onClick={() => setSidebarOpen(true)}
+   908→        aria-label="Open menu"
+   909→      >
+   910→        <Menu className="h-5 w-5" />
+   911→      </Button>
+   912→
+   913→      {/* Desktop: collapse toggle visible when sidebar is collapsed */}
+   914→      {sidebarCollapsed && (
+   915→        <Button
+   916→          variant="ghost"
+   917→          size="icon"
+   918→          className="hidden lg:flex shrink-0 h-11 w-11 touch-manipulation"
+   919→          onClick={toggleSidebarCollapsed}
+   920→          aria-label="Expand sidebar"
+   921→        >
+   922→          <PanelLeftOpen className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+   923→        </Button>
+   924→      )}
+   925→
+   926→      <h1 className="text-base lg:text-lg font-semibold text-slate-900 dark:text-slate-100 truncate">
+   927→        {currentLabel}
+   928→      </h1>
+   929→
+   930→      <div className="flex-1" />
+   931→
+   932→      {/* Global Search */}
+   933→      <GlobalSearch />
+   934→
+   935→      {/* Settings */}
+   936→      <Button
+   937→        variant="ghost"
+   938→        size="icon"
+   939→        className="shrink-0 h-11 w-11 lg:h-10 lg:w-10 min-w-[44px] min-h-[44px] touch-manipulation"
+   940→        onClick={() => setSettingsOpen(true)}
+   941→        aria-label="Settings"
+   942→      >
+   943→        <Settings className="h-4.5 w-4.5 text-slate-600 dark:text-slate-400" />
+   944→      </Button>
+   945→
+   946→      {/* Dark Mode Toggle */}
+   947→      <Button
+   948→        variant="ghost"
+   949→        size="icon"
+   950→        className="shrink-0 h-11 w-11 lg:h-10 lg:w-10 min-w-[44px] min-h-[44px] touch-manipulation"
+   951→        onClick={toggleDarkMode}
+   952→        aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+   953→      >
+   954→        {darkMode ? (
+   955→          <Sun className="h-4.5 w-4.5 text-amber-500" />
+   956→        ) : (
+   957→          <Moon className="h-4.5 w-4.5 text-slate-600 dark:text-slate-400" />
+   958→        )}
+   959→      </Button>
+   960→
+   961→      {/* Notifications */}
+   962→      <Notifications />
+   963→    </header>
+   964→  );
+   965→}
+   966→
+   967→// ─── Mobile Sidebar Overlay with transitions ────────────────────────────
+   968→// Kept for md→lg range where sidebar is hidden but bottom nav is not shown
+   969→
+   970→function MobileSidebar() {
+   971→  const { sidebarOpen, setSidebarOpen } = useCrmStore();
+   972→
+   973→  const handleClose = useCallback(() => {
+   974→    setSidebarOpen(false);
+   975→  }, [setSidebarOpen]);
+   976→
+   977→  return (
+   978→    <div
+   979→      className={`fixed inset-0 z-50 md:flex lg:hidden pointer-events-none transition-[visibility,opacity] duration-200 ${
+   980→        sidebarOpen ? 'pointer-events-auto !visible opacity-100' : 'invisible opacity-0'
+   981→      }`}
+   982→    >
+   983→      {/* Backdrop with fade */}
+   984→      <div
+   985→        className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-200 ${
+   986→          sidebarOpen ? 'opacity-100' : 'opacity-0'
+   987→        }`}
+   988→        onClick={handleClose}
+   989→      />
+   990→      {/* Sidebar panel with slide */}
+   991→      <div
+   992→        className={`relative z-10 h-full w-72 transition-transform duration-200 ease-out ${
+   993→          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+   994→        }`}
+   995→      >
+   996→        <button
+   997→          onClick={handleClose}
+   998→          aria-label="Close menu"
+   999→          className="absolute top-3 right-3 z-20 rounded-md bg-white/80 dark:bg-slate-800/80 p-2.5 shadow-sm transition-colors hover:bg-white dark:hover:bg-slate-800 min-h-[44px] min-w-[44px] flex items-center justify-center touch-manipulation"
+  1000→        >
+  1001→          <X className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+  1002→        </button>
+  1003→        <Sidebar onNav={handleClose} />
+  1004→      </div>
+  1005→    </div>
+  1006→  );
+  1007→}
+  1008→
+  1009→// ─── Bottom Navigation Bar (Mobile) ────────────────────────────────────
+  1010→
+  1011→const BOTTOM_NAV_TABS: { key: SectionKey | 'more'; label: string; icon: React.ElementType }[] = [
+  1012→  { key: 'dashboard', label: 'Home', icon: LayoutDashboard },
+  1013→  { key: 'customers', label: 'Customers', icon: Users },
+  1014→  { key: 'sales', label: 'Sales', icon: Receipt },
+  1015→  { key: 'inventory', label: 'Inventory', icon: Package },
+  1016→  { key: 'more', label: 'More', icon: MoreHorizontal },
+  1017→];
+  1018→
+  1019→function BottomNavBar() {
+  1020→  const { activeSection, setActiveSection, setMoreSheetOpen } = useCrmStore();
+  1021→
+  1022→  const handleTabPress = (tab: typeof BOTTOM_NAV_TABS[number]) => {
+  1023→    if (tab.key === 'more') {
+  1024→      setMoreSheetOpen(true);
+  1025→    } else {
+  1026→      setActiveSection(tab.key);
+  1027→    }
+  1028→  };
+  1029→
+  1030→  return (
+  1031→    <nav
+  1032→      className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 shadow-[0_-2px_10px_rgba(0,0,0,0.06)] dark:shadow-[0_-2px_10px_rgba(0,0,0,0.3)] bottom-nav-safe"
+  1033→      aria-label="Main navigation"
+  1034→    >
+  1035→      <div className="flex items-stretch justify-around h-16">
+  1036→        {BOTTOM_NAV_TABS.map((tab) => {
+  1037→          const Icon = tab.icon;
+  1038→          const isActive = tab.key !== 'more' && activeSection === tab.key;
+  1039→
+  1040→          return (
+  1041→            <button
+  1042→              key={tab.key}
+  1043→              onClick={() => handleTabPress(tab)}
+  1044→              className="flex flex-col items-center justify-center flex-1 min-w-0 min-h-[44px] touch-manipulation relative py-1 transition-colors duration-150"
+  1045→              aria-label={tab.label}
+  1046→              aria-current={isActive ? 'page' : undefined}
+  1047→            >
+  1048→              <Icon
+  1049→                className={`h-5 w-5 transition-colors duration-150 ${
+  1050→                  isActive
+  1051→                    ? 'text-emerald-600 dark:text-emerald-400'
+  1052→                    : 'text-slate-400 dark:text-slate-500'
+  1053→                }`}
+  1054→              />
+  1055→              <span
+  1056→                className={`text-[10px] leading-tight mt-0.5 transition-colors duration-150 ${
+  1057→                  isActive
+  1058→                    ? 'text-emerald-600 dark:text-emerald-400 font-medium'
+  1059→                    : 'text-slate-400 dark:text-slate-500'
+  1060→                }`}
+  1061→              >
+  1062→                {tab.label}
+  1063→              </span>
+  1064→              {/* Active indicator pill */}
+  1065→              {isActive && (
+  1066→                <span className="absolute bottom-1 left-1/2 -translate-x-1/2 h-1 w-5 rounded-full bg-emerald-600 dark:bg-emerald-400 transition-all duration-200" />
+  1067→              )}
+  1068→            </button>
+  1069→          );
+  1070→        })}
+  1071→      </div>
+  1072→    </nav>
+  1073→  );
+  1074→}
+  1075→
+  1076→// ─── "More" Bottom Sheet (Mobile) ──────────────────────────────────────
+  1077→
+  1078→function MoreSheet() {
+  1079→  const { moreSheetOpen, setMoreSheetOpen, activeSection, setActiveSection } = useCrmStore();
+  1080→
+  1081→  // Lock body scroll when sheet is open
+  1082→  useEffect(() => {
+  1083→    if (moreSheetOpen) {
+  1084→      document.body.classList.add('sheet-open');
+  1085→    } else {
+  1086→      document.body.classList.remove('sheet-open');
+  1087→    }
+  1088→    return () => {
+  1089→      document.body.classList.remove('sheet-open');
+  1090→    };
+  1091→  }, [moreSheetOpen]);
+  1092→
+  1093→  const handleSelect = (key: SectionKey) => {
+  1094→    setActiveSection(key);
+  1095→    setMoreSheetOpen(false);
+  1096→  };
+  1097→
+  1098→  return (
+  1099→    <Drawer
+  1100→      open={moreSheetOpen}
+  1101→      onOpenChange={(open) => {
+  1102→        setMoreSheetOpen(open);
+  1103→        if (!open) {
+  1104→          document.body.classList.remove('sheet-open');
+  1105→        }
+  1106→      }}
+  1107→      dismissible
+  1108→      handleOnly
+  1109→    >
+  1110→      <DrawerContent className="max-h-[70vh]">
+  1111→        <DrawerHeader className="text-center pb-2">
+  1112→          <DrawerTitle className="text-base">All Sections</DrawerTitle>
+  1113→          <DrawerDescription className="text-xs">Tap to navigate</DrawerDescription>
+  1114→        </DrawerHeader>
+  1115→        <div className="px-4 pb-6">
+  1116→          <div className="grid grid-cols-3 gap-3">
+  1117→            {NAV_ITEMS.map((item) => {
+  1118→              const Icon = item.icon;
+  1119→              const isActive = activeSection === item.key;
+  1120→              return (
+  1121→                <button
+  1122→                  key={item.key}
+  1123→                  onClick={() => handleSelect(item.key)}
+  1124→                  className={`flex flex-col items-center justify-center gap-2 rounded-xl p-3 min-h-[68px] min-w-[44px] touch-manipulation transition-colors duration-150 ${
+  1125→                    isActive
+  1126→                      ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+  1127→                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 active:bg-slate-300 dark:active:bg-slate-600'
+  1128→                  }`}
+  1129→                >
+  1130→                  <Icon className="h-5 w-5 shrink-0" />
+  1131→                  <span className="text-[11px] font-medium leading-tight text-center line-clamp-1">
+  1132→                    {item.label}
+  1133→                  </span>
+  1134→                </button>
+  1135→              );
+  1136→            })}
+  1137→          </div>
+  1138→        </div>
+  1139→      </DrawerContent>
+  1140→    </Drawer>
+  1141→  );
+  1142→}
+  1143→
+  1144→// ─── Dark Mode Effect ───────────────────────────────────────────────────
+  1145→
+  1146→function DarkModeEffect() {
+  1147→  const { darkMode } = useCrmStore();
+  1148→
+  1149→  useEffect(() => {
+  1150→    document.documentElement.classList.toggle('dark', darkMode);
+  1151→  }, [darkMode]);
+  1152→
+  1153→  return null;
+  1154→}
+  1155→
+  1156→// ─── Keyboard Shortcuts ────────────────────────────────────────────────
+  1157→
+  1158→function KeyboardShortcuts() {
+  1159→  const { focusSearchInput, triggerNewSaleDialog, setSettingsOpen, settingsOpen, setActiveSection } = useCrmStore();
+  1160→
+  1161→  useEffect(() => {
+  1162→    function handleKeyDown(e: KeyboardEvent) {
+  1163→      // Don't trigger shortcuts when typing in inputs/textareas
+  1164→      const tag = (e.target as HTMLElement)?.tagName;
+  1165→      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+  1166→
+  1167→      // Ctrl+K or Cmd+K: Focus search
+  1168→      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+  1169→        e.preventDefault();
+  1170→        focusSearchInput();
+  1171→        return;
+  1172→      }
+  1173→
+  1174→      // Ctrl+N: New Sale
+  1175→      if (e.ctrlKey && e.key === 'n') {
+  1176→        e.preventDefault();
+  1177→        triggerNewSaleDialog();
+  1178→        return;
+  1179→      }
+  1180→
+  1181→      // Escape: Close settings dialog
+  1182→      if (e.key === 'Escape' && settingsOpen) {
+  1183→        setSettingsOpen(false);
+  1184→        return;
+  1185→      }
+  1186→
+  1187→      // Number keys 1-9: Quick section switch (only when not in input)
+  1188→      if (!isInput && !e.ctrlKey && !e.metaKey && !e.altKey) {
+  1189→        const num = parseInt(e.key);
+  1190→        if (num >= 1 && num <= 9 && NAV_ITEMS[num - 1]) {
+  1191→          setActiveSection(NAV_ITEMS[num - 1].key);
+  1192→          return;
+  1193→        }
+  1194→        // 0 = section 10 (Staff)
+  1195→        if (e.key === '0' && NAV_ITEMS[9]) {
+  1196→          setActiveSection(NAV_ITEMS[9].key);
+  1197→          return;
+  1198→        }
+  1199→      }
+  1200→    }
+  1201→
+  1202→    document.addEventListener('keydown', handleKeyDown);
+  1203→    return () => document.removeEventListener('keydown', handleKeyDown);
+  1204→  }, [focusSearchInput, triggerNewSaleDialog, setSettingsOpen, settingsOpen, setActiveSection]);
+  1205→
+  1206→  return null;
+  1207→}
+  1208→
+  1209→// ─── Main Layout ────────────────────────────────────────────────────────
+  1210→
+  1211→function CrmLayout() {
+  1212→  const { sidebarCollapsed } = useCrmStore();
+  1213→
+  1214→  return (
+  1215→    <div className="flex h-screen overflow-hidden bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+  1216→      <DarkModeEffect />
+  1217→      <KeyboardShortcuts />
+  1218→
+  1219→      {/* Desktop sidebar — md:w-56 for tablet, lg:w-64/w-16 for desktop */}
+  1220→      <aside
+  1221→        className={`hidden md:flex md:w-56 lg:w-64 shrink-0 transition-all duration-200 ${
+  1222→          sidebarCollapsed ? 'lg:!w-16' : ''
+  1223→        }`}
+  1224→      >
+  1225→        <Sidebar />
+  1226→      </aside>
+  1227→
+  1228→      {/* Mobile/tablet sidebar overlay (md to lg) */}
+  1229→      <MobileSidebar />
+  1230→
+  1231→      {/* Main content area */}
+  1232→      <div className="flex flex-1 flex-col overflow-hidden">
+  1233→        <TopBar />
+  1234→        <LoadingBar />
+  1235→        <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">
+  1236→          <ErrorBoundary>
+  1237→            <SectionRenderer />
+  1238→          </ErrorBoundary>
+  1239→        </main>
+  1240→      </div>
+  1241→
+  1242→      {/* Bottom Navigation Bar — mobile only */}
+  1243→      <BottomNavBar />
+  1244→
+  1245→      {/* More Sheet — mobile only */}
+  1246→      <MoreSheet />
+  1247→
+  1248→      {/* Settings Dialog */}
+  1249→      <SettingsDialog />
+  1250→    </div>
+  1251→  );
+  1252→}
+  1253→
+  1254→// ─── Root Page ──────────────────────────────────────────────────────────
+  1255→
+  1256→export default function Home() {
+  1257→  return (
+  1258→    <CrmProvider>
+  1259→      <CrmLayout />
+  1260→    </CrmProvider>
+  1261→  );
+  1262→}

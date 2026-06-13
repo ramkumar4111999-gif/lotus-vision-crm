@@ -23,6 +23,7 @@ import {
   Loader2,
   Receipt,
   BarChart3,
+  RefreshCw,
 } from 'lucide-react';
 import { getSettings } from '@/lib/settings';
 import {
@@ -54,8 +55,9 @@ import {
 } from '@/components/ui/chart';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, Tooltip as RechartsTooltip } from 'recharts';
 import { format, parseISO, isToday, startOfDay } from 'date-fns';
-import { useCrmStore } from '@/components/crm/store';
+import { useCrmStore, type SectionKey } from '@/components/crm/store';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 // ───────────────────────────────────────────────
 // Types
@@ -125,6 +127,8 @@ interface LowStockProduct {
   minStock: number;
 }
 
+type DateRangePreset = 'today' | 'thisWeek' | 'thisMonth' | 'lastMonth' | 'last3Months';
+
 // ───────────────────────────────────────────────
 // Helpers
 // ───────────────────────────────────────────────
@@ -144,6 +148,13 @@ function formatCompact(num: number): string {
   return `₹${num.toLocaleString('en-IN')}`;
 }
 
+function formatTimeAgo(seconds: number): string {
+  if (seconds < 5) return 'just now';
+  if (seconds < 60) return `${seconds}s ago`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  return `${Math.floor(seconds / 3600)}h ago`;
+}
+
 // ───────────────────────────────────────────────
 // Stat Card Config
 // ───────────────────────────────────────────────
@@ -157,6 +168,7 @@ interface StatCardConfig {
   borderColor: string;
   iconColor: string;
   format: (val: number) => string;
+  navigateTo: SectionKey;
 }
 
 const statCards: StatCardConfig[] = [
@@ -169,6 +181,7 @@ const statCards: StatCardConfig[] = [
     borderColor: 'border-emerald-200 dark:border-emerald-800/50',
     iconColor: 'text-emerald-600 dark:text-emerald-400',
     format: (v) => v.toLocaleString('en-IN'),
+    navigateTo: 'customers',
   },
   {
     key: 'todaySales',
@@ -179,6 +192,7 @@ const statCards: StatCardConfig[] = [
     borderColor: 'border-green-200 dark:border-green-800/50',
     iconColor: 'text-green-600 dark:text-green-400',
     format: (v) => formatCompact(v),
+    navigateTo: 'sales',
   },
   {
     key: 'monthlyRevenue',
@@ -189,6 +203,7 @@ const statCards: StatCardConfig[] = [
     borderColor: 'border-sky-200 dark:border-sky-800/50',
     iconColor: 'text-sky-600 dark:text-sky-400',
     format: (v) => formatCompact(v),
+    navigateTo: 'accounting',
   },
   {
     key: 'lowStockAlerts',
@@ -199,6 +214,7 @@ const statCards: StatCardConfig[] = [
     borderColor: 'border-amber-200 dark:border-amber-800/50',
     iconColor: 'text-amber-600 dark:text-amber-400',
     format: (v) => v.toString(),
+    navigateTo: 'inventory',
   },
   {
     key: 'pendingLabOrders',
@@ -209,6 +225,7 @@ const statCards: StatCardConfig[] = [
     borderColor: 'border-purple-200 dark:border-purple-800/50',
     iconColor: 'text-purple-600 dark:text-purple-400',
     format: (v) => v.toString(),
+    navigateTo: 'lab-orders',
   },
   {
     key: 'pendingDues',
@@ -219,6 +236,7 @@ const statCards: StatCardConfig[] = [
     borderColor: 'border-red-200 dark:border-red-800/50',
     iconColor: 'text-red-600 dark:text-red-400',
     format: (v) => formatCompact(v),
+    navigateTo: 'sales',
   },
 ];
 
@@ -267,12 +285,21 @@ function StatCardSkeleton() {
   );
 }
 
-function StatCard({ config, value, comparisonBadge }: { config: StatCardConfig; value: number; comparisonBadge?: { value: number; label: string } }) {
+function StatCard({ config, value, comparisonBadge, onClick }: { config: StatCardConfig; value: number; comparisonBadge?: { value: number; label: string }; onClick?: () => void }) {
   const Icon = config.icon;
   return (
-    <Card className={`gap-0 py-0 overflow-hidden ${config.borderColor}`}>
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between">
+    <Card
+      className={cn(
+        'gap-0 py-0 overflow-hidden cursor-pointer hover:shadow-md transition-shadow',
+        config.borderColor,
+      )}
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick?.(); } }}
+    >
+      <CardContent className="p-4 min-h-[44px] flex flex-col justify-center">
+        <div className="flex items-center justify-between min-h-[44px]">
           <p className="text-sm font-medium text-muted-foreground">{config.label}</p>
           <div className={`rounded-lg p-2 ${config.bgColor}`}>
             <Icon className={`h-5 w-5 ${config.iconColor}`} />
@@ -415,6 +442,14 @@ const appointmentStatusClass: Record<string, string> = {
   cancelled: 'bg-red-100 text-red-800 border-red-200 dark:bg-red-950/60 dark:text-red-300 dark:border-red-800',
 };
 
+const datePresets: { key: DateRangePreset; label: string }[] = [
+  { key: 'today', label: 'Today' },
+  { key: 'thisWeek', label: 'This Week' },
+  { key: 'thisMonth', label: 'This Month' },
+  { key: 'lastMonth', label: 'Last Month' },
+  { key: 'last3Months', label: 'Last 3 Months' },
+];
+
 // ───────────────────────────────────────────────
 // Main Dashboard Component
 // ───────────────────────────────────────────────
@@ -443,6 +478,8 @@ export default function Dashboard() {
   const [todayAvgOrderValue, setTodayAvgOrderValue] = useState<number>(0);
   const { setActiveSection } = useCrmStore();
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [selectedDateRange, setSelectedDateRange] = useState<DateRangePreset>('thisMonth');
+  const [refreshSecondsAgo, setRefreshSecondsAgo] = useState(0);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -495,6 +532,14 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, [fetchData]);
 
+  // Timer to update "seconds ago" display
+  useEffect(() => {
+    const tick = setInterval(() => {
+      setRefreshSecondsAgo(Math.floor((Date.now() - lastRefresh.getTime()) / 1000));
+    }, 1000);
+    return () => clearInterval(tick);
+  }, [lastRefresh]);
+
   // ─── Derived chart data ───
 
   // API returns { date, total } but chart expects revenue as dataKey
@@ -533,8 +578,52 @@ export default function Dashboard() {
               if (cfg.key === 'monthlyRevenue') badge = { value: comparison.revenueChange, label: 'Revenue' };
               if (cfg.key === 'totalCustomers') badge = { value: comparison.customerChange, label: 'Customers' };
             }
-            return <StatCard key={cfg.key} config={cfg} value={stats[cfg.key]} comparisonBadge={badge} />;
+            return (
+              <StatCard
+                key={cfg.key}
+                config={cfg}
+                value={stats[cfg.key]}
+                comparisonBadge={badge}
+                onClick={() => setActiveSection(cfg.navigateTo)}
+              />
+            );
           })}
+    </div>
+  );
+
+  const renderRefreshIndicator = () => (
+    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      <Clock className="h-3.5 w-3.5" />
+      <span>Last updated: {formatTimeAgo(refreshSecondsAgo)}</span>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="ml-1 h-9 min-w-[44px] min-h-[44px] px-2 text-xs touch-manipulation"
+        onClick={fetchData}
+        disabled={loading}
+        aria-label="Refresh dashboard data"
+      >
+        {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+      </Button>
+    </div>
+  );
+
+  const renderDateRangePresets = () => (
+    <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Date range filter">
+      {datePresets.map((preset) => (
+        <button
+          key={preset.key}
+          onClick={() => setSelectedDateRange(preset.key)}
+          className={cn(
+            'min-w-[44px] min-h-[44px] px-3 py-1.5 rounded-full text-sm font-medium transition-colors touch-manipulation cursor-pointer border',
+            selectedDateRange === preset.key
+              ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+              : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted hover:text-foreground',
+          )}
+        >
+          {preset.label}
+        </button>
+      ))}
     </div>
   );
 
@@ -598,7 +687,7 @@ export default function Dashboard() {
               <Button
                 variant="outline"
                 size="sm"
-                className="mt-1"
+                className="min-w-[44px] min-h-[44px]"
                 onClick={() => setActiveSection('sales')}
               >
                 <ShoppingCart className="h-3.5 w-3.5 mr-1.5" />
@@ -652,8 +741,23 @@ export default function Dashboard() {
               </BarChart>
             </ChartContainer>
           ) : (
-            <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
-              No product data available
+            <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
+              <div className="rounded-full bg-amber-100 dark:bg-amber-900/30 p-3">
+                <Target className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium">No product data available</p>
+                <p className="text-xs mt-1">Start selling products to see rankings here.</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="min-w-[44px] min-h-[44px]"
+                onClick={() => setActiveSection('inventory')}
+              >
+                <ShoppingCart className="h-3.5 w-3.5 mr-1.5" />
+                Go to Inventory
+              </Button>
             </div>
           )}
         </CardContent>
@@ -711,8 +815,23 @@ export default function Dashboard() {
             </Table>
             </div>
           ) : (
-            <div className="flex h-32 items-center justify-center text-muted-foreground text-sm">
-              No recent sales
+            <div className="flex h-32 flex-col items-center justify-center gap-3 text-muted-foreground">
+              <div className="rounded-full bg-emerald-100 dark:bg-emerald-900/30 p-3">
+                <ShoppingCart className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium">No sales data yet</p>
+                <p className="text-xs mt-1">Complete your first sale to see it here.</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="min-w-[44px] min-h-[44px]"
+                onClick={() => setActiveSection('sales')}
+              >
+                <ShoppingCart className="h-3.5 w-3.5 mr-1.5" />
+                Create First Sale
+              </Button>
             </div>
           )}
         </CardContent>
@@ -761,7 +880,7 @@ export default function Dashboard() {
               ))}
             </div>
           ) : (
-            <div className="flex h-32 flex-col items-center justify-center gap-2 text-muted-foreground">
+            <div className="flex h-32 flex-col items-center justify-center gap-3 text-muted-foreground">
               <div className="rounded-full bg-emerald-100 dark:bg-emerald-900/30 p-2.5">
                 <CalendarDays className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
               </div>
@@ -769,6 +888,15 @@ export default function Dashboard() {
                 <p className="text-sm font-medium">No appointments scheduled</p>
                 <p className="text-xs mt-0.5">Enjoy your day!</p>
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="min-w-[44px] min-h-[44px]"
+                onClick={() => setActiveSection('appointments')}
+              >
+                <CalendarDays className="h-3.5 w-3.5 mr-1.5" />
+                Schedule Appointment
+              </Button>
             </div>
           )}
         </CardContent>
@@ -918,8 +1046,23 @@ export default function Dashboard() {
               </div>
             </>
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-muted-foreground text-sm">
-              No customer group data
+            <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-muted-foreground">
+              <div className="rounded-full bg-sky-100 dark:bg-sky-900/30 p-3">
+                <Users className="h-6 w-6 text-sky-600 dark:text-sky-400" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium">No customer group data</p>
+                <p className="text-xs mt-1">Add customers with group info to see this breakdown.</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="min-w-[44px] min-h-[44px]"
+                onClick={() => setActiveSection('customers')}
+              >
+                <UserPlus className="h-3.5 w-3.5 mr-1.5" />
+                Add Customer
+              </Button>
             </div>
           )}
         </CardContent>
@@ -978,8 +1121,23 @@ export default function Dashboard() {
               })}
             </div>
           ) : (
-            <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
-              No sales data for heatmap
+            <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
+              <div className="rounded-full bg-emerald-100 dark:bg-emerald-900/30 p-3">
+                <BarChart3 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium">No sales data for heatmap</p>
+                <p className="text-xs mt-1">Sales data will appear here as you record transactions.</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="min-w-[44px] min-h-[44px]"
+                onClick={() => setActiveSection('sales')}
+              >
+                <ShoppingCart className="h-3.5 w-3.5 mr-1.5" />
+                Record a Sale
+              </Button>
             </div>
           )}
         </CardContent>
@@ -1042,7 +1200,7 @@ export default function Dashboard() {
               <button
                 key={t.section}
                 onClick={() => setActiveSection(t.section)}
-                className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all hover:shadow-md min-h-[44px] touch-manipulation ${t.bg} border-transparent hover:border-border cursor-pointer text-left`}
+                className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all hover:shadow-md min-h-[44px] min-w-[44px] touch-manipulation ${t.bg} border-transparent hover:border-border cursor-pointer text-left`}
               >
                 <span className={`text-2xl font-bold ${t.color}`}>{t.count}</span>
                 <span className="text-xs text-muted-foreground text-center leading-tight">{t.label}</span>
@@ -1061,7 +1219,7 @@ export default function Dashboard() {
       { label: 'New Sale', icon: ShoppingCart, section: 'sales' as const, color: 'bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-700 dark:hover:bg-emerald-800' },
       { label: 'Add Customer', icon: UserPlus, section: 'customers' as const, color: 'bg-sky-600 hover:bg-sky-700 text-white dark:bg-sky-700 dark:hover:bg-sky-800' },
       { label: 'New Appointment', icon: CalendarDays, section: 'appointments' as const, color: 'bg-purple-600 hover:bg-purple-700 text-white dark:bg-purple-700 dark:hover:bg-purple-800' },
-      { label: 'Create Lab Order', icon: TestTube, section: 'lab-orders' as const, color: 'bg-orange-600 hover:bg-orange-700 text-white dark:bg-orange-700 dark:hover:bg-orange-800' },
+      { label: 'Low Stock', icon: AlertTriangle, section: 'inventory' as const, color: 'bg-amber-600 hover:bg-amber-700 text-white dark:bg-amber-700 dark:hover:bg-amber-800' },
     ];
 
     return (
@@ -1072,7 +1230,7 @@ export default function Dashboard() {
             <Button
               key={action.section}
               onClick={() => setActiveSection(action.section)}
-              className={`${action.color} h-auto py-4 min-h-[44px] flex flex-col items-center gap-2 rounded-xl shadow-sm transition-all hover:shadow-md touch-manipulation`}
+              className={`${action.color} h-auto py-4 min-h-[44px] min-w-[44px] flex flex-col items-center gap-2 rounded-xl shadow-sm transition-all hover:shadow-md touch-manipulation`}
             >
               <Icon className="size-5" />
               <span className="text-sm font-medium">{action.label}</span>
@@ -1098,7 +1256,7 @@ export default function Dashboard() {
         <Button
           variant="outline"
           size="sm"
-          className="ml-auto shrink-0 border-red-300 text-red-700 hover:bg-red-100 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950/50"
+          className="ml-auto shrink-0 border-red-300 text-red-700 hover:bg-red-100 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950/50 min-w-[44px] min-h-[44px]"
           onClick={() => setActiveSection('appointments')}
         >
           View Appointments
@@ -1212,8 +1370,23 @@ export default function Dashboard() {
               </div>
             </div>
           ) : (
-            <div className="flex h-[100px] items-center justify-center text-muted-foreground text-sm">
-              No payment data today
+            <div className="flex h-[100px] flex-col items-center justify-center gap-3 text-muted-foreground">
+              <div className="rounded-full bg-slate-100 dark:bg-slate-800/50 p-3">
+                <Receipt className="h-6 w-6 text-slate-500 dark:text-slate-400" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium">No payment data today</p>
+                <p className="text-xs mt-1">Transactions will appear here as sales are made.</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="min-w-[44px] min-h-[44px]"
+                onClick={() => setActiveSection('sales')}
+              >
+                <ShoppingCart className="h-3.5 w-3.5 mr-1.5" />
+                Create First Sale
+              </Button>
             </div>
           )}
         </CardContent>
@@ -1298,6 +1471,9 @@ export default function Dashboard() {
       {/* Stats Cards */}
       {renderStatsGrid()}
 
+      {/* Refresh Indicator */}
+      {renderRefreshIndicator()}
+
       {/* Quick Action Buttons */}
       {renderQuickActions()}
 
@@ -1306,6 +1482,9 @@ export default function Dashboard() {
         {renderTodayPaymentDonut()}
         {renderTodayMetrics()}
       </div>
+
+      {/* Date Range Presets */}
+      {renderDateRangePresets()}
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

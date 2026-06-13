@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { toast } from 'sonner'
 import {
   Plus,
@@ -32,6 +32,7 @@ import {
   Star,
 } from 'lucide-react'
 
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -441,6 +442,7 @@ export default function StaffManagement() {
   // Delete confirmation state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deletingStaff, setDeletingStaff] = useState<Staff | null>(null)
+  const [roleFilter, setRoleFilter] = useState<string>('all')
 
   // Attendance state
   const [attendanceLog, setAttendanceLog] = useState<AttendanceEntry[]>([])
@@ -667,6 +669,13 @@ export default function StaffManagement() {
   })()
 
   const topCommissionEarner = commissionBreakdown.length > 0 ? commissionBreakdown[0] : null
+
+  // ─── Filtered Staff List ──────────────────────────────────────────────
+
+  const filteredStaffList = useMemo(() => {
+    if (roleFilter === 'all') return staffList
+    return staffList.filter((s) => s.role === roleFilter)
+  }, [staffList, roleFilter])
 
   // ─── Summary Stats ──────────────────────────────────────────────────────
 
@@ -1071,6 +1080,42 @@ export default function StaffManagement() {
         </CardContent>
       </Card>
 
+      {/* ── Role Filter Chips ────────────────────────────────────────── */}
+      <Card>
+        <CardContent className="p-4">
+          <p className="text-xs font-medium text-muted-foreground mb-2">Filter by Role</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setRoleFilter('all')}
+              className={cn(
+                'inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-medium transition-colors min-w-[44px] min-h-[44px] touch-manipulation',
+                roleFilter === 'all'
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
+              )}
+            >
+              All
+            </button>
+            {ROLES.map((role) => (
+              <button
+                key={role}
+                type="button"
+                onClick={() => setRoleFilter(role)}
+                className={cn(
+                  'inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-medium transition-colors min-w-[44px] min-h-[44px] touch-manipulation',
+                  roleFilter === role
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
+                )}
+              >
+                {role}
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* ── Staff List Card ────────────────────────────────────────────── */}
       <Card>
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1095,10 +1140,10 @@ export default function StaffManagement() {
               <Loader2 className="size-6 animate-spin text-muted-foreground" />
               <span className="ml-2 text-muted-foreground">Loading staff...</span>
             </div>
-          ) : staffList.length === 0 ? (
+          ) : filteredStaffList.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
               <UserCircle className="size-12" />
-              <p className="text-sm">No staff members yet.</p>
+              <p className="text-sm">No staff members found for this role filter.</p>
               <Button variant="outline" size="sm" onClick={openAddDialog} className="min-w-[44px] min-h-[44px] touch-manipulation">
                 <Plus className="size-4" />
                 Add your first staff member
@@ -1123,7 +1168,7 @@ export default function StaffManagement() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {staffList.map((staff) => {
+                    {filteredStaffList.map((staff) => {
                       const attStatus = getAttendanceStatus(staff.joinDate, staff.isActive)
                       const clocked = isClockedIn(staff.id)
                       const activeEntry = getActiveAttendance(staff.id)
@@ -1242,7 +1287,7 @@ export default function StaffManagement() {
 
               {/* Mobile Cards */}
               <div className="space-y-3 md:hidden">
-                {staffList.map((staff) => {
+                {filteredStaffList.map((staff) => {
                   const attStatus = getAttendanceStatus(staff.joinDate, staff.isActive)
                   const clocked = isClockedIn(staff.id)
                   const activeEntry = getActiveAttendance(staff.id)
@@ -1971,6 +2016,62 @@ export default function StaffManagement() {
               </div>
             </div>
           </div>
+
+          {editingStaff && (
+            <div>
+              <Separator className="my-2" />
+              <p className="text-xs font-medium text-muted-foreground mb-2">Quick Actions</p>
+              <div className="flex flex-wrap gap-2">
+                {editingStaff.isActive && !isClockedIn(editingStaff.id) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 min-w-[44px] min-h-[44px] touch-manipulation border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/20"
+                    disabled={clockSubmitting === editingStaff.id}
+                    onClick={async () => { await handleClockIn(editingStaff); setDialogOpen(false) }}
+                  >
+                    <LogIn className="size-3.5" />
+                    Clock In
+                  </Button>
+                )}
+                {isClockedIn(editingStaff.id) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 min-w-[44px] min-h-[44px] touch-manipulation border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-900/20"
+                    disabled={clockSubmitting === editingStaff.id}
+                    onClick={async () => { await handleClockOut(editingStaff); setDialogOpen(false) }}
+                  >
+                    <LogOut className="size-3.5" />
+                    Clock Out
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 min-w-[44px] min-h-[44px] touch-manipulation"
+                  onClick={() => {
+                    setDialogOpen(false)
+                    toast.info(`Sales report for ${editingStaff.name}: ${performanceData.find(p => p.staffId === editingStaff.id)?.transactionCount ?? 0} transactions this month`)
+                  }}
+                >
+                  <ShoppingBag className="size-3.5" />
+                  View Sales
+                </Button>
+                {editingStaff.phone && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 min-w-[44px] min-h-[44px] touch-manipulation"
+                    onClick={() => window.open(`https://wa.me/91${editingStaff.phone.replace(/\D/g, '')}`, '_blank')}
+                  >
+                    <Mail className="size-3.5" />
+                    Message
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
 
           <DialogFooter>
             <Button

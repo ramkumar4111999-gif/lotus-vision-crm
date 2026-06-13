@@ -23,6 +23,9 @@ import {
   Package,
   CreditCard,
   CalendarDays,
+  Banknote,
+  Smartphone,
+  Scissors,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -81,6 +84,7 @@ interface Customer {
   phone: string;
   email?: string;
   address?: string;
+  group?: string;
 }
 
 interface SaleItem {
@@ -413,6 +417,7 @@ function NewCustomerForm({ onSave, onCancel }: NewCustomerFormProps) {
   const [phone, setPhone] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [address, setAddress] = React.useState("");
+  const [group, setGroup] = React.useState("New");
 
   const valid = name.trim().length > 0 && phone.trim().length >= 10;
 
@@ -441,6 +446,20 @@ function NewCustomerForm({ onSave, onCancel }: NewCustomerFormProps) {
           <Label className="mb-1">Address</Label>
           <Input placeholder="Address (optional)" value={address} onChange={(e) => setAddress(e.target.value)} />
         </div>
+        <div>
+          <Label className="mb-1">Group</Label>
+          <Select value={group} onValueChange={setGroup}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="New">New</SelectItem>
+              <SelectItem value="Regular">Regular</SelectItem>
+              <SelectItem value="Wholesale">Wholesale</SelectItem>
+              <SelectItem value="Premium">Premium</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" size="sm" className="min-h-[44px] touch-manipulation" onClick={onCancel}>
@@ -459,6 +478,7 @@ function NewCustomerForm({ onSave, onCancel }: NewCustomerFormProps) {
               phone: phone.trim(),
               email: email.trim() || undefined,
               address: address.trim() || undefined,
+              group,
             });
           }}
         >
@@ -860,6 +880,39 @@ function CreateSaleDialog({ open, onOpenChange, onCreated }: CreateSaleDialogPro
               </Button>
             </div>
 
+            {/* Popular Items Quick-Pick */}
+            {productsLoaded && products.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs text-muted-foreground font-medium">Popular Items</p>
+                <div className="flex gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  {products.slice(0, 15).map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className="min-w-[44px] min-h-[44px] px-3 py-1.5 rounded-full bg-muted text-xs font-medium whitespace-nowrap hover:bg-muted/80 transition-colors touch-manipulation border border-transparent hover:border-muted-foreground/20 shrink-0"
+                      onClick={() => {
+                        const newItem: CreateSaleItem = {
+                          productId: p.id,
+                          productName: p.name,
+                          price: p.price,
+                          qty: 1,
+                        };
+                        const existingEmptyIndex = items.findIndex((i) => !i.productId);
+                        if (existingEmptyIndex >= 0) {
+                          handleItemUpdate(existingEmptyIndex, newItem);
+                        } else {
+                          setItems((prev) => [...prev, newItem]);
+                        }
+                        toast.success(`Added ${p.name}`);
+                      }}
+                    >
+                      {p.name} · {INR(p.price)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="rounded-lg border overflow-x-auto overflow-hidden">
               <Table>
                 <TableHeader>
@@ -910,6 +963,39 @@ function CreateSaleDialog({ open, onOpenChange, onCreated }: CreateSaleDialogPro
               {/* Discount */}
               <div className="space-y-2">
                 <Label>Discount</Label>
+                {/* Quick Discount Presets */}
+                <div className="flex flex-wrap gap-1.5">
+                  {([
+                    { label: "No Discount", value: 0, type: "flat" as const },
+                    { label: "5%", value: 5, type: "percentage" as const },
+                    { label: "10%", value: 10, type: "percentage" as const },
+                    { label: "15%", value: 15, type: "percentage" as const },
+                    { label: "20%", value: 20, type: "percentage" as const },
+                    { label: "₹100", value: 100, type: "flat" as const },
+                    { label: "₹200", value: 200, type: "flat" as const },
+                    { label: "₹500", value: 500, type: "flat" as const },
+                  ]).map((preset) => {
+                    const isActive = discount === preset.value && discountType === preset.type;
+                    return (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        className={cn(
+                          "min-h-[44px] px-3 rounded-full text-xs font-medium whitespace-nowrap transition-colors touch-manipulation border",
+                          isActive
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-muted text-muted-foreground border-transparent hover:bg-muted/80 hover:border-muted-foreground/20"
+                        )}
+                        onClick={() => {
+                          setDiscount(preset.value);
+                          setDiscountType(preset.type);
+                        }}
+                      >
+                        {preset.label}
+                      </button>
+                    );
+                  })}
+                </div>
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
@@ -937,42 +1023,47 @@ function CreateSaleDialog({ open, onOpenChange, onCreated }: CreateSaleDialogPro
                 </div>
               </div>
 
-              {/* Payment Mode */}
+              {/* Payment Mode Quick Select */}
               <div className="space-y-2">
                 <Label>Payment Mode</Label>
-                <RadioGroup
-                  value={paymentMode}
-                  onValueChange={(v) => {
-                    setPaymentMode(v as typeof paymentMode);
-                    if (v === "Credit") setSplitPayment(false);
-                  }}
-                  className="flex flex-wrap gap-3"
-                >
-                  {(["Cash", "Card", "UPI", "Credit"] as const).map((mode) => (
-                    <div key={mode} className="flex items-center gap-2">
-                      <RadioGroupItem value={mode} id={`pm-${mode}`} />
-                      <Label htmlFor={`pm-${mode}`} className="font-normal cursor-pointer">
-                        {mode}
-                      </Label>
-                    </div>
-                  ))}
-                </RadioGroup>
-
-                {canSplit && (
-                  <div className="flex items-center gap-2 mt-2">
-                    <Checkbox
-                      id="split-payment"
-                      checked={splitPayment}
-                      onCheckedChange={(checked) => {
-                        setSplitPayment(!!checked);
-                        if (checked) setSecondaryAmount(total);
-                      }}
-                    />
-                    <Label htmlFor="split-payment" className="font-normal text-sm cursor-pointer">
-                      Split Payment?
-                    </Label>
-                  </div>
-                )}
+                <div className="flex flex-wrap gap-2">
+                  {([
+                    { mode: "Cash", Icon: Banknote },
+                    { mode: "Card", Icon: CreditCard },
+                    { mode: "UPI", Icon: Smartphone },
+                    { mode: "Credit", Icon: FileText },
+                    { mode: "Split", Icon: Scissors },
+                  ] as const).map(({ mode, Icon }) => {
+                    const isActive = mode === "Split" ? splitPayment : (!splitPayment && paymentMode === mode);
+                    return (
+                      <button
+                        key={mode}
+                        type="button"
+                        className={cn(
+                          "min-w-[44px] min-h-[44px] px-3 py-2 rounded-lg border-2 flex items-center gap-2 text-sm font-medium transition-colors touch-manipulation",
+                          isActive
+                            ? "border-primary bg-primary/5 text-primary"
+                            : "border-muted hover:border-muted-foreground/30 text-muted-foreground"
+                        )}
+                        onClick={() => {
+                          if (mode === "Split") {
+                            if (paymentMode === "Credit") setPaymentMode("Cash");
+                            if (!splitPayment) {
+                              setSplitPayment(true);
+                              setSecondaryAmount(total);
+                            }
+                          } else {
+                            setPaymentMode(mode as typeof paymentMode);
+                            setSplitPayment(false);
+                          }
+                        }}
+                      >
+                        <Icon className="size-4" />
+                        <span>{mode}</span>
+                      </button>
+                    );
+                  })}
+                </div>
 
                 {splitPayment && canSplit && (
                   <div className="ml-6 mt-2 space-y-2 rounded-md border bg-muted/30 p-3">
@@ -1118,9 +1209,10 @@ interface SaleDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   onReturn: (sale: Sale) => void;
   onToggleStatus: (sale: Sale) => void;
+  onDuplicate: (sale: Sale) => void;
 }
 
-function SaleDetailDialog({ sale, open, onOpenChange, onReturn, onToggleStatus }: SaleDetailDialogProps) {
+function SaleDetailDialog({ sale, open, onOpenChange, onReturn, onToggleStatus, onDuplicate }: SaleDetailDialogProps) {
   if (!sale) return null;
 
   // Get settings for print (SSR-safe with fallback)
@@ -1288,29 +1380,51 @@ function SaleDetailDialog({ sale, open, onOpenChange, onReturn, onToggleStatus }
 
           {/* Actions (screen only) */}
           <div className="print:hidden flex flex-wrap gap-2 pt-2">
-            <Button variant="outline" size="sm" className="min-h-[44px] touch-manipulation" onClick={handlePrint}>
+            <Button variant="outline" size="sm" className="min-w-[44px] min-h-[44px] touch-manipulation" onClick={handlePrint}>
               <Printer className="size-3.5 mr-1.5" />
               Print
             </Button>
+            {sale.status !== "Return" && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="min-w-[44px] min-h-[44px] touch-manipulation text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-950/50"
+                onClick={() => onReturn(sale)}
+              >
+                <RotateCcw className="size-3.5 mr-1.5" />
+                New Return
+              </Button>
+            )}
             {sale.customerPhone && (
               <Button
                 variant="outline"
                 size="sm"
-                className="min-h-[44px] touch-manipulation text-emerald-600 border-emerald-200 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-950/50"
+                className="min-w-[44px] min-h-[44px] touch-manipulation text-emerald-600 border-emerald-200 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-950/50"
                 onClick={() => {
                   const cleanPhone = (sale.customerPhone ?? '').replace(/\D/g, '');
-                  window.open(`https://wa.me/91${cleanPhone}?text=${encodeURIComponent(`Hi ${sale.customerName}, your invoice ${sale.invoiceNo} for ${INR(sale.total)} is ready. Thank you for choosing Lotus Vision Opticals!`)}`, '_blank', 'noopener,noreferrer');
+                  const itemLines = sale.items.map((item, i) => `${i + 1}. ${item.productName} x${item.qty} \u2014 ${INR(item.lineTotal)}`).join('\n');
+                  const receiptText = `\u{1F9FE} *Invoice ${sale.invoiceNo}*\n${settings.shopName}\n\u{1F4C5} ${new Date(sale.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}\n\n\u{1F464} ${sale.customerName}\n\n${itemLines}\n\nSubtotal: ${INR(sale.subtotal)}${sale.discount > 0 ? `\nDiscount: -${INR(sale.discount)}` : ""}\nCGST 9%: ${INR(sale.cgst)}\nSGST 9%: ${INR(sale.sgst)}\n*Total: ${INR(sale.total)}*\n\nPayment: ${sale.paymentMode}\n\nThank you for choosing ${settings.shopName}! \u{1F64F}`;
+                  window.open(`https://wa.me/91${cleanPhone}?text=${encodeURIComponent(receiptText)}`, '_blank', 'noopener,noreferrer');
                 }}
               >
                 <svg viewBox="0 0 24 24" className="size-3.5 mr-1.5 fill-current"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                WhatsApp
+                WhatsApp Receipt
               </Button>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="min-w-[44px] min-h-[44px] touch-manipulation"
+              onClick={() => onDuplicate(sale)}
+            >
+              <FileText className="size-3.5 mr-1.5" />
+              Duplicate Invoice
+            </Button>
             {sale.status === "Completed" && (
               <Button
                 variant="outline"
                 size="sm"
-                className="min-h-[44px] touch-manipulation"
+                className="min-w-[44px] min-h-[44px] touch-manipulation"
                 onClick={() => onToggleStatus(sale)}
               >
                 <AlertCircle className="size-3.5 mr-1.5 text-amber-500" />
@@ -1321,25 +1435,14 @@ function SaleDetailDialog({ sale, open, onOpenChange, onReturn, onToggleStatus }
               <Button
                 variant="outline"
                 size="sm"
-                className="min-h-[44px] touch-manipulation"
+                className="min-w-[44px] min-h-[44px] touch-manipulation"
                 onClick={() => onToggleStatus(sale)}
               >
                 <AlertCircle className="size-3.5 mr-1.5 text-emerald-500" />
                 Mark as Completed
               </Button>
             )}
-            {sale.status !== "Return" && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="min-h-[44px] touch-manipulation text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-950/50"
-                onClick={() => onReturn(sale)}
-              >
-                <RotateCcw className="size-3.5 mr-1.5" />
-                Process Return
-              </Button>
-            )}
-            <Button variant="ghost" size="sm" className="min-h-[44px] ml-auto touch-manipulation" onClick={() => onOpenChange(false)}>
+            <Button variant="ghost" size="sm" className="min-w-[44px] min-h-[44px] ml-auto touch-manipulation" onClick={() => onOpenChange(false)}>
               Close
             </Button>
           </div>
@@ -1724,6 +1827,7 @@ export default function Sales() {
   const [summaryPeriod, setSummaryPeriod] = React.useState<"today" | "week" | "month">("today");
   const [statusFilter, setStatusFilter] = React.useState<"all" | "Completed" | "Pending" | "Return">("all");
   const [paymentModeFilter, setPaymentModeFilter] = React.useState<"all" | "Cash" | "Card" | "UPI" | "Credit" | "Split">("all");
+  const [activeDatePreset, setActiveDatePreset] = React.useState<"today" | "week" | "month" | "lastMonth" | null>(null);
 
   // -- Fetch Outstanding Credit Total --
   const fetchCreditTotal = React.useCallback(async () => {
@@ -1835,14 +1939,44 @@ export default function Sales() {
   };
   const handleFromDateChange = (val: string) => {
     setFromDate(val);
+    setActiveDatePreset(null);
     setPage(1);
   };
   const handleToDateChange = (val: string) => {
     setToDate(val);
+    setActiveDatePreset(null);
     setPage(1);
   };
   const handleStatusFilterChange = (val: string) => {
     setStatusFilter(val as "all" | "Completed" | "Pending" | "Return");
+    setPage(1);
+  };
+  const handleDatePreset = (preset: "today" | "week" | "month" | "lastMonth") => {
+    const now = new Date();
+    let from: string;
+    let to: string;
+    if (preset === "today") {
+      from = now.toISOString().split("T")[0];
+      to = from;
+    } else if (preset === "week") {
+      const dayOfWeek = now.getDay();
+      const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      const monday = new Date(now);
+      monday.setDate(now.getDate() - diff);
+      from = monday.toISOString().split("T")[0];
+      to = now.toISOString().split("T")[0];
+    } else if (preset === "month") {
+      from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+      to = now.toISOString().split("T")[0];
+    } else {
+      const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastDayLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+      from = firstDayLastMonth.toISOString().split("T")[0];
+      to = lastDayLastMonth.toISOString().split("T")[0];
+    }
+    setFromDate(from);
+    setToDate(to);
+    setActiveDatePreset(preset);
     setPage(1);
   };
   const handlePaymentModeFilterChange = (val: string) => {
@@ -1905,6 +2039,54 @@ export default function Sales() {
   const handleOpenReturn = (sale: Sale) => {
     setReturnSale(sale);
     setReturnOpen(true);
+  };
+
+  // -- Duplicate Invoice --
+  const handleDuplicate = async (sale: Sale) => {
+    try {
+      const invoiceNo = generateInvoiceNo();
+      const payload: Record<string, unknown> = {
+        invoiceNo,
+        customerId: sale.customerId,
+        customerName: sale.customerName,
+        customerPhone: sale.customerPhone,
+        customerEmail: sale.customerEmail,
+        customerAddress: sale.customerAddress,
+        items: sale.items.map((item, idx) => ({
+          id: `si-${uid()}-${idx}`,
+          productId: item.productId,
+          productName: item.productName,
+          price: item.price,
+          qty: item.qty,
+          lineTotal: item.lineTotal,
+        })),
+        subtotal: sale.subtotal,
+        discount: sale.discount,
+        discountType: sale.discountType,
+        cgst: sale.cgst,
+        sgst: sale.sgst,
+        total: sale.total,
+        paymentMode: sale.paymentMode,
+        status: "Completed",
+        notes: `Duplicated from ${sale.invoiceNo}${sale.notes ? "\n" + sale.notes : ""}`,
+      };
+      const res = await fetch("/api/sales", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        toast.success(`Duplicated as ${invoiceNo}`);
+        setDetailOpen(false);
+        setDetailSale(null);
+        fetchSales();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Failed to duplicate invoice");
+      }
+    } catch {
+      toast.error("Network error. Please try again.");
+    }
   };
 
   const handleReturnProcessed = () => {
@@ -2018,7 +2200,32 @@ export default function Sales() {
 
         {/* Filters */}
         <div className="rounded-lg border bg-card shadow-sm">
-          <div className="p-4">
+          <div className="p-4 space-y-3">
+            {/* Status Filter Chips */}
+            <div className="flex gap-2 overflow-x-auto pb-1 -mb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              {(["all", "Completed", "Pending", "Return"] as const).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  className={cn(
+                    "min-w-[44px] min-h-[44px] px-4 rounded-full text-sm font-medium whitespace-nowrap transition-colors touch-manipulation shrink-0",
+                    statusFilter === s
+                      ? s === "all"
+                        ? "bg-primary text-primary-foreground"
+                        : s === "Completed"
+                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                          : s === "Pending"
+                            ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                            : "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80 border border-transparent"
+                  )}
+                  onClick={() => handleStatusFilterChange(s)}
+                >
+                  {s === "all" ? "All" : s}
+                </button>
+              ))}
+            </div>
+
             <div className="flex flex-col lg:flex-row gap-3">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
@@ -2030,6 +2237,32 @@ export default function Sales() {
                 />
               </div>
               <div className="flex flex-col sm:flex-row gap-3">
+                {/* Date Quick Presets */}
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Quick</Label>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {([
+                      { label: "Today", key: "today" as const },
+                      { label: "This Week", key: "week" as const },
+                      { label: "This Month", key: "month" as const },
+                      { label: "Last Month", key: "lastMonth" as const },
+                    ]).map((preset) => (
+                      <button
+                        key={preset.key}
+                        type="button"
+                        className={cn(
+                          "min-w-[44px] min-h-[44px] px-3 rounded-full text-xs font-medium whitespace-nowrap transition-colors touch-manipulation",
+                          activeDatePreset === preset.key
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground hover:bg-muted/80 border border-transparent"
+                        )}
+                        onClick={() => handleDatePreset(preset.key)}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">From Date</Label>
                   <Input
@@ -2090,6 +2323,7 @@ export default function Sales() {
                         setToDate("");
                         setStatusFilter("all");
                         setPaymentModeFilter("all");
+                        setActiveDatePreset(null);
                         setPage(1);
                       }}
                     >
@@ -2247,6 +2481,7 @@ export default function Sales() {
         onOpenChange={setDetailOpen}
         onReturn={handleOpenReturn}
         onToggleStatus={handleToggleStatus}
+        onDuplicate={handleDuplicate}
       />
 
       <ReturnDialog

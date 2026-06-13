@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import {
   Search,
@@ -34,7 +34,10 @@ import {
   Upload,
   Gift,
   Star,
+  Check,
+  Trash2,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -76,6 +79,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useCrmStore } from '@/components/crm/store';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -189,6 +193,35 @@ const GROUP_COLORS: Record<Customer['group'], string> = {
 
 const GROUP_LIST: Customer['group'][] = ['New', 'Regular', 'Wholesale', 'Premium'];
 
+const GROUP_DESCRIPTIONS: Record<Customer['group'], string> = {
+  New: 'First-time visitor',
+  Regular: 'Repeat customer',
+  Wholesale: 'Bulk buyer / B2B',
+  Premium: 'VIP / high-value',
+};
+
+const QUICK_FILTER_CHIPS = [
+  { value: 'all', label: 'All' },
+  { value: 'New', label: 'New' },
+  { value: 'Regular', label: 'Regular' },
+  { value: 'Wholesale', label: 'Wholesale' },
+  { value: 'Premium', label: 'Premium' },
+  { value: 'with-dues', label: 'With Dues' },
+  { value: 'recent', label: 'Recent' },
+] as const;
+
+type QuickFilterValue = (typeof QUICK_FILTER_CHIPS)[number]['value'];
+
+const SORT_OPTIONS = [
+  { value: 'name:asc', label: 'Name (A-Z)' },
+  { value: 'name:desc', label: 'Name (Z-A)' },
+  { value: 'createdAt:desc', label: 'Recent First' },
+  { value: 'createdAt:asc', label: 'Oldest First' },
+  { value: 'totalSpent:desc', label: 'Total Spent ↑' },
+  { value: 'totalSpent:asc', label: 'Total Spent ↓' },
+  { value: 'loyaltyPoints:desc', label: 'Points ↑' },
+] as const;
+
 const EMPTY_CUSTOMER_FORM: CustomerFormData = {
   name: '',
   phone: '',
@@ -219,6 +252,21 @@ const EMPTY_VISIT_FORM: VisitFormData = {
 };
 
 const PAGE_LIMIT = 20;
+
+const POWER_PRESET_VALUES = [
+  -6.00, -4.00, -2.00, -1.50, -1.00, -0.75, -0.50, -0.25, 0, +0.25, +0.50, +0.75, +1.00, +1.50, +2.00,
+];
+
+const VISIT_PURPOSE_OPTIONS = [
+  'Eye Check',
+  'Frame Selection',
+  'Lens Fitting',
+  'Delivery',
+  'Follow-up',
+  'Repair',
+  'General',
+  'Other',
+] as const;
 
 type SortField = 'name' | 'phone' | 'group' | 'loyaltyPoints' | 'totalSpent' | 'createdAt';
 type SortDir = 'asc' | 'desc';
@@ -278,6 +326,12 @@ function formatEyePower(
   return parts.length > 0 ? parts.join(' / ') : '—';
 }
 
+function getSevenDaysAgo(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 7);
+  return d.toISOString().split('T')[0];
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function Customers() {
@@ -285,8 +339,9 @@ export default function Customers() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
-  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout>>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
@@ -296,6 +351,13 @@ export default function Customers() {
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+
+  // Quick filter chips state
+  const [quickFilter, setQuickFilter] = useState<QuickFilterValue>('all');
+
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   // Detail panel state
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -337,11 +399,56 @@ export default function Customers() {
   const [importing, setImporting] = useState(false);
   const importInputRef = React.useRef<HTMLInputElement>(null);
 
+  // ─── Quick filter handler ────────────────────────────────────────────
+
+  const handleQuickFilterChange = (value: QuickFilterValue) => {
+    setQuickFilter(value);
+    setSelectedIds(new Set());
+    setPage(1);
+
+    if (value === 'all') {
+      setGroupFilter('all');
+      setFromDate('');
+      setToDate('');
+    } else if (value === 'with-dues') {
+      // Keep existing group/date filters; the API param handles it
+    } else if (value === 'recent') {
+      setFromDate(getSevenDaysAgo());
+      setToDate('');
+      // Don't change group filter
+    } else {
+      // It's a group name
+      setGroupFilter(value);
+      setFromDate('');
+      setToDate('');
+    }
+  };
+
+  // Compute derived sort value for the sort dropdown
+  const sortValue = `${sortField}:${sortDir}`;
+
+  const handleSortDropdownChange = (value: string) => {
+    const [field, dir] = value.split(':') as [SortField, SortDir];
+    setSortField(field);
+    setSortDir(dir);
+    setPage(1);
+  };
+
   // ─── Fetch customers ───────────────────────────────────────────────────
 
   const handleGroupFilterChange = (value: string) => {
     setGroupFilter(value);
     setPage(1);
+    // Sync quick filter: if the value matches a chip, select it; otherwise "all"
+    if (value === 'all') {
+      if (quickFilter === 'with-dues' || quickFilter === 'recent') {
+        // Keep the special quick filter active
+      } else {
+        setQuickFilter('all');
+      }
+    } else if (GROUP_LIST.includes(value as Customer['group'])) {
+      setQuickFilter(value as QuickFilterValue);
+    }
   };
 
   const handleSort = (field: SortField) => {
@@ -368,43 +475,132 @@ export default function Customers() {
   // ─── CSV Export ───────────────────────────────────────────────────────
   const [exporting, setExporting] = useState(false);
 
-  const handleExportCSV = async () => {
+  const handleExportCSV = async (customerList?: Customer[]) => {
     setExporting(true);
     try {
-      const params = new URLSearchParams({ limit: '9999' });
-      if (search) params.set('search', search);
-      if (groupFilter !== 'all') params.set('group', groupFilter);
-      if (fromDate) params.set('fromDate', fromDate);
-      if (toDate) params.set('toDate', toDate);
-      const res = await fetch(`/api/customers?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch');
-      const json: PaginatedResponse<Customer> = await res.json();
-      const allCustomers = json.data;
+      if (customerList) {
+        // Export specific list (bulk selected)
+        const headers = ['Name', 'Phone', 'Email', 'Group', 'Points', 'Total Spent', 'DOB', 'Address', 'Created At'];
+        const rows = customerList.map((c) => [
+          c.name,
+          c.phone,
+          c.email || '',
+          c.group,
+          String(c.loyaltyPoints),
+          String(c.totalSpent),
+          c.dob ? new Date(c.dob).toLocaleDateString('en-IN') : '',
+          c.address || '',
+          new Date(c.createdAt).toLocaleDateString('en-IN'),
+        ]);
+        const csvContent = [headers, ...rows].map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `customers_selected_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success(`Exported ${customerList.length} customer(s)`);
+      } else {
+        // Export all based on current filters
+        const params = new URLSearchParams({ limit: '9999' });
+        if (debouncedSearch) params.set('search', debouncedSearch);
+        if (groupFilter !== 'all') params.set('group', groupFilter);
+        if (fromDate) params.set('fromDate', fromDate);
+        if (toDate) params.set('toDate', toDate);
+        const res = await fetch(`/api/customers?${params}`);
+        if (!res.ok) throw new Error('Failed to fetch');
+        const json: PaginatedResponse<Customer> = await res.json();
+        const allCustomers = json.data;
 
-      const headers = ['Name', 'Phone', 'Email', 'Group', 'Points', 'Total Spent', 'DOB', 'Address', 'Created At'];
-      const rows = allCustomers.map((c) => [
-        c.name,
-        c.phone,
-        c.email || '',
-        c.group,
-        String(c.loyaltyPoints),
-        String(c.totalSpent),
-        c.dob ? new Date(c.dob).toLocaleDateString('en-IN') : '',
-        c.address || '',
-        new Date(c.createdAt).toLocaleDateString('en-IN'),
-      ]);
-      const csvContent = [headers, ...rows].map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
-      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `customers_export_${new Date().toISOString().split('T')[0]}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
+        const headers = ['Name', 'Phone', 'Email', 'Group', 'Points', 'Total Spent', 'DOB', 'Address', 'Created At'];
+        const rows = allCustomers.map((c) => [
+          c.name,
+          c.phone,
+          c.email || '',
+          c.group,
+          String(c.loyaltyPoints),
+          String(c.totalSpent),
+          c.dob ? new Date(c.dob).toLocaleDateString('en-IN') : '',
+          c.address || '',
+          new Date(c.createdAt).toLocaleDateString('en-IN'),
+        ]);
+        const csvContent = [headers, ...rows].map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `customers_export_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
     } catch {
       setError('Failed to export CSV');
     } finally {
       setExporting(false);
+    }
+  };
+
+  // ─── Bulk actions ─────────────────────────────────────────────────────
+
+  const toggleSelectCustomer = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === customers.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(customers.map((c) => c.id)));
+    }
+  };
+
+  const handleBulkWhatsApp = () => {
+    const selected = customers.filter((c) => selectedIds.has(c.id));
+    if (selected.length === 0) return;
+    // Open WhatsApp for the first selected customer
+    openWhatsApp(selected[0].phone, selected[0].name);
+    if (selected.length > 1) {
+      toast.info(`WhatsApp opened for ${selected[0].name}. ${selected.length - 1} more selected.`);
+    }
+  };
+
+  const handleBulkExport = () => {
+    const selected = customers.filter((c) => selectedIds.has(c.id));
+    if (selected.length === 0) return;
+    handleExportCSV(selected);
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    if (!window.confirm(`Are you sure you want to delete ${ids.length} customer(s)? This action cannot be undone.`)) return;
+    setBulkDeleting(true);
+    try {
+      const results = await Promise.allSettled(
+        ids.map((id) => fetch(`/api/customers/${id}`, { method: 'DELETE' }))
+      );
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      if (failed > 0) {
+        toast.error(`Deleted ${ids.length - failed} customer(s). ${failed} failed.`);
+      } else {
+        toast.success(`Deleted ${ids.length} customer(s) successfully.`);
+      }
+      setSelectedIds(new Set());
+      fetchCustomers();
+    } catch {
+      toast.error('Failed to delete customers');
+    } finally {
+      setBulkDeleting(false);
     }
   };
 
@@ -416,11 +612,13 @@ export default function Customers() {
         page: String(page),
         limit: String(PAGE_LIMIT),
       });
-      if (search) params.set('search', search);
+      if (debouncedSearch) params.set('search', debouncedSearch);
       if (groupFilter !== 'all') params.set('group', groupFilter);
       if (fromDate) params.set('fromDate', fromDate);
       if (toDate) params.set('toDate', toDate);
       params.set('sort', `${sortField}:${sortDir}`);
+      // Special quick filter params
+      if (quickFilter === 'with-dues') params.set('hasDues', 'true');
 
       const res = await fetch(`/api/customers?${params}`);
       if (!res.ok) throw new Error(`Failed to fetch customers (HTTP ${res.status})`);
@@ -441,7 +639,7 @@ export default function Customers() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, groupFilter, sortField, sortDir, fromDate, toDate]);
+  }, [page, debouncedSearch, groupFilter, sortField, sortDir, fromDate, toDate, quickFilter]);
 
   useEffect(() => {
     fetchCustomers();
@@ -492,26 +690,31 @@ export default function Customers() {
     }
   }, []);
 
-  // ─── Search handler ────────────────────────────────────────────────────
+  // ─── Debounced search ────────────────────────────────────────────────
 
-  const handleSearch = () => {
-    setSearch(searchInput);
-    setPage(1);
-  };
-
-  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleSearch();
-  };
+  useEffect(() => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setPage(1);
+    }, 300);
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    };
+  }, [searchQuery]);
 
   const handleClearSearch = () => {
-    setSearchInput('');
-    setSearch('');
+    setSearchQuery('');
     setPage(1);
   };
 
   const handleFromDateChange = (value: string) => {
     setFromDate(value);
     setPage(1);
+    // If user manually changes the date, deselect "Recent" quick filter
+    if (quickFilter === 'recent' && value !== getSevenDaysAgo()) {
+      setQuickFilter('all');
+    }
   };
 
   const handleToDateChange = (value: string) => {
@@ -519,15 +722,16 @@ export default function Customers() {
     setPage(1);
   };
 
-  const hasActiveFilters = search || groupFilter !== 'all' || fromDate || toDate;
+  const hasActiveFilters = searchQuery || groupFilter !== 'all' || fromDate || toDate || quickFilter === 'with-dues' || quickFilter === 'recent';
 
   const handleClearFilters = () => {
-    setSearchInput('');
-    setSearch('');
+    setSearchQuery('');
     setGroupFilter('all');
     setFromDate('');
     setToDate('');
+    setQuickFilter('all');
     setPage(1);
+    setSelectedIds(new Set());
   };
 
   // ─── Customer form handlers ────────────────────────────────────────────
@@ -785,6 +989,7 @@ export default function Customers() {
     <>
       {Array.from({ length: 8 }).map((_, i) => (
         <TableRow key={i}>
+          <TableCell><Skeleton className="h-4 w-4" /></TableCell>
           <TableCell><Skeleton className="h-4 w-28" /></TableCell>
           <TableCell><Skeleton className="h-4 w-24" /></TableCell>
           <TableCell><Skeleton className="h-5 w-16" /></TableCell>
@@ -794,6 +999,30 @@ export default function Customers() {
         </TableRow>
       ))}
     </>
+  );
+
+  // ─── Quick Action Button component for detail panel ───────────────────
+
+  const QuickActionButton = ({ icon: Icon, label, onClick, variant = 'default' }: {
+    icon: React.ComponentType<{ className?: string }>;
+    label: string;
+    onClick: () => void;
+    variant?: 'default' | 'whatsapp' | 'call';
+  }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex flex-col items-center justify-center gap-1 rounded-lg border p-2 transition-colors min-w-[44px] min-h-[44px] touch-manipulation',
+        variant === 'whatsapp' && 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-400 dark:hover:bg-emerald-950',
+        variant === 'call' && 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/50 dark:text-blue-400 dark:hover:bg-blue-950',
+        variant === 'default' && 'hover:bg-accent'
+      )}
+      aria-label={label}
+    >
+      <Icon className="size-5 shrink-0" />
+      <span className="text-[10px] leading-tight font-medium">{label}</span>
+    </button>
   );
 
   // ─── Main render ───────────────────────────────────────────────────────
@@ -824,11 +1053,30 @@ export default function Customers() {
               className="hidden"
               onChange={handleCSVImport}
             />
-            <Button variant="outline" onClick={handleExportCSV} className="flex-1 sm:flex-none" disabled={exporting}>
+            <Button variant="outline" onClick={() => handleExportCSV()} className="flex-1 sm:flex-none" disabled={exporting}>
               {exporting ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Download className="mr-2 size-4" />}
               Export CSV
             </Button>
           </div>
+      </div>
+
+      {/* ─── Quick Filter Chips ─────────────────────────────────────── */}
+      <div className="flex gap-2 overflow-x-auto pb-1 -mb-1 scrollbar-none">
+        {QUICK_FILTER_CHIPS.map((chip) => (
+          <button
+            key={chip.value}
+            type="button"
+            onClick={() => handleQuickFilterChange(chip.value)}
+            className={cn(
+              'inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors min-w-[44px] min-h-[44px] touch-manipulation border',
+              quickFilter === chip.value
+                ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                : 'bg-background text-foreground border-border hover:bg-accent hover:text-accent-foreground'
+            )}
+          >
+            {chip.label}
+          </button>
+        ))}
       </div>
 
       {/* ─── Search + Filters Bar ──────────────────────────────────── */}
@@ -838,28 +1086,39 @@ export default function Customers() {
             <Search className="text-muted-foreground absolute left-3 top-1/2 size-4 -translate-y-1/2" />
             <Input
               placeholder="Search by name or phone..."
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              onKeyDown={handleSearchKeyDown}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
             />
-            {searchInput && (
+            {searchQuery && (
               <button
                 onClick={handleClearSearch}
-                className="text-muted-foreground hover:text-foreground absolute right-3 top-1/2 -translate-y-1/2"
+                className="text-muted-foreground hover:text-foreground absolute right-3 top-1/2 -translate-y-1/2 min-w-[44px] min-h-[44px] flex items-center justify-center -mr-1 touch-manipulation"
                 aria-label="Clear search"
               >
                 <X className="size-4" />
               </button>
             )}
           </div>
-          <Button variant="outline" onClick={handleSearch}>
-            Search
-          </Button>
         </div>
-        <div className="flex items-end gap-2 flex-shrink-0">
+        <div className="flex items-end gap-2 flex-shrink-0 flex-wrap">
+          {/* Sort Dropdown */}
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs text-muted-foreground">Sort by</span>
+            <Select value={sortValue} onValueChange={handleSortDropdownChange}>
+              <SelectTrigger className="w-40 min-h-[44px]">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                {SORT_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <Select value={groupFilter} onValueChange={handleGroupFilterChange}>
-            <SelectTrigger className="w-36">
+            <SelectTrigger className="w-36 min-h-[44px]">
               <SelectValue placeholder="All Groups" />
             </SelectTrigger>
             <SelectContent>
@@ -911,6 +1170,14 @@ export default function Customers() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={customers.length > 0 && selectedIds.size === customers.length}
+                    onCheckedChange={toggleSelectAll}
+                    aria-label="Select all customers"
+                    className="size-4"
+                  />
+                </TableHead>
                 <TableHead className="min-w-[160px] cursor-pointer select-none" onClick={() => handleSort('name')}>
                   <div className="flex items-center gap-1">Name <SortIcon field="name" /></div>
                 </TableHead>
@@ -935,7 +1202,7 @@ export default function Customers() {
             <TableBody>
               {error ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-48 text-center">
+                  <TableCell colSpan={8} className="h-48 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <AlertCircle className="size-8 text-destructive" />
                       <p className="text-sm text-destructive">{error}</p>
@@ -949,13 +1216,13 @@ export default function Customers() {
                 renderTableSkeleton()
               ) : customers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-48 text-center">
+                  <TableCell colSpan={8} className="h-48 text-center">
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
                       <User className="size-8" />
                       <p className="text-sm">
-                        {search ? 'No customers found for your search.' : 'No customers yet.'}
+                        {searchQuery ? 'No customers found for your search.' : 'No customers yet.'}
                       </p>
-                      {!search && (
+                      {!searchQuery && (
                         <Button variant="outline" size="sm" onClick={openAddCustomerDialog} className="min-h-[44px] touch-manipulation">
                           <Plus className="mr-1 size-3" />
                           Add your first customer
@@ -968,9 +1235,21 @@ export default function Customers() {
                 customers.map((customer) => (
                   <TableRow
                     key={customer.id}
-                    className="cursor-pointer"
+                    className={cn(
+                      'cursor-pointer',
+                      selectedIds.has(customer.id) && 'bg-primary/5'
+                    )}
                     onClick={() => handleSelectCustomer(customer)}
                   >
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedIds.has(customer.id)}
+                        onCheckedChange={() => toggleSelectCustomer(customer.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label={`Select ${customer.name}`}
+                        className="size-4"
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">{customer.name}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1.5">
@@ -1066,6 +1345,57 @@ export default function Customers() {
         )}
       </Card>
 
+      {/* ─── Bulk Actions Bar ─────────────────────────────────────────── */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-xl border bg-background/95 px-4 py-3 shadow-lg backdrop-blur-sm sm:bottom-6">
+          <span className="text-sm font-medium tabular-nums whitespace-nowrap">
+            {selectedIds.size} selected
+          </span>
+          <Separator orientation="vertical" className="h-6" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleBulkWhatsApp}
+            className="min-w-[44px] min-h-[44px] touch-manipulation"
+          >
+            <MessageCircle className="mr-1.5 size-4 text-emerald-600" />
+            <span className="hidden sm:inline">Send WhatsApp</span>
+            <span className="sm:hidden">WhatsApp</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleBulkExport}
+            disabled={exporting}
+            className="min-w-[44px] min-h-[44px] touch-manipulation"
+          >
+            {exporting ? <Loader2 className="mr-1.5 size-4 animate-spin" /> : <Download className="mr-1.5 size-4" />}
+            <span className="hidden sm:inline">Export Selected</span>
+            <span className="sm:hidden">Export</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleBulkDelete}
+            disabled={bulkDeleting}
+            className="min-w-[44px] min-h-[44px] touch-manipulation border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/50 dark:hover:text-red-300"
+          >
+            {bulkDeleting ? <Loader2 className="mr-1.5 size-4 animate-spin" /> : <Trash2 className="mr-1.5 size-4" />}
+            <span className="hidden sm:inline">Delete Selected</span>
+            <span className="sm:hidden">Delete</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelectedIds(new Set())}
+            className="min-w-[44px] min-h-[44px] touch-manipulation"
+            aria-label="Clear selection"
+          >
+            <X className="size-4" />
+          </Button>
+        </div>
+      )}
+
       {/* ─── Customer Detail Panel (Drawer/Sheet-like) ────────────────── */}
       <Dialog
         open={!!selectedCustomer}
@@ -1083,6 +1413,43 @@ export default function Customers() {
                 </DialogTitle>
                 <DialogDescription>Customer details and history</DialogDescription>
               </DialogHeader>
+
+              {/* Quick Action Buttons */}
+              <div className="flex gap-2 overflow-x-auto pb-1 -mb-1">
+                <QuickActionButton
+                  icon={Phone}
+                  label="Call"
+                  variant="call"
+                  onClick={() => {
+                    const cleanPhone = selectedCustomer.phone.replace(/\D/g, '');
+                    window.open(`tel:+91${cleanPhone}`, '_self');
+                  }}
+                />
+                <QuickActionButton
+                  icon={MessageCircle}
+                  label="WhatsApp"
+                  variant="whatsapp"
+                  onClick={() => openWhatsApp(selectedCustomer.phone, selectedCustomer.name)}
+                />
+                <QuickActionButton
+                  icon={ShoppingCart}
+                  label="New Sale"
+                  onClick={() => {
+                    handleCloseDetail();
+                    useCrmStore.getState().setActiveSection('sales');
+                  }}
+                />
+                <QuickActionButton
+                  icon={Calendar}
+                  label="New Appointment"
+                  onClick={() => openVisitDialog()}
+                />
+                <QuickActionButton
+                  icon={FileText}
+                  label="New Prescription"
+                  onClick={() => openPrescriptionDialog()}
+                />
+              </div>
 
               {/* Customer Info Grid */}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -1144,26 +1511,8 @@ export default function Customers() {
                 </div>
               </div>
 
-              {/* Quick actions */}
+              {/* Additional quick actions */}
               <div className="flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="min-h-[44px] touch-manipulation"
-                  onClick={() => openPrescriptionDialog()}
-                >
-                  <Stethoscope className="mr-1.5 size-3.5" />
-                  Add Prescription
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="min-h-[44px] touch-manipulation"
-                  onClick={() => openVisitDialog()}
-                >
-                  <History className="mr-1.5 size-3.5" />
-                  Add Visit
-                </Button>
                 <Button
                   size="sm"
                   variant="outline"
@@ -1182,13 +1531,17 @@ export default function Customers() {
                   <Star className="mr-1.5 size-3.5" />
                   Redeem Points
                 </Button>
-                <Button size="sm" variant="outline" className="min-h-[44px] touch-manipulation text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/50" onClick={() => openWhatsApp(selectedCustomer.phone, selectedCustomer.name)}>
-                  <MessageCircle className="mr-1.5 size-3.5" />
-                  WhatsApp
-                </Button>
-                <Button size="sm" variant="outline" className="min-h-[44px] touch-manipulation" onClick={() => { useCrmStore.getState().setActiveSection('sales'); }}>
-                  <ShoppingCart className="mr-1.5 size-3.5" />
-                  New Sale
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="min-h-[44px] touch-manipulation"
+                  onClick={() => {
+                    setCustomerFormErrors({});
+                    openEditCustomerDialog(selectedCustomer);
+                  }}
+                >
+                  <Pencil className="mr-1.5 size-3.5" />
+                  Edit Customer
                 </Button>
               </div>
 
@@ -1346,7 +1699,7 @@ export default function Customers() {
                           {/* Vertical line */}
                           <div className="absolute left-[9px] top-2 bottom-2 w-0.5 bg-border" />
                           <div className="flex flex-col gap-4 py-2">
-                            {visits.map((visit, idx) => (
+                            {visits.map((visit) => (
                               <div key={visit.id} className="relative flex gap-3">
                                 {/* Dot on the line */}
                                 <div className="absolute left-[-15px] top-1.5 size-3.5 rounded-full border-2 border-background bg-emerald-500 z-10" />
@@ -1520,7 +1873,7 @@ export default function Customers() {
           )}
 
           <ScrollArea className="max-h-[60vh]">
-            <div className="flex flex-col gap-4 p-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-1">
               {/* Name */}
               <div className="grid gap-2">
                 <Label htmlFor="cust-name">
@@ -1590,8 +1943,8 @@ export default function Customers() {
                 />
               </div>
 
-              {/* Address */}
-              <div className="grid gap-2">
+              {/* Address — full width */}
+              <div className="grid gap-2 sm:col-span-2">
                 <Label htmlFor="cust-address">Address</Label>
                 <Textarea
                   id="cust-address"
@@ -1604,8 +1957,8 @@ export default function Customers() {
                 />
               </div>
 
-              {/* Aadhar */}
-              <div className="grid gap-2">
+              {/* Aadhar — full width */}
+              <div className="grid gap-2 sm:col-span-2">
                 <Label htmlFor="cust-aadhar">Aadhar Number</Label>
                 <Input
                   id="cust-aadhar"
@@ -1617,29 +1970,44 @@ export default function Customers() {
                 />
               </div>
 
-              {/* Group */}
-              <div className="grid gap-2">
-                <Label htmlFor="cust-group">Group</Label>
-                <Select
-                  value={customerForm.group}
-                  onValueChange={(val) =>
-                    setCustomerForm((f) => ({
-                      ...f,
-                      group: val as Customer['group'],
-                    }))
-                  }
-                >
-                  <SelectTrigger id="cust-group" className="w-full">
-                    <SelectValue placeholder="Select group" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {GROUP_LIST.map((g) => (
-                      <SelectItem key={g} value={g}>
-                        {g}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              {/* Group — full width, Visual Card Selector */}
+              <div className="grid gap-2 sm:col-span-2">
+                <Label>Group</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  {GROUP_LIST.map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() =>
+                        setCustomerForm((f) => ({
+                          ...f,
+                          group: g,
+                        }))
+                      }
+                      className={cn(
+                        'flex items-center gap-3 rounded-lg border-2 p-3 text-left transition-all min-h-[44px] touch-manipulation',
+                        customerForm.group === g
+                          ? 'border-primary bg-primary/5 shadow-sm'
+                          : 'border-muted hover:border-muted-foreground/30'
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          'flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
+                          customerForm.group === g
+                            ? 'border-primary bg-primary text-primary-foreground'
+                            : 'border-muted-foreground/30'
+                        )}
+                      >
+                        {customerForm.group === g && <Check className="size-3" />}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium leading-tight">{g}</p>
+                        <p className="text-xs text-muted-foreground leading-tight">{GROUP_DESCRIPTIONS[g]}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </ScrollArea>
@@ -1696,6 +2064,23 @@ export default function Customers() {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="loyalty-reason">Reason</Label>
+              <div className="flex flex-wrap gap-1.5 mb-1">
+                {['Purchase Bonus', 'Referral', 'Complaint Resolution', 'Special Discount', 'Anniversary Offer'].map((reason) => (
+                  <button
+                    key={reason}
+                    type="button"
+                    onClick={() => setLoyaltyReason(reason)}
+                    className={cn(
+                      'inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors min-h-[32px] touch-manipulation',
+                      loyaltyReason === reason
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background text-foreground border-border hover:bg-accent'
+                    )}
+                  >
+                    {reason}
+                  </button>
+                ))}
+              </div>
               <Input
                 id="loyalty-reason"
                 placeholder={loyaltyType === 'earn' ? 'e.g. Referral bonus' : 'e.g. Points redemption'}
@@ -1761,6 +2146,23 @@ export default function Customers() {
                         setPrescriptionForm((f) => ({ ...f, leftSph: e.target.value }))
                       }
                     />
+                    <div className="flex flex-wrap gap-1">
+                      {POWER_PRESET_VALUES.map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => setPrescriptionForm((f) => ({ ...f, leftSph: String(v) }))}
+                          className={cn(
+                            'rounded-md border text-[10px] font-medium transition-colors min-h-[32px] min-w-[44px] touch-manipulation',
+                            prescriptionForm.leftSph === String(v)
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'bg-background text-foreground border-border hover:bg-accent'
+                          )}
+                        >
+                          {v > 0 ? `+${v}` : v}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   <div className="grid gap-1.5">
                     <Label htmlFor="rx-l-cyl" className="text-xs text-muted-foreground">
@@ -1774,6 +2176,23 @@ export default function Customers() {
                         setPrescriptionForm((f) => ({ ...f, leftCyl: e.target.value }))
                       }
                     />
+                    <div className="flex flex-wrap gap-1">
+                      {POWER_PRESET_VALUES.map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => setPrescriptionForm((f) => ({ ...f, leftCyl: String(v) }))}
+                          className={cn(
+                            'rounded-md border text-[10px] font-medium transition-colors min-h-[32px] min-w-[44px] touch-manipulation',
+                            prescriptionForm.leftCyl === String(v)
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'bg-background text-foreground border-border hover:bg-accent'
+                          )}
+                        >
+                          {v > 0 ? `+${v}` : v}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   <div className="grid gap-1.5">
                     <Label htmlFor="rx-l-axis" className="text-xs text-muted-foreground">
@@ -1822,6 +2241,23 @@ export default function Customers() {
                         setPrescriptionForm((f) => ({ ...f, rightSph: e.target.value }))
                       }
                     />
+                    <div className="flex flex-wrap gap-1">
+                      {POWER_PRESET_VALUES.map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => setPrescriptionForm((f) => ({ ...f, rightSph: String(v) }))}
+                          className={cn(
+                            'rounded-md border text-[10px] font-medium transition-colors min-h-[32px] min-w-[44px] touch-manipulation',
+                            prescriptionForm.rightSph === String(v)
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'bg-background text-foreground border-border hover:bg-accent'
+                          )}
+                        >
+                          {v > 0 ? `+${v}` : v}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   <div className="grid gap-1.5">
                     <Label htmlFor="rx-r-cyl" className="text-xs text-muted-foreground">
@@ -1835,6 +2271,23 @@ export default function Customers() {
                         setPrescriptionForm((f) => ({ ...f, rightCyl: e.target.value }))
                       }
                     />
+                    <div className="flex flex-wrap gap-1">
+                      {POWER_PRESET_VALUES.map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => setPrescriptionForm((f) => ({ ...f, rightCyl: String(v) }))}
+                          className={cn(
+                            'rounded-md border text-[10px] font-medium transition-colors min-h-[32px] min-w-[44px] touch-manipulation',
+                            prescriptionForm.rightCyl === String(v)
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'bg-background text-foreground border-border hover:bg-accent'
+                          )}
+                        >
+                          {v > 0 ? `+${v}` : v}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   <div className="grid gap-1.5">
                     <Label htmlFor="rx-r-axis" className="text-xs text-muted-foreground">
@@ -1932,17 +2385,36 @@ export default function Customers() {
 
             {/* Purpose */}
             <div className="grid gap-2">
-              <Label htmlFor="visit-purpose">
+              <Label>
                 Purpose <span className="text-destructive">*</span>
               </Label>
-              <Input
-                id="visit-purpose"
-                placeholder="e.g., Eye checkup, Frame fitting, Follow-up"
-                value={visitForm.purpose}
-                onChange={(e) =>
-                  setVisitForm((f) => ({ ...f, purpose: e.target.value }))
+              <Select
+                value={VISIT_PURPOSE_OPTIONS.includes(visitForm.purpose as typeof VISIT_PURPOSE_OPTIONS[number])
+                  ? visitForm.purpose
+                  : 'Other'}
+                onValueChange={(value) =>
+                  setVisitForm((f) => ({ ...f, purpose: value === 'Other' ? '' : value }))
                 }
-              />
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select purpose" />
+                </SelectTrigger>
+                <SelectContent>
+                  {VISIT_PURPOSE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!VISIT_PURPOSE_OPTIONS.includes(visitForm.purpose as typeof VISIT_PURPOSE_OPTIONS[number]) && (
+                <Input
+                  placeholder="Please specify the purpose"
+                  value={visitForm.purpose}
+                  onChange={(e) =>
+                    setVisitForm((f) => ({ ...f, purpose: e.target.value }))
+                  }
+                  className="mt-1"
+                />
+              )}
             </div>
 
             {/* Notes */}

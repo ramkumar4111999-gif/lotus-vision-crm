@@ -1,0 +1,1797 @@
+     1→     1→'use client'
+     2→     2→
+     3→     3→import React, { useState, useEffect, useCallback, useMemo } from 'react'
+     4→     4→import { toast } from 'sonner'
+     5→     5→import {
+     6→     6→  Package,
+     7→     7→  Plus,
+     8→     8→  Search,
+     9→     9→  AlertTriangle,
+    10→    10→  Edit,
+    11→    11→  Trash2,
+    12→    12→  ChevronLeft,
+    13→    13→  ChevronRight,
+    14→    14→  X,
+    15→    15→  Eye,
+    16→    16→  EyeOff,
+    17→    17→  Loader2,
+    18→    18→  IndianRupee,
+    19→    19→  Upload,
+    20→    20→  FileBarChart,
+    21→    21→  ArrowUpDown,
+    22→    22→  ArrowUp,
+    23→    23→  ArrowDown,
+    24→    24→  PackagePlus,
+    25→    25→} from 'lucide-react'
+    26→    26→
+    27→    27→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+    28→    28→import { Button } from '@/components/ui/button'
+    29→    29→import { Badge } from '@/components/ui/badge'
+    30→    30→import { Input } from '@/components/ui/input'
+    31→    31→import { Label } from '@/components/ui/label'
+    32→    32→import { Textarea } from '@/components/ui/textarea'
+    33→    33→import {
+    34→    34→  Table,
+    35→    35→  TableBody,
+    36→    36→  TableCell,
+    37→    37→  TableHead,
+    38→    38→  TableHeader,
+    39→    39→  TableRow,
+    40→    40→} from '@/components/ui/table'
+    41→    41→import {
+    42→    42→  Dialog,
+    43→    43→  DialogContent,
+    44→    44→  DialogDescription,
+    45→    45→  DialogFooter,
+    46→    46→  DialogHeader,
+    47→    47→  DialogTitle,
+    48→    48→} from '@/components/ui/dialog'
+    49→    49→import {
+    50→    50→  Select,
+    51→    51→  SelectContent,
+    52→    52→  SelectItem,
+    53→    53→  SelectTrigger,
+    54→    54→  SelectValue,
+    55→    55→} from '@/components/ui/select'
+    56→    56→import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+    57→    57→import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
+    58→    58→import { Progress } from '@/components/ui/progress'
+    59→    59→
+    60→    60→// ─── Types ───────────────────────────────────────────────────────────────────
+    61→    61→
+    62→    62→interface Product {
+    63→    63→  id: string
+    64→    64→  sku: string
+    65→    65→  name: string
+    66→    66→  brand: string | null
+    67→    67→  model: string | null
+    68→    68→  color: string | null
+    69→    69→  size: string | null
+    70→    70→  category: string
+    71→    71→  price: number
+    72→    72→  costPrice: number | null
+    73→    73→  stock: number
+    74→    74→  minStock: number
+    75→    75→  type: string | null
+    76→    76→  duration: string | null
+    77→    77→  expiryDate: string | null
+    78→    78→  description: string | null
+    79→    79→  createdAt: string
+    80→    80→  updatedAt: string
+    81→    81→  // NEW fields returned from API:
+    82→    82→  supplier: string | null
+    83→    83→  supplierPhone: string | null
+    84→    84→  lastRestocked: string | null
+    85→    85→  frameWidth: number | null
+    86→    86→  bridge: number | null
+    87→    87→  temple: number | null
+    88→    88→}
+    89→    89→
+    90→    90→interface ProductFormData {
+    91→    91→  name: string
+    92→    92→  brand: string
+    93→    93→  model: string
+    94→    94→  color: string
+    95→    95→  size: string
+    96→    96→  category: string
+    97→    97→  price: string
+    98→    98→  costPrice: string
+    99→    99→  stock: string
+   100→   100→  minStock: string
+   101→   101→  sku: string
+   102→   102→  type: string
+   103→   103→  duration: string
+   104→   104→  expiryDate: string
+   105→   105→  description: string
+   106→   106→  supplier: string
+   107→   107→  supplierPhone: string
+   108→   108→  frameWidth: string
+   109→   109→  bridge: string
+   110→   110→  temple: string
+   111→   111→}
+   112→   112→
+   113→   113→interface ProductsResponse {
+   114→   114→  products: Product[]
+   115→   115→  total: number
+   116→   116→  page: number
+   117→   117→  pageSize: number
+   118→   118→  totalPages: number
+   119→   119→  lowStockCount: number
+   120→   120→  lowStockItems: Product[]
+   121→   121→}
+   122→   122→
+   123→   123→interface LowStockReportItem {
+   124→   124→  id: string
+   125→   125→  name: string
+   126→   126→  category: string
+   127→   127→  brand: string | null
+   128→   128→  stock: number
+   129→   129→  minStock: number
+   130→   130→  needed: number
+   131→   131→  sku: string
+   132→   132→  costPrice: number | null
+   133→   133→  reorderCost: number
+   134→   134→  supplier: string | null
+   135→   135→  supplierPhone: string | null
+   136→   136→}
+   137→   137→
+   138→   138→interface LowStockReport {
+   139→   139→  total: number
+   140→   140→  byCategory: Record<string, number>
+   141→   141→  totalReorderValue: number
+   142→   142→  items: LowStockReportItem[]
+   143→   143→}
+   144→   144→
+   145→   145→interface BulkImportResult {
+   146→   146→  created: number
+   147→   147→  skipped: number
+   148→   148→  errors: string[]
+   149→   149→}
+   150→   150→
+   151→   151→type SortField = 'name' | 'price' | 'stock' | 'minStock'
+   152→   152→type SortDirection = 'asc' | 'desc'
+   153→   153→
+   154→   154→// ─── Constants ───────────────────────────────────────────────────────────────
+   155→   155→
+   156→   156→const CATEGORIES = [
+   157→   157→  'Frames',
+   158→   158→  'Lenses',
+   159→   159→  'Sunglasses',
+   160→   160→  'Contact Lenses',
+   161→   161→  'Accessories',
+   162→   162→] as const
+   163→   163→
+   164→   164→const CATEGORY_TABS = ['All', ...CATEGORIES] as const
+   165→   165→
+   166→   166→const LENS_TYPES = [
+   167→   167→  'Single Vision',
+   168→   168→  'Bifocal',
+   169→   169→  'Progressive',
+   170→   170→  'Blue-cut',
+   171→   171→  'Photochromic',
+   172→   172→] as const
+   173→   173→
+   174→   174→const DURATIONS = [
+   175→   175→  'Daily',
+   176→   176→  'Bi-weekly',
+   177→   177→  'Monthly',
+   178→   178→  'Quarterly',
+   179→   179→  'Yearly',
+   180→   180→] as const
+   181→   181→
+   182→   182→const ITEMS_PER_PAGE = 10
+   183→   183→
+   184→   184→const CSV_SAMPLE = `name,category,brand,model,price,stock,min_stock,supplier
+   185→   185→Aviator Classic,Frames,Ray-Ban,RB3025,4500,10,5,Ray-Ban India`
+   186→   186→
+   187→   187→const emptyForm: ProductFormData = {
+   188→   188→  name: '',
+   189→   189→  brand: '',
+   190→   190→  model: '',
+   191→   191→  color: '',
+   192→   192→  size: '',
+   193→   193→  category: '',
+   194→   194→  price: '',
+   195→   195→  costPrice: '',
+   196→   196→  stock: '',
+   197→   197→  minStock: '',
+   198→   198→  sku: '',
+   199→   199→  type: '',
+   200→   200→  duration: '',
+   201→   201→  expiryDate: '',
+   202→   202→  description: '',
+   203→   203→  supplier: '',
+   204→   204→  supplierPhone: '',
+   205→   205→  frameWidth: '',
+   206→   206→  bridge: '',
+   207→   207→  temple: '',
+   208→   208→}
+   209→   209→
+   210→   210→function generateSKU(category: string): string {
+   211→   211→  const catPrefix = category.substring(0, 3).toUpperCase()
+   212→   212→  const suffix = Date.now().toString(36).toUpperCase()
+   213→   213→  return `SKO-${catPrefix}-${suffix}`
+   214→   214→}
+   215→   215→
+   216→   216→function formatINR(amount: number): string {
+   217→   217→  return `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+   218→   218→}
+   219→   219→
+   220→   220→function formatDate(dateStr: string | null): string {
+   221→   221→  if (!dateStr) return 'Never'
+   222→   222→  try {
+   223→   223→    return new Date(dateStr).toLocaleDateString('en-IN', {
+   224→   224→      day: '2-digit',
+   225→   225→      month: 'short',
+   226→   226→      year: 'numeric',
+   227→   227→    })
+   228→   228→  } catch {
+   229→   229→    return 'Never'
+   230→   230→  }
+   231→   231→}
+   232→   232→
+   233→   233→// ─── Component ───────────────────────────────────────────────────────────────
+   234→   234→
+   235→   235→export default function Inventory() {
+   236→   236→  // List state
+   237→   237→  const [products, setProducts] = useState<Product[]>([])
+   238→   238→  const [total, setTotal] = useState(0)
+   239→   239→  const [totalPages, setTotalPages] = useState(1)
+   240→   240→  const [currentPage, setCurrentPage] = useState(1)
+   241→   241→  const [activeTab, setActiveTab] = useState('All')
+   242→   242→  const [categorySelect, setCategorySelect] = useState('All')
+   243→   243→  const [search, setSearch] = useState('')
+   244→   244→  const [lowStockFilter, setLowStockFilter] = useState(false)
+   245→   245→  const [loading, setLoading] = useState(true)
+   246→   246→
+   247→   247→  // Sort state
+   248→   248→  const [sortField, setSortField] = useState<SortField | null>(null)
+   249→   249→  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+   250→   250→
+   251→   251→  // Alert state
+   252→   252→  const [lowStockCount, setLowStockCount] = useState(0)
+   253→   253→  const [lowStockItems, setLowStockItems] = useState<Product[]>([])
+   254→   254→  const [showAlert, setShowAlert] = useState(true)
+   255→   255→
+   256→   256→  // Dialog state
+   257→   257→  const [dialogOpen, setDialogOpen] = useState(false)
+   258→   258→  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+   259→   259→  const [form, setForm] = useState<ProductFormData>(emptyForm)
+   260→   260→  const [submitting, setSubmitting] = useState(false)
+   261→   261→
+   262→   262→  // Delete confirmation
+   263→   263→  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+   264→   264→  const [deletingProduct, setDeletingProduct] = useState<Product | null>(null)
+   265→   265→  const [deleting, setDeleting] = useState(false)
+   266→   266→
+   267→   267→  // CSV Import dialog state
+   268→   268→  const [csvDialogOpen, setCsvDialogOpen] = useState(false)
+   269→   269→  const [csvData, setCsvData] = useState('')
+   270→   270→  const [importing, setImporting] = useState(false)
+   271→   271→  const [importResult, setImportResult] = useState<BulkImportResult | null>(null)
+   272→   272→
+   273→   273→  // Low-Stock Report dialog state
+   274→   274→  const [reportDialogOpen, setReportDialogOpen] = useState(false)
+   275→   275→  const [reportLoading, setReportLoading] = useState(false)
+   276→   276→  const [reportData, setReportData] = useState<LowStockReport | null>(null)
+   277→   277→
+   278→   278→  // Quick Stock Adjust dialog state
+   279→   279→  const [adjustProduct, setAdjustProduct] = useState<Product | null>(null)
+   280→   280→  const [adjustQty, setAdjustQty] = useState(0)
+   281→   281→  const [adjusting, setAdjusting] = useState(false)
+   282→   282→
+   283→   283→  // File upload for CSV import
+   284→   284→  const fileInputRef = React.useRef<HTMLInputElement>(null)
+   285→   285→
+   286→   286→  // ─── Sorted products ─────────────────────────────────────────────────────
+   287→   287→
+   288→   288→  const sortedProducts = useMemo(() => {
+   289→   289→    if (!sortField) return products
+   290→   290→    const sorted = [...products].sort((a, b) => {
+   291→   291→      let aVal: string | number
+   292→   292→      let bVal: string | number
+   293→   293→      if (sortField === 'name') {
+   294→   294→        aVal = a.name.toLowerCase()
+   295→   295→        bVal = b.name.toLowerCase()
+   296→   296→      } else {
+   297→   297→        aVal = a[sortField]
+   298→   298→        bVal = b[sortField]
+   299→   299→      }
+   300→   300→      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1
+   301→   301→      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1
+   302→   302→      return 0
+   303→   303→    })
+   304→   304→    return sorted
+   305→   305→  }, [products, sortField, sortDirection])
+   306→   306→
+   307→   307→  // ─── Fetch products ──────────────────────────────────────────────────────
+   308→   308→
+   309→   309→  const fetchProducts = useCallback(async () => {
+   310→   310→    setLoading(true)
+   311→   311→    try {
+   312→   312→      const params = new URLSearchParams()
+   313→   313→      // Use categorySelect if it's not 'All', otherwise fall back to activeTab
+   314→   314→      const effectiveCategory = categorySelect !== 'All' ? categorySelect : activeTab
+   315→   315→      if (effectiveCategory !== 'All') params.set('category', effectiveCategory)
+   316→   316→      if (search.trim()) params.set('search', search.trim())
+   317→   317→      params.set('page', String(currentPage))
+   318→   318→      params.set('pageSize', String(ITEMS_PER_PAGE))
+   319→   319→      if (lowStockFilter) params.set('lowStock', 'true')
+   320→   320→
+   321→   321→      const res = await fetch(`/api/products?${params.toString()}`)
+   322→   322→      if (!res.ok) throw new Error('Failed to fetch products')
+   323→   323→      const data: ProductsResponse = await res.json()
+   324→   324→
+   325→   325→      setProducts(data.products)
+   326→   326→      setTotal(data.total)
+   327→   327→      setTotalPages(data.totalPages)
+   328→   328→      setLowStockCount(data.lowStockCount)
+   329→   329→      setLowStockItems(data.lowStockItems)
+   330→   330→    } catch {
+   331→   331→      setProducts([])
+   332→   332→      setTotal(0)
+   333→   333→      setTotalPages(1)
+   334→   334→    } finally {
+   335→   335→      setLoading(false)
+   336→   336→    }
+   337→   337→  }, [activeTab, categorySelect, search, currentPage, lowStockFilter])
+   338→   338→
+   339→   339→  useEffect(() => {
+   340→   340→    fetchProducts()
+   341→   341→  }, [fetchProducts])
+   342→   342→
+   343→   343→  // ─── Handlers ───────────────────────────────────────────────────────────
+   344→   344→
+   345→   345→  const openCreateDialog = () => {
+   346→   346→    setEditingProduct(null)
+   347→   347→    setForm(emptyForm)
+   348→   348→    setDialogOpen(true)
+   349→   349→  }
+   350→   350→
+   351→   351→  const openEditDialog = (product: Product) => {
+   352→   352→    setEditingProduct(product)
+   353→   353→    setForm({
+   354→   354→      name: product.name,
+   355→   355→      brand: product.brand ?? '',
+   356→   356→      model: product.model ?? '',
+   357→   357→      color: product.color ?? '',
+   358→   358→      size: product.size ?? '',
+   359→   359→      category: product.category,
+   360→   360→      price: String(product.price),
+   361→   361→      costPrice: product.costPrice != null ? String(product.costPrice) : '',
+   362→   362→      stock: String(product.stock),
+   363→   363→      minStock: String(product.minStock),
+   364→   364→      sku: product.sku,
+   365→   365→      type: product.type ?? '',
+   366→   366→      duration: product.duration ?? '',
+   367→   367→      expiryDate: product.expiryDate
+   368→   368→        ? new Date(product.expiryDate).toISOString().split('T')[0]
+   369→   369→        : '',
+   370→   370→      description: product.description ?? '',
+   371→   371→      supplier: product.supplier ?? '',
+   372→   372→      supplierPhone: product.supplierPhone ?? '',
+   373→   373→      frameWidth: product.frameWidth != null ? String(product.frameWidth) : '',
+   374→   374→      bridge: product.bridge != null ? String(product.bridge) : '',
+   375→   375→      temple: product.temple != null ? String(product.temple) : '',
+   376→   376→    })
+   377→   377→    setDialogOpen(true)
+   378→   378→  }
+   379→   379→
+   380→   380→  const updateField = (field: keyof ProductFormData, value: string) => {
+   381→   381→    setForm((prev) => {
+   382→   382→      const updated = { ...prev, [field]: value }
+   383→   383→      // Auto-generate SKU when category changes and SKU is empty
+   384→   384→      if (field === 'category' && !prev.sku.trim() && value) {
+   385→   385→        updated.sku = generateSKU(value)
+   386→   386→      }
+   387→   387→      return updated
+   388→   388→    })
+   389→   389→  }
+   390→   390→
+   391→   391→  const handleSubmit = async () => {
+   392→   392→    // Validate required fields
+   393→   393→    if (!form.name.trim()) return
+   394→   394→    if (!form.category) return
+   395→   395→    if (!form.price.trim() || isNaN(Number(form.price))) return
+   396→   396→    if (!form.stock.trim() || isNaN(Number(form.stock))) return
+   397→   397→
+   398→   398→    const finalSKU = form.sku.trim() || generateSKU(form.category)
+   399→   399→
+   400→   400→    const body = {
+   401→   401→      name: form.name.trim(),
+   402→   402→      brand: form.brand.trim() || null,
+   403→   403→      model: form.model.trim() || null,
+   404→   404→      color: form.color.trim() || null,
+   405→   405→      size: form.size.trim() || null,
+   406→   406→      category: form.category,
+   407→   407→      price: Number(form.price),
+   408→   408→      costPrice: form.costPrice.trim() ? Number(form.costPrice) : null,
+   409→   409→      stock: Number(form.stock),
+   410→   410→      minStock: form.minStock.trim() ? Number(form.minStock) : 0,
+   411→   411→      sku: finalSKU,
+   412→   412→      type: ['Lenses'].includes(form.category) && form.type
+   413→   413→        ? form.type
+   414→   414→        : null,
+   415→   415→      duration: ['Contact Lenses'].includes(form.category) && form.duration
+   416→   416→        ? form.duration
+   417→   417→        : null,
+   418→   418→      expiryDate:
+   419→   419→        ['Lenses', 'Contact Lenses'].includes(form.category) &&
+   420→   420→        form.expiryDate
+   421→   421→          ? new Date(form.expiryDate).toISOString()
+   422→   422→          : null,
+   423→   423→      description: form.description.trim() || null,
+   424→   424→      supplier: form.supplier.trim() || null,
+   425→   425→      supplierPhone: form.supplierPhone.trim() || null,
+   426→   426→      frameWidth: form.category === 'Frames' && form.frameWidth.trim()
+   427→   427→        ? Number(form.frameWidth)
+   428→   428→        : null,
+   429→   429→      bridge: form.category === 'Frames' && form.bridge.trim()
+   430→   430→        ? Number(form.bridge)
+   431→   431→        : null,
+   432→   432→      temple: form.category === 'Frames' && form.temple.trim()
+   433→   433→        ? Number(form.temple)
+   434→   434→        : null,
+   435→   435→    }
+   436→   436→
+   437→   437→    setSubmitting(true)
+   438→   438→    try {
+   439→   439→      const url = editingProduct
+   440→   440→        ? `/api/products/${editingProduct.id}`
+   441→   441→        : '/api/products'
+   442→   442→      const method = editingProduct ? 'PUT' : 'POST'
+   443→   443→
+   444→   444→      const res = await fetch(url, {
+   445→   445→        method,
+   446→   446→        headers: { 'Content-Type': 'application/json' },
+   447→   447→        body: JSON.stringify(body),
+   448→   448→      })
+   449→   449→
+   450→   450→      if (!res.ok) throw new Error('Failed to save product')
+   451→   451→
+   452→   452→      setDialogOpen(false)
+   453→   453→      setForm(emptyForm)
+   454→   454→      setEditingProduct(null)
+   455→   455→      fetchProducts()
+   456→   456→    } catch {
+   457→   457→      // Error handled silently for now
+   458→   458→    } finally {
+   459→   459→      setSubmitting(false)
+   460→   460→    }
+   461→   461→  }
+   462→   462→
+   463→   463→  const confirmDelete = (product: Product) => {
+   464→   464→    setDeletingProduct(product)
+   465→   465→    setDeleteDialogOpen(true)
+   466→   466→  }
+   467→   467→
+   468→   468→  const handleDelete = async () => {
+   469→   469→    if (!deletingProduct) return
+   470→   470→    setDeleting(true)
+   471→   471→    try {
+   472→   472→      const res = await fetch(`/api/products/${deletingProduct.id}`, {
+   473→   473→        method: 'DELETE',
+   474→   474→      })
+   475→   475→      if (!res.ok) throw new Error('Failed to delete product')
+   476→   476→      setDeleteDialogOpen(false)
+   477→   477→      setDeletingProduct(null)
+   478→   478→      fetchProducts()
+   479→   479→    } catch {
+   480→   480→      // Error handled silently
+   481→   481→    } finally {
+   482→   482→      setDeleting(false)
+   483→   483→    }
+   484→   484→  }
+   485→   485→
+   486→   486→  const handleTabChange = (tab: string) => {
+   487→   487→    setActiveTab(tab)
+   488→   488→    setCategorySelect('All')
+   489→   489→    setCurrentPage(1)
+   490→   490→  }
+   491→   491→
+   492→   492→  const handleCategorySelectChange = (value: string) => {
+   493→   493→    setCategorySelect(value)
+   494→   494→    // Sync tab to All when using the dropdown
+   495→   495→    if (value !== 'All') {
+   496→   496→      setActiveTab('All')
+   497→   497→    } else {
+   498→   498→      // If selecting All in dropdown, keep current tab behavior
+   499→   499→    }
+   500→   500→    setCurrentPage(1)
+   501→   501→  }
+   502→   502→
+   503→   503→  const handleSearch = (value: string) => {
+   504→   504→    setSearch(value)
+   505→   505→    setCurrentPage(1)
+   506→   506→  }
+   507→   507→
+   508→   508→  const handleLowStockToggle = () => {
+   509→   509→    setLowStockFilter((prev) => !prev)
+   510→   510→    setCurrentPage(1)
+   511→   511→  }
+   512→   512→
+   513→   513→  const goToPage = (page: number) => {
+   514→   514→    if (page < 1 || page > totalPages) return
+   515→   515→    setCurrentPage(page)
+   516→   516→  }
+   517→   517→
+   518→   518→  // ─── Sort handler ───────────────────────────────────────────────────────
+   519→   519→
+   520→   520→  const handleSort = (field: SortField) => {
+   521→   521→    if (sortField === field) {
+   522→   522→      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+   523→   523→    } else {
+   524→   524→      setSortField(field)
+   525→   525→      setSortDirection('asc')
+   526→   526→    }
+   527→   527→  }
+   528→   528→
+   529→   529→  const SortIcon = ({ field }: { field: SortField }) => {
+   530→   530→    if (sortField !== field) {
+   531→   531→      return <ArrowUpDown className="ml-1 h-3.5 w-3.5 inline opacity-40" />
+   532→   532→    }
+   533→   533→    return sortDirection === 'asc' ? (
+   534→   534→      <ArrowUp className="ml-1 h-3.5 w-3.5 inline" />
+   535→   535→    ) : (
+   536→   536→      <ArrowDown className="ml-1 h-3.5 w-3.5 inline" />
+   537→   537→    )
+   538→   538→  }
+   539→   539→
+   540→   540→  // ─── CSV Import handler ─────────────────────────────────────────────────
+   541→   541→
+   542→   542→  const openCsvDialog = () => {
+   543→   543→    setCsvData('')
+   544→   544→    setImportResult(null)
+   545→   545→    setCsvDialogOpen(true)
+   546→   546→  }
+   547→   547→
+   548→   548→  const handleCsvImport = async () => {
+   549→   549→    if (!csvData.trim()) return
+   550→   550→    setImporting(true)
+   551→   551→    setImportResult(null)
+   552→   552→    try {
+   553→   553→      const res = await fetch('/api/products/bulk-import', {
+   554→   554→        method: 'POST',
+   555→   555→        headers: { 'Content-Type': 'application/json' },
+   556→   556→        body: JSON.stringify({ csv: csvData.trim() }),
+   557→   557→      })
+   558→   558→      if (!res.ok) throw new Error('Import failed')
+   559→   559→      const data: BulkImportResult = await res.json()
+   560→   560→      setImportResult(data)
+   561→   561→      if (data.created > 0) {
+   562→   562→        fetchProducts()
+   563→   563→      }
+   564→   564→    } catch {
+   565→   565→      setImportResult({ created: 0, skipped: 0, errors: ['Import request failed'] })
+   566→   566→    } finally {
+   567→   567→      setImporting(false)
+   568→   568→    }
+   569→   569→  }
+   570→   570→
+   571→   571→  // ─── Low-Stock Report handler ───────────────────────────────────────────
+   572→   572→
+   573→   573→  const openReportDialog = async () => {
+   574→   574→    setReportDialogOpen(true)
+   575→   575→    setReportLoading(true)
+   576→   576→    setReportData(null)
+   577→   577→    try {
+   578→   578→      const res = await fetch('/api/products/low-stock')
+   579→   579→      if (!res.ok) throw new Error('Failed to fetch report')
+   580→   580→      const data: LowStockReport = await res.json()
+   581→   581→      setReportData(data)
+   582→   582→    } catch {
+   583→   583→      // handled silently
+   584→   584→    } finally {
+   585→   585→      setReportLoading(false)
+   586→   586→    }
+   587→   587→  }
+   588→   588→
+   589→   589→  // ─── Quick Stock Adjust handler ─────────────────────────────────────────
+   590→   590→
+   591→   591→  const openAdjustDialog = (product: Product) => {
+   592→   592→    setAdjustProduct(product)
+   593→   593→    setAdjustQty(0)
+   594→   594→  }
+   595→   595→
+   596→   596→  const handleStockAdjust = async () => {
+   597→   597→    if (!adjustProduct || adjustQty === 0) return
+   598→   598→    setAdjusting(true)
+   599→   599→    try {
+   600→   600→      const newStock = Math.max(0, adjustProduct.stock + adjustQty)
+   601→   601→      const updatePayload: Record<string, unknown> = { stock: newStock }
+   602→   602→      if (adjustQty > 0) updatePayload.lastRestocked = new Date().toISOString()
+   603→   603→      const res = await fetch(`/api/products/${adjustProduct.id}`, {
+   604→   604→        method: 'PATCH',
+   605→   605→        headers: { 'Content-Type': 'application/json' },
+   606→   606→        body: JSON.stringify(updatePayload),
+   607→   607→      })
+   608→   608→      if (!res.ok) throw new Error('Failed to update stock')
+   609→   609→      toast.success(`${adjustProduct.name}: stock ${adjustProduct.stock} → ${newStock}`)
+   610→   610→      setAdjustProduct(null)
+   611→   611→      fetchProducts()
+   612→   612→    } catch {
+   613→   613→      toast.error('Failed to adjust stock')
+   614→   614→    } finally {
+   615→   615→      setAdjusting(false)
+   616→   616→    }
+   617→   617→  }
+   618→   618→
+   619→   619→  // ─── Helpers ────────────────────────────────────────────────────────────
+   620→   620→
+   621→   621→  const isLowStock = (product: Product) => product.stock < product.minStock
+   622→   622→
+   623→   623→  const getStatusBadge = (product: Product) => {
+   624→   624→    if (isLowStock(product)) {
+   625→   625→      return (
+   626→   626→        <Badge variant="destructive" className="text-xs">
+   627→   627→          Low Stock
+   628→   628→        </Badge>
+   629→   629→      )
+   630→   630→    }
+   631→   631→    if (product.stock === 0) {
+   632→   632→      return (
+   633→   633→        <Badge variant="outline" className="text-xs text-muted-foreground">
+   634→   634→          Out of Stock
+   635→   635→        </Badge>
+   636→   636→      )
+   637→   637→    }
+   638→   638→    return (
+   639→   639→      <Badge className="bg-emerald-600 text-white border-transparent text-xs">
+   640→   640→        In Stock
+   641→   641→      </Badge>
+   642→   642→    )
+   643→   643→  }
+   644→   644→
+   645→   645→  const showTypeField = form.category === 'Lenses'
+   646→   646→  const showDurationField = form.category === 'Contact Lenses'
+   647→   647→  const showExpiryField = ['Lenses', 'Contact Lenses'].includes(form.category)
+   648→   648→  const showFrameSizeFields = form.category === 'Frames'
+   649→   649→
+   650→   650→  // ─── Render: Pagination ─────────────────────────────────────────────────
+   651→   651→
+   652→   652→  const renderPagination = () => {
+   653→   653→    if (totalPages <= 1) return null
+   654→   654→
+   655→   655→    const pages: (number | 'ellipsis')[] = []
+   656→   656→    if (totalPages <= 7) {
+   657→   657→      for (let i = 1; i <= totalPages; i++) pages.push(i)
+   658→   658→    } else {
+   659→   659→      pages.push(1)
+   660→   660→      if (currentPage > 3) pages.push('ellipsis')
+   661→   661→      const start = Math.max(2, currentPage - 1)
+   662→   662→      const end = Math.min(totalPages - 1, currentPage + 1)
+   663→   663→      for (let i = start; i <= end; i++) pages.push(i)
+   664→   664→      if (currentPage < totalPages - 2) pages.push('ellipsis')
+   665→   665→      pages.push(totalPages)
+   666→   666→    }
+   667→   667→
+   668→   668→    return (
+   669→   669→      <div className="flex items-center justify-between px-2 py-3">
+   670→   670→        <p className="text-sm text-muted-foreground">
+   671→   671→          Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–
+   672→   672→          {Math.min(currentPage * ITEMS_PER_PAGE, total)} of {total} products
+   673→   673→        </p>
+   674→   674→        <nav className="flex items-center gap-1" aria-label="Pagination">
+   675→   675→          <Button
+   676→   676→            variant="outline"
+   677→   677→            size="icon"
+   678→   678→            className="min-w-[44px] min-h-[44px] touch-manipulation"
+   679→   679→            disabled={currentPage === 1}
+   680→   680→            onClick={() => goToPage(currentPage - 1)}
+   681→   681→            aria-label="Previous page"
+   682→   682→          >
+   683→   683→            <ChevronLeft className="h-4 w-4" />
+   684→   684→          </Button>
+   685→   685→          {pages.map((p, idx) =>
+   686→   686→            p === 'ellipsis' ? (
+   687→   687→              <span
+   688→   688→                key={`ellipsis-${idx}`}
+   689→   689→                className="flex h-8 w-8 items-center justify-center text-sm text-muted-foreground"
+   690→   690→              >
+   691→   691→                ...
+   692→   692→              </span>
+   693→   693→            ) : (
+   694→   694→              <Button
+   695→   695→                key={p}
+   696→   696→                variant={currentPage === p ? 'default' : 'outline'}
+   697→   697→                size="icon"
+   698→   698→                className="min-w-[44px] min-h-[44px] touch-manipulation"
+   699→   699→                onClick={() => goToPage(p)}
+   700→   700→                aria-label={`Page ${p}`}
+   701→   701→                aria-current={currentPage === p ? 'page' : undefined}
+   702→   702→              >
+   703→   703→                {p}
+   704→   704→              </Button>
+   705→   705→            )
+   706→   706→          )}
+   707→   707→          <Button
+   708→   708→            variant="outline"
+   709→   709→            size="icon"
+   710→   710→            className="min-w-[44px] min-h-[44px] touch-manipulation"
+   711→   711→            disabled={currentPage === totalPages}
+   712→   712→            onClick={() => goToPage(currentPage + 1)}
+   713→   713→            aria-label="Next page"
+   714→   714→          >
+   715→   715→            <ChevronRight className="h-4 w-4" />
+   716→   716→          </Button>
+   717→   717→        </nav>
+   718→   718→      </div>
+   719→   719→    )
+   720→   720→  }
+   721→   721→
+   722→   722→  // ─── Render: Skeleton Loading ───────────────────────────────────────────
+   723→   723→
+   724→   724→  const renderSkeleton = () => (
+   725→   725→    <div className="space-y-3 p-4">
+   726→   726→      {Array.from({ length: 5 }).map((_, i) => (
+   727→   727→        <div
+   728→   728→          key={i}
+   729→   729→          className="flex items-center gap-4 animate-pulse"
+   730→   730→        >
+   731→   731→          <div className="h-4 w-24 rounded bg-muted" />
+   732→   732→          <div className="h-4 w-32 rounded bg-muted" />
+   733→   733→          <div className="h-4 w-20 rounded bg-muted" />
+   734→   734→          <div className="h-4 w-20 rounded bg-muted" />
+   735→   735→          <div className="h-4 w-16 rounded bg-muted" />
+   736→   736→          <div className="h-4 w-12 rounded bg-muted" />
+   737→   737→          <div className="ml-auto h-8 w-16 rounded bg-muted" />
+   738→   738→        </div>
+   739→   739→      ))}
+   740→   740→    </div>
+   741→   741→  )
+   742→   742→
+   743→   743→  // ─── Total visible columns count ────────────────────────────────────────
+   744→   744→
+   745→   745→  const TABLE_COLSPAN = 12
+   746→   746→
+   747→   747→  // ─── Main Render ────────────────────────────────────────────────────────
+   748→   748→
+   749→   749→  return (
+   750→   750→    <div className="space-y-6">
+   751→   751→      {/* Header */}
+   752→   752→      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+   753→   753→        <div>
+   754→   754→          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+   755→   755→            <Package className="h-6 w-6" />
+   756→   756→            Inventory Management
+   757→   757→          </h1>
+   758→   758→          <p className="text-muted-foreground mt-1">
+   759→   759→            Manage your products, track stock levels, and monitor inventory alerts.
+   760→   760→          </p>
+   761→   761→        </div>
+   762→   762→        <div className="flex flex-wrap items-center gap-2">
+   763→   763→          <Button variant="outline" onClick={openReportDialog} className="w-full sm:w-auto">
+   764→   764→            <FileBarChart className="mr-2 h-4 w-4" />
+   765→   765→            Low Stock Report
+   766→   766→          </Button>
+   767→   767→          <Button variant="outline" onClick={openCsvDialog} className="w-full sm:w-auto">
+   768→   768→            <Upload className="mr-2 h-4 w-4" />
+   769→   769→            Import CSV
+   770→   770→          </Button>
+   771→   771→          <Button onClick={openCreateDialog} className="w-full sm:w-auto">
+   772→   772→            <Plus className="mr-2 h-4 w-4" />
+   773→   773→            Add Product
+   774→   774→          </Button>
+   775→   775→        </div>
+   776→   776→      </div>
+   777→   777→
+   778→   778→      {/* Stock Alert Section */}
+   779→   779→      {lowStockCount > 0 && showAlert && (
+   780→   780→        <Alert variant="destructive" className="relative border-amber-500/50 bg-amber-50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-100">
+   781→   781→          <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+   782→   782→          <AlertTitle className="text-amber-800 dark:text-amber-200">
+   783→   783→            {lowStockCount} product{lowStockCount !== 1 ? 's' : ''} below minimum stock level
+   784→   784→          </AlertTitle>
+   785→   785→          <AlertDescription className="text-amber-700 dark:text-amber-300">
+   786→   786→            <div className="mt-2">
+   787→   787→              <p className="text-xs font-medium mb-1.5 uppercase tracking-wider">
+   788→   788→                Items needing reorder:
+   789→   789→              </p>
+   790→   790→              <div className="flex flex-wrap gap-1.5">
+   791→   791→                {lowStockItems.slice(0, 8).map((item) => (
+   792→   792→                  <Badge
+   793→   793→                    key={item.id}
+   794→   794→                    variant="outline"
+   795→   795→                    className="border-amber-400/50 text-amber-800 dark:text-amber-200 text-xs bg-amber-100/50 dark:bg-amber-900/30"
+   796→   796→                  >
+   797→   797→                    {item.name} ({item.stock}/{item.minStock})
+   798→   798→                  </Badge>
+   799→   799→                ))}
+   800→   800→                {lowStockItems.length > 8 && (
+   801→   801→                  <Badge
+   802→   802→                    variant="outline"
+   803→   803→                    className="border-amber-400/50 text-amber-800 dark:text-amber-200 text-xs bg-amber-100/50 dark:bg-amber-900/30 cursor-pointer"
+   804→   804→                    onClick={() => {
+   805→   805→                      setLowStockFilter(true)
+   806→   806→                      setActiveTab('All')
+   807→   807→                      setCategorySelect('All')
+   808→   808→                      setCurrentPage(1)
+   809→   809→                    }}
+   810→   810→                  >
+   811→   811→                    +{lowStockItems.length - 8} more
+   812→   812→                  </Badge>
+   813→   813→                )}
+   814→   814→              </div>
+   815→   815→            </div>
+   816→   816→          </AlertDescription>
+   817→   817→          <button
+   818→   818→            onClick={() => setShowAlert(false)}
+   819→   819→            className="absolute top-3 right-3 rounded-sm p-0.5 opacity-70 hover:opacity-100 transition-opacity"
+   820→   820→            aria-label="Dismiss alert"
+   821→   821→          >
+   822→   822→            <X className="h-3.5 w-3.5" />
+   823→   823→          </button>
+   824→   824→        </Alert>
+   825→   825→      )}
+   826→   826→
+   827→   827→      {/* Filters & Search */}
+   828→   828→      <Card>
+   829→   829→        <CardContent className="p-4">
+   830→   830→          <div className="flex flex-col gap-4">
+   831→   831→            {/* Category Tabs */}
+   832→   832→            <Tabs value={activeTab} onValueChange={handleTabChange}>
+   833→   833→              <TabsList className="w-full overflow-x-auto flex-wrap">
+   834→   834→                {CATEGORY_TABS.map((cat) => (
+   835→   835→                  <TabsTrigger key={cat} value={cat} className="text-xs sm:text-sm">
+   836→   836→                    {cat}
+   837→   837→                  </TabsTrigger>
+   838→   838→                ))}
+   839→   839→              </TabsList>
+   840→   840→            </Tabs>
+   841→   841→
+   842→   842→            {/* Search & Filters Row */}
+   843→   843→            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+   844→   844→              <div className="relative flex-1 max-w-md">
+   845→   845→                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+   846→   846→                <Input
+   847→   847→                  placeholder="Search by name, SKU, or brand..."
+   848→   848→                  value={search}
+   849→   849→                  onChange={(e) => handleSearch(e.target.value)}
+   850→   850→                  className="pl-9"
+   851→   851→                />
+   852→   852→              </div>
+   853→   853→              <div className="flex items-center gap-2 flex-wrap">
+   854→   854→                {/* Category filter dropdown */}
+   855→   855→                <Select value={categorySelect} onValueChange={handleCategorySelectChange}>
+   856→   856→                  <SelectTrigger className="w-[160px] h-9">
+   857→   857→                    <SelectValue placeholder="Category" />
+   858→   858→                  </SelectTrigger>
+   859→   859→                  <SelectContent>
+   860→   860→                    <SelectItem value="All">All Categories</SelectItem>
+   861→   861→                    {CATEGORIES.map((cat) => (
+   862→   862→                      <SelectItem key={cat} value={cat}>
+   863→   863→                        {cat}
+   864→   864→                      </SelectItem>
+   865→   865→                    ))}
+   866→   866→                  </SelectContent>
+   867→   867→                </Select>
+   868→   868→
+   869→   869→                <Button
+   870→   870→                  variant={lowStockFilter ? 'default' : 'outline'}
+   871→   871→                  size="sm"
+   872→   872→                  onClick={handleLowStockToggle}
+   873→   873→                  className="gap-1.5 min-h-[44px] touch-manipulation"
+   874→   874→                >
+   875→   875→                  {lowStockFilter ? (
+   876→   876→                    <Eye className="h-3.5 w-3.5" />
+   877→   877→                  ) : (
+   878→   878→                    <EyeOff className="h-3.5 w-3.5" />
+   879→   879→                  )}
+   880→   880→                  Low Stock
+   881→   881→                  {lowStockCount > 0 && (
+   882→   882→                    <Badge
+   883→   883→                      variant="destructive"
+   884→   884→                      className="ml-0.5 h-5 min-w-5 flex items-center justify-center px-1.5 text-[10px]"
+   885→   885→                    >
+   886→   886→                      {lowStockCount}
+   887→   887→                    </Badge>
+   888→   888→                  )}
+   889→   889→                </Button>
+   890→   890→              </div>
+   891→   891→            </div>
+   892→   892→          </div>
+   893→   893→        </CardContent>
+   894→   894→      </Card>
+   895→   895→
+   896→   896→      {/* Products Table */}
+   897→   897→      <Card>
+   898→   898→        <CardContent className="p-0">
+   899→   899→          <div className="max-h-[600px] overflow-x-auto overflow-y-auto">
+   900→   900→            <Table>
+   901→   901→              <TableHeader>
+   902→   902→                <TableRow>
+   903→   903→                  <TableHead className="w-[110px]">SKU</TableHead>
+   904→   904→                  <TableHead>
+   905→   905→                    <button
+   906→   906→                      className="inline-flex items-center hover:text-foreground transition-colors font-semibold text-muted-foreground"
+   907→   907→                      onClick={() => handleSort('name')}
+   908→   908→                    >
+   909→   909→                      Name
+   910→   910→                      <SortIcon field="name" />
+   911→   911→                    </button>
+   912→   912→                  </TableHead>
+   913→   913→                  <TableHead className="hidden md:table-cell">Brand</TableHead>
+   914→   914→                  <TableHead className="hidden sm:table-cell">Category</TableHead>
+   915→   915→                  <TableHead className="text-right">
+   916→   916→                    <button
+   917→   917→                      className="inline-flex items-center hover:text-foreground transition-colors font-semibold text-muted-foreground"
+   918→   918→                      onClick={() => handleSort('price')}
+   919→   919→                    >
+   920→   920→                      Price
+   921→   921→                      <SortIcon field="price" />
+   922→   922→                    </button>
+   923→   923→                  </TableHead>
+   924→   924→                  <TableHead className="text-right">
+   925→   925→                    <button
+   926→   926→                      className="inline-flex items-center hover:text-foreground transition-colors font-semibold text-muted-foreground"
+   927→   927→                      onClick={() => handleSort('stock')}
+   928→   928→                    >
+   929→   929→                      Stock
+   930→   930→                      <SortIcon field="stock" />
+   931→   931→                    </button>
+   932→   932→                  </TableHead>
+   933→   933→                  <TableHead className="hidden lg:table-cell text-right">
+   934→   934→                    <button
+   935→   935→                      className="inline-flex items-center hover:text-foreground transition-colors font-semibold text-muted-foreground"
+   936→   936→                      onClick={() => handleSort('minStock')}
+   937→   937→                    >
+   938→   938→                      Min Stock
+   939→   939→                      <SortIcon field="minStock" />
+   940→   940→                    </button>
+   941→   941→                  </TableHead>
+   942→   942→                  <TableHead className="hidden lg:table-cell">Supplier</TableHead>
+   943→   943→                  <TableHead className="hidden xl:table-cell">Last Restocked</TableHead>
+   944→   944→                  <TableHead>Status</TableHead>
+   945→   945→                  <TableHead className="text-right">Actions</TableHead>
+   946→   946→                </TableRow>
+   947→   947→              </TableHeader>
+   948→   948→              <TableBody>
+   949→   949→                {loading ? (
+   950→   950→                  <TableRow>
+   951→   951→                    <TableCell colSpan={TABLE_COLSPAN}>{renderSkeleton()}</TableCell>
+   952→   952→                  </TableRow>
+   953→   953→                ) : sortedProducts.length === 0 ? (
+   954→   954→                  <TableRow>
+   955→   955→                    <TableCell colSpan={TABLE_COLSPAN} className="h-32 text-center">
+   956→   956→                      <div className="flex flex-col items-center gap-2 text-muted-foreground">
+   957→   957→                        <Package className="h-8 w-8 opacity-40" />
+   958→   958→                        <p>No products found.</p>
+   959→   959→                        <Button
+   960→   960→                          variant="link"
+   961→   961→                          size="sm"
+   962→   962→                          onClick={openCreateDialog}
+   963→   963→                          className="min-h-[44px] touch-manipulation"
+   964→   964→                        >
+   965→   965→                          Add your first product
+   966→   966→                        </Button>
+   967→   967→                      </div>
+   968→   968→                    </TableCell>
+   969→   969→                  </TableRow>
+   970→   970→                ) : (
+   971→   971→                  sortedProducts.map((product) => (
+   972→   972→                    <TableRow key={product.id}>
+   973→   973→                      <TableCell className="font-mono text-xs text-muted-foreground">
+   974→   974→                        {product.sku}
+   975→   975→                      </TableCell>
+   976→   976→                      <TableCell className="font-medium max-w-[200px]">
+   977→   977→                        {product.name}
+   978→   978→                        {product.category === 'Frames' && (product.frameWidth || product.bridge || product.temple) && (
+   979→   979→                          <span className="block text-[10px] font-normal text-muted-foreground">
+   980→   980→                            {product.frameWidth}×{product.bridge}×{product.temple} mm
+   981→   981→                          </span>
+   982→   982→                        )}
+   983→   983→                      </TableCell>
+   984→   984→                      <TableCell className="hidden md:table-cell text-muted-foreground">
+   985→   985→                        {product.brand || '—'}
+   986→   986→                      </TableCell>
+   987→   987→                      <TableCell className="hidden sm:table-cell">
+   988→   988→                        <Badge variant="secondary" className="text-xs">
+   989→   989→                          {product.category}
+   990→   990→                        </Badge>
+   991→   991→                      </TableCell>
+   992→   992→                      <TableCell className="text-right font-medium">
+   993→   993→                        {formatINR(product.price)}
+   994→   994→                      </TableCell>
+   995→   995→                      <TableCell className="text-right">
+   996→   996→                        <span className="inline-flex items-center gap-1.5">
+   997→   997→                          {isLowStock(product) && (
+   998→   998→                            <span className="relative flex h-2.5 w-2.5">
+   999→   999→                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+  1000→  1000→                              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600" />
+  1001→  1001→                            </span>
+  1002→  1002→                          )}
+  1003→  1003→                          <span
+  1004→  1004→                            className={
+  1005→  1005→                              isLowStock(product)
+  1006→  1006→                                ? 'text-red-600 dark:text-red-400 font-semibold'
+  1007→  1007→                                : 'text-emerald-600 dark:text-emerald-400 font-medium'
+  1008→  1008→                            }
+  1009→  1009→                          >
+  1010→  1010→                            {product.stock}
+  1011→  1011→                          </span>
+  1012→  1012→                        </span>
+  1013→  1013→                      </TableCell>
+  1014→  1014→                      <TableCell className="hidden lg:table-cell text-right text-muted-foreground">
+  1015→  1015→                        {product.minStock}
+  1016→  1016→                      </TableCell>
+  1017→  1017→                      <TableCell className="hidden lg:table-cell text-muted-foreground">
+  1018→  1018→                        {product.supplier || '—'}
+  1019→  1019→                      </TableCell>
+  1020→  1020→                      <TableCell className="hidden xl:table-cell text-muted-foreground text-xs">
+  1021→  1021→                        {formatDate(product.lastRestocked)}
+  1022→  1022→                      </TableCell>
+  1023→  1023→                      <TableCell>{getStatusBadge(product)}</TableCell>
+  1024→  1024→                      <TableCell className="text-right">
+  1025→  1025→                        <div className="flex items-center justify-end gap-1">
+  1026→  1026→                          <Button
+  1027→  1027→                            variant="ghost"
+  1028→  1028→                            size="icon"
+  1029→  1029→                            className="min-w-[44px] min-h-[44px] touch-manipulation text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/50"
+  1030→  1030→                            onClick={() => openAdjustDialog(product)}
+  1031→  1031→                            aria-label={`Adjust stock for ${product.name}`}
+  1032→  1032→                            title="Quick Stock Adjust"
+  1033→  1033→                          >
+  1034→  1034→                            <PackagePlus className="h-3.5 w-3.5" />
+  1035→  1035→                          </Button>
+  1036→  1036→                          <Button
+  1037→  1037→                            variant="ghost"
+  1038→  1038→                            size="icon"
+  1039→  1039→                            className="min-w-[44px] min-h-[44px] touch-manipulation"
+  1040→  1040→                            onClick={() => openEditDialog(product)}
+  1041→  1041→                            aria-label={`Edit ${product.name}`}
+  1042→  1042→                          >
+  1043→  1043→                            <Edit className="h-3.5 w-3.5" />
+  1044→  1044→                          </Button>
+  1045→  1045→                          <Button
+  1046→  1046→                            variant="ghost"
+  1047→  1047→                            size="icon"
+  1048→  1048→                            className="min-w-[44px] min-h-[44px] touch-manipulation text-destructive hover:text-destructive"
+  1049→  1049→                            onClick={() => confirmDelete(product)}
+  1050→  1050→                            aria-label={`Delete ${product.name}`}
+  1051→  1051→                          >
+  1052→  1052→                            <Trash2 className="h-3.5 w-3.5" />
+  1053→  1053→                          </Button>
+  1054→  1054→                        </div>
+  1055→  1055→                      </TableCell>
+  1056→  1056→                    </TableRow>
+  1057→  1057→                  ))
+  1058→  1058→                )}
+  1059→  1059→              </TableBody>
+  1060→  1060→            </Table>
+  1061→  1061→          </div>
+  1062→  1062→          {renderPagination()}
+  1063→  1063→        </CardContent>
+  1064→  1064→      </Card>
+  1065→  1065→
+  1066→  1066→      {/* ─── Add/Edit Product Dialog ──────────────────────────────────────── */}
+  1067→  1067→      <Dialog open={dialogOpen} onOpenChange={(open) => {
+  1068→  1068→        if (!open) {
+  1069→  1069→          setDialogOpen(false)
+  1070→  1070→          setEditingProduct(null)
+  1071→  1071→          setForm(emptyForm)
+  1072→  1072→        } else {
+  1073→  1073→          setDialogOpen(true)
+  1074→  1074→        }
+  1075→  1075→      }}>
+  1076→  1076→        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+  1077→  1077→          <DialogHeader>
+  1078→  1078→            <DialogTitle>
+  1079→  1079→              {editingProduct ? 'Edit Product' : 'Add New Product'}
+  1080→  1080→            </DialogTitle>
+  1081→  1081→            <DialogDescription>
+  1082→  1082→              {editingProduct
+  1083→  1083→                ? 'Update the product details below.'
+  1084→  1084→                : 'Fill in the details to add a new product to inventory.'}
+  1085→  1085→            </DialogDescription>
+  1086→  1086→          </DialogHeader>
+  1087→  1087→
+  1088→  1088→          <div className="grid gap-4 py-2">
+  1089→  1089→            {/* Row 1: Name, Brand */}
+  1090→  1090→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+  1091→  1091→              <div className="space-y-2">
+  1092→  1092→                <Label htmlFor="product-name">
+  1093→  1093→                  Name <span className="text-destructive">*</span>
+  1094→  1094→                </Label>
+  1095→  1095→                <Input
+  1096→  1096→                  id="product-name"
+  1097→  1097→                  placeholder="e.g. Aviator Classic"
+  1098→  1098→                  value={form.name}
+  1099→  1099→                  onChange={(e) => updateField('name', e.target.value)}
+  1100→  1100→                />
+  1101→  1101→              </div>
+  1102→  1102→              <div className="space-y-2">
+  1103→  1103→                <Label htmlFor="product-brand">Brand</Label>
+  1104→  1104→                <Input
+  1105→  1105→                  id="product-brand"
+  1106→  1106→                  placeholder="e.g. Ray-Ban"
+  1107→  1107→                  value={form.brand}
+  1108→  1108→                  onChange={(e) => updateField('brand', e.target.value)}
+  1109→  1109→                />
+  1110→  1110→              </div>
+  1111→  1111→            </div>
+  1112→  1112→
+  1113→  1113→            {/* Row 2: Model, Color */}
+  1114→  1114→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+  1115→  1115→              <div className="space-y-2">
+  1116→  1116→                <Label htmlFor="product-model">Model</Label>
+  1117→  1117→                <Input
+  1118→  1118→                  id="product-model"
+  1119→  1119→                  placeholder="e.g. RB3025"
+  1120→  1120→                  value={form.model}
+  1121→  1121→                  onChange={(e) => updateField('model', e.target.value)}
+  1122→  1122→                />
+  1123→  1123→              </div>
+  1124→  1124→              <div className="space-y-2">
+  1125→  1125→                <Label htmlFor="product-color">Color</Label>
+  1126→  1126→                <Input
+  1127→  1127→                  id="product-color"
+  1128→  1128→                  placeholder="e.g. Gold/Green"
+  1129→  1129→                  value={form.color}
+  1130→  1130→                  onChange={(e) => updateField('color', e.target.value)}
+  1131→  1131→                />
+  1132→  1132→              </div>
+  1133→  1133→            </div>
+  1134→  1134→
+  1135→  1135→            {/* Row 3: Size, Category */}
+  1136→  1136→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+  1137→  1137→              <div className="space-y-2">
+  1138→  1138→                <Label htmlFor="product-size">Size</Label>
+  1139→  1139→                <Input
+  1140→  1140→                  id="product-size"
+  1141→  1141→                  placeholder="e.g. 58-14-135"
+  1142→  1142→                  value={form.size}
+  1143→  1143→                  onChange={(e) => updateField('size', e.target.value)}
+  1144→  1144→                />
+  1145→  1145→              </div>
+  1146→  1146→              <div className="space-y-2">
+  1147→  1147→                <Label htmlFor="product-category">
+  1148→  1148→                  Category <span className="text-destructive">*</span>
+  1149→  1149→                </Label>
+  1150→  1150→                <Select
+  1151→  1151→                  value={form.category}
+  1152→  1152→                  onValueChange={(val) => updateField('category', val)}
+  1153→  1153→                >
+  1154→  1154→                  <SelectTrigger id="product-category" className="w-full">
+  1155→  1155→                    <SelectValue placeholder="Select category" />
+  1156→  1156→                  </SelectTrigger>
+  1157→  1157→                  <SelectContent>
+  1158→  1158→                    {CATEGORIES.map((cat) => (
+  1159→  1159→                      <SelectItem key={cat} value={cat}>
+  1160→  1160→                        {cat}
+  1161→  1161→                      </SelectItem>
+  1162→  1162→                    ))}
+  1163→  1163→                  </SelectContent>
+  1164→  1164→                </Select>
+  1165→  1165→              </div>
+  1166→  1166→            </div>
+  1167→  1167→
+  1168→  1168→            {/* Row 4: Price, Cost Price */}
+  1169→  1169→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+  1170→  1170→              <div className="space-y-2">
+  1171→  1171→                <Label htmlFor="product-price">
+  1172→  1172→                  <IndianRupee className="h-3.5 w-3.5" />
+  1173→  1173→                  Price <span className="text-destructive">*</span>
+  1174→  1174→                </Label>
+  1175→  1175→                <Input
+  1176→  1176→                  id="product-price"
+  1177→  1177→                  type="number"
+  1178→  1178→                  step="0.01"
+  1179→  1179→                  min="0"
+  1180→  1180→                  placeholder="0.00"
+  1181→  1181→                  value={form.price}
+  1182→  1182→                  onChange={(e) => updateField('price', e.target.value)}
+  1183→  1183→                />
+  1184→  1184→              </div>
+  1185→  1185→              <div className="space-y-2">
+  1186→  1186→                <Label htmlFor="product-cost-price"><IndianRupee className="h-3.5 w-3.5 mr-1 inline" />Cost Price</Label>
+  1187→  1187→                <Input
+  1188→  1188→                  id="product-cost-price"
+  1189→  1189→                  type="number"
+  1190→  1190→                  step="0.01"
+  1191→  1191→                  min="0"
+  1192→  1192→                  placeholder="0.00"
+  1193→  1193→                  value={form.costPrice}
+  1194→  1194→                  onChange={(e) => updateField('costPrice', e.target.value)}
+  1195→  1195→                />
+  1196→  1196→              </div>
+  1197→  1197→            </div>
+  1198→  1198→
+  1199→  1199→            {/* Row 5: Stock, Min Stock */}
+  1200→  1200→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+  1201→  1201→              <div className="space-y-2">
+  1202→  1202→                <Label htmlFor="product-stock">
+  1203→  1203→                  Stock <span className="text-destructive">*</span>
+  1204→  1204→                </Label>
+  1205→  1205→                <Input
+  1206→  1206→                  id="product-stock"
+  1207→  1207→                  type="number"
+  1208→  1208→                  min="0"
+  1209→  1209→                  placeholder="0"
+  1210→  1210→                  value={form.stock}
+  1211→  1211→                  onChange={(e) => updateField('stock', e.target.value)}
+  1212→  1212→                />
+  1213→  1213→              </div>
+  1214→  1214→              <div className="space-y-2">
+  1215→  1215→                <Label htmlFor="product-min-stock">Min Stock Level</Label>
+  1216→  1216→                <Input
+  1217→  1217→                  id="product-min-stock"
+  1218→  1218→                  type="number"
+  1219→  1219→                  min="0"
+  1220→  1220→                  placeholder="0"
+  1221→  1221→                  value={form.minStock}
+  1222→  1222→                  onChange={(e) => updateField('minStock', e.target.value)}
+  1223→  1223→                />
+  1224→  1224→              </div>
+  1225→  1225→            </div>
+  1226→  1226→
+  1227→  1227→            {/* Row: SKU */}
+  1228→  1228→            <div className="space-y-2">
+  1229→  1229→              <Label htmlFor="product-sku">
+  1230→  1230→                SKU <span className="text-destructive">*</span>
+  1231→  1231→                <span className="text-muted-foreground text-xs font-normal ml-2">
+  1232→  1232→                  Auto-generated if left empty
+  1233→  1233→                </span>
+  1234→  1234→              </Label>
+  1235→  1235→              <Input
+  1236→  1236→                id="product-sku"
+  1237→  1237→                placeholder="e.g. SKO-FRA-XXXXX"
+  1238→  1238→                value={form.sku}
+  1239→  1239→                onChange={(e) => updateField('sku', e.target.value)}
+  1240→  1240→              />
+  1241→  1241→            </div>
+  1242→  1242→
+  1243→  1243→            {/* Row: Supplier & Supplier Phone */}
+  1244→  1244→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+  1245→  1245→              <div className="space-y-2">
+  1246→  1246→                <Label htmlFor="product-supplier">Supplier</Label>
+  1247→  1247→                <Input
+  1248→  1248→                  id="product-supplier"
+  1249→  1249→                  placeholder="e.g. Ray-Ban India"
+  1250→  1250→                  value={form.supplier}
+  1251→  1251→                  onChange={(e) => updateField('supplier', e.target.value)}
+  1252→  1252→                />
+  1253→  1253→              </div>
+  1254→  1254→              <div className="space-y-2">
+  1255→  1255→                <Label htmlFor="product-supplier-phone">Supplier Phone</Label>
+  1256→  1256→                <Input
+  1257→  1257→                  id="product-supplier-phone"
+  1258→  1258→                  placeholder="e.g. +91 98765 43210"
+  1259→  1259→                  value={form.supplierPhone}
+  1260→  1260→                  onChange={(e) => updateField('supplierPhone', e.target.value)}
+  1261→  1261→                />
+  1262→  1262→              </div>
+  1263→  1263→            </div>
+  1264→  1264→
+  1265→  1265→            {/* Conditional: Frame Size Fields (for Frames) */}
+  1266→  1266→            {showFrameSizeFields && (
+  1267→  1267→              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-3 rounded-lg border bg-muted/30">
+  1268→  1268→                <div className="space-y-2">
+  1269→  1269→                  <Label htmlFor="product-frame-width">Frame Width (mm)</Label>
+  1270→  1270→                  <Input
+  1271→  1271→                    id="product-frame-width"
+  1272→  1272→                    type="number"
+  1273→  1273→                    min="0"
+  1274→  1274→                    step="1"
+  1275→  1275→                    placeholder="e.g. 140"
+  1276→  1276→                    value={form.frameWidth}
+  1277→  1277→                    onChange={(e) => updateField('frameWidth', e.target.value)}
+  1278→  1278→                  />
+  1279→  1279→                </div>
+  1280→  1280→                <div className="space-y-2">
+  1281→  1281→                  <Label htmlFor="product-bridge">Bridge (mm)</Label>
+  1282→  1282→                  <Input
+  1283→  1283→                    id="product-bridge"
+  1284→  1284→                    type="number"
+  1285→  1285→                    min="0"
+  1286→  1286→                    step="1"
+  1287→  1287→                    placeholder="e.g. 18"
+  1288→  1288→                    value={form.bridge}
+  1289→  1289→                    onChange={(e) => updateField('bridge', e.target.value)}
+  1290→  1290→                  />
+  1291→  1291→                </div>
+  1292→  1292→                <div className="space-y-2">
+  1293→  1293→                  <Label htmlFor="product-temple">Temple Length (mm)</Label>
+  1294→  1294→                  <Input
+  1295→  1295→                    id="product-temple"
+  1296→  1296→                    type="number"
+  1297→  1297→                    min="0"
+  1298→  1298→                    step="1"
+  1299→  1299→                    placeholder="e.g. 145"
+  1300→  1300→                    value={form.temple}
+  1301→  1301→                    onChange={(e) => updateField('temple', e.target.value)}
+  1302→  1302→                  />
+  1303→  1303→                </div>
+  1304→  1304→              </div>
+  1305→  1305→            )}
+  1306→  1306→
+  1307→  1307→            {/* Conditional: Lens Type (for Lenses) */}
+  1308→  1308→            {showTypeField && (
+  1309→  1309→              <div className="space-y-2">
+  1310→  1310→                <Label htmlFor="product-type">Lens Type</Label>
+  1311→  1311→                <Select
+  1312→  1312→                  value={form.type}
+  1313→  1313→                  onValueChange={(val) => updateField('type', val)}
+  1314→  1314→                >
+  1315→  1315→                  <SelectTrigger id="product-type" className="w-full">
+  1316→  1316→                    <SelectValue placeholder="Select lens type" />
+  1317→  1317→                  </SelectTrigger>
+  1318→  1318→                  <SelectContent>
+  1319→  1319→                    {LENS_TYPES.map((t) => (
+  1320→  1320→                      <SelectItem key={t} value={t}>
+  1321→  1321→                        {t}
+  1322→  1322→                      </SelectItem>
+  1323→  1323→                    ))}
+  1324→  1324→                  </SelectContent>
+  1325→  1325→                </Select>
+  1326→  1326→              </div>
+  1327→  1327→            )}
+  1328→  1328→
+  1329→  1329→            {/* Conditional: Duration (for Contact Lenses) */}
+  1330→  1330→            {showDurationField && (
+  1331→  1331→              <div className="space-y-2">
+  1332→  1332→                <Label htmlFor="product-duration">Duration</Label>
+  1333→  1333→                <Select
+  1334→  1334→                  value={form.duration}
+  1335→  1335→                  onValueChange={(val) => updateField('duration', val)}
+  1336→  1336→                >
+  1337→  1337→                  <SelectTrigger id="product-duration" className="w-full">
+  1338→  1338→                    <SelectValue placeholder="Select duration" />
+  1339→  1339→                  </SelectTrigger>
+  1340→  1340→                  <SelectContent>
+  1341→  1341→                    {DURATIONS.map((d) => (
+  1342→  1342→                      <SelectItem key={d} value={d}>
+  1343→  1343→                        {d}
+  1344→  1344→                      </SelectItem>
+  1345→  1345→                    ))}
+  1346→  1346→                  </SelectContent>
+  1347→  1347→                </Select>
+  1348→  1348→              </div>
+  1349→  1349→            )}
+  1350→  1350→
+  1351→  1351→            {/* Conditional: Expiry Date (for Solutions, Lenses, Contact Lenses) */}
+  1352→  1352→            {showExpiryField && (
+  1353→  1353→              <div className="space-y-2">
+  1354→  1354→                <Label htmlFor="product-expiry">Expiry Date</Label>
+  1355→  1355→                <Input
+  1356→  1356→                  id="product-expiry"
+  1357→  1357→                  type="date"
+  1358→  1358→                  value={form.expiryDate}
+  1359→  1359→                  onChange={(e) => updateField('expiryDate', e.target.value)}
+  1360→  1360→                />
+  1361→  1361→              </div>
+  1362→  1362→            )}
+  1363→  1363→
+  1364→  1364→            {/* Description */}
+  1365→  1365→            <div className="space-y-2">
+  1366→  1366→              <Label htmlFor="product-description">Description</Label>
+  1367→  1367→              <Textarea
+  1368→  1368→                id="product-description"
+  1369→  1369→                placeholder="Optional product description..."
+  1370→  1370→                value={form.description}
+  1371→  1371→                onChange={(e) => updateField('description', e.target.value)}
+  1372→  1372→                rows={3}
+  1373→  1373→                className="resize-none"
+  1374→  1374→              />
+  1375→  1375→            </div>
+  1376→  1376→          </div>
+  1377→  1377→
+  1378→  1378→          <DialogFooter>
+  1379→  1379→            <Button
+  1380→  1380→              variant="outline"
+  1381→  1381→              onClick={() => {
+  1382→  1382→                setDialogOpen(false)
+  1383→  1383→                setEditingProduct(null)
+  1384→  1384→                setForm(emptyForm)
+  1385→  1385→              }}
+  1386→  1386→              disabled={submitting}
+  1387→  1387→              className="min-h-[44px] min-w-[44px] touch-manipulation"
+  1388→  1388→            >
+  1389→  1389→              Cancel
+  1390→  1390→            </Button>
+  1391→  1391→            <Button
+  1392→  1392→              onClick={handleSubmit}
+  1393→  1393→              disabled={
+  1394→  1394→                submitting ||
+  1395→  1395→                !form.name.trim() ||
+  1396→  1396→                !form.category ||
+  1397→  1397→                !form.price.trim() ||
+  1398→  1398→                !form.stock.trim()
+  1399→  1399→              }
+  1400→  1400→              className="min-h-[44px] min-w-[44px] touch-manipulation"
+  1401→  1401→            >
+  1402→  1402→              {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+  1403→  1403→              {editingProduct ? 'Update Product' : 'Add Product'}
+  1404→  1404→            </Button>
+  1405→  1405→          </DialogFooter>
+  1406→  1406→        </DialogContent>
+  1407→  1407→      </Dialog>
+  1408→  1408→
+  1409→  1409→      {/* ─── Delete Confirmation Dialog ───────────────────────────────────── */}
+  1410→  1410→      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+  1411→  1411→        <DialogContent className="sm:max-w-md">
+  1412→  1412→          <DialogHeader>
+  1413→  1413→            <DialogTitle>Delete Product</DialogTitle>
+  1414→  1414→            <DialogDescription>
+  1415→  1415→              Are you sure you want to delete{' '}
+  1416→  1416→              <span className="font-semibold text-foreground">
+  1417→  1417→                {deletingProduct?.name}
+  1418→  1418→              </span>
+  1419→  1419→              ? This action cannot be undone.
+  1420→  1420→            </DialogDescription>
+  1421→  1421→          </DialogHeader>
+  1422→  1422→          <DialogFooter>
+  1423→  1423→            <Button
+  1424→  1424→              variant="outline"
+  1425→  1425→              onClick={() => {
+  1426→  1426→                setDeleteDialogOpen(false)
+  1427→  1427→                setDeletingProduct(null)
+  1428→  1428→              }}
+  1429→  1429→              disabled={deleting}
+  1430→  1430→              className="min-h-[44px] min-w-[44px] touch-manipulation"
+  1431→  1431→            >
+  1432→  1432→              Cancel
+  1433→  1433→            </Button>
+  1434→  1434→            <Button
+  1435→  1435→              variant="destructive"
+  1436→  1436→              onClick={handleDelete}
+  1437→  1437→              disabled={deleting}
+  1438→  1438→              className="min-h-[44px] min-w-[44px] touch-manipulation"
+  1439→  1439→            >
+  1440→  1440→              {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+  1441→  1441→              Delete
+  1442→  1442→            </Button>
+  1443→  1443→          </DialogFooter>
+  1444→  1444→        </DialogContent>
+  1445→  1445→      </Dialog>
+  1446→  1446→
+  1447→  1447→      {/* ─── Bulk CSV Import Dialog ───────────────────────────────────────── */}
+  1448→  1448→      <Dialog open={csvDialogOpen} onOpenChange={(open) => {
+  1449→  1449→        setCsvDialogOpen(open)
+  1450→  1450→        if (!open) {
+  1451→  1451→          setCsvData('')
+  1452→  1452→          setImportResult(null)
+  1453→  1453→        }
+  1454→  1454→      }}>
+  1455→  1455→        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+  1456→  1456→          <DialogHeader>
+  1457→  1457→            <DialogTitle>
+  1458→  1458→              <span className="inline-flex items-center gap-2">
+  1459→  1459→                <Upload className="h-5 w-5" />
+  1460→  1460→                Bulk Import CSV
+  1461→  1461→              </span>
+  1462→  1462→            </DialogTitle>
+  1463→  1463→            <DialogDescription>
+  1464→  1464→              Paste your CSV data below to import products in bulk. The first row must be the header.
+  1465→  1465→            </DialogDescription>
+  1466→  1466→          </DialogHeader>
+  1467→  1467→
+  1468→  1468→          <div className="space-y-4 py-2">
+  1469→  1469→            {/* Sample format hint */}
+  1470→  1470→            <div className="rounded-lg border bg-muted/50 p-3">
+  1471→  1471→              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+  1472→  1472→                Sample CSV Format
+  1473→  1473→              </p>
+  1474→  1474→              <pre className="text-xs text-foreground/80 overflow-x-auto whitespace-pre">
+  1475→  1475→                {CSV_SAMPLE}
+  1476→  1476→              </pre>
+  1477→  1477→              <p className="text-xs text-muted-foreground mt-2">
+  1478→  1478→                Required columns: name, category, price. Optional: brand, model, stock, min_stock, supplier, supplier_phone, cost_price, sku, color, size, type, duration.
+  1479→  1479→              </p>
+  1480→  1480→            </div>
+  1481→  1481→
+  1482→  1482→            {/* CSV textarea */}
+  1483→  1483→            <div className="space-y-2">
+  1484→  1484→              <Label htmlFor="csv-data">
+  1485→  1485→                CSV Data <span className="text-destructive">*</span>
+  1486→  1486→              </Label>
+  1487→  1487→              <Textarea
+  1488→  1488→                id="csv-data"
+  1489→  1489→                placeholder="Paste your CSV data here, including the header row..."
+  1490→  1490→                value={csvData}
+  1491→  1491→                onChange={(e) => setCsvData(e.target.value)}
+  1492→  1492→                rows={10}
+  1493→  1493→                className="font-mono text-xs"
+  1494→  1494→              />
+  1495→  1495→            </div>
+  1496→  1496→
+  1497→  1497→            {/* Import results */}
+  1498→  1498→            {importResult && (
+  1499→  1499→              <div className="rounded-lg border p-4 space-y-3">
+  1500→  1500→                <p className="text-sm font-semibold">Import Results</p>
+  1501→  1501→                <div className="flex flex-wrap gap-4 text-sm">
+  1502→  1502→                  <div className="flex items-center gap-1.5">
+  1503→  1503→                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+  1504→  1504→                    <span><strong>{importResult.created}</strong> created</span>
+  1505→  1505→                  </div>
+  1506→  1506→                  <div className="flex items-center gap-1.5">
+  1507→  1507→                    <span className="h-2 w-2 rounded-full bg-amber-500" />
+  1508→  1508→                    <span><strong>{importResult.skipped}</strong> skipped</span>
+  1509→  1509→                  </div>
+  1510→  1510→                  {importResult.errors.length > 0 && (
+  1511→  1511→                    <div className="flex items-center gap-1.5">
+  1512→  1512→                      <span className="h-2 w-2 rounded-full bg-red-500" />
+  1513→  1513→                      <span><strong>{importResult.errors.length}</strong> errors</span>
+  1514→  1514→                    </div>
+  1515→  1515→                  )}
+  1516→  1516→                </div>
+  1517→  1517→                {importResult.errors.length > 0 && (
+  1518→  1518→                  <div className="mt-2 max-h-32 overflow-y-auto">
+  1519→  1519→                    <ul className="text-xs text-red-600 dark:text-red-400 space-y-1">
+  1520→  1520→                      {importResult.errors.map((err, i) => (
+  1521→  1521→                        <li key={i} className="flex items-start gap-1.5">
+  1522→  1522→                          <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+  1523→  1523→                          {err}
+  1524→  1524→                        </li>
+  1525→  1525→                      ))}
+  1526→  1526→                    </ul>
+  1527→  1527→                  </div>
+  1528→  1528→                )}
+  1529→  1529→              </div>
+  1530→  1530→            )}
+  1531→  1531→          </div>
+  1532→  1532→
+  1533→  1533→          <DialogFooter>
+  1534→  1534→            <Button
+  1535→  1535→              variant="outline"
+  1536→  1536→              onClick={() => {
+  1537→  1537→                setCsvDialogOpen(false)
+  1538→  1538→                setCsvData('')
+  1539→  1539→                setImportResult(null)
+  1540→  1540→              }}
+  1541→  1541→              disabled={importing}
+  1542→  1542→              className="min-h-[44px] touch-manipulation"
+  1543→  1543→            >
+  1544→  1544→              Close
+  1545→  1545→            </Button>
+  1546→  1546→            <Button
+  1547→  1547→              variant="outline"
+  1548→  1548→              onClick={() => fileInputRef.current?.click()}
+  1549→  1549→              disabled={importing}
+  1550→  1550→              className="gap-2 min-h-[44px] touch-manipulation"
+  1551→  1551→            >
+  1552→  1552→              <Upload className="h-4 w-4" />
+  1553→  1553→              Upload .csv File
+  1554→  1554→            </Button>
+  1555→  1555→            <Button
+  1556→  1556→              onClick={handleCsvImport}
+  1557→  1557→              disabled={importing || !csvData.trim()}
+  1558→  1558→              className="min-h-[44px] touch-manipulation"
+  1559→  1559→            >
+  1560→  1560→              {importing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+  1561→  1561→              Import Products
+  1562→  1562→            </Button>
+  1563→  1563→            <input
+  1564→  1564→              ref={fileInputRef}
+  1565→  1565→              type="file"
+  1566→  1566→              accept=".csv,text/csv"
+  1567→  1567→              className="hidden"
+  1568→  1568→              onChange={async (e) => {
+  1569→  1569→                const file = e.target.files?.[0]
+  1570→  1570→                if (!file) return
+  1571→  1571→                try {
+  1572→  1572→                  const text = await file.text()
+  1573→  1573→                  setCsvData(text)
+  1574→  1574→                  toast.success(`Loaded ${file.name} (${(file.size / 1024).toFixed(1)} KB)`)
+  1575→  1575→                } catch {
+  1576→  1576→                  toast.error('Failed to read file')
+  1577→  1577→                }
+  1578→  1578→                if (fileInputRef.current) fileInputRef.current.value = ''
+  1579→  1579→              }}
+  1580→  1580→            />
+  1581→  1581→          </DialogFooter>
+  1582→  1582→        </DialogContent>
+  1583→  1583→      </Dialog>
+  1584→  1584→
+  1585→  1585→      {/* ─── Low-Stock Report Dialog ──────────────────────────────────────── */}
+  1586→  1586→      <Dialog open={reportDialogOpen} onOpenChange={(open) => {
+  1587→  1587→        setReportDialogOpen(open)
+  1588→  1588→        if (!open) {
+  1589→  1589→          setReportData(null)
+  1590→  1590→        }
+  1591→  1591→      }}>
+  1592→  1592→        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+  1593→  1593→          <DialogHeader>
+  1594→  1594→            <DialogTitle>
+  1595→  1595→              <span className="inline-flex items-center gap-2">
+  1596→  1596→                <FileBarChart className="h-5 w-5" />
+  1597→  1597→                Low Stock Report
+  1598→  1598→              </span>
+  1599→  1599→            </DialogTitle>
+  1600→  1600→            <DialogDescription>
+  1601→  1601→              Overview of all products that need reordering.
+  1602→  1602→            </DialogDescription>
+  1603→  1603→          </DialogHeader>
+  1604→  1604→
+  1605→  1605→          {reportLoading ? (
+  1606→  1606→            <div className="flex items-center justify-center py-16">
+  1607→  1607→              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+  1608→  1608→            </div>
+  1609→  1609→          ) : reportData ? (
+  1610→  1610→            <div className="space-y-6 py-2">
+  1611→  1611→              {/* Summary cards */}
+  1612→  1612→              {/* Reorder urgency bar */}
+  1613→  1613→              {reportData.total > 0 && (
+  1614→  1614→                <div className="space-y-2">
+  1615→  1615→                  <div className="flex items-center justify-between text-xs">
+  1616→  1616→                    <span className="text-muted-foreground">Reorder Urgency</span>
+  1617→  1617→                    <span className="font-medium">{Math.min(100, Math.round((reportData.total / Math.max(1, total)) * 100))}% of inventory needs reorder</span>
+  1618→  1618→                  </div>
+  1619→  1619→                  <Progress value={Math.min(100, (reportData.total / Math.max(1, total)) * 100)} className="h-2" />
+  1620→  1620→                </div>
+  1621→  1621→              )}
+  1622→  1622→
+  1623→  1623→              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+  1624→  1624→                <Card>
+  1625→  1625→                  <CardContent className="pt-6">
+  1626→  1626→                    <p className="text-sm text-muted-foreground">Total Low-Stock Items</p>
+  1627→  1627→                    <p className="text-3xl font-bold mt-1">{reportData.total}</p>
+  1628→  1628→                  </CardContent>
+  1629→  1629→                </Card>
+  1630→  1630→                <Card>
+  1631→  1631→                  <CardContent className="pt-6">
+  1632→  1632→                    <p className="text-sm text-muted-foreground">Categories Affected</p>
+  1633→  1633→                    <p className="text-3xl font-bold mt-1">{Object.keys(reportData.byCategory).length}</p>
+  1634→  1634→                  </CardContent>
+  1635→  1635→                </Card>
+  1636→  1636→                <Card>
+  1637→  1637→                  <CardContent className="pt-6">
+  1638→  1638→                    <p className="text-sm text-muted-foreground">Total Reorder Value</p>
+  1639→  1639→                    <p className="text-3xl font-bold mt-1 flex items-center gap-1">
+  1640→  1640→                      <IndianRupee className="h-5 w-5" />
+  1641→  1641→                      {reportData.totalReorderValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+  1642→  1642→                    </p>
+  1643→  1643→                  </CardContent>
+  1644→  1644→                </Card>
+  1645→  1645→              </div>
+  1646→  1646→
+  1647→  1647→              {/* By-category breakdown */}
+  1648→  1648→              <div>
+  1649→  1649→                <h3 className="text-sm font-semibold mb-2">By Category</h3>
+  1650→  1650→                <div className="flex flex-wrap gap-2">
+  1651→  1651→                  {Object.entries(reportData.byCategory).map(([category, count]) => (
+  1652→  1652→                    <Badge key={category} variant="secondary" className="text-sm px-3 py-1">
+  1653→  1653→                      {category}: <strong className="ml-1">{count}</strong>
+  1654→  1654→                    </Badge>
+  1655→  1655→                  ))}
+  1656→  1656→                  {Object.keys(reportData.byCategory).length === 0 && (
+  1657→  1657→                    <p className="text-sm text-muted-foreground">No categories affected.</p>
+  1658→  1658→                  )}
+  1659→  1659→                </div>
+  1660→  1660→              </div>
+  1661→  1661→
+  1662→  1662→              {/* Items table */}
+  1663→  1663→              {reportData.items.length > 0 ? (
+  1664→  1664→                <div>
+  1665→  1665→                  <h3 className="text-sm font-semibold mb-2">Items Needing Reorder</h3>
+  1666→  1666→                  <div className="max-h-[400px] overflow-x-auto overflow-y-auto rounded-lg border">
+  1667→  1667→                    <Table>
+  1668→  1668→                      <TableHeader>
+  1669→  1669→                        <TableRow>
+  1670→  1670→                          <TableHead>Name</TableHead>
+  1671→  1671→                          <TableHead className="hidden sm:table-cell">Category</TableHead>
+  1672→  1672→                          <TableHead className="hidden md:table-cell">Brand</TableHead>
+  1673→  1673→                          <TableHead className="text-right">Stock / Min</TableHead>
+  1674→  1674→                          <TableHead className="text-right">Needed</TableHead>
+  1675→  1675→                          <TableHead className="hidden sm:table-cell text-right">Reorder Cost</TableHead>
+  1676→  1676→                          <TableHead className="hidden lg:table-cell">Supplier</TableHead>
+  1677→  1677→                          <TableHead className="hidden lg:table-cell">Phone</TableHead>
+  1678→  1678→                        </TableRow>
+  1679→  1679→                      </TableHeader>
+  1680→  1680→                      <TableBody>
+  1681→  1681→                        {reportData.items.map((item) => (
+  1682→  1682→                          <TableRow key={item.id}>
+  1683→  1683→                            <TableCell className="font-medium">{item.name}</TableCell>
+  1684→  1684→                            <TableCell className="hidden sm:table-cell">
+  1685→  1685→                              <Badge variant="secondary" className="text-xs">{item.category}</Badge>
+  1686→  1686→                            </TableCell>
+  1687→  1687→                            <TableCell className="hidden md:table-cell text-muted-foreground">
+  1688→  1688→                              {item.brand || '—'}
+  1689→  1689→                            </TableCell>
+  1690→  1690→                            <TableCell className="text-right">
+  1691→  1691→                              <span className="text-red-600 dark:text-red-400 font-semibold">
+  1692→  1692→                                {item.stock}
+  1693→  1693→                              </span>
+  1694→  1694→                              <span className="text-muted-foreground"> / {item.minStock}</span>
+  1695→  1695→                            </TableCell>
+  1696→  1696→                            <TableCell className="text-right font-semibold">
+  1697→  1697→                              {item.needed}
+  1698→  1698→                            </TableCell>
+  1699→  1699→                            <TableCell className="hidden sm:table-cell text-right font-medium">
+  1700→  1700→                              {formatINR(item.reorderCost)}
+  1701→  1701→                            </TableCell>
+  1702→  1702→                            <TableCell className="hidden lg:table-cell text-muted-foreground">
+  1703→  1703→                              {item.supplier || '—'}
+  1704→  1704→                            </TableCell>
+  1705→  1705→                            <TableCell className="hidden lg:table-cell text-muted-foreground text-xs">
+  1706→  1706→                              {item.supplierPhone || '—'}
+  1707→  1707→                            </TableCell>
+  1708→  1708→                          </TableRow>
+  1709→  1709→                        ))}
+  1710→  1710→                      </TableBody>
+  1711→  1711→                    </Table>
+  1712→  1712→                  </div>
+  1713→  1713→                </div>
+  1714→  1714→              ) : (
+  1715→  1715→                <div className="text-center py-8 text-muted-foreground">
+  1716→  1716→                  <Package className="h-8 w-8 mx-auto mb-2 opacity-40" />
+  1717→  1717→                  <p>No items are currently below minimum stock levels.</p>
+  1718→  1718→                </div>
+  1719→  1719→              )}
+  1720→  1720→            </div>
+  1721→  1721→          ) : (
+  1722→  1722→            <div className="text-center py-8 text-muted-foreground">
+  1723→  1723→              <p>Failed to load report.</p>
+  1724→  1724→            </div>
+  1725→  1725→          )}
+  1726→  1726→
+  1727→  1727→          <DialogFooter>
+  1728→  1728→            <Button
+  1729→  1729→              variant="outline"
+  1730→  1730→              onClick={() => {
+  1731→  1731→                setReportDialogOpen(false)
+  1732→  1732→                setReportData(null)
+  1733→  1733→              }}
+  1734→  1734→              className="min-h-[44px] min-w-[44px] touch-manipulation"
+  1735→  1735→            >
+  1736→  1736→              Close
+  1737→  1737→            </Button>
+  1738→  1738→          </DialogFooter>
+  1739→  1739→        </DialogContent>
+  1740→  1740→      </Dialog>
+  1741→  1741→
+  1742→  1742→      {/* ─── Quick Stock Adjust Dialog ────────────────────────────────── */}
+  1743→  1743→      <Dialog open={!!adjustProduct} onOpenChange={(open) => { if (!open) setAdjustProduct(null) }}>
+  1744→  1744→        <DialogContent className="sm:max-w-sm">
+  1745→  1745→          <DialogHeader>
+  1746→  1746→            <DialogTitle>Quick Stock Adjust</DialogTitle>
+  1747→  1747→            <DialogDescription>
+  1748→  1748→              {adjustProduct && (
+  1749→  1749→                <span className="font-medium">{adjustProduct.name}</span>
+  1750→  1750→              )}
+  1751→  1751→              {' '}— Current stock: <span className="font-mono font-semibold">{adjustProduct?.stock ?? 0}</span>
+  1752→  1752→            </DialogDescription>
+  1753→  1753→          </DialogHeader>
+  1754→  1754→          <div className="space-y-4 py-2">
+  1755→  1755→            <div className="flex items-center gap-3">
+  1756→  1756→              <Button variant="outline" size="icon" className="h-10 w-10 text-lg" onClick={() => setAdjustQty(q => q - 1)} disabled={adjustQty <= -99}>
+  1757→  1757→                −
+  1758→  1758→              </Button>
+  1759→  1759→              <Input
+  1760→  1760→                type="number"
+  1761→  1761→                value={adjustQty}
+  1762→  1762→                onChange={(e) => setAdjustQty(parseInt(e.target.value) || 0)}
+  1763→  1763→                className="text-center text-xl font-mono h-10"
+  1764→  1764→              />
+  1765→  1765→              <Button variant="outline" size="icon" className="h-10 w-10 text-lg" onClick={() => setAdjustQty(q => q + 1)} disabled={adjustQty >= 999}>
+  1766→  1766→                +
+  1767→  1767→              </Button>
+  1768→  1768→            </div>
+  1769→  1769→            {adjustProduct && adjustQty !== 0 && (
+  1770→  1770→              <p className="text-sm text-center">
+  1771→  1771→                New stock: <span className="font-mono font-bold text-lg">{Math.max(0, (adjustProduct.stock ?? 0) + adjustQty)}</span>
+  1772→  1772→                {adjustProduct.minStock > 0 && Math.max(0, (adjustProduct.stock ?? 0) + adjustQty) < adjustProduct.minStock && (
+  1773→  1773→                  <span className="ml-2 text-red-600 dark:text-red-400">(below min: {adjustProduct.minStock})</span>
+  1774→  1774→                )}
+  1775→  1775→              </p>
+  1776→  1776→            )}
+  1777→  1777→            <div className="flex gap-2">
+  1778→  1778→              <Button variant="outline" size="sm" onClick={() => setAdjustQty(Math.max(0, -(adjustProduct?.stock ?? 0)))} className="flex-1">
+  1779→  1779→                Set to 0
+  1780→  1780→              </Button>
+  1781→  1781→              <Button variant="outline" size="sm" onClick={() => { if (adjustProduct) setAdjustQty(adjustProduct.minStock - (adjustProduct.stock ?? 0)) }} className="flex-1">
+  1782→  1782→                Set to Min ({adjustProduct?.minStock ?? 0})
+  1783→  1783→              </Button>
+  1784→  1784→            </div>
+  1785→  1785→          </div>
+  1786→  1786→          <DialogFooter>
+  1787→  1787→            <Button variant="outline" onClick={() => setAdjustProduct(null)} className="min-h-[44px] min-w-[44px] touch-manipulation">Cancel</Button>
+  1788→  1788→            <Button onClick={handleStockAdjust} disabled={adjusting || !adjustProduct || adjustQty === 0} className="min-h-[44px] min-w-[44px] touch-manipulation gap-2">
+  1789→  1789→              {adjusting && <Loader2 className="h-4 w-4 animate-spin" />}
+  1790→  1790→              Apply
+  1791→  1791→            </Button>
+  1792→  1792→          </DialogFooter>
+  1793→  1793→        </DialogContent>
+  1794→  1794→      </Dialog>
+  1795→  1795→    </div>
+  1796→  1796→  )
+  1797→  1797→}

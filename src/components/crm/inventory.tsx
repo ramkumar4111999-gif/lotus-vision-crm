@@ -22,14 +22,19 @@ import {
   ArrowUp,
   ArrowDown,
   PackagePlus,
+  Copy,
+  ChevronDown,
+  Download,
 } from 'lucide-react'
 
+import { cn } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Table,
   TableBody,
@@ -56,6 +61,15 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
+import {
+  Command,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+} from '@/components/ui/command'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -148,8 +162,9 @@ interface BulkImportResult {
   errors: string[]
 }
 
-type SortField = 'name' | 'price' | 'stock' | 'minStock'
+type SortField = 'name' | 'price' | 'stock' | 'minStock' | 'createdAt'
 type SortDirection = 'asc' | 'desc'
+type StatusFilter = 'all' | 'low' | 'out' | 'in'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -159,9 +174,26 @@ const CATEGORIES = [
   'Sunglasses',
   'Contact Lenses',
   'Accessories',
+  'Solutions',
 ] as const
 
-const CATEGORY_TABS = ['All', ...CATEGORIES] as const
+const CATEGORY_CHIPS = ['All', ...CATEGORIES] as const
+
+const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
+  { value: 'all', label: 'All Stock' },
+  { value: 'low', label: '⚠️ Low Stock' },
+  { value: 'out', label: '🚫 Out of Stock' },
+  { value: 'in', label: '✅ In Stock' },
+]
+
+const SORT_OPTIONS: { value: string; label: string }[] = [
+  { value: 'name-asc', label: 'Name (A-Z)' },
+  { value: 'name-desc', label: 'Name (Z-A)' },
+  { value: 'price-asc', label: 'Price: Low → High' },
+  { value: 'price-desc', label: 'Price: High → Low' },
+  { value: 'stock-asc', label: 'Stock: Low → High' },
+  { value: 'recent', label: 'Recently Added' },
+]
 
 const LENS_TYPES = [
   'Single Vision',
@@ -241,7 +273,7 @@ export default function Inventory() {
   const [activeTab, setActiveTab] = useState('All')
   const [categorySelect, setCategorySelect] = useState('All')
   const [search, setSearch] = useState('')
-  const [lowStockFilter, setLowStockFilter] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [loading, setLoading] = useState(true)
 
   // Sort state
@@ -280,6 +312,18 @@ export default function Inventory() {
   const [adjustQty, setAdjustQty] = useState(0)
   const [adjusting, setAdjusting] = useState(false)
 
+  // Selection state for bulk actions
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+
+  // Bulk update prices dialog state
+  const [updatePricesOpen, setUpdatePricesOpen] = useState(false)
+  const [bulkPrice, setBulkPrice] = useState('')
+  const [bulkUpdating, setBulkUpdating] = useState(false)
+
+  // Bulk delete confirmation
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+
   // File upload for CSV import
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
@@ -293,6 +337,9 @@ export default function Inventory() {
       if (sortField === 'name') {
         aVal = a.name.toLowerCase()
         bVal = b.name.toLowerCase()
+      } else if (sortField === 'createdAt') {
+        aVal = a.createdAt
+        bVal = b.createdAt
       } else {
         aVal = a[sortField]
         bVal = b[sortField]
@@ -303,6 +350,63 @@ export default function Inventory() {
     })
     return sorted
   }, [products, sortField, sortDirection])
+
+  // ─── Display products (apply client-side status filter) ─────────────────
+
+  const displayProducts = useMemo(() => {
+    let result = sortedProducts
+    if (statusFilter === 'out') {
+      result = result.filter((p) => p.stock === 0)
+    } else if (statusFilter === 'in') {
+      result = result.filter((p) => p.stock > p.minStock)
+    }
+    return result
+  }, [sortedProducts, statusFilter])
+
+  // ─── Current sort-by value for dropdown ────────────────────────────────
+
+  const currentSortBy = useMemo(() => {
+    if (!sortField) return 'name-asc'
+    if (sortField === 'createdAt') return 'recent'
+    return `${sortField}-${sortDirection}`
+  }, [sortField, sortDirection])
+
+  // ─── Selection helpers ─────────────────────────────────────────────────
+
+  const allOnPageSelected =
+    displayProducts.length > 0 &&
+    displayProducts.every((p) => selectedIds.has(p.id))
+
+  const someOnPageSelected =
+    displayProducts.some((p) => selectedIds.has(p.id)) && !allOnPageSelected
+
+  const toggleSelectAll = () => {
+    if (allOnPageSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        displayProducts.forEach((p) => next.delete(p.id))
+        return next
+      })
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        displayProducts.forEach((p) => next.add(p.id))
+        return next
+      })
+    }
+  }
+
+  const toggleSelectOne = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
 
   // ─── Fetch products ──────────────────────────────────────────────────────
 
@@ -316,7 +420,7 @@ export default function Inventory() {
       if (search.trim()) params.set('search', search.trim())
       params.set('page', String(currentPage))
       params.set('pageSize', String(ITEMS_PER_PAGE))
-      if (lowStockFilter) params.set('lowStock', 'true')
+      if (statusFilter === 'low') params.set('lowStock', 'true')
 
       const res = await fetch(`/api/products?${params.toString()}`)
       if (!res.ok) throw new Error('Failed to fetch products')
@@ -334,7 +438,7 @@ export default function Inventory() {
     } finally {
       setLoading(false)
     }
-  }, [activeTab, categorySelect, search, currentPage, lowStockFilter])
+  }, [activeTab, categorySelect, search, currentPage, statusFilter])
 
   useEffect(() => {
     fetchProducts()
@@ -345,6 +449,7 @@ export default function Inventory() {
   const openCreateDialog = () => {
     setEditingProduct(null)
     setForm(emptyForm)
+    setSectionOpen({ basic: true, pricing: true, frame: false, additional: false })
     setDialogOpen(true)
   }
 
@@ -374,6 +479,37 @@ export default function Inventory() {
       bridge: product.bridge != null ? String(product.bridge) : '',
       temple: product.temple != null ? String(product.temple) : '',
     })
+    setSectionOpen({ basic: true, pricing: true, frame: true, additional: true })
+    setDialogOpen(true)
+  }
+
+  const openCloneDialog = (product: Product) => {
+    setEditingProduct(null)
+    setForm({
+      name: `${product.name} (Copy)`,
+      brand: product.brand ?? '',
+      model: product.model ?? '',
+      color: product.color ?? '',
+      size: product.size ?? '',
+      category: product.category,
+      price: String(product.price),
+      costPrice: product.costPrice != null ? String(product.costPrice) : '',
+      stock: '',
+      minStock: String(product.minStock),
+      sku: '', // let it auto-generate
+      type: product.type ?? '',
+      duration: product.duration ?? '',
+      expiryDate: product.expiryDate
+        ? new Date(product.expiryDate).toISOString().split('T')[0]
+        : '',
+      description: product.description ?? '',
+      supplier: product.supplier ?? '',
+      supplierPhone: product.supplierPhone ?? '',
+      frameWidth: product.frameWidth != null ? String(product.frameWidth) : '',
+      bridge: product.bridge != null ? String(product.bridge) : '',
+      temple: product.temple != null ? String(product.temple) : '',
+    })
+    setSectionOpen({ basic: true, pricing: true, frame: false, additional: false })
     setDialogOpen(true)
   }
 
@@ -487,6 +623,7 @@ export default function Inventory() {
     setActiveTab(tab)
     setCategorySelect('All')
     setCurrentPage(1)
+    setSelectedIds(new Set())
   }
 
   const handleCategorySelectChange = (value: string) => {
@@ -498,21 +635,25 @@ export default function Inventory() {
       // If selecting All in dropdown, keep current tab behavior
     }
     setCurrentPage(1)
+    setSelectedIds(new Set())
+  }
+
+  const handleStatusFilterChange = (value: StatusFilter) => {
+    setStatusFilter(value)
+    setCurrentPage(1)
+    setSelectedIds(new Set())
   }
 
   const handleSearch = (value: string) => {
     setSearch(value)
     setCurrentPage(1)
-  }
-
-  const handleLowStockToggle = () => {
-    setLowStockFilter((prev) => !prev)
-    setCurrentPage(1)
+    setSelectedIds(new Set())
   }
 
   const goToPage = (page: number) => {
     if (page < 1 || page > totalPages) return
     setCurrentPage(page)
+    setSelectedIds(new Set())
   }
 
   // ─── Sort handler ───────────────────────────────────────────────────────
@@ -523,6 +664,17 @@ export default function Inventory() {
     } else {
       setSortField(field)
       setSortDirection('asc')
+    }
+  }
+
+  const handleSortByChange = (value: string) => {
+    if (value === 'recent') {
+      setSortField('createdAt')
+      setSortDirection('desc')
+    } else {
+      const [field, dir] = value.split('-')
+      setSortField(field as SortField)
+      setSortDirection(dir as SortDirection)
     }
   }
 
@@ -616,9 +768,117 @@ export default function Inventory() {
     }
   }
 
+  // ─── Bulk Action handlers ───────────────────────────────────────────────
+
+  const handleExportSelected = () => {
+    const selected = products.filter((p) => selectedIds.has(p.id))
+    if (selected.length === 0) return
+
+    const headers = [
+      'SKU',
+      'Name',
+      'Brand',
+      'Category',
+      'Price',
+      'Cost Price',
+      'Stock',
+      'Min Stock',
+      'Supplier',
+      'Supplier Phone',
+      'Last Restocked',
+    ]
+    const rows = selected.map((p) => [
+      p.sku,
+      p.name,
+      p.brand || '',
+      p.category,
+      String(p.price),
+      p.costPrice != null ? String(p.costPrice) : '',
+      String(p.stock),
+      String(p.minStock),
+      p.supplier || '',
+      p.supplierPhone || '',
+      p.lastRestocked || '',
+    ])
+
+    const csv =
+      [headers.join(','), ...rows.map((r) => r.map((v) => `"${v}"`).join(','))].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `inventory-export-${new Date().toISOString().split('T')[0]}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    toast.success(`Exported ${selected.length} product(s)`)
+  }
+
+  const handleBulkUpdatePrices = async () => {
+    if (!bulkPrice.trim() || isNaN(Number(bulkPrice)) || Number(bulkPrice) < 0) return
+    setBulkUpdating(true)
+    let success = 0
+    let failed = 0
+    for (const id of selectedIds) {
+      try {
+        const res = await fetch(`/api/products/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ price: Number(bulkPrice) }),
+        })
+        if (res.ok) success++
+        else failed++
+      } catch {
+        failed++
+      }
+    }
+    setBulkUpdating(false)
+    setUpdatePricesOpen(false)
+    setBulkPrice('')
+    setSelectedIds(new Set())
+    toast.success(
+      `Updated price for ${success} product(s)${failed > 0 ? ` (${failed} failed)` : ''}`,
+    )
+    fetchProducts()
+  }
+
+  const handleBulkDelete = async () => {
+    setBulkDeleting(true)
+    let success = 0
+    let failed = 0
+    for (const id of selectedIds) {
+      try {
+        const res = await fetch(`/api/products/${id}`, { method: 'DELETE' })
+        if (res.ok) success++
+        else failed++
+      } catch {
+        failed++
+      }
+    }
+    setBulkDeleting(false)
+    setBulkDeleteConfirm(false)
+    setSelectedIds(new Set())
+    toast.success(
+      `Deleted ${success} product(s)${failed > 0 ? ` (${failed} failed)` : ''}`,
+    )
+    fetchProducts()
+  }
+
   // ─── Helpers ────────────────────────────────────────────────────────────
 
   const isLowStock = (product: Product) => product.stock < product.minStock
+
+  const getStockBarPercentage = (product: Product) => {
+    const refMax = Math.max(product.stock, product.minStock * 2, 10)
+    return Math.min(100, Math.round((product.stock / refMax) * 100))
+  }
+
+  const getStockBarColor = (product: Product) => {
+    if (product.stock === 0) return 'bg-red-500'
+    if (isLowStock(product)) return 'bg-amber-500'
+    return 'bg-emerald-500'
+  }
 
   const getStatusBadge = (product: Product) => {
     if (isLowStock(product)) {
@@ -747,7 +1007,7 @@ export default function Inventory() {
   // ─── Main Render ────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24 md:pb-6">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -760,15 +1020,18 @@ export default function Inventory() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" onClick={openReportDialog} className="w-full sm:w-auto">
+          <Button variant="outline" onClick={openReportDialog} className="min-w-[44px] min-h-[44px] touch-manipulation">
             <FileBarChart className="mr-2 h-4 w-4" />
             Low Stock Report
           </Button>
-          <Button variant="outline" onClick={openCsvDialog} className="w-full sm:w-auto">
+          <Button variant="outline" onClick={openCsvDialog} className="min-w-[44px] min-h-[44px] touch-manipulation">
             <Upload className="mr-2 h-4 w-4" />
             Import CSV
           </Button>
-          <Button onClick={openCreateDialog} className="w-full sm:w-auto">
+          <Button onClick={openCreateDialog} className="min-w-[44px] min-h-[44px] touch-manipulation sm:hidden">
+            <Plus className="h-4 w-4" />
+          </Button>
+          <Button onClick={openCreateDialog} className="min-w-[44px] min-h-[44px] touch-manipulation hidden sm:inline-flex">
             <Plus className="mr-2 h-4 w-4" />
             Add Product
           </Button>
@@ -802,7 +1065,7 @@ export default function Inventory() {
                     variant="outline"
                     className="border-amber-400/50 text-amber-800 dark:text-amber-200 text-xs bg-amber-100/50 dark:bg-amber-900/30 cursor-pointer"
                     onClick={() => {
-                      setLowStockFilter(true)
+                      setStatusFilter('low')
                       setActiveTab('All')
                       setCategorySelect('All')
                       setCurrentPage(1)
@@ -828,18 +1091,45 @@ export default function Inventory() {
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-col gap-4">
-            {/* Category Tabs */}
-            <Tabs value={activeTab} onValueChange={handleTabChange}>
-              <TabsList className="w-full overflow-x-auto flex-wrap">
-                {CATEGORY_TABS.map((cat) => (
-                  <TabsTrigger key={cat} value={cat} className="text-xs sm:text-sm">
-                    {cat}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
+            {/* Category Quick-Select Chips */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+              {CATEGORY_CHIPS.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => handleTabChange(cat)}
+                  className={cn(
+                    'flex-shrink-0 min-w-[44px] min-h-[44px] px-3 rounded-full text-sm font-medium transition-colors touch-manipulation',
+                    activeTab === cat
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground',
+                  )}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
 
-            {/* Search & Filters Row */}
+            {/* Status Filter Chips */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+              {STATUS_FILTER_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => handleStatusFilterChange(opt.value)}
+                  className={cn(
+                    'flex-shrink-0 min-w-[44px] min-h-[44px] px-3 rounded-full text-sm font-medium transition-colors border touch-manipulation',
+                    statusFilter === opt.value
+                      ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                      : 'bg-background text-muted-foreground border-muted-foreground/30 hover:bg-muted/50 hover:text-foreground',
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Search, Sort & Category Dropdown Row */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="relative flex-1 max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -851,6 +1141,20 @@ export default function Inventory() {
                 />
               </div>
               <div className="flex items-center gap-2 flex-wrap">
+                {/* Sort dropdown */}
+                <Select value={currentSortBy} onValueChange={handleSortByChange}>
+                  <SelectTrigger className="w-[170px] h-9">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SORT_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
                 {/* Category filter dropdown */}
                 <Select value={categorySelect} onValueChange={handleCategorySelectChange}>
                   <SelectTrigger className="w-[160px] h-9">
@@ -865,28 +1169,6 @@ export default function Inventory() {
                     ))}
                   </SelectContent>
                 </Select>
-
-                <Button
-                  variant={lowStockFilter ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={handleLowStockToggle}
-                  className="gap-1.5 min-h-[44px] touch-manipulation"
-                >
-                  {lowStockFilter ? (
-                    <Eye className="h-3.5 w-3.5" />
-                  ) : (
-                    <EyeOff className="h-3.5 w-3.5" />
-                  )}
-                  Low Stock
-                  {lowStockCount > 0 && (
-                    <Badge
-                      variant="destructive"
-                      className="ml-0.5 h-5 min-w-5 flex items-center justify-center px-1.5 text-[10px]"
-                    >
-                      {lowStockCount}
-                    </Badge>
-                  )}
-                </Button>
               </div>
             </div>
           </div>
@@ -900,10 +1182,18 @@ export default function Inventory() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[44px]">
+                    <label className="flex min-w-[44px] min-h-[44px] items-center justify-center cursor-pointer touch-manipulation">
+                      <Checkbox
+                        checked={allOnPageSelected ? true : someOnPageSelected ? 'indeterminate' : false}
+                        onCheckedChange={toggleSelectAll}
+                      />
+                    </label>
+                  </TableHead>
                   <TableHead className="w-[110px]">SKU</TableHead>
                   <TableHead>
                     <button
-                      className="inline-flex items-center hover:text-foreground transition-colors font-semibold text-muted-foreground"
+                      className="inline-flex items-center hover:text-foreground transition-colors font-semibold text-muted-foreground min-h-[44px] touch-manipulation"
                       onClick={() => handleSort('name')}
                     >
                       Name
@@ -914,7 +1204,7 @@ export default function Inventory() {
                   <TableHead className="hidden sm:table-cell">Category</TableHead>
                   <TableHead className="text-right">
                     <button
-                      className="inline-flex items-center hover:text-foreground transition-colors font-semibold text-muted-foreground"
+                      className="inline-flex items-center hover:text-foreground transition-colors font-semibold text-muted-foreground min-h-[44px] touch-manipulation"
                       onClick={() => handleSort('price')}
                     >
                       Price
@@ -923,7 +1213,7 @@ export default function Inventory() {
                   </TableHead>
                   <TableHead className="text-right">
                     <button
-                      className="inline-flex items-center hover:text-foreground transition-colors font-semibold text-muted-foreground"
+                      className="inline-flex items-center hover:text-foreground transition-colors font-semibold text-muted-foreground min-h-[44px] touch-manipulation"
                       onClick={() => handleSort('stock')}
                     >
                       Stock
@@ -932,7 +1222,7 @@ export default function Inventory() {
                   </TableHead>
                   <TableHead className="hidden lg:table-cell text-right">
                     <button
-                      className="inline-flex items-center hover:text-foreground transition-colors font-semibold text-muted-foreground"
+                      className="inline-flex items-center hover:text-foreground transition-colors font-semibold text-muted-foreground min-h-[44px] touch-manipulation"
                       onClick={() => handleSort('minStock')}
                     >
                       Min Stock
@@ -950,7 +1240,7 @@ export default function Inventory() {
                   <TableRow>
                     <TableCell colSpan={TABLE_COLSPAN}>{renderSkeleton()}</TableCell>
                   </TableRow>
-                ) : sortedProducts.length === 0 ? (
+                ) : displayProducts.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={TABLE_COLSPAN} className="h-32 text-center">
                       <div className="flex flex-col items-center gap-2 text-muted-foreground">
@@ -968,8 +1258,17 @@ export default function Inventory() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  sortedProducts.map((product) => (
+                  displayProducts.map((product) => (
                     <TableRow key={product.id}>
+                      {/* Checkbox */}
+                      <TableCell>
+                        <label className="flex min-w-[44px] min-h-[44px] items-center justify-center cursor-pointer touch-manipulation">
+                          <Checkbox
+                            checked={selectedIds.has(product.id)}
+                            onCheckedChange={() => toggleSelectOne(product.id)}
+                          />
+                        </label>
+                      </TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">
                         {product.sku}
                       </TableCell>
@@ -993,23 +1292,35 @@ export default function Inventory() {
                         {formatINR(product.price)}
                       </TableCell>
                       <TableCell className="text-right">
-                        <span className="inline-flex items-center gap-1.5">
-                          {isLowStock(product) && (
-                            <span className="relative flex h-2.5 w-2.5">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
-                              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600" />
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="inline-flex items-center gap-1.5">
+                            {isLowStock(product) && (
+                              <span className="relative flex h-2.5 w-2.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600" />
+                              </span>
+                            )}
+                            <span
+                              className={
+                                isLowStock(product)
+                                  ? 'text-red-600 dark:text-red-400 font-semibold'
+                                  : 'text-emerald-600 dark:text-emerald-400 font-medium'
+                              }
+                            >
+                              {product.stock}
                             </span>
-                          )}
-                          <span
-                            className={
-                              isLowStock(product)
-                                ? 'text-red-600 dark:text-red-400 font-semibold'
-                                : 'text-emerald-600 dark:text-emerald-400 font-medium'
-                            }
-                          >
-                            {product.stock}
                           </span>
-                        </span>
+                          {/* Stock Level Visual Indicator */}
+                          <div className="h-1.5 w-16 rounded-full bg-muted overflow-hidden">
+                            <div
+                              className={cn(
+                                'h-full rounded-full transition-all',
+                                getStockBarColor(product),
+                              )}
+                              style={{ width: `${getStockBarPercentage(product)}%` }}
+                            />
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell text-right text-muted-foreground">
                         {product.minStock}
@@ -1032,6 +1343,16 @@ export default function Inventory() {
                             title="Quick Stock Adjust"
                           >
                             <PackagePlus className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="min-w-[44px] min-h-[44px] touch-manipulation"
+                            onClick={() => openCloneDialog(product)}
+                            aria-label={`Clone ${product.name}`}
+                            title="Clone Product"
+                          >
+                            <Copy className="h-3.5 w-3.5" />
                           </Button>
                           <Button
                             variant="ghost"
@@ -1063,6 +1384,75 @@ export default function Inventory() {
         </CardContent>
       </Card>
 
+      {/* ─── Floating Action Button (mobile) ──────────────────────────────── */}
+      <button
+        type="button"
+        onClick={openCreateDialog}
+        className="fixed bottom-6 right-6 z-50 flex items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 active:scale-95 transition-all min-w-[56px] min-h-[56px] md:hidden touch-manipulation"
+        aria-label="Add Product"
+      >
+        <Plus className="h-6 w-6" />
+      </button>
+
+      {/* ─── Bulk Actions Bar ─────────────────────────────────────────────── */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background/95 backdrop-blur-sm shadow-[0_-4px_12px_rgba(0,0,0,0.1)] md:bottom-auto md:relative md:border md:rounded-lg md:shadow-none md:bg-card md:backdrop-blur-none md:shadow-none md:mb-0">
+          <div className="flex items-center justify-between px-4 py-3 gap-3 max-w-screen-xl mx-auto">
+            <div className="flex items-center gap-2 min-w-0">
+              <Badge variant="secondary" className="shrink-0">
+                {selectedIds.size} selected
+              </Badge>
+              <span className="text-sm text-muted-foreground truncate hidden sm:inline">
+                {selectedIds.size === 1
+                  ? products.find((p) => selectedIds.has(p.id))?.name
+                  : `${selectedIds.size} products selected`}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                className="min-w-[44px] min-h-[44px] gap-1.5 touch-manipulation"
+                onClick={handleExportSelected}
+              >
+                <Download className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Export</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="min-w-[44px] min-h-[44px] gap-1.5 touch-manipulation"
+                onClick={() => {
+                  setBulkPrice('')
+                  setUpdatePricesOpen(true)
+                }}
+              >
+                <IndianRupee className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Update Prices</span>
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                className="min-w-[44px] min-h-[44px] gap-1.5 touch-manipulation"
+                onClick={() => setBulkDeleteConfirm(true)}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Delete</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="min-w-[44px] min-h-[44px] touch-manipulation"
+                onClick={() => setSelectedIds(new Set())}
+                aria-label="Clear selection"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ─── Add/Edit Product Dialog ──────────────────────────────────────── */}
       <Dialog open={dialogOpen} onOpenChange={(open) => {
         if (!open) {
@@ -1085,293 +1475,398 @@ export default function Inventory() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-2">
-            {/* Row 1: Name, Brand */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="product-name">
-                  Name <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="product-name"
-                  placeholder="e.g. Aviator Classic"
-                  value={form.name}
-                  onChange={(e) => updateField('name', e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="product-brand">Brand</Label>
-                <Input
-                  id="product-brand"
-                  placeholder="e.g. Ray-Ban"
-                  value={form.brand}
-                  onChange={(e) => updateField('brand', e.target.value)}
-                />
-              </div>
-            </div>
-
-            {/* Row 2: Model, Color */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="product-model">Model</Label>
-                <Input
-                  id="product-model"
-                  placeholder="e.g. RB3025"
-                  value={form.model}
-                  onChange={(e) => updateField('model', e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="product-color">Color</Label>
-                <Input
-                  id="product-color"
-                  placeholder="e.g. Gold/Green"
-                  value={form.color}
-                  onChange={(e) => updateField('color', e.target.value)}
-                />
-              </div>
-            </div>
-
-            {/* Row 3: Size, Category */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="product-size">Size</Label>
-                <Input
-                  id="product-size"
-                  placeholder="e.g. 58-14-135"
-                  value={form.size}
-                  onChange={(e) => updateField('size', e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="product-category">
-                  Category <span className="text-destructive">*</span>
-                </Label>
-                <Select
-                  value={form.category}
-                  onValueChange={(val) => updateField('category', val)}
-                >
-                  <SelectTrigger id="product-category" className="w-full">
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORIES.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Row 4: Price, Cost Price */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="product-price">
-                  <IndianRupee className="h-3.5 w-3.5" />
-                  Price <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="product-price"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={form.price}
-                  onChange={(e) => updateField('price', e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="product-cost-price"><IndianRupee className="h-3.5 w-3.5 mr-1 inline" />Cost Price</Label>
-                <Input
-                  id="product-cost-price"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={form.costPrice}
-                  onChange={(e) => updateField('costPrice', e.target.value)}
-                />
-              </div>
-            </div>
-
-            {/* Row 5: Stock, Min Stock */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="product-stock">
-                  Stock <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="product-stock"
-                  type="number"
-                  min="0"
-                  placeholder="0"
-                  value={form.stock}
-                  onChange={(e) => updateField('stock', e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="product-min-stock">Min Stock Level</Label>
-                <Input
-                  id="product-min-stock"
-                  type="number"
-                  min="0"
-                  placeholder="0"
-                  value={form.minStock}
-                  onChange={(e) => updateField('minStock', e.target.value)}
-                />
-              </div>
-            </div>
-
-            {/* Row: SKU */}
-            <div className="space-y-2">
-              <Label htmlFor="product-sku">
-                SKU <span className="text-destructive">*</span>
-                <span className="text-muted-foreground text-xs font-normal ml-2">
-                  Auto-generated if left empty
-                </span>
-              </Label>
-              <Input
-                id="product-sku"
-                placeholder="e.g. SKO-FRA-XXXXX"
-                value={form.sku}
-                onChange={(e) => updateField('sku', e.target.value)}
-              />
-            </div>
-
-            {/* Row: Supplier & Supplier Phone */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="product-supplier">Supplier</Label>
-                <Input
-                  id="product-supplier"
-                  placeholder="e.g. Ray-Ban India"
-                  value={form.supplier}
-                  onChange={(e) => updateField('supplier', e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="product-supplier-phone">Supplier Phone</Label>
-                <Input
-                  id="product-supplier-phone"
-                  placeholder="e.g. +91 98765 43210"
-                  value={form.supplierPhone}
-                  onChange={(e) => updateField('supplierPhone', e.target.value)}
-                />
-              </div>
-            </div>
-
-            {/* Conditional: Frame Size Fields (for Frames) */}
-            {showFrameSizeFields && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-3 rounded-lg border bg-muted/30">
-                <div className="space-y-2">
-                  <Label htmlFor="product-frame-width">Frame Width (mm)</Label>
-                  <Input
-                    id="product-frame-width"
-                    type="number"
-                    min="0"
-                    step="1"
-                    placeholder="e.g. 140"
-                    value={form.frameWidth}
-                    onChange={(e) => updateField('frameWidth', e.target.value)}
-                  />
+          <div className="grid gap-1 py-2">
+            {/* ─── Section 1: Basic Information (always open) ─── */}
+            <div className="border rounded-lg overflow-hidden">
+              <button
+                type="button"
+                className="flex items-center justify-between w-full px-4 py-3 text-sm font-semibold hover:bg-muted/50 transition-colors"
+                onClick={() => setSectionOpen((s) => ({ ...s, basic: !s.basic }))}
+              >
+                <span>Basic Information</span>
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${sectionOpen.basic ? '' : '-rotate-90'}`} />
+              </button>
+              {sectionOpen.basic && (
+                <div className="px-4 pb-4 grid gap-4">
+                  {/* Row: Name, Brand */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="product-name">
+                        Name <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="product-name"
+                        placeholder="e.g. Aviator Classic"
+                        value={form.name}
+                        onChange={(e) => updateField('name', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Brand</Label>
+                      <Popover open={brandComboboxOpen} onOpenChange={setBrandComboboxOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={brandComboboxOpen}
+                            className="w-full justify-between font-normal h-9"
+                          >
+                            {form.brand || 'Select or type a brand…'}
+                            <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                          <Command shouldFilter={false}>
+                            <CommandInput
+                              placeholder="Search brands…"
+                              value={form.brand}
+                              onValueChange={(val) => updateField('brand', val)}
+                            />
+                            <CommandList>
+                              <CommandEmpty>No brands found.</CommandEmpty>
+                              <CommandGroup>
+                                {uniqueBrands
+                                  .filter((b) => !form.brand.trim() || b.toLowerCase().includes(form.brand.toLowerCase()))
+                                  .map((brand) => (
+                                    <CommandItem
+                                      key={brand}
+                                      value={brand}
+                                      onSelect={() => {
+                                        updateField('brand', brand)
+                                        setBrandComboboxOpen(false)
+                                      }}
+                                    >
+                                      {brand}
+                                    </CommandItem>
+                                  ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </div>
+                  {/* Row: SKU, Category */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="product-sku">
+                        SKU <span className="text-destructive">*</span>
+                        <span className="text-muted-foreground text-xs font-normal ml-2">
+                          Auto-generated if left empty
+                        </span>
+                      </Label>
+                      <Input
+                        id="product-sku"
+                        placeholder="e.g. SKO-FRA-XXXXX"
+                        value={form.sku}
+                        onChange={(e) => updateField('sku', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="product-category">
+                        Category <span className="text-destructive">*</span>
+                      </Label>
+                      <Select
+                        value={form.category}
+                        onValueChange={(val) => updateField('category', val)}
+                      >
+                        <SelectTrigger id="product-category" className="w-full">
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {CATEGORIES.map((cat) => (
+                            <SelectItem key={cat} value={cat}>
+                              {cat}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="product-bridge">Bridge (mm)</Label>
-                  <Input
-                    id="product-bridge"
-                    type="number"
-                    min="0"
-                    step="1"
-                    placeholder="e.g. 18"
-                    value={form.bridge}
-                    onChange={(e) => updateField('bridge', e.target.value)}
-                  />
+              )}
+            </div>
+
+            {/* ─── Section 2: Pricing & Stock (always open) ─── */}
+            <div className="border rounded-lg overflow-hidden">
+              <button
+                type="button"
+                className="flex items-center justify-between w-full px-4 py-3 text-sm font-semibold hover:bg-muted/50 transition-colors"
+                onClick={() => setSectionOpen((s) => ({ ...s, pricing: !s.pricing }))}
+              >
+                <span>Pricing & Stock</span>
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${sectionOpen.pricing ? '' : '-rotate-90'}`} />
+              </button>
+              {sectionOpen.pricing && (
+                <div className="px-4 pb-4 grid gap-4">
+                  {/* Row: Price, Cost Price */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="product-price">
+                        <IndianRupee className="h-3.5 w-3.5" />
+                        Price <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="product-price"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        value={form.price}
+                        onChange={(e) => updateField('price', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="product-cost-price"><IndianRupee className="h-3.5 w-3.5 mr-1 inline" />Cost Price</Label>
+                      <Input
+                        id="product-cost-price"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        value={form.costPrice}
+                        onChange={(e) => updateField('costPrice', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  {/* Row: Stock, Min Stock */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="product-stock">
+                        Stock <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="product-stock"
+                        type="number"
+                        min="0"
+                        placeholder="0"
+                        value={form.stock}
+                        onChange={(e) => updateField('stock', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="product-min-stock">Min Stock Level</Label>
+                      <Input
+                        id="product-min-stock"
+                        type="number"
+                        min="0"
+                        placeholder="0"
+                        value={form.minStock}
+                        onChange={(e) => updateField('minStock', e.target.value)}
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="product-temple">Temple Length (mm)</Label>
-                  <Input
-                    id="product-temple"
-                    type="number"
-                    min="0"
-                    step="1"
-                    placeholder="e.g. 145"
-                    value={form.temple}
-                    onChange={(e) => updateField('temple', e.target.value)}
-                  />
+              )}
+            </div>
+
+            {/* ─── Section 3: Frame Details (collapsed by default) ─── */}
+            <div className="border rounded-lg overflow-hidden">
+              <button
+                type="button"
+                className="flex items-center justify-between w-full px-4 py-3 text-sm font-semibold hover:bg-muted/50 transition-colors"
+                onClick={() => setSectionOpen((s) => ({ ...s, frame: !s.frame }))}
+              >
+                <span>Frame Details</span>
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${sectionOpen.frame ? '' : '-rotate-90'}`} />
+              </button>
+              {sectionOpen.frame && (
+                <div className="px-4 pb-4 grid gap-4">
+                  {/* Row: Frame Width, Bridge, Temple */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-3 rounded-lg border bg-muted/30">
+                    <div className="space-y-2">
+                      <Label htmlFor="product-frame-width">Frame Width (mm)</Label>
+                      <Input
+                        id="product-frame-width"
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="e.g. 140"
+                        value={form.frameWidth}
+                        onChange={(e) => updateField('frameWidth', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="product-bridge">Bridge (mm)</Label>
+                      <Input
+                        id="product-bridge"
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="e.g. 18"
+                        value={form.bridge}
+                        onChange={(e) => updateField('bridge', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="product-temple">Temple Length (mm)</Label>
+                      <Input
+                        id="product-temple"
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="e.g. 145"
+                        value={form.temple}
+                        onChange={(e) => updateField('temple', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  {/* Row: Size, Color */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="product-size">Size</Label>
+                      <Input
+                        id="product-size"
+                        placeholder="e.g. 58-14-135"
+                        value={form.size}
+                        onChange={(e) => updateField('size', e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">(e.g., 52-18-140)</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="product-color">Color</Label>
+                      <Input
+                        id="product-color"
+                        placeholder="e.g. Gold/Green"
+                        value={form.color}
+                        onChange={(e) => updateField('color', e.target.value)}
+                      />
+                      <div className="flex flex-wrap gap-1.5 mt-1.5">
+                        {COLOR_PRESETS.map((preset) => (
+                          <button
+                            key={preset}
+                            type="button"
+                            className={`inline-flex items-center justify-center rounded-full border px-2.5 py-1 text-xs font-medium transition-colors min-h-[36px] min-w-[44px] touch-manipulation ${
+                              form.color === preset
+                                ? 'bg-primary text-primary-foreground border-primary'
+                                : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
+                            }`}
+                            onClick={() => updateField('color', preset)}
+                          >
+                            {preset}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* Conditional: Lens Type (for Lenses) */}
-            {showTypeField && (
-              <div className="space-y-2">
-                <Label htmlFor="product-type">Lens Type</Label>
-                <Select
-                  value={form.type}
-                  onValueChange={(val) => updateField('type', val)}
-                >
-                  <SelectTrigger id="product-type" className="w-full">
-                    <SelectValue placeholder="Select lens type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LENS_TYPES.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {t}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            {/* ─── Section 4: Additional Details (collapsed by default) ─── */}
+            <div className="border rounded-lg overflow-hidden">
+              <button
+                type="button"
+                className="flex items-center justify-between w-full px-4 py-3 text-sm font-semibold hover:bg-muted/50 transition-colors"
+                onClick={() => setSectionOpen((s) => ({ ...s, additional: !s.additional }))}
+              >
+                <span>Additional Details</span>
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${sectionOpen.additional ? '' : '-rotate-90'}`} />
+              </button>
+              {sectionOpen.additional && (
+                <div className="px-4 pb-4 grid gap-4">
+                  {/* Row: Model */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="product-model">Model</Label>
+                      <Input
+                        id="product-model"
+                        placeholder="e.g. RB3025"
+                        value={form.model}
+                        onChange={(e) => updateField('model', e.target.value)}
+                      />
+                    </div>
+                    {/* Lens Type (for Lenses) */}
+                    {showTypeField ? (
+                      <div className="space-y-2">
+                        <Label htmlFor="product-type">Lens Type</Label>
+                        <Select
+                          value={form.type}
+                          onValueChange={(val) => updateField('type', val)}
+                        >
+                          <SelectTrigger id="product-type" className="w-full">
+                            <SelectValue placeholder="Select lens type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {LENS_TYPES.map((t) => (
+                              <SelectItem key={t} value={t}>
+                                {t}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ) : showDurationField ? (
+                      <div className="space-y-2">
+                        <Label htmlFor="product-duration">Duration</Label>
+                        <Select
+                          value={form.duration}
+                          onValueChange={(val) => updateField('duration', val)}
+                        >
+                          <SelectTrigger id="product-duration" className="w-full">
+                            <SelectValue placeholder="Select duration" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {DURATIONS.map((d) => (
+                              <SelectItem key={d} value={d}>
+                                {d}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ) : null}
+                  </div>
 
-            {/* Conditional: Duration (for Contact Lenses) */}
-            {showDurationField && (
-              <div className="space-y-2">
-                <Label htmlFor="product-duration">Duration</Label>
-                <Select
-                  value={form.duration}
-                  onValueChange={(val) => updateField('duration', val)}
-                >
-                  <SelectTrigger id="product-duration" className="w-full">
-                    <SelectValue placeholder="Select duration" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DURATIONS.map((d) => (
-                      <SelectItem key={d} value={d}>
-                        {d}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+                  {/* Expiry Date (conditional) */}
+                  {showExpiryField && (
+                    <div className="space-y-2">
+                      <Label htmlFor="product-expiry">Expiry Date</Label>
+                      <Input
+                        id="product-expiry"
+                        type="date"
+                        value={form.expiryDate}
+                        onChange={(e) => updateField('expiryDate', e.target.value)}
+                      />
+                    </div>
+                  )}
 
-            {/* Conditional: Expiry Date (for Solutions, Lenses, Contact Lenses) */}
-            {showExpiryField && (
-              <div className="space-y-2">
-                <Label htmlFor="product-expiry">Expiry Date</Label>
-                <Input
-                  id="product-expiry"
-                  type="date"
-                  value={form.expiryDate}
-                  onChange={(e) => updateField('expiryDate', e.target.value)}
-                />
-              </div>
-            )}
+                  {/* Description */}
+                  <div className="space-y-2">
+                    <Label htmlFor="product-description">Description</Label>
+                    <Textarea
+                      id="product-description"
+                      placeholder="Optional product description..."
+                      value={form.description}
+                      onChange={(e) => updateField('description', e.target.value)}
+                      rows={3}
+                      className="resize-none"
+                    />
+                  </div>
 
-            {/* Description */}
-            <div className="space-y-2">
-              <Label htmlFor="product-description">Description</Label>
-              <Textarea
-                id="product-description"
-                placeholder="Optional product description..."
-                value={form.description}
-                onChange={(e) => updateField('description', e.target.value)}
-                rows={3}
-                className="resize-none"
-              />
+                  {/* Row: Supplier & Supplier Phone */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="product-supplier">Supplier</Label>
+                      <Input
+                        id="product-supplier"
+                        placeholder="e.g. Ray-Ban India"
+                        value={form.supplier}
+                        onChange={(e) => updateField('supplier', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="product-supplier-phone">Supplier Phone</Label>
+                      <Input
+                        id="product-supplier-phone"
+                        placeholder="e.g. +91 98765 43210"
+                        value={form.supplierPhone}
+                        onChange={(e) => updateField('supplierPhone', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1788,6 +2283,95 @@ export default function Inventory() {
             <Button onClick={handleStockAdjust} disabled={adjusting || !adjustProduct || adjustQty === 0} className="min-h-[44px] min-w-[44px] touch-manipulation gap-2">
               {adjusting && <Loader2 className="h-4 w-4 animate-spin" />}
               Apply
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Bulk Update Prices Dialog ────────────────────────────────── */}
+      <Dialog open={updatePricesOpen} onOpenChange={(open) => {
+        setUpdatePricesOpen(open)
+        if (!open) setBulkPrice('')
+      }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Update Prices</DialogTitle>
+            <DialogDescription>
+              Set a new selling price for all {selectedIds.size} selected product(s).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="bulk-price">
+                <IndianRupee className="h-3.5 w-3.5" />
+                New Price
+              </Label>
+              <Input
+                id="bulk-price"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={bulkPrice}
+                onChange={(e) => setBulkPrice(e.target.value)}
+                className="text-lg font-mono"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setUpdatePricesOpen(false)
+                setBulkPrice('')
+              }}
+              disabled={bulkUpdating}
+              className="min-h-[44px] min-w-[44px] touch-manipulation"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleBulkUpdatePrices}
+              disabled={bulkUpdating || !bulkPrice.trim() || isNaN(Number(bulkPrice)) || Number(bulkPrice) < 0}
+              className="min-h-[44px] min-w-[44px] touch-manipulation gap-2"
+            >
+              {bulkUpdating && <Loader2 className="h-4 w-4 animate-spin" />}
+              Update {selectedIds.size} Price(s)
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Bulk Delete Confirmation Dialog ──────────────────────────── */}
+      <Dialog open={bulkDeleteConfirm} onOpenChange={setBulkDeleteConfirm}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Selected Products</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete{' '}
+              <span className="font-semibold text-foreground">
+                {selectedIds.size} product(s)
+              </span>
+              ? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setBulkDeleteConfirm(false)}
+              disabled={bulkDeleting}
+              className="min-h-[44px] min-w-[44px] touch-manipulation"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+              className="min-h-[44px] min-w-[44px] touch-manipulation"
+            >
+              {bulkDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Delete {selectedIds.size} Product(s)
             </Button>
           </DialogFooter>
         </DialogContent>

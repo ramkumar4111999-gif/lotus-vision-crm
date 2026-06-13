@@ -1,0 +1,702 @@
+   501→      }
+   502→    } catch {
+   503→      toast.error('Network error while deleting campaign')
+   504→    }
+   505→  }
+   506→
+   507→  // ─────────────────────────────────────────────────────────
+   508→  // Duplicate Campaign Handler
+   509→  // ─────────────────────────────────────────────────────────
+   510→  const handleDuplicateCampaign = async () => {
+   511→    if (!editingCampaign) return
+   512→
+   513→    setSubmitting(true)
+   514→    try {
+   515→      const payload = {
+   516→        name: `${editingCampaign.name} (Copy)`,
+   517→        type: editingCampaign.type,
+   518→        message: editingCampaign.message.trim(),
+   519→        targetGroup: editingCampaign.targetGroup || 'All',
+   520→        status: 'Planned',
+   521→        budget: editingCampaign.budget || 0,
+   522→        reach: editingCampaign.reach || 0,
+   523→        scheduledAt: null,
+   524→      }
+   525→
+   526→      const res = await fetch('/api/campaigns', {
+   527→        method: 'POST',
+   528→        headers: { 'Content-Type': 'application/json' },
+   529→        body: JSON.stringify(payload),
+   530→      })
+   531→
+   532→      if (res.ok) {
+   533→        await fetchCampaigns()
+   534→        setEditDialogOpen(false)
+   535→        setEditingCampaign(null)
+   536→        toast.success('Campaign duplicated successfully')
+   537→      } else {
+   538→        toast.error('Failed to duplicate campaign')
+   539→      }
+   540→    } catch {
+   541→      toast.error('Network error while duplicating campaign')
+   542→    } finally {
+   543→      setSubmitting(false)
+   544→    }
+   545→  }
+   546→
+   547→  // ─────────────────────────────────────────────────────────
+   548→  // Preview renderer
+   549→  // ─────────────────────────────────────────────────────────
+   550→  const renderPreview = (msg: string, type: string) => {
+   551→    if (!msg.trim()) {
+   552→      return (
+   553→        <p className="text-muted-foreground text-sm italic">Your message preview will appear here…</p>
+   554→      )
+   555→    }
+   556→    return (
+   557→      <div className="rounded-lg border p-4 space-y-2">
+   558→        <div className="flex items-center gap-2 mb-2">
+   559→          {typeConfig[type]?.icon && (() => {
+   560→            const Icon = typeConfig[type]!.icon
+   561→            return <Icon className="size-4" />
+   562→          })()}
+   563→          <span className="text-xs font-medium text-muted-foreground">
+   564→            {typeConfig[type]?.label || type} Preview
+   565→          </span>
+   566→          <Badge variant="outline" className={typeConfig[type]?.className}>{typeConfig[type]?.label}</Badge>
+   567→        </div>
+   568→        <div className="bg-muted/50 rounded-md p-3 whitespace-pre-wrap text-sm leading-relaxed">
+   569→          {msg}
+   570→        </div>
+   571→        <div className="flex items-center justify-end text-xs text-muted-foreground">
+   572→          <span>{msg.length} chars</span>
+   573→        </div>
+   574→      </div>
+   575→    )
+   576→  }
+   577→
+   578→  // ─────────────────────────────────────────────────────────
+   579→  // SMS character counter (160 limit)
+   580→  // ─────────────────────────────────────────────────────────
+   581→  const smsCharCount = formMessage.length
+   582→  const smsExceedsLimit = smsCharCount > 160
+   583→
+   584→  // ── Derived analytics ──────────────────────────────────────
+   585→  const totalCampaigns = analyticsData.length
+   586→  const totalSent = analyticsData.reduce((sum, c) => sum + c.sentCount, 0)
+   587→  const totalReach = analyticsData.reduce((sum, c) => sum + c.reach, 0)
+   588→  const avgROI = totalCampaigns > 0
+   589→    ? analyticsData.reduce((sum, c) => {
+   590→        const revenue = c.sentCount * AVERAGE_ORDER_VALUE * 0.05
+   591→        const roi = c.budget > 0 ? ((revenue - c.budget) / c.budget) * 100 : 0
+   592→        return sum + roi
+   593→      }, 0) / totalCampaigns
+   594→    : 0
+   595→  const maxSent = Math.max(...analyticsData.map((c) => c.sentCount), 1)
+   596→
+   597→  // ── Analytics with per-campaign ROI (sorted by ROI desc) ──
+   598→  const analyticsWithROI = useMemo(() => {
+   599→    return [...analyticsData]
+   600→      .map((c) => {
+   601→        const estRevenue = c.sentCount * AVERAGE_ORDER_VALUE * 0.05
+   602→        const costPerMessage = c.sentCount > 0 && c.budget > 0 ? c.budget / c.sentCount : 0
+   603→        const campaignROI = c.budget > 0 ? ((estRevenue - c.budget) / c.budget) * 100 : 0
+   604→        return { ...c, estRevenue, costPerMessage, campaignROI }
+   605→      })
+   606→      .sort((a, b) => b.campaignROI - a.campaignROI)
+   607→  }, [analyticsData])
+   608→
+   609→  // ── SMS Tracker derived data ───────────────────────────────
+   610→  const smsCampaigns = useMemo(() => campaigns.filter((c) => c.type === 'SMS'), [campaigns])
+   611→
+   612→  const smsTrackerSummary = useMemo(() => {
+   613→    const totalSMSSent = smsCampaigns.reduce((s, c) => s + c.sentCount, 0)
+   614→    const totalDelivered = smsCampaigns.reduce((s, c) => s + Math.floor(c.sentCount * 0.85), 0)
+   615→    const totalFailed = smsCampaigns.reduce((s, c) => s + Math.floor(c.sentCount * 0.05), 0)
+   616→    const deliveryRate = totalSMSSent > 0 ? (totalDelivered / totalSMSSent) * 100 : 0
+   617→    const failedRate = totalSMSSent > 0 ? (totalFailed / totalSMSSent) * 100 : 0
+   618→    return { totalSMSSent, totalDelivered, totalFailed, deliveryRate, failedRate }
+   619→  }, [smsCampaigns])
+   620→
+   621→  // ─────────────────────────────────────────────────────────
+   622→  if (loading) {
+   623→    return (
+   624→      <div className="flex items-center justify-center min-h-[60vh]">
+   625→        <span className="size-8 animate-spin inline-block border-2 border-current border-t-transparent rounded-full text-muted-foreground" />
+   626→      </div>
+   627→    )
+   628→  }
+   629→
+   630→  // ─────────────────────────────────────────────────────────
+   631→  // Render
+   632→  // ─────────────────────────────────────────────────────────
+   633→  return (
+   634→    <div className="space-y-6">
+   635→      {/* Page header */}
+   636→      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+   637→        <div>
+   638→          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+   639→            <Megaphone className="size-6 text-primary" />
+   640→            Communication & Campaigns
+   641→          </h1>
+   642→          <p className="text-muted-foreground mt-1">
+   643→            Manage campaigns, greetings, and customer communications
+   644→          </p>
+   645→        </div>
+   646→        <Dialog open={createDialogOpen} onOpenChange={(open) => { setCreateDialogOpen(open); if (!open) resetCreateForm() }}>
+   647→          <DialogTrigger asChild>
+   648→            <Button className="gap-2">
+   649→              <Plus className="size-4" />
+   650→              New Campaign
+   651→            </Button>
+   652→          </DialogTrigger>
+   653→          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+   654→            <DialogHeader>
+   655→              <DialogTitle>Create Campaign</DialogTitle>
+   656→              <DialogDescription>
+   657→                Compose a new campaign to reach your customers.
+   658→              </DialogDescription>
+   659→            </DialogHeader>
+   660→
+   661→            <div className="grid gap-5 py-2">
+   662→              {/* Campaign Name */}
+   663→              <div className="space-y-2">
+   664→                <Label htmlFor="campaign-name">Campaign Name</Label>
+   665→                <Input
+   666→                  id="campaign-name"
+   667→                  placeholder="e.g., Summer Sale 2026"
+   668→                  value={formName}
+   669→                  onChange={(e) => setFormName(e.target.value)}
+   670→                />
+   671→              </div>
+   672→
+   673→              {/* Campaign Type */}
+   674→              <div className="space-y-2">
+   675→                <Label>Type</Label>
+   676→                <div className="grid grid-cols-2 gap-2">
+   677→                  {Object.entries(typeConfig).map(([key, config]) => {
+   678→                    const Icon = config.icon
+   679→                    return (
+   680→                      <Button
+   681→                        key={key}
+   682→                        type="button"
+   683→                        variant={formType === key ? 'default' : 'outline'}
+   684→                        className="justify-start gap-2"
+   685→                        onClick={() => handleTypeChange(key)}
+   686→                      >
+   687→                        <Icon className="size-4" />
+   688→                        {config.label}
+   689→                      </Button>
+   690→                    )
+   691→                  })}
+   692→                </div>
+   693→              </div>
+   694→
+   695→              {/* WhatsApp Template Section */}
+   696→              {formType === 'WhatsApp' && (
+   697→                <div className="space-y-2">
+   698→                  <Label className="flex items-center gap-2">
+   699→                    <Sparkles className="size-4 text-green-600" />
+   700→                    WhatsApp Template
+   701→                  </Label>
+   702→                  <p className="text-xs text-muted-foreground">
+   703→                    Choose a pre-built template to quickly get started. Click to pre-fill the message.
+   704→                  </p>
+   705→                  <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
+   706→                    {whatsAppTemplates.map((tmpl) => (
+   707→                      <Button
+   708→                        key={tmpl.label}
+   709→                        type="button"
+   710→                        variant="outline"
+   711→                        className="justify-start gap-2 h-auto py-2.5 px-3 text-left"
+   712→                        onClick={() => setFormMessage(tmpl.message)}
+   713→                      >
+   714→                        <span className="text-base">{tmpl.emoji}</span>
+   715→                        <div className="flex flex-col min-w-0">
+   716→                          <span className="text-xs font-medium">{tmpl.label}</span>
+   717→                          <span className="text-[10px] text-muted-foreground truncate">
+   718→                            {tmpl.message.slice(0, 45)}…
+   719→                          </span>
+   720→                        </div>
+   721→                      </Button>
+   722→                    ))}
+   723→                  </div>
+   724→                </div>
+   725→              )}
+   726→
+   727→              {/* Status */}
+   728→              <div className="grid grid-cols-2 gap-4">
+   729→                <div className="space-y-2">
+   730→                  <Label>Status</Label>
+   731→                  <Select value={formStatus} onValueChange={setFormStatus}>
+   732→                    <SelectTrigger className="w-full">
+   733→                      <SelectValue placeholder="Select status" />
+   734→                    </SelectTrigger>
+   735→                    <SelectContent>
+   736→                      <SelectItem value="Planned">Planned</SelectItem>
+   737→                      <SelectItem value="Active">Active</SelectItem>
+   738→                      <SelectItem value="Completed">Completed</SelectItem>
+   739→                      <SelectItem value="Cancelled">Cancelled</SelectItem>
+   740→                    </SelectContent>
+   741→                  </Select>
+   742→                </div>
+   743→                <div className="space-y-2">
+   744→                  <Label>Target Group</Label>
+   745→                  <Select value={formTargetGroup} onValueChange={setFormTargetGroup}>
+   746→                    <SelectTrigger className="w-full">
+   747→                      <SelectValue placeholder="Select group" />
+   748→                    </SelectTrigger>
+   749→                    <SelectContent>
+   750→                      {targetGroups.map((group) => (
+   751→                        <SelectItem key={group.value} value={group.value}>
+   752→                          {group.label}
+   753→                          {group.value === 'High Value' && (
+   754→                            <span className="ml-2 text-[10px] text-muted-foreground">
+   755→                              ({highValueCustomers.length} customers)
+   756→                            </span>
+   757→                          )}
+   758→                        </SelectItem>
+   759→                      ))}
+   760→                    </SelectContent>
+   761→                  </Select>
+   762→                </div>
+   763→              </div>
+   764→
+   765→              {/* Budget & Reach */}
+   766→              <div className="grid grid-cols-2 gap-4">
+   767→                <div className="space-y-2">
+   768→                  <Label htmlFor="campaign-budget">Budget (₹)</Label>
+   769→                  <Input
+   770→                    id="campaign-budget"
+   771→                    type="number"
+   772→                    min="0"
+   773→                    step="500"
+   774→                    placeholder="5000"
+   775→                    value={formBudget}
+   776→                    onChange={(e) => setFormBudget(e.target.value)}
+   777→                  />
+   778→                </div>
+   779→                <div className="space-y-2">
+   780→                  <Label htmlFor="campaign-reach">Expected Reach</Label>
+   781→                  <Input
+   782→                    id="campaign-reach"
+   783→                    type="number"
+   784→                    min="0"
+   785→                    placeholder="500"
+   786→                    value={formReach}
+   787→                    onChange={(e) => setFormReach(e.target.value)}
+   788→                  />
+   789→                </div>
+   790→              </div>
+   791→
+   792→              {/* Message */}
+   793→              <div className="space-y-2">
+   794→                <Label htmlFor="campaign-message">Message / Content</Label>
+   795→                <Textarea
+   796→                  id="campaign-message"
+   797→                  placeholder={typePlaceholders[formType]}
+   798→                  value={formMessage}
+   799→                  onChange={(e) => setFormMessage(e.target.value)}
+   800→                  rows={5}
+   801→                  className={`resize-none ${formType === 'SMS' && smsExceedsLimit ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+   802→                />
+   803→                {/* SMS character counter with 160 limit */}
+   804→                {formType === 'SMS' ? (
+   805→                  <div className="space-y-1">
+   806→                    <div className="flex items-center justify-between">
+   807→                      <span className={`text-xs font-medium ${smsExceedsLimit ? 'text-red-600' : 'text-muted-foreground'}`}>
+   808→                        SMS Tracker
+   809→                      </span>
+   810→                      <span className={`text-xs font-mono font-medium ${smsExceedsLimit ? 'text-red-600' : 'text-muted-foreground'}`}>
+   811→                        {smsCharCount}/160 chars
+   812→                      </span>
+   813→                    </div>
+   814→                    {/* Visual progress bar */}
+   815→                    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+   816→                      <div
+   817→                        className={`h-full rounded-full transition-all duration-200 ${
+   818→                          smsExceedsLimit ? 'bg-red-500' : smsCharCount > 130 ? 'bg-amber-500' : 'bg-green-500'
+   819→                        }`}
+   820→                        style={{ width: `${Math.min((smsCharCount / 160) * 100, 100)}%` }}
+   821→                      />
+   822→                    </div>
+   823→                    {smsExceedsLimit && (
+   824→                      <p className="text-xs text-red-600 font-medium">
+   825→                        SMS has {smsCharCount}/160 characters — exceeds limit!
+   826→                      </p>
+   827→                    )}
+   828→                  </div>
+   829→                ) : (
+   830→                  <p className="text-xs text-muted-foreground">
+   831→                    {formMessage.length}/500 characters
+   832→                  </p>
+   833→                )}
+   834→              </div>
+   835→
+   836→              {/* Schedule (for digital campaigns) */}
+   837→              {(formType === 'SMS' || formType === 'WhatsApp' || formType === 'Online') && (
+   838→                <div className="space-y-2">
+   839→                  <Label>Schedule</Label>
+   840→                  <RadioGroup
+   841→                    value={formScheduleOption}
+   842→                    onValueChange={setFormScheduleOption}
+   843→                    className="flex gap-4"
+   844→                  >
+   845→                    <div className="flex items-center gap-2">
+   846→                      <RadioGroupItem value="now" id="schedule-now" />
+   847→                      <Label htmlFor="schedule-now" className="cursor-pointer font-normal">
+   848→                        Send Now
+   849→                      </Label>
+   850→                    </div>
+   851→                    <div className="flex items-center gap-2">
+   852→                      <RadioGroupItem value="later" id="schedule-later" />
+   853→                      <Label htmlFor="schedule-later" className="cursor-pointer font-normal">
+   854→                        Schedule for Later
+   855→                      </Label>
+   856→                    </div>
+   857→                  </RadioGroup>
+   858→                  {formScheduleOption === 'later' && (
+   859→                    <Input
+   860→                      type="datetime-local"
+   861→                      value={formScheduleDate}
+   862→                      onChange={(e) => setFormScheduleDate(e.target.value)}
+   863→                      className="max-w-xs"
+   864→                    />
+   865→                  )}
+   866→                </div>
+   867→              )}
+   868→
+   869→              {/* Preview */}
+   870→              <div className="space-y-2">
+   871→                <Label className="flex items-center gap-2">
+   872→                  <Eye className="size-4" />
+   873→                  Preview
+   874→                </Label>
+   875→                {renderPreview(formMessage, formType)}
+   876→              </div>
+   877→            </div>
+   878→
+   879→            <DialogFooter>
+   880→              <Button variant="outline" onClick={() => { setCreateDialogOpen(false); resetCreateForm() }} className="min-h-[44px] min-w-[44px] touch-manipulation">
+   881→                Cancel
+   882→              </Button>
+   883→              <Button
+   884→                onClick={handleCreateSubmit}
+   885→                disabled={!formName.trim() || !formMessage.trim() || submitting}
+   886→                className="min-h-[44px] min-w-[44px] touch-manipulation gap-2"
+   887→              >
+   888→                {submitting ? (
+   889→                  <span className="size-4 animate-spin inline-block border-2 border-current border-t-transparent rounded-full" />
+   890→                ) : (
+   891→                  <Send className="size-4" />
+   892→                )}
+   893→                {submitting ? 'Creating…' : 'Create Campaign'}
+   894→              </Button>
+   895→            </DialogFooter>
+   896→          </DialogContent>
+   897→        </Dialog>
+   898→      </div>
+   899→
+   900→      {/* Enhanced Summary Stats */}
+   901→      <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
+   902→        <Card className="p-4">
+   903→          <div className="flex items-center gap-3">
+   904→            <div className="rounded-lg bg-muted p-2.5">
+   905→              <Megaphone className="size-5 text-foreground" />
+   906→            </div>
+   907→            <div>
+   908→              <p className="text-sm text-muted-foreground">Total Campaigns</p>
+   909→              <p className="text-2xl font-bold">{summaryStats.total}</p>
+   910→            </div>
+   911→          </div>
+   912→        </Card>
+   913→        <Card className="p-4">
+   914→          <div className="flex items-center gap-3">
+   915→            <div className="rounded-lg bg-amber-100 dark:bg-amber-900/30 p-2.5">
+   916→              <Clock className="size-5 text-amber-600 dark:text-amber-400" />
+   917→            </div>
+   918→            <div>
+   919→              <p className="text-sm text-muted-foreground">Planned</p>
+   920→              <p className="text-2xl font-bold">{summaryStats.planned}</p>
+   921→            </div>
+   922→          </div>
+   923→        </Card>
+   924→        <Card className="p-4">
+   925→          <div className="flex items-center gap-3">
+   926→            <div className="rounded-lg bg-emerald-100 dark:bg-emerald-900/30 p-2.5">
+   927→              <IndianRupee className="size-5 text-emerald-600 dark:text-emerald-400" />
+   928→            </div>
+   929→            <div>
+   930→              <p className="text-sm text-muted-foreground">Total Budget</p>
+   931→              <p className="text-2xl font-bold">{formatCurrency(summaryStats.totalBudget)}</p>
+   932→            </div>
+   933→          </div>
+   934→        </Card>
+   935→        <Card className="p-4">
+   936→          <div className="flex items-center gap-3">
+   937→            <div className="rounded-lg bg-blue-100 dark:bg-blue-900/30 p-2.5">
+   938→              <Users className="size-5 text-blue-600 dark:text-blue-400" />
+   939→            </div>
+   940→            <div>
+   941→              <p className="text-sm text-muted-foreground">Total Reach</p>
+   942→              <p className="text-2xl font-bold">{summaryStats.totalReach.toLocaleString()}</p>
+   943→            </div>
+   944→          </div>
+   945→        </Card>
+   946→        {/* Active/Sent Card — Blue background */}
+   947→        <Card className="p-4 bg-blue-600 text-white dark:bg-blue-700">
+   948→          <div className="flex items-center gap-3">
+   949→            <div className="rounded-lg bg-blue-500/50 dark:bg-blue-600/50 p-2.5">
+   950→              <Send className="size-5 text-white" />
+   951→            </div>
+   952→            <div>
+   953→              <p className="text-sm text-blue-100">Active / Sent</p>
+   954→              <p className="text-2xl font-bold">{summaryStats.active}</p>
+   955→            </div>
+   956→          </div>
+   957→        </Card>
+   958→      </div>
+   959→
+   960→      {/* ROI & Revenue Stats */}
+   961→      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+   962→        <Card className="p-4">
+   963→          <div className="flex items-center gap-3">
+   964→            <div className="rounded-lg bg-violet-100 dark:bg-violet-900/30 p-2.5">
+   965→              <TrendingUp className="size-5 text-violet-600 dark:text-violet-400" />
+   966→            </div>
+   967→            <div>
+   968→              <p className="text-sm text-muted-foreground">Campaign ROI</p>
+   969→              <p className={`text-2xl font-bold ${roi >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+   970→                {roi >= 0 ? '+' : ''}{roi.toFixed(1)}%
+   971→              </p>
+   972→              <p className="text-xs text-muted-foreground mt-0.5">
+   973→                {formatCurrency(totalRevenue)} − {formatCurrency(totalBudget)}
+   974→              </p>
+   975→            </div>
+   976→          </div>
+   977→        </Card>
+   978→        <Card className="p-4">
+   979→          <div className="flex items-center gap-3">
+   980→            <div className="rounded-lg bg-emerald-100 dark:bg-emerald-900/30 p-2.5">
+   981→              <IndianRupee className="size-5 text-emerald-600 dark:text-emerald-400" />
+   982→            </div>
+   983→            <div>
+   984→              <p className="text-sm text-muted-foreground">Total Revenue from Campaigns</p>
+   985→              <p className="text-2xl font-bold">{formatCurrency(totalRevenue)}</p>
+   986→              <p className="text-xs text-muted-foreground mt-0.5">
+   987→                {totalSentCount.toLocaleString()} sent × ₹{AVERAGE_ORDER_VALUE.toLocaleString()} avg order value
+   988→              </p>
+   989→            </div>
+   990→          </div>
+   991→        </Card>
+   992→        <Card className="p-4">
+   993→          <div className="flex items-center gap-3">
+   994→            <div className="rounded-lg bg-orange-100 dark:bg-orange-900/30 p-2.5">
+   995→              <BarChart3 className="size-5 text-orange-600 dark:text-orange-400" />
+   996→            </div>
+   997→            <div>
+   998→              <p className="text-sm text-muted-foreground">High Value Segment</p>
+   999→              <p className="text-2xl font-bold">{highValueCustomers.length}</p>
+  1000→              <p className="text-xs text-muted-foreground mt-0.5">
+  1001→                Customers available for targeted campaigns
+  1002→              </p>
+  1003→            </div>
+  1004→          </div>
+  1005→        </Card>
+  1006→      </div>
+  1007→
+  1008→      {/* Quick Actions Section */}
+  1009→      <div className="grid gap-4 md:grid-cols-3">
+  1010→        {/* Birthday Greetings Card */}
+  1011→        <Card className="overflow-hidden">
+  1012→          <CardHeader className="pb-3">
+  1013→            <div className="flex items-center justify-between">
+  1014→              <CardTitle className="text-base flex items-center gap-2">
+  1015→                <div className="flex items-center justify-center size-8 rounded-lg bg-amber-100">
+  1016→                  <Cake className="size-4 text-amber-600" />
+  1017→                </div>
+  1018→                Birthday Greetings
+  1019→              </CardTitle>
+  1020→              <Badge variant="secondary" className="bg-amber-100 text-amber-700 border-amber-200">
+  1021→                {birthdays.length} this week
+  1022→              </Badge>
+  1023→            </div>
+  1024→            <CardDescription>Upcoming birthdays this week</CardDescription>
+  1025→          </CardHeader>
+  1026→          <CardContent className="pt-0">
+  1027→            {birthdays.length === 0 ? (
+  1028→              <p className="text-sm text-muted-foreground text-center py-4">No birthdays this week</p>
+  1029→            ) : (
+  1030→              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+  1031→                {birthdays.map((b) => (
+  1032→                  <div key={b.id} className="flex items-center justify-between rounded-lg border p-3 hover:bg-accent/50 transition-colors">
+  1033→                    <div className="flex items-center gap-3 min-w-0">
+  1034→                      <div className="flex items-center justify-center size-8 rounded-full bg-amber-100 shrink-0">
+  1035→                        <Cake className="size-3.5 text-amber-600" />
+  1036→                      </div>
+  1037→                      <div className="min-w-0">
+  1038→                        <p className="text-sm font-medium truncate">{b.name}</p>
+  1039→                        <p className="text-xs text-muted-foreground">{b.phone}</p>
+  1040→                      </div>
+  1041→                    </div>
+  1042→                    <span className="text-xs text-muted-foreground shrink-0 ml-2">{formatDate(b.dob)}</span>
+  1043→                  </div>
+  1044→                ))}
+  1045→              </div>
+  1046→            )}
+  1047→            {birthdays.length > 0 && (
+  1048→              <Button
+  1049→                variant="outline"
+  1050→                size="sm"
+  1051→                className="w-full mt-3 gap-2 min-h-[44px] touch-manipulation"
+  1052→                onClick={() => {
+  1053→                  resetCreateForm()
+  1054→                  setFormType('WhatsApp')
+  1055→                  setFormTargetGroup('All')
+  1056→                  setFormMessage('🎉 Happy Birthday, {customer_name}! 🎂\n\nWishing you a wonderful day filled with joy! Visit us at Lotus Vision Opticals for special birthday discounts on eyewear.\n\n- Lotus Vision Opticals')
+  1057→                  setCreateDialogOpen(true)
+  1058→                }}
+  1059→              >
+  1060→                <Gift className="size-3.5" />
+  1061→                Send Birthday Wishes
+  1062→              </Button>
+  1063→            )}
+  1064→          </CardContent>
+  1065→        </Card>
+  1066→
+  1067→        {/* Due Reminders Card */}
+  1068→        <Card className="overflow-hidden">
+  1069→          <CardHeader className="pb-3">
+  1070→            <div className="flex items-center justify-between">
+  1071→              <CardTitle className="text-base flex items-center gap-2">
+  1072→                <div className="flex items-center justify-center size-8 rounded-lg bg-orange-100">
+  1073→                  <AlertTriangle className="size-4 text-orange-600" />
+  1074→                </div>
+  1075→                Due Reminders
+  1076→              </CardTitle>
+  1077→              <Badge variant="secondary" className="bg-orange-100 text-orange-700 border-orange-200">
+  1078→                {dues.length} pending
+  1079→              </Badge>
+  1080→            </div>
+  1081→            <CardDescription>Customers with pending dues</CardDescription>
+  1082→          </CardHeader>
+  1083→          <CardContent className="pt-0">
+  1084→            {dues.length === 0 ? (
+  1085→              <p className="text-sm text-muted-foreground text-center py-4">No pending dues</p>
+  1086→            ) : (
+  1087→              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+  1088→                {dues.map((d) => (
+  1089→                  <div key={d.id} className="flex items-center justify-between rounded-lg border p-3 hover:bg-accent/50 transition-colors">
+  1090→                    <div className="flex items-center gap-3 min-w-0">
+  1091→                      <div className="flex items-center justify-center size-8 rounded-full bg-orange-100 shrink-0">
+  1092→                        <IndianRupee className="size-3.5 text-orange-600" />
+  1093→                      </div>
+  1094→                      <div className="min-w-0">
+  1095→                        <p className="text-sm font-medium truncate">{d.customerName}</p>
+  1096→                        <p className="text-xs text-muted-foreground">
+  1097→                          Due: {formatCurrency(d.amount - d.paid)}
+  1098→                        </p>
+  1099→                      </div>
+  1100→                    </div>
+  1101→                    <span className="text-xs text-muted-foreground shrink-0 ml-2">
+  1102→                      {d.dueDate ? formatDate(d.dueDate) : 'No date'}
+  1103→                    </span>
+  1104→                  </div>
+  1105→                ))}
+  1106→              </div>
+  1107→            )}
+  1108→            {dues.length > 0 && (
+  1109→              <Button
+  1110→                variant="outline"
+  1111→                size="sm"
+  1112→                className="w-full mt-3 gap-2 min-h-[44px] touch-manipulation"
+  1113→                onClick={() => {
+  1114→                  resetCreateForm()
+  1115→                  setFormType('SMS')
+  1116→                  setFormTargetGroup('All')
+  1117→                  setFormName('Due Payment Reminder')
+  1118→                  setFormMessage('Dear {customer_name},\n\nThis is a reminder that you have a pending dues at Lotus Vision Opticals.\n\nKindly clear the dues at your earliest convenience.\n\nThank you!\n- Lotus Vision Opticals')
+  1119→                  setCreateDialogOpen(true)
+  1120→                }}
+  1121→              >
+  1122→                <Send className="size-3.5" />
+  1123→                Send Due Reminders
+  1124→              </Button>
+  1125→            )}
+  1126→          </CardContent>
+  1127→        </Card>
+  1128→
+  1129→        {/* Collection Ready Card */}
+  1130→        <Card className="overflow-hidden">
+  1131→          <CardHeader className="pb-3">
+  1132→            <div className="flex items-center justify-between">
+  1133→              <CardTitle className="text-base flex items-center gap-2">
+  1134→                <div className="flex items-center justify-center size-8 rounded-lg bg-emerald-100">
+  1135→                  <PackageCheck className="size-4 text-emerald-600" />
+  1136→                </div>
+  1137→                Collection Ready
+  1138→              </CardTitle>
+  1139→              <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 border-emerald-200">
+  1140→                {labReady.length} orders
+  1141→              </Badge>
+  1142→            </div>
+  1143→            <CardDescription>Lab orders ready for delivery</CardDescription>
+  1144→          </CardHeader>
+  1145→          <CardContent className="pt-0">
+  1146→            {labReady.length === 0 ? (
+  1147→              <p className="text-sm text-muted-foreground text-center py-4">No orders ready for collection</p>
+  1148→            ) : (
+  1149→              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+  1150→                {labReady.map((order) => (
+  1151→                  <div key={order.id} className="flex items-center justify-between rounded-lg border p-3 hover:bg-accent/50 transition-colors">
+  1152→                    <div className="flex items-center gap-3 min-w-0">
+  1153→                      <div className="flex items-center justify-center size-8 rounded-full bg-emerald-100 shrink-0">
+  1154→                        <PackageCheck className="size-3.5 text-emerald-600" />
+  1155→                      </div>
+  1156→                      <div className="min-w-0">
+  1157→                        <p className="text-sm font-medium truncate">{order.customerName || 'Walk-in Customer'}</p>
+  1158→                        <p className="text-xs text-muted-foreground">{order.lensType}</p>
+  1159→                      </div>
+  1160→                    </div>
+  1161→                    <span className="text-xs text-muted-foreground shrink-0 ml-2">{formatDate(order.createdAt)}</span>
+  1162→                  </div>
+  1163→                ))}
+  1164→              </div>
+  1165→            )}
+  1166→            {labReady.length > 0 && (
+  1167→              <Button
+  1168→                variant="outline"
+  1169→                size="sm"
+  1170→                className="w-full mt-3 gap-2 min-h-[44px] touch-manipulation"
+  1171→                onClick={() => {
+  1172→                  resetCreateForm()
+  1173→                  setFormType('WhatsApp')
+  1174→                  setFormTargetGroup('All')
+  1175→                  setFormName('Collection Ready Notification')
+  1176→                  setFormMessage('Dear {customer_name},\n\n✅ Your eyewear order is READY for collection!\n\nPlease visit us at Lotus Vision Opticals at your earliest convenience.\n\nThank you for choosing us!\n- Lotus Vision Opticals')
+  1177→                  setCreateDialogOpen(true)
+  1178→                }}
+  1179→              >
+  1180→                <CheckCircle2 className="size-3.5" />
+  1181→                Notify Customers
+  1182→              </Button>
+  1183→            )}
+  1184→          </CardContent>
+  1185→        </Card>
+  1186→      </div>
+  1187→
+  1188→      {/* ── Customer Segments Builder ───────────────────────── */}
+  1189→      <Card>
+  1190→        <CardHeader className="pb-3">
+  1191→          <div className="flex items-center justify-between">
+  1192→            <CardTitle className="text-base flex items-center gap-2">
+  1193→              <div className="flex items-center justify-center size-8 rounded-lg bg-primary/10">
+  1194→                <Users className="size-4 text-primary" />
+  1195→              </div>
+  1196→              Customer Segments
+  1197→            </CardTitle>
+  1198→            <p className="text-xs text-muted-foreground">Click a segment to create a targeted campaign</p>
+  1199→          </div>
+  1200→          <CardDescription>Select a customer segment to quickly start a targeted campaign</CardDescription>
+
+[showing lines 501-1200 of 1860; use offset=1201 with limit to continue reading]

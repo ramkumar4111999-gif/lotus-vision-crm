@@ -26,6 +26,8 @@ import {
   History,
   X,
   AlertTriangle,
+  Phone,
+  MessageSquare,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -211,6 +213,7 @@ export default function LabOrders() {
   const [orders, setOrders] = useState<LabOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [activeStatus, setActiveStatus] = useState<string>('all')
+  const [overdueOnly, setOverdueOnly] = useState(false)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
@@ -576,14 +579,16 @@ export default function LabOrders() {
     )
   }
 
-  // Tab config
-  const tabs = [
+  // Chip filter config
+  const statusChips = [
     { value: 'all', label: 'All' },
     { value: 'Received', label: 'Received' },
     { value: 'Pending', label: 'Pending' },
     { value: 'In Lab', label: 'In Lab' },
+    { value: 'In Progress', label: 'In Progress' },
     { value: 'Ready', label: 'Ready' },
     { value: 'Delivered', label: 'Delivered' },
+    { value: 'Sent', label: 'Sent' },
   ] as const
 
   return (
@@ -824,23 +829,49 @@ export default function LabOrders() {
         )}
       </div>
 
-      {/* Status Tabs */}
-      <Tabs value={activeStatus} onValueChange={setActiveStatus}>
-        <TabsList className="flex-wrap">
-          {tabs.map((tab) => (
-            <TabsTrigger key={tab.value} value={tab.value} className="gap-1.5">
-              {tab.label}
-              <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-[10px]">{statusCounts[tab.value] ?? 0}</Badge>
-            </TabsTrigger>
+      {/* Pipeline Status Chips + Overdue Toggle */}
+      <div className="space-y-2">
+        <div className="flex flex-wrap gap-2">
+          {statusChips.map((chip) => (
+            <button
+              key={chip.value}
+              type="button"
+              onClick={() => { setActiveStatus(chip.value); setPage(1) }}
+              className={cn(
+                'inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-medium transition-colors min-w-[44px] min-h-[44px] touch-manipulation',
+                activeStatus === chip.value
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
+              )}
+            >
+              {chip.label}
+              {chip.value !== 'all' && (
+                <span className="ml-1.5 text-[10px] opacity-70">{statusCounts[chip.value] ?? 0}</span>
+              )}
+            </button>
           ))}
-        </TabsList>
+          <button
+            type="button"
+            onClick={() => setOverdueOnly(!overdueOnly)}
+            className={cn(
+              'inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-medium transition-colors min-w-[44px] min-h-[44px] touch-manipulation',
+              overdueOnly
+                ? 'bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800'
+                : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
+            )}
+          >
+            ⚠️ Overdue Only
+          </button>
+        </div>
+      </div>
 
-        {tabs.map((tab) => (
-          <TabsContent key={tab.value} value={tab.value}>
+      <Tabs value={activeStatus} onValueChange={setActiveStatus}>
+        {statusChips.map((chip) => (
+          <TabsContent key={chip.value} value={chip.value}>
             {viewMode === 'timeline' ? (
               /* ── Kanban/Timeline View ── */
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-                {(tab.value === 'all' ? STATUS_FLOW.slice(0, -1) : [tab.value as LabOrderStatus]).map((status) => {
+                {(chip.value === 'all' ? STATUS_FLOW.slice(0, -1) : [chip.value as LabOrderStatus]).map((status) => {
                   const statusOrders = sortedOrders.filter((o) => o.status === status)
                   const StatusIcon = STATUS_ICON[status] || Clock
                   return (
@@ -1102,6 +1133,51 @@ export default function LabOrders() {
                   <p className="text-sm whitespace-pre-wrap">{selectedOrder.notes}</p>
                 </div>
               )}
+
+              {/* Quick Action Buttons */}
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-2">Quick Actions</p>
+                <div className="flex flex-wrap gap-2">
+                  {selectedOrder.status !== 'Delivered' && (
+                    <Select onValueChange={(val) => { handleUpdateStatus(selectedOrder, val as LabOrderStatus); setDetailOpen(false) }} disabled={updatingId === selectedOrder.id}>
+                      <SelectTrigger className="h-[44px] w-auto min-w-[44px] touch-manipulation">
+                        <SelectValue placeholder="Update Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STATUS_FLOW.filter(s => s !== selectedOrder.status).map(s => (
+                          <SelectItem key={s} value={s}>{s}</SelectItem>
+                        ))}
+                        <SelectItem value="Delivered">Delivered</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {selectedOrder.customerPhone && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 min-w-[44px] min-h-[44px] touch-manipulation"
+                      onClick={() => window.open(`tel:${selectedOrder.customerPhone.replace(/\D/g, '')}`, '_self')}
+                    >
+                      <Phone className="size-3.5" />
+                      Call Customer
+                    </Button>
+                  )}
+                  {selectedOrder.customerPhone && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 min-w-[44px] min-h-[44px] touch-manipulation"
+                      onClick={() => {
+                        const cleanPhone = selectedOrder.customerPhone.replace(/\D/g, '')
+                        window.open(`https://wa.me/91${cleanPhone}?text=${encodeURIComponent(`Hi, regarding your lab order #${selectedOrder.id.slice(-6).toUpperCase()} at Lotus Vision Opticals.`)}`, '_blank')
+                      }}
+                    >
+                      <MessageSquare className="size-3.5" />
+                      WhatsApp
+                    </Button>
+                  )}
+                </div>
+              </div>
 
               {/* Status Actions */}
               <div className="flex flex-col gap-2">
