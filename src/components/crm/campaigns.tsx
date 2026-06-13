@@ -678,23 +678,18 @@ export default function Campaigns() {
               {/* Campaign Type */}
               <div className="space-y-2">
                 <Label>Type</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {Object.entries(typeConfig).map(([key, config]) => {
-                    const Icon = config.icon
-                    return (
-                      <Button
-                        key={key}
-                        type="button"
-                        variant={formType === key ? 'default' : 'outline'}
-                        className="justify-start gap-2"
-                        onClick={() => handleTypeChange(key)}
-                      >
-                        <Icon className="size-4" />
-                        {config.label}
-                      </Button>
-                    )
-                  })}
-                </div>
+                <Select value={formType} onValueChange={handleTypeChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select campaign type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="WhatsApp">WhatsApp</SelectItem>
+                    <SelectItem value="SMS">SMS</SelectItem>
+                    <SelectItem value="Email">Email</SelectItem>
+                    <SelectItem value="Phone Call">Phone Call</SelectItem>
+                    <SelectItem value="In-Store">In-Store</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* WhatsApp Template Section — Visual Template Quick Pick */}
@@ -801,6 +796,33 @@ export default function Campaigns() {
               {/* Message */}
               <div className="space-y-2">
                 <Label htmlFor="campaign-message">Message / Content</Label>
+                {/* Message Template Presets */}
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { label: 'Promotion', msg: 'Hi {{name}}! Exciting offers at Lotus Vision Opticals! 🎯 Get exclusive discounts on premium eyewear. Visit us today or call {{phone}} for details.' },
+                    { label: 'Reminder', msg: 'Hi {{name}}, this is a friendly reminder from Lotus Vision Opticals. Your next eye checkup is due. Book your appointment today at {{phone}}.' },
+                    { label: 'Festival Greeting', msg: '🎉 Happy Festival, {{name}}! Wishing you and your family joy and prosperity. Visit Lotus Vision Opticals for special festive offers on eyewear! 📞 {{phone}}' },
+                    { label: 'New Arrival', msg: '✨ Hey {{name}}! Brand new collection has arrived at Lotus Vision Opticals! Be the first to check out the latest frames and lenses. Visit us or call {{phone}}.' },
+                    { label: 'Follow-up', msg: 'Hi {{name}}, thank you for visiting Lotus Vision Opticals! We hope you\'re enjoying your purchase. For any assistance, feel free to reach us at {{phone}}.' },
+                  ].map((tmpl) => (
+                    <button
+                      key={tmpl.label}
+                      type="button"
+                      onClick={() => setFormMessage(tmpl.msg)}
+                      className={cn(
+                        'inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-medium transition-colors min-h-[36px] touch-manipulation',
+                        formMessage === tmpl.msg
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
+                      )}
+                    >
+                      {tmpl.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  💡 Placeholders available: {'{{name}}'} and {'{{phone}}'} will be replaced with customer data when sending.
+                </p>
                 <Textarea
                   id="campaign-message"
                   placeholder={typePlaceholders[formType]}

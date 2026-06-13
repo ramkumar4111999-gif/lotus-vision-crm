@@ -2275,3 +2275,32 @@ Stage Summary:
 - Every interactive element has min-w-[44px] min-h-[44px] touch targets
 - All filter chips, quick-select dropdowns, and action buttons are mobile-first tappable
 - Zero existing features broken — all changes are additive/enhancement only
+
+---
+Task ID: crm-cycle-i
+Agent: Main Agent + 7 parallel subagents
+Task: Cycle I - UX Improvements (user-friendly quick options, select dropdowns, presets)
+
+Work Log:
+- Audited all 14 CRM components for UX pain points
+- Identified 25+ areas needing improvement across all components
+- Launched 7 parallel full-stack-developer agents to implement changes
+- Sales: Added quick discount presets (No/5/10/15/20%/₹100/200/500), replaced payment emojis with lucide icons, renamed Quick Pick to Popular Items with prices, added group field to NewCustomerForm
+- Customers: Converted search to 300ms debounced instant search, visit purpose → Select dropdown with 8 options, loyalty reason → 5 quick-pick chips, customer form → 2-column grid on desktop, prescription SPH/CYL → 15 power quick-pick pills
+- Inventory: Brand → Combobox with existing brands, color → 11 quick-pick chips, added Clone Product button, form → 4 collapsible sections, added size format hint
+- Dashboard: Added period quick-select buttons (Today/Week/Month/Year), added Ctrl+K badge on global search
+- Reports: Added 6 quick date range presets, added report type Select dropdown
+- Lab Orders: Added status counts in tab labels, power ±0.25 stepper buttons on SPH/CYL/AXIS/PD, customer → combobox
+- Appointments: Customer → combobox, added 16 time slot quick-picker buttons
+- Purchase Orders: Supplier → Combobox with auto-fill phone, added Reorder button, inline status change Select
+- Accounting: Made 9 tabs scrollable on mobile with shortened labels, vendor → Combobox, expanded return reasons, added Repeat Expense button
+- Staff: Added debounced search bar, commission rate → 7 preset chips, added Clock Out All button
+- Campaigns: Campaign type → Select dropdown, added 5 message template presets with {{name}}/{{phone}} placeholders
+- Lens Calculator: Added power stepper buttons (±0.25 SPH/CYL, ±1 AXIS), discount/margin → 5 preset chips
+- Build: 0 errors, 0 warnings. Server restarted successfully.
+
+Stage Summary:
+- 30+ UX improvements across 12 CRM components
+- All interactive elements maintain 44px minimum touch targets
+- Build passes clean with 0 errors
+- Server running at HTTP 200 on port 81

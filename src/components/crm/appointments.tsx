@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   format,
   parseISO,
@@ -31,6 +31,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Phone,
+  X,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -313,7 +314,36 @@ function AppointmentFormDialog({
   const [notes, setNotes] = useState(appointment?.notes ?? '')
   const [recurrence, setRecurrence] = useState(appointment?.recurrence ?? '')
   const [customerSearch, setCustomerSearch] = useState('')
-  const [showCustomerPicker, setShowCustomerPicker] = useState(false)
+  const [customerResults, setCustomerResults] = useState<Customer[]>([])
+  const [customerSearching, setCustomerSearching] = useState(false)
+  const customerSearchRef = useRef<HTMLDivElement>(null)
+
+  // Customer search via API
+  const searchCustomers = useCallback(async (query: string) => {
+    if (query.length < 1) { setCustomerResults([]); return }
+    setCustomerSearching(true)
+    try {
+      const res = await fetch(`/api/customers?q=${encodeURIComponent(query)}&limit=10`)
+      if (!res.ok) throw new Error()
+      const data = await res.json()
+      setCustomerResults(data.data ?? data.customers ?? [])
+    } catch { setCustomerResults([]) }
+    finally { setCustomerSearching(false) }
+  }, [])
+
+  useEffect(() => {
+    const timer = setTimeout(() => searchCustomers(customerSearch), 300)
+    return () => clearTimeout(timer)
+  }, [customerSearch, searchCustomers])
+
+  // Close customer dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (customerSearchRef.current && !customerSearchRef.current.contains(e.target as Node)) setCustomerResults([])
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
 
   useEffect(() => {
     if (open) {
@@ -334,25 +364,21 @@ function AppointmentFormDialog({
         setNotes(appointment?.notes ?? '')
       }
       setCustomerSearch('')
-      setShowCustomerPicker(false)
+      setCustomerResults([])
+      setCustomerSearching(false)
     }
   }, [open, appointment, isWalkIn])
 
   const selectedCustomer = useMemo(
-    () => customers.find((c) => c.id === customerId),
-    [customers, customerId]
+    () => {
+      // First check the pre-loaded customers list (for editing)
+      const found = customers.find((c) => c.id === customerId)
+      if (found) return found
+      // Then check the search results
+      return customerResults.find((c) => c.id === customerId) ?? null
+    },
+    [customers, customerId, customerResults]
   )
-
-  const filteredCustomers = useMemo(() => {
-    if (!customerSearch.trim()) return customers.slice(0, 8)
-    const q = customerSearch.toLowerCase()
-    return customers.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        c.email?.toLowerCase().includes(q) ||
-        c.phone?.includes(q)
-    )
-  }, [customers, customerSearch])
 
   const canSubmit = customerId && date && time && purpose
 
@@ -393,76 +419,65 @@ function AppointmentFormDialog({
           )}
 
           {/* Customer Selection */}
-          <div className="space-y-2">
+          <div className="space-y-2" ref={customerSearchRef}>
             <Label htmlFor="customer" className="flex items-center gap-1.5">
               <User className="size-3.5" />
               Customer <span className="text-destructive">*</span>
             </Label>
-            <Popover open={showCustomerPicker} onOpenChange={setShowCustomerPicker}>
-              <PopoverTrigger asChild>
-                <Button
-                  id="customer"
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={showCustomerPicker}
-                  className="w-full justify-between font-normal"
-                >
-                  {selectedCustomer ? (
-                    <span className="flex items-center gap-2">
-                      <span>{selectedCustomer.name}</span>
-                      {selectedCustomer.phone && (
-                        <span className="text-muted-foreground text-xs">{selectedCustomer.phone}</span>
-                      )}
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">Search & select customer...</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-                <div className="p-2 border-b">
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search customers..."
-                      value={customerSearch}
-                      onChange={(e) => setCustomerSearch(e.target.value)}
-                      className="pl-8 h-8"
-                    />
-                  </div>
-                </div>
-                <ScrollArea className="max-h-48">
-                  <div className="p-1">
-                    {filteredCustomers.length === 0 ? (
-                      <p className="text-sm text-muted-foreground p-2 text-center">No customers found.</p>
-                    ) : (
-                      filteredCustomers.map((customer) => (
-                        <button
-                          key={customer.id}
-                          type="button"
-                          className={cn(
-                            'flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors text-left',
-                            customerId === customer.id && 'bg-accent'
-                          )}
-                          onClick={() => {
-                            setCustomerId(customer.id)
-                            setShowCustomerPicker(false)
-                            setCustomerSearch('')
-                          }}
-                        >
-                          <div className="flex flex-col">
-                            <span className="font-medium">{customer.name}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {customer.email || customer.phone || 'No contact info'}
-                            </span>
-                          </div>
-                        </button>
-                      ))
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+              {selectedCustomer ? (
+                <div className="flex items-center h-9 w-full rounded-md border bg-muted/30 pl-3 pr-1 gap-2">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <User className="size-4 text-muted-foreground shrink-0" />
+                    <span className="font-medium text-sm truncate">{selectedCustomer.name}</span>
+                    {selectedCustomer.phone && (
+                      <span className="text-xs text-muted-foreground shrink-0">{selectedCustomer.phone}</span>
                     )}
                   </div>
-                </ScrollArea>
-              </PopoverContent>
-            </Popover>
+                  <button
+                    type="button"
+                    className="flex items-center justify-center h-7 w-7 rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-foreground shrink-0 touch-manipulation"
+                    onClick={() => { setCustomerId(''); setCustomerSearch(''); setCustomerResults([]) }}
+                    title="Clear customer"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <Input
+                    placeholder="Search customers by name or phone..."
+                    value={customerSearch}
+                    onChange={(e) => { setCustomerId(''); setCustomerSearch(e.target.value) }}
+                    className="pl-9"
+                  />
+                  {customerSearching && <Loader2 className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
+                </>
+              )}
+              {customerResults.length > 0 && !selectedCustomer && (
+                <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-48 overflow-y-auto">
+                  {customerResults.map((customer) => (
+                    <button
+                      key={customer.id}
+                      type="button"
+                      className="flex w-full items-center gap-3 px-3 py-2 text-sm hover:bg-accent transition-colors text-left min-h-[44px] touch-manipulation"
+                      onClick={() => {
+                        setCustomerId(customer.id)
+                        setCustomerSearch('')
+                        setCustomerResults([])
+                      }}
+                    >
+                      <User className="size-4 text-muted-foreground shrink-0" />
+                      <span className="font-medium">{customer.name}</span>
+                      {customer.phone && (
+                        <span className="text-muted-foreground">{customer.phone}</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Date & Time */}
@@ -490,6 +505,37 @@ function AppointmentFormDialog({
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
               />
+            </div>
+          </div>
+
+          {/* Time Slot Quick Picker */}
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">Quick Select Time</Label>
+            <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
+              {[
+                '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00',
+                '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00',
+              ].map((slot) => {
+                const [h, m] = slot.split(':').map(Number)
+                const period = h >= 12 ? 'PM' : 'AM'
+                const displayH = h % 12 || 12
+                const label = `${displayH}:${m.toString().padStart(2, '0')} ${period}`
+                return (
+                  <button
+                    key={slot}
+                    type="button"
+                    className={cn(
+                      'text-xs font-medium rounded-md border px-1 py-2 transition-colors min-h-[44px] touch-manipulation text-center',
+                      time === slot
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
+                    )}
+                    onClick={() => setTime(slot)}
+                  >
+                    {label}
+                  </button>
+                )
+              })}
             </div>
           </div>
 

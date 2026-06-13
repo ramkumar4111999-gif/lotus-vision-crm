@@ -10,7 +10,10 @@ import {
   ChevronDown,
   ChevronUp,
   IndianRupee,
+  Minus,
+  Plus,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -253,33 +256,48 @@ export default function LensCalculator() {
                 <div className="grid grid-cols-3 gap-2">
                   <div>
                     <Label className="text-xs text-muted-foreground">SPH</Label>
-                    <Input
-                      type="number"
-                      step="0.25"
-                      placeholder="0.00"
-                      value={leftSph}
-                      onChange={(e) => setLeftSph(e.target.value)}
-                    />
+                    <div className="flex items-center gap-1">
+                      <button type="button" className="flex items-center justify-center min-w-[36px] min-h-[36px] touch-manipulation rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => setLeftSph(String((parseFloat(leftSph) || 0) - 0.25))}><Minus className="size-3" /></button>
+                      <Input
+                        type="number"
+                        step="0.25"
+                        placeholder="0.00"
+                        value={leftSph}
+                        onChange={(e) => setLeftSph(e.target.value)}
+                        className="text-center"
+                      />
+                      <button type="button" className="flex items-center justify-center min-w-[36px] min-h-[36px] touch-manipulation rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => setLeftSph(String((parseFloat(leftSph) || 0) + 0.25))}><Plus className="size-3" /></button>
+                    </div>
                   </div>
                   <div>
                     <Label className="text-xs text-muted-foreground">CYL</Label>
-                    <Input
-                      type="number"
-                      step="0.25"
-                      placeholder="0.00"
-                      value={leftCyl}
-                      onChange={(e) => setLeftCyl(e.target.value)}
-                    />
+                    <div className="flex items-center gap-1">
+                      <button type="button" className="flex items-center justify-center min-w-[36px] min-h-[36px] touch-manipulation rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => setLeftCyl(String((parseFloat(leftCyl) || 0) - 0.25))}><Minus className="size-3" /></button>
+                      <Input
+                        type="number"
+                        step="0.25"
+                        placeholder="0.00"
+                        value={leftCyl}
+                        onChange={(e) => setLeftCyl(e.target.value)}
+                        className="text-center"
+                      />
+                      <button type="button" className="flex items-center justify-center min-w-[36px] min-h-[36px] touch-manipulation rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => setLeftCyl(String((parseFloat(leftCyl) || 0) + 0.25))}><Plus className="size-3" /></button>
+                    </div>
                   </div>
                   <div>
                     <Label className="text-xs text-muted-foreground">AXIS</Label>
-                    <Input
-                      type="number"
-                      step="1"
-                      placeholder="0"
-                      value={leftAxis}
-                      onChange={(e) => setLeftAxis(e.target.value)}
-                    />
+                    <div className="flex items-center gap-1">
+                      <button type="button" className="flex items-center justify-center min-w-[36px] min-h-[36px] touch-manipulation rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => setLeftAxis(String(Math.max(0, (parseFloat(leftAxis) || 0) - 1)))}><Minus className="size-3" /></button>
+                      <Input
+                        type="number"
+                        step="1"
+                        placeholder="0"
+                        value={leftAxis}
+                        onChange={(e) => setLeftAxis(e.target.value)}
+                        className="text-center"
+                      />
+                      <button type="button" className="flex items-center justify-center min-w-[36px] min-h-[36px] touch-manipulation rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => setLeftAxis(String(Math.min(180, (parseFloat(leftAxis) || 0) + 1)))}><Plus className="size-3" /></button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -290,33 +308,48 @@ export default function LensCalculator() {
                 <div className="grid grid-cols-3 gap-2">
                   <div>
                     <Label className="text-xs text-muted-foreground">SPH</Label>
-                    <Input
-                      type="number"
-                      step="0.25"
-                      placeholder="0.00"
-                      value={rightSph}
-                      onChange={(e) => setRightSph(e.target.value)}
-                    />
+                    <div className="flex items-center gap-1">
+                      <button type="button" className="flex items-center justify-center min-w-[36px] min-h-[36px] touch-manipulation rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => setRightSph(String((parseFloat(rightSph) || 0) - 0.25))}><Minus className="size-3" /></button>
+                      <Input
+                        type="number"
+                        step="0.25"
+                        placeholder="0.00"
+                        value={rightSph}
+                        onChange={(e) => setRightSph(e.target.value)}
+                        className="text-center"
+                      />
+                      <button type="button" className="flex items-center justify-center min-w-[36px] min-h-[36px] touch-manipulation rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => setRightSph(String((parseFloat(rightSph) || 0) + 0.25))}><Plus className="size-3" /></button>
+                    </div>
                   </div>
                   <div>
                     <Label className="text-xs text-muted-foreground">CYL</Label>
-                    <Input
-                      type="number"
-                      step="0.25"
-                      placeholder="0.00"
-                      value={rightCyl}
-                      onChange={(e) => setRightCyl(e.target.value)}
-                    />
+                    <div className="flex items-center gap-1">
+                      <button type="button" className="flex items-center justify-center min-w-[36px] min-h-[36px] touch-manipulation rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => setRightCyl(String((parseFloat(rightCyl) || 0) - 0.25))}><Minus className="size-3" /></button>
+                      <Input
+                        type="number"
+                        step="0.25"
+                        placeholder="0.00"
+                        value={rightCyl}
+                        onChange={(e) => setRightCyl(e.target.value)}
+                        className="text-center"
+                      />
+                      <button type="button" className="flex items-center justify-center min-w-[36px] min-h-[36px] touch-manipulation rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => setRightCyl(String((parseFloat(rightCyl) || 0) + 0.25))}><Plus className="size-3" /></button>
+                    </div>
                   </div>
                   <div>
                     <Label className="text-xs text-muted-foreground">AXIS</Label>
-                    <Input
-                      type="number"
-                      step="1"
-                      placeholder="0"
-                      value={rightAxis}
-                      onChange={(e) => setRightAxis(e.target.value)}
-                    />
+                    <div className="flex items-center gap-1">
+                      <button type="button" className="flex items-center justify-center min-w-[36px] min-h-[36px] touch-manipulation rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => setRightAxis(String(Math.max(0, (parseFloat(rightAxis) || 0) - 1)))}><Minus className="size-3" /></button>
+                      <Input
+                        type="number"
+                        step="1"
+                        placeholder="0"
+                        value={rightAxis}
+                        onChange={(e) => setRightAxis(e.target.value)}
+                        className="text-center"
+                      />
+                      <button type="button" className="flex items-center justify-center min-w-[36px] min-h-[36px] touch-manipulation rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => setRightAxis(String(Math.min(180, (parseFloat(rightAxis) || 0) + 1)))}><Plus className="size-3" /></button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -514,6 +547,23 @@ export default function LensCalculator() {
                     value={discount}
                     onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
                   />
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    {[0, 10, 20, 30, 50].map((rate) => (
+                      <button
+                        key={`disc-${rate}`}
+                        type="button"
+                        onClick={() => setDiscount(rate)}
+                        className={cn(
+                          'inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors min-h-[28px] touch-manipulation',
+                          discount === rate
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
+                        )}
+                      >
+                        {rate}%
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Margin %</Label>
@@ -524,6 +574,23 @@ export default function LensCalculator() {
                     value={marginPercent}
                     onChange={(e) => setMarginPercent(parseFloat(e.target.value) || 0)}
                   />
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    {[0, 10, 20, 30, 50].map((rate) => (
+                      <button
+                        key={`margin-${rate}`}
+                        type="button"
+                        onClick={() => setMarginPercent(rate)}
+                        className={cn(
+                          'inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors min-h-[28px] touch-manipulation',
+                          marginPercent === rate
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
+                        )}
+                      >
+                        {rate}%
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 

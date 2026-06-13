@@ -62,6 +62,15 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import { Separator } from '@/components/ui/separator';
 import {
   Dialog,
@@ -83,11 +92,8 @@ import {
   CollapsibleTrigger,
   CollapsibleContent,
 } from '@/components/ui/collapsible';
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from '@/components/ui/tooltip';
+import { TooltipContent, TooltipTrigger, Tooltip } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { toast } from 'sonner';
 
@@ -162,9 +168,11 @@ const EXPENSE_CATEGORIES = [
 
 const RETURN_REASONS = [
   'Defective',
-  'Wrong Product',
+  'Wrong Power',
   'Customer Changed Mind',
-  'Warranty',
+  'Wrong Frame Size',
+  'Lens Scratch',
+  'Not Satisfied',
   'Other',
 ] as const;
 
@@ -435,6 +443,15 @@ export default function Accounting() {
 
   // Deleting state
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
+
+  // Vendor combobox state
+  const [vendorComboboxOpen, setVendorComboboxOpen] = useState(false);
+
+  // Unique vendors from expenses
+  const vendorSuggestions = useMemo(() =>
+    [...new Set(expenses.map((e) => e.vendor).filter(Boolean))] as string[],
+    [expenses]
+  );
 
   // GST state
   const [gstData, setGstData] = useState<{ cgst: number; sgst: number; igst: number; total: number } | null>(null);
@@ -946,6 +963,18 @@ export default function Accounting() {
     setExpenseDialogOpen(true);
   };
 
+  const openRepeatExpense = (expense: Expense) => {
+    setEditingExpense(null);
+    setExpForm({
+      category: expense.category || '',
+      description: expense.description || '',
+      amount: String(expense.amount || ''),
+      date: getTodayStr(),
+      vendor: expense.vendor || '',
+    });
+    setExpenseDialogOpen(true);
+  };
+
   const handleSaveExpense = async () => {
     const amount = parseFloat(expForm.amount);
     if (!expForm.category || !expForm.description || isNaN(amount) || amount <= 0 || !expForm.date) {
@@ -1372,16 +1401,16 @@ export default function Accounting() {
 
       {/* Tabs */}
       <Tabs defaultValue="cashflow" className="space-y-4">
-        <TabsList className="flex-wrap">
-          <TabsTrigger value="cashflow" className="gap-1.5 touch-manipulation min-h-[44px]"><Banknote className="h-4 w-4" /><span className="hidden sm:inline">Cash Flow</span></TabsTrigger>
-          <TabsTrigger value="expenses" className="gap-1.5 touch-manipulation min-h-[44px]"><Receipt className="h-4 w-4" /><span className="hidden sm:inline">Expenses</span></TabsTrigger>
-          <TabsTrigger value="gst" className="gap-1.5 touch-manipulation min-h-[44px]"><Target className="h-4 w-4" /><span className="hidden sm:inline">GST</span></TabsTrigger>
-          <TabsTrigger value="pl-statement" className="gap-1.5 touch-manipulation min-h-[44px]"><BarChart3 className="h-4 w-4" /><span className="hidden sm:inline">P&L Statement</span></TabsTrigger>
-          <TabsTrigger value="reconciliation" className="gap-1.5 touch-manipulation min-h-[44px]"><CheckCircle2 className="h-4 w-4" /><span className="hidden sm:inline">Cash Recon</span></TabsTrigger>
-          <TabsTrigger value="cash-reconcile" className="gap-1.5 touch-manipulation min-h-[44px]"><Calculator className="h-4 w-4" /><span className="hidden sm:inline">Reconcile</span></TabsTrigger>
-          <TabsTrigger value="dues" className="gap-1.5 touch-manipulation min-h-[44px]"><CreditCard className="h-4 w-4" /><span className="hidden sm:inline">Dues</span></TabsTrigger>
-          <TabsTrigger value="returns" className="gap-1.5 touch-manipulation min-h-[44px]"><RotateCcw className="h-4 w-4" /><span className="hidden sm:inline">Returns</span></TabsTrigger>
-          <TabsTrigger value="invoice-gst" className="gap-1.5 touch-manipulation min-h-[44px]"><FileText className="h-4 w-4" /><span className="hidden sm:inline">Invoice GST</span></TabsTrigger>
+        <TabsList className="flex-wrap overflow-x-auto scrollbar-hide">
+          <TabsTrigger value="cashflow" className="gap-1.5 touch-manipulation min-h-[44px] shrink-0"><Banknote className="h-4 w-4" /><span className="hidden sm:inline">Cash Flow</span><span className="sm:hidden text-xs">Cash</span></TabsTrigger>
+          <TabsTrigger value="expenses" className="gap-1.5 touch-manipulation min-h-[44px] shrink-0"><Receipt className="h-4 w-4" /><span className="hidden sm:inline">Expenses</span><span className="sm:hidden text-xs">Exp</span></TabsTrigger>
+          <TabsTrigger value="gst" className="gap-1.5 touch-manipulation min-h-[44px] shrink-0"><Target className="h-4 w-4" /><span className="sm:hidden text-xs">GST</span><span className="hidden sm:inline">GST</span></TabsTrigger>
+          <TabsTrigger value="pl-statement" className="gap-1.5 touch-manipulation min-h-[44px] shrink-0"><BarChart3 className="h-4 w-4" /><span className="hidden sm:inline">P&L Statement</span><span className="sm:hidden text-xs">P&L</span></TabsTrigger>
+          <TabsTrigger value="reconciliation" className="gap-1.5 touch-manipulation min-h-[44px] shrink-0"><CheckCircle2 className="h-4 w-4" /><span className="hidden sm:inline">Cash Recon</span><span className="sm:hidden text-xs">Recon</span></TabsTrigger>
+          <TabsTrigger value="cash-reconcile" className="gap-1.5 touch-manipulation min-h-[44px] shrink-0"><Calculator className="h-4 w-4" /><span className="hidden sm:inline">Reconcile</span><span className="sm:hidden text-xs">Recon+</span></TabsTrigger>
+          <TabsTrigger value="dues" className="gap-1.5 touch-manipulation min-h-[44px] shrink-0"><CreditCard className="h-4 w-4" /><span className="hidden sm:inline">Dues</span><span className="sm:hidden text-xs">Dues</span></TabsTrigger>
+          <TabsTrigger value="returns" className="gap-1.5 touch-manipulation min-h-[44px] shrink-0"><RotateCcw className="h-4 w-4" /><span className="hidden sm:inline">Returns</span><span className="sm:hidden text-xs">Ret</span></TabsTrigger>
+          <TabsTrigger value="invoice-gst" className="gap-1.5 touch-manipulation min-h-[44px] shrink-0"><FileText className="h-4 w-4" /><span className="hidden sm:inline">Invoice GST</span><span className="sm:hidden text-xs">Inv GST</span></TabsTrigger>
         </TabsList>
 
         {/* ─── Cash Flow Tab ────────────────────────────────────────────── */}
@@ -1592,6 +1621,9 @@ export default function Accounting() {
                             <TableCell className="text-xs hidden sm:table-cell max-w-[120px] truncate">{exp.vendor || '—'}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-1">
+                                <Button variant="ghost" size="sm" className="h-9 w-9 min-w-[44px] min-h-[44px] p-0 touch-manipulation active:scale-95 transition-transform" onClick={() => openRepeatExpense(exp)} title="Repeat expense">
+                                  <RotateCcw className="h-3.5 w-3.5" /><span className="sr-only">Repeat</span>
+                                </Button>
                                 <Button variant="ghost" size="sm" className="h-9 w-9 min-w-[44px] min-h-[44px] p-0 touch-manipulation active:scale-95 transition-transform" onClick={() => openEditExpense(exp)}><Pencil className="h-3.5 w-3.5" /><span className="sr-only">Edit</span></Button>
                                 <Button variant="ghost" size="sm" className="h-9 w-9 min-w-[44px] min-h-[44px] p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950 touch-manipulation active:scale-95 transition-transform" onClick={() => handleDeleteExpense(exp.id)} disabled={deletingExpenseId === exp.id}>
                                   {deletingExpenseId === exp.id ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <Trash2 className="h-3.5 w-3.5" />}
@@ -2507,7 +2539,49 @@ export default function Accounting() {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="exp-vendor">Vendor (optional)</Label>
-              <Input id="exp-vendor" placeholder="Vendor or payee name" value={expForm.vendor} onChange={(e) => setExpForm((f) => ({ ...f, vendor: e.target.value }))} />
+              <Popover open={vendorComboboxOpen} onOpenChange={setVendorComboboxOpen}>
+                <PopoverTrigger asChild>
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="exp-vendor"
+                      placeholder="Type or search vendor..."
+                      value={expForm.vendor}
+                      onChange={(e) => {
+                        setExpForm((f) => ({ ...f, vendor: e.target.value }));
+                        setVendorComboboxOpen(true);
+                      }}
+                      onFocus={() => { if (vendorSuggestions.length > 0) setVendorComboboxOpen(true); }}
+                      className="pl-9"
+                    />
+                  </div>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
+                  <Command shouldFilter={true}>
+                    <CommandInput placeholder="Search vendors..." className="h-9" />
+                    <CommandList className="max-h-48">
+                      <CommandEmpty>No vendors found.</CommandEmpty>
+                      <CommandGroup>
+                        {vendorSuggestions
+                          .filter((v) => v.toLowerCase().includes(expForm.vendor.toLowerCase()))
+                          .map((v) => (
+                            <CommandItem
+                              key={v}
+                              value={v}
+                              onSelect={() => {
+                                setExpForm((f) => ({ ...f, vendor: v }));
+                                setVendorComboboxOpen(false);
+                              }}
+                            >
+                              <Check className={cn('mr-2 h-4 w-4', expForm.vendor === v ? 'opacity-100' : 'opacity-0')} />
+                              {v}
+                            </CommandItem>
+                          ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">

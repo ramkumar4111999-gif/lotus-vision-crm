@@ -30,6 +30,7 @@ import {
   CalendarRange,
   Info,
   Star,
+  Search,
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -443,6 +444,9 @@ export default function StaffManagement() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deletingStaff, setDeletingStaff] = useState<Staff | null>(null)
   const [roleFilter, setRoleFilter] = useState<string>('all')
+  const [staffSearch, setStaffSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Attendance state
   const [attendanceLog, setAttendanceLog] = useState<AttendanceEntry[]>([])
@@ -592,6 +596,29 @@ export default function StaffManagement() {
     }
   }
 
+  async function handleClockOutAll() {
+    const clockedInStaff = attendanceLog.filter((e) => e.clockOut === null)
+    if (clockedInStaff.length === 0) return
+    setClockSubmitting('all')
+    try {
+      await Promise.all(
+        clockedInStaff.map((entry) =>
+          fetch('/api/staff/attendance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ staffId: entry.staffId, action: 'clock-out' }),
+          })
+        )
+      )
+      await fetchAttendance()
+      toast.success(`Clocked out ${clockedInStaff.length} staff member${clockedInStaff.length !== 1 ? 's' : ''}`)
+    } catch {
+      toast.error('Failed to clock out all staff')
+    } finally {
+      setClockSubmitting(null)
+    }
+  }
+
   // ─── Attendance History Fetch ────────────────────────────────────────────
 
   const fetchAttendanceHistory = useCallback(async () => {
@@ -672,10 +699,31 @@ export default function StaffManagement() {
 
   // ─── Filtered Staff List ──────────────────────────────────────────────
 
+  // Debounced staff search (300ms)
+  useEffect(() => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    searchDebounceRef.current = setTimeout(() => {
+      setDebouncedSearch(staffSearch.trim().toLowerCase())
+    }, 300)
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    }
+  }, [staffSearch])
+
   const filteredStaffList = useMemo(() => {
-    if (roleFilter === 'all') return staffList
-    return staffList.filter((s) => s.role === roleFilter)
-  }, [staffList, roleFilter])
+    let list = staffList
+    if (roleFilter !== 'all') {
+      list = list.filter((s) => s.role === roleFilter)
+    }
+    if (debouncedSearch) {
+      list = list.filter(
+        (s) =>
+          s.name.toLowerCase().includes(debouncedSearch) ||
+          s.phone.includes(debouncedSearch)
+      )
+    }
+    return list
+  }, [staffList, roleFilter, debouncedSearch])
 
   // ─── Summary Stats ──────────────────────────────────────────────────────
 
@@ -952,11 +1000,13 @@ export default function StaffManagement() {
       {/* ── Today's Attendance Card ─────────────────────────────────── */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-xl">
-            <Clock className="size-5 text-primary" />
-            Today&apos;s Attendance
-          </CardTitle>
-          <CardDescription className="flex items-center gap-3 flex-wrap">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <Clock className="size-5 text-primary" />
+                Today&apos;s Attendance
+              </CardTitle>
+              <CardDescription className="flex items-center gap-3 flex-wrap">
             <span className="flex items-center gap-1.5">
               <CalendarCheck className="size-3.5" />
               {todayDate}
@@ -969,7 +1019,23 @@ export default function StaffManagement() {
               <Clock className="size-3.5 text-muted-foreground" />
               Total: {getTodayTotalHours().toFixed(1)}h worked
             </span>
-          </CardDescription>
+            </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="min-h-[44px] touch-manipulation gap-2"
+              disabled={clockSubmitting === 'all' || !attendanceLog.some((e) => e.clockOut === null)}
+              onClick={handleClockOutAll}
+            >
+              {clockSubmitting === 'all' ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <LogOut className="size-3.5" />
+              )}
+              Clock Out All
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {attendanceLoading ? (
@@ -1135,6 +1201,19 @@ export default function StaffManagement() {
         </CardHeader>
 
         <CardContent>
+          {/* Staff Search Bar */}
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+            <Input
+              type="text"
+              placeholder="Search by name or phone..."
+              value={staffSearch}
+              onChange={(e) => setStaffSearch(e.target.value)}
+              className="pl-9 min-h-[44px] touch-manipulation"
+              aria-label="Search staff by name or phone"
+            />
+          </div>
+
           {loading ? (
             <div className="flex items-center justify-center py-16">
               <Loader2 className="size-6 animate-spin text-muted-foreground" />
@@ -1970,6 +2049,24 @@ export default function StaffManagement() {
                 {formErrors.commission && (
                   <p className="text-xs text-destructive">{formErrors.commission}</p>
                 )}
+                {/* Commission Rate Quick-Pick Chips */}
+                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                  {[0, 2, 3, 5, 8, 10, 15].map((rate) => (
+                    <button
+                      key={rate}
+                      type="button"
+                      onClick={() => updateField('commission', String(rate))}
+                      className={cn(
+                        'inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium transition-colors min-h-[36px] touch-manipulation',
+                        String(form.commission) === String(rate)
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
+                      )}
+                    >
+                      {rate}%
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 

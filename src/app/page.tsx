@@ -554,15 +554,18 @@ function GlobalSearch() {
             <div className="relative w-64">
               <Input
                 ref={inputRef}
-                placeholder="Search... (Ctrl+K)"
+                placeholder="Search..."
                 value={query}
                 onChange={handleChange}
                 onFocus={() => { if (results.length > 0) setOpen(true); }}
-                className="h-9 pl-9 pr-8 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-sm"
+                className="h-9 pl-9 pr-16 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-sm"
               />
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+              <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 inline-flex h-5 select-none items-center gap-0.5 rounded border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-1.5 font-mono text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                <span className="text-xs">⌘</span>K
+              </kbd>
               {searching && (
-                <Loader className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 animate-spin" />
+                <Loader className="absolute right-12 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 animate-spin" />
               )}
             </div>
           </TooltipTrigger>

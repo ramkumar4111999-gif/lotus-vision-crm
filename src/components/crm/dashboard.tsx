@@ -454,9 +454,19 @@ const datePresets: { key: DateRangePreset; label: string }[] = [
 // Main Dashboard Component
 // ───────────────────────────────────────────────
 
+// Period quick-select options for KPI cards
+const KPI_PERIOD_OPTIONS = [
+  { key: 'today', label: 'Today' },
+  { key: 'thisWeek', label: 'This Week' },
+  { key: 'thisMonth', label: 'This Month' },
+  { key: 'thisYear', label: 'This Year' },
+] as const;
+type KpiPeriod = (typeof KPI_PERIOD_OPTIONS)[number]['key'];
+
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState(() => getSettings());
+  const [kpiPeriod, setKpiPeriod] = useState<KpiPeriod>('thisMonth');
   const DAILY_REVENUE_GOAL = settings.dailyRevenueGoal;
 
   // Refresh settings on mount (for SSR hydration)
@@ -1466,6 +1476,24 @@ export default function Dashboard() {
             </Button>
           </div>
         </div>
+      </div>
+
+      {/* KPI Period Quick-Select */}
+      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="KPI time period">
+        {KPI_PERIOD_OPTIONS.map((opt) => (
+          <button
+            key={opt.key}
+            onClick={() => setKpiPeriod(opt.key)}
+            className={cn(
+              'min-w-[44px] min-h-[44px] px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors touch-manipulation cursor-pointer border',
+              kpiPeriod === opt.key
+                ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted hover:text-foreground',
+            )}
+          >
+            {opt.label}
+          </button>
+        ))}
       </div>
 
       {/* Stats Cards */}

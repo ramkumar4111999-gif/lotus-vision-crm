@@ -64,6 +64,13 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // ─── Color Palette ───────────────────────────────────────────────────────────
 
@@ -507,6 +514,15 @@ function usePDFExport() {
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
+// Maps tab values to user-friendly report type labels for the dropdown
+const REPORT_TYPE_MAP: Record<string, string> = {
+  overview: 'sales-trend',
+  products: 'top-products',
+  acquisition: 'customer-acquisition',
+  'top-spenders': 'top-customers',
+  'product-perf': 'revenue-comparison',
+};
+
 export default function Reports() {
   const today = new Date();
   const defaultFrom = format(startOfMonth(today), "yyyy-MM-dd");
@@ -516,10 +532,30 @@ export default function Reports() {
   const [dateToInput, setDateToInput] = useState(defaultTo);
   const [dateFrom, setDateFrom] = useState(defaultFrom);
   const [dateTo, setDateTo] = useState(defaultTo);
+  const [activePreset, setActivePreset] = useState<string | null>('thisMonth');
+  const [activeTab, setActiveTab] = useState('overview');
+
+  // Quick date range presets
+  const datePresets = [
+    { key: 'today', label: 'Today', getRange: () => { const d = format(today, "yyyy-MM-dd"); return [d, d]; } },
+    { key: 'thisWeek', label: 'This Week', getRange: () => [format(startOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd"), format(today, "yyyy-MM-dd")] },
+    { key: 'thisMonth', label: 'This Month', getRange: () => [format(startOfMonth(today), "yyyy-MM-dd"), format(today, "yyyy-MM-dd")] },
+    { key: 'lastMonth', label: 'Last Month', getRange: () => [format(startOfMonth(subMonths(today, 1)), "yyyy-MM-dd"), format(endOfMonth(subMonths(today, 1)), "yyyy-MM-dd")] },
+    { key: 'last3Months', label: 'Last 3 Months', getRange: () => [format(startOfMonth(subMonths(today, 3)), "yyyy-MM-dd"), format(today, "yyyy-MM-dd")] },
+    { key: 'thisYear', label: 'This Year', getRange: () => [format(startOfYear(today), "yyyy-MM-dd"), format(today, "yyyy-MM-dd")] },
+  ] as const;
+
+  const applyPreset = (preset: (typeof datePresets)[number]) => {
+    const [from, to] = preset.getRange();
+    setDateFromInput(from); setDateToInput(to);
+    setDateFrom(from); setDateTo(to);
+    setActivePreset(preset.key);
+  };
 
   const handleApplyDateRange = useCallback(() => {
     setDateFrom(dateFromInput);
     setDateTo(dateToInput);
+    setActivePreset(null);
   }, [dateFromInput, dateToInput]);
 
   const { exporting: csvExporting, exportPDF } = usePDFExport();
@@ -1069,11 +1105,28 @@ export default function Reports() {
 
       {/* Date Range Picker */}
       <Card>
-        <CardContent className="p-4">
+        <CardContent className="p-4 space-y-3">
+          {/* Quick Preset Pills */}
+          <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Quick date range presets">
+            {datePresets.map((preset) => (
+              <button
+                key={preset.key}
+                onClick={() => applyPreset(preset)}
+                className={`min-w-[44px] min-h-[44px] px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors touch-manipulation cursor-pointer border ${
+                  activePreset === preset.key
+                    ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                    : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted hover:text-foreground'
+                }`}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+          {/* Manual Date Inputs */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex items-center gap-2">
               <CalendarDays className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Date Range:</span>
+              <span className="text-sm font-medium">Custom Range:</span>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <div className="flex items-center gap-1.5">
@@ -1086,49 +1139,6 @@ export default function Reports() {
               </div>
               <Button variant="default" size="sm" className="text-xs min-h-[44px] touch-manipulation gap-1.5" onClick={handleApplyDateRange}>
                 Apply
-              </Button>
-              <Separator orientation="vertical" className="h-6 hidden sm:block" />
-              <Button variant="outline" size="sm" className="text-xs min-h-[44px] touch-manipulation" onClick={() => {
-                const todayStr = format(today, "yyyy-MM-dd");
-                setDateFromInput(todayStr); setDateToInput(todayStr);
-                setDateFrom(todayStr); setDateTo(todayStr);
-              }}>
-                Today
-              </Button>
-              <Button variant="outline" size="sm" className="text-xs min-h-[44px] touch-manipulation" onClick={() => {
-                const from = format(startOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd");
-                setDateFromInput(from); setDateToInput(defaultTo);
-                setDateFrom(from); setDateTo(defaultTo);
-              }}>
-                This Week
-              </Button>
-              <Button variant="outline" size="sm" className="text-xs min-h-[44px] touch-manipulation" onClick={() => {
-                const from = format(startOfMonth(today), "yyyy-MM-dd");
-                setDateFromInput(from); setDateToInput(defaultTo);
-                setDateFrom(from); setDateTo(defaultTo);
-              }}>
-                This Month
-              </Button>
-              <Button variant="outline" size="sm" className="text-xs min-h-[44px] touch-manipulation" onClick={() => {
-                const from = format(subDays(today, 30), "yyyy-MM-dd");
-                setDateFromInput(from); setDateToInput(defaultTo);
-                setDateFrom(from); setDateTo(defaultTo);
-              }}>
-                Last 30 Days
-              </Button>
-              <Button variant="outline" size="sm" className="text-xs min-h-[44px] touch-manipulation" onClick={() => {
-                const from = format(subDays(today, 7), "yyyy-MM-dd");
-                setDateFromInput(from); setDateToInput(defaultTo);
-                setDateFrom(from); setDateTo(defaultTo);
-              }}>
-                Last 7 Days
-              </Button>
-              <Button variant="outline" size="sm" className="text-xs min-h-[44px] touch-manipulation" onClick={() => {
-                const from = format(startOfYear(today), "yyyy-MM-dd");
-                setDateFromInput(from); setDateToInput(defaultTo);
-                setDateFrom(from); setDateTo(defaultTo);
-              }}>
-                This Year
               </Button>
             </div>
           </div>
@@ -1238,7 +1248,30 @@ export default function Reports() {
       )}
 
       <div id="reports-content">
-        <Tabs defaultValue="overview" className="space-y-4">
+        {/* Report Type Dropdown — discoverable alternative to tabs on mobile */}
+        <div className="flex items-center gap-2 mb-2">
+          <Label htmlFor="report-type-select" className="text-sm font-medium whitespace-nowrap">Report Type:</Label>
+          <Select
+            value={REPORT_TYPE_MAP[activeTab as keyof typeof REPORT_TYPE_MAP] ?? ''}
+            onValueChange={(val) => {
+              const mapped = Object.entries(REPORT_TYPE_MAP).find(([, v]) => v === val);
+              if (mapped) setActiveTab(mapped[0]);
+            }}
+          >
+            <SelectTrigger id="report-type-select" className="w-full sm:w-[220px] h-11 min-h-[44px] touch-manipulation">
+              <SelectValue placeholder="Jump to report…" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="sales-trend">Sales Trend</SelectItem>
+              <SelectItem value="top-products">Top Products</SelectItem>
+              <SelectItem value="customer-acquisition">Customer Acquisition</SelectItem>
+              <SelectItem value="revenue-comparison">Revenue Comparison</SelectItem>
+              <SelectItem value="top-customers">Top Customers</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="overview" className="gap-1.5 min-h-[44px] touch-manipulation"><TrendingUp className="h-4 w-4" /><span className="hidden sm:inline">Overview</span></TabsTrigger>
             <TabsTrigger value="products" className="gap-1.5 min-h-[44px] touch-manipulation"><ShoppingCart className="h-4 w-4" /><span className="hidden sm:inline">Products</span></TabsTrigger>

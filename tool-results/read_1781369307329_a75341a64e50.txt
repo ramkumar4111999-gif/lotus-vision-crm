@@ -1,0 +1,502 @@
+  1137→        <CardContent>
+  1138→          {loading ? (
+  1139→            <div className="flex items-center justify-center py-16">
+  1140→              <Loader2 className="size-6 animate-spin text-muted-foreground" />
+  1141→              <span className="ml-2 text-muted-foreground">Loading staff...</span>
+  1142→            </div>
+  1143→          ) : filteredStaffList.length === 0 ? (
+  1144→            <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
+  1145→              <UserCircle className="size-12" />
+  1146→              <p className="text-sm">No staff members found for this role filter.</p>
+  1147→              <Button variant="outline" size="sm" onClick={openAddDialog} className="min-w-[44px] min-h-[44px] touch-manipulation">
+  1148→                <Plus className="size-4" />
+  1149→                Add your first staff member
+  1150→              </Button>
+  1151→            </div>
+  1152→          ) : (
+  1153→            <>
+  1154→              {/* Desktop Table */}
+  1155→              <div className="hidden md:block overflow-x-auto">
+  1156→                <Table>
+  1157→                  <TableHeader>
+  1158→                    <TableRow>
+  1159→                      <TableHead className="pl-4">Name</TableHead>
+  1160→                      <TableHead>Phone</TableHead>
+  1161→                      <TableHead>Role</TableHead>
+  1162→                      <TableHead>Join Date</TableHead>
+  1163→                      <TableHead>Status</TableHead>
+  1164→                      <TableHead className="text-right">Salary</TableHead>
+  1165→                      <TableHead className="text-right">Commission</TableHead>
+  1166→                      <TableHead className="text-center">Attendance</TableHead>
+  1167→                      <TableHead className="pr-4 text-right">Actions</TableHead>
+  1168→                    </TableRow>
+  1169→                  </TableHeader>
+  1170→                  <TableBody>
+  1171→                    {filteredStaffList.map((staff) => {
+  1172→                      const attStatus = getAttendanceStatus(staff.joinDate, staff.isActive)
+  1173→                      const clocked = isClockedIn(staff.id)
+  1174→                      const activeEntry = getActiveAttendance(staff.id)
+  1175→                      return (
+  1176→                        <TableRow key={staff.id}>
+  1177→                          <TableCell className="pl-4">
+  1178→                            <div className="flex items-center gap-2">
+  1179→                              <span className="font-medium">{staff.name}</span>
+  1180→                              {renderRoleBadge(staff.role)}
+  1181→                              <Badge
+  1182→                                variant="outline"
+  1183→                                className={`text-[10px] px-1.5 py-0 ${attStatus.color}`}
+  1184→                              >
+  1185→                                {attStatus.label}
+  1186→                              </Badge>
+  1187→                            </div>
+  1188→                          </TableCell>
+  1189→                          <TableCell className="text-muted-foreground">{staff.phone}</TableCell>
+  1190→                          <TableCell>
+  1191→                            {renderRoleBadge(staff.role)}
+  1192→                          </TableCell>
+  1193→                          <TableCell className="text-muted-foreground text-sm">
+  1194→                            <div className="flex items-center gap-1.5">
+  1195→                              <CalendarCheck className="size-3.5" />
+  1196→                              {formatDate(staff.joinDate)}
+  1197→                            </div>
+  1198→                          </TableCell>
+  1199→                          <TableCell>
+  1200→                            <Badge
+  1201→                              variant={staff.isActive ? 'default' : 'secondary'}
+  1202→                              className={
+  1203→                                staff.isActive
+  1204→                                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+  1205→                                  : 'bg-gray-100 text-gray-500 dark:bg-gray-800/40 dark:text-gray-400 border-gray-200 dark:border-gray-700'
+  1206→                              }
+  1207→                            >
+  1208→                              {staff.isActive ? 'Active' : 'Inactive'}
+  1209→                            </Badge>
+  1210→                          </TableCell>
+  1211→                          <TableCell className="text-right font-mono text-sm">
+  1212→                            {formatCurrency(staff.salary)}
+  1213→                          </TableCell>
+  1214→                          <TableCell className="text-right font-mono text-sm">
+  1215→                            {staff.commission}%
+  1216→                          </TableCell>
+  1217→                          <TableCell className="text-center">
+  1218→                            {staff.isActive && (
+  1219→                              clocked ? (
+  1220→                                <div className="flex flex-col items-center gap-0.5">
+  1221→                                  <Button
+  1222→                                    size="sm"
+  1223→                                    variant="outline"
+  1224→                                    className="h-7 text-xs border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-900/20 min-w-[44px] min-h-[44px] touch-manipulation"
+  1225→                                    disabled={clockSubmitting === staff.id}
+  1226→                                    onClick={() => handleClockOut(staff)}
+  1227→                                  >
+  1228→                                    {clockSubmitting === staff.id ? (
+  1229→                                      <Loader2 className="size-3 animate-spin" />
+  1230→                                    ) : (
+  1231→                                      <LogOut className="size-3" />
+  1232→                                    )}
+  1233→                                    Clock Out
+  1234→                                  </Button>
+  1235→                                  {activeEntry && (
+  1236→                                    <span className="text-[10px] font-mono text-muted-foreground tabular-nums">
+  1237→                                      {formatElapsed(getElapsedSeconds(activeEntry.clockIn))}
+  1238→                                    </span>
+  1239→                                  )}
+  1240→                                </div>
+  1241→                              ) : (
+  1242→                                <Button
+  1243→                                  size="sm"
+  1244→                                  variant="outline"
+  1245→                                  className="h-7 text-xs border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/20 min-w-[44px] min-h-[44px] touch-manipulation"
+  1246→                                  disabled={clockSubmitting === staff.id}
+  1247→                                  onClick={() => handleClockIn(staff)}
+  1248→                                >
+  1249→                                  {clockSubmitting === staff.id ? (
+  1250→                                    <Loader2 className="size-3 animate-spin" />
+  1251→                                  ) : (
+  1252→                                    <LogIn className="size-3" />
+  1253→                                  )}
+  1254→                                  Clock In
+  1255→                                </Button>
+  1256→                              )
+  1257→                            )}
+  1258→                          </TableCell>
+  1259→                          <TableCell className="pr-4 text-right">
+  1260→                            <div className="flex items-center justify-end gap-1">
+  1261→                              <Button
+  1262→                                variant="ghost"
+  1263→                                size="icon"
+  1264→                                className="min-w-[44px] min-h-[44px] touch-manipulation"
+  1265→                                onClick={() => openEditDialog(staff)}
+  1266→                                aria-label={`Edit ${staff.name}`}
+  1267→                              >
+  1268→                                <Pencil className="size-4" />
+  1269→                              </Button>
+  1270→                              <Button
+  1271→                                variant="ghost"
+  1272→                                size="icon"
+  1273→                                className="min-w-[44px] min-h-[44px] touch-manipulation text-destructive hover:text-destructive"
+  1274→                                onClick={() => openDeleteDialog(staff)}
+  1275→                                aria-label={`Delete ${staff.name}`}
+  1276→                              >
+  1277→                                <Trash2 className="size-4" />
+  1278→                              </Button>
+  1279→                            </div>
+  1280→                          </TableCell>
+  1281→                        </TableRow>
+  1282→                      )
+  1283→                    })}
+  1284→                  </TableBody>
+  1285→                </Table>
+  1286→              </div>
+  1287→
+  1288→              {/* Mobile Cards */}
+  1289→              <div className="space-y-3 md:hidden">
+  1290→                {filteredStaffList.map((staff) => {
+  1291→                  const attStatus = getAttendanceStatus(staff.joinDate, staff.isActive)
+  1292→                  const clocked = isClockedIn(staff.id)
+  1293→                  const activeEntry = getActiveAttendance(staff.id)
+  1294→                  return (
+  1295→                    <Card key={staff.id} className="p-4">
+  1296→                      <div className="flex items-start justify-between gap-3">
+  1297→                        <div className="min-w-0 space-y-1">
+  1298→                          <div className="flex items-center gap-2 flex-wrap">
+  1299→                            <p className="truncate font-medium">{staff.name}</p>
+  1300→                            {renderRoleBadge(staff.role)}
+  1301→                            <Badge
+  1302→                              variant="outline"
+  1303→                              className={`shrink-0 text-[10px] px-1.5 py-0 ${attStatus.color}`}
+  1304→                            >
+  1305→                              {attStatus.label}
+  1306→                            </Badge>
+  1307→                          </div>
+  1308→                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+  1309→                            <span className="flex items-center gap-1">
+  1310→                              <Phone className="size-3.5" />
+  1311→                              {staff.phone}
+  1312→                            </span>
+  1313→                            {staff.email && (
+  1314→                              <span className="flex items-center gap-1 truncate">
+  1315→                                <Mail className="size-3.5 shrink-0" />
+  1316→                                {staff.email}
+  1317→                              </span>
+  1318→                            )}
+  1319→                          </div>
+  1320→                        </div>
+  1321→                        <div className="flex shrink-0 gap-1">
+  1322→                          <Button
+  1323→                            variant="ghost"
+  1324→                            size="icon"
+  1325→                            className="min-w-[44px] min-h-[44px] touch-manipulation"
+  1326→                            onClick={() => openEditDialog(staff)}
+  1327→                            aria-label={`Edit ${staff.name}`}
+  1328→                          >
+  1329→                            <Pencil className="size-4" />
+  1330→                          </Button>
+  1331→                          <Button
+  1332→                            variant="ghost"
+  1333→                            size="icon"
+  1334→                            className="min-w-[44px] min-h-[44px] touch-manipulation text-destructive hover:text-destructive"
+  1335→                            onClick={() => openDeleteDialog(staff)}
+  1336→                            aria-label={`Delete ${staff.name}`}
+  1337→                          >
+  1338→                            <Trash2 className="size-4" />
+  1339→                          </Button>
+  1340→                        </div>
+  1341→                      </div>
+  1342→                      <Separator className="my-3" />
+  1343→                      <div className="grid grid-cols-2 gap-2 text-sm">
+  1344→                        <div className="flex items-center justify-between">
+  1345→                          <span className="text-muted-foreground">Join Date</span>
+  1346→                          <span className="font-medium">{formatDate(staff.joinDate)}</span>
+  1347→                        </div>
+  1348→                        <div className="flex items-center justify-between">
+  1349→                          <span className="text-muted-foreground">Status</span>
+  1350→                          <Badge
+  1351→                            variant={staff.isActive ? 'default' : 'secondary'}
+  1352→                            className={
+  1353→                              staff.isActive
+  1354→                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 shrink-0'
+  1355→                                : 'bg-gray-100 text-gray-500 dark:bg-gray-800/40 dark:text-gray-400 border-gray-200 dark:border-gray-700 shrink-0'
+  1356→                            }
+  1357→                          >
+  1358→                            {staff.isActive ? 'Active' : 'Inactive'}
+  1359→                          </Badge>
+  1360→                        </div>
+  1361→                        <div className="flex items-center justify-between">
+  1362→                          <span className="text-muted-foreground">Salary</span>
+  1363→                          <span className="font-mono font-medium">{formatCurrency(staff.salary)}/mo</span>
+  1364→                        </div>
+  1365→                        <div className="flex items-center justify-between">
+  1366→                          <span className="text-muted-foreground">Commission</span>
+  1367→                          <span className="font-mono font-medium">{staff.commission}%</span>
+  1368→                        </div>
+  1369→                      </div>
+  1370→                      {staff.isActive && (
+  1371→                        <>
+  1372→                          <Separator className="my-3" />
+  1373→                          <div className="flex items-center justify-between">
+  1374→                            <span className="text-sm text-muted-foreground">Attendance</span>
+  1375→                            {clocked ? (
+  1376→                              <div className="flex items-center gap-2">
+  1377→                                {activeEntry && (
+  1378→                                  <span className="text-xs font-mono text-muted-foreground tabular-nums">
+  1379→                                    {formatElapsed(getElapsedSeconds(activeEntry.clockIn))}
+  1380→                                  </span>
+  1381→                                )}
+  1382→                                <Button
+  1383→                                  size="sm"
+  1384→                                  variant="outline"
+  1385→                                  className="h-7 text-xs border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-900/20 min-w-[44px] min-h-[44px] touch-manipulation"
+  1386→                                  disabled={clockSubmitting === staff.id}
+  1387→                                  onClick={() => handleClockOut(staff)}
+  1388→                                >
+  1389→                                  {clockSubmitting === staff.id ? (
+  1390→                                    <Loader2 className="size-3 animate-spin" />
+  1391→                                  ) : (
+  1392→                                    <LogOut className="size-3" />
+  1393→                                  )}
+  1394→                                  Clock Out
+  1395→                                </Button>
+  1396→                              </div>
+  1397→                            ) : (
+  1398→                              <Button
+  1399→                                size="sm"
+  1400→                                variant="outline"
+  1401→                                className="h-7 text-xs border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/20 min-w-[44px] min-h-[44px] touch-manipulation"
+  1402→                                disabled={clockSubmitting === staff.id}
+  1403→                                onClick={() => handleClockIn(staff)}
+  1404→                              >
+  1405→                                {clockSubmitting === staff.id ? (
+  1406→                                  <Loader2 className="size-3 animate-spin" />
+  1407→                                ) : (
+  1408→                                  <LogIn className="size-3" />
+  1409→                                )}
+  1410→                                Clock In
+  1411→                              </Button>
+  1412→                            )}
+  1413→                          </div>
+  1414→                        </>
+  1415→                      )}
+  1416→                    </Card>
+  1417→                  )
+  1418→                })}
+  1419→              </div>
+  1420→            </>
+  1421→          )}
+  1422→        </CardContent>
+  1423→      </Card>
+  1424→
+  1425→      {/* ── Staff Performance Section ───────────────────────────────────── */}
+  1426→      {performanceData.length > 0 && (
+  1427→        <Card>
+  1428→          <CardHeader>
+  1429→            <CardTitle className="flex items-center gap-2 text-xl">
+  1430→              <TrendingUp className="size-5 text-primary" />
+  1431→              Staff Performance
+  1432→            </CardTitle>
+  1433→            <CardDescription>
+  1434→              Monthly sales performance for active staff —{' '}
+  1435→              {new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
+  1436→            </CardDescription>
+  1437→          </CardHeader>
+  1438→          <CardContent>
+  1439→            {/* Desktop Performance Table */}
+  1440→            <div className="hidden md:block overflow-x-auto">
+  1441→              <Table>
+  1442→                <TableHeader>
+  1443→                  <TableRow>
+  1444→                    <TableHead className="pl-4">Staff</TableHead>
+  1445→                    <TableHead>Role</TableHead>
+  1446→                    <TableHead className="text-right">Total Sales</TableHead>
+  1447→                    <TableHead className="text-right">This Month&apos;s Commission</TableHead>
+  1448→                    <TableHead className="pr-4 text-right">Transactions</TableHead>
+  1449→                  </TableRow>
+  1450→                </TableHeader>
+  1451→                <TableBody>
+  1452→                  {performanceData.map((p) => (
+  1453→                    <TableRow key={p.staffId}>
+  1454→                      <TableCell className="pl-4 font-medium">{p.staffName}</TableCell>
+  1455→                      <TableCell>
+  1456→                        {renderRoleBadge(p.staffRole)}
+  1457→                      </TableCell>
+  1458→                      <TableCell className="text-right font-mono">
+  1459→                        {formatCurrency(p.totalSales)}
+  1460→                      </TableCell>
+  1461→                      <TableCell className="text-right font-mono text-emerald-600 dark:text-emerald-400">
+  1462→                        {formatCurrency(p.commissionEarned)}
+  1463→                      </TableCell>
+  1464→                      <TableCell className="pr-4 text-right">
+  1465→                        <span className="inline-flex items-center gap-1.5 font-mono">
+  1466→                          <ShoppingBag className="size-3.5 text-muted-foreground" />
+  1467→                          {p.transactionCount}
+  1468→                        </span>
+  1469→                      </TableCell>
+  1470→                    </TableRow>
+  1471→                  ))}
+  1472→                </TableBody>
+  1473→              </Table>
+  1474→            </div>
+  1475→
+  1476→            {/* Mobile Performance Cards */}
+  1477→            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 md:hidden">
+  1478→              {performanceData.map((p) => (
+  1479→                <Card key={p.staffId} className="p-4">
+  1480→                  <div className="mb-3 flex items-center justify-between">
+  1481→                    <div className="min-w-0">
+  1482→                      <p className="truncate font-medium">{p.staffName}</p>
+  1483→                      {renderRoleBadge(p.staffRole)}
+  1484→                    </div>
+  1485→                    <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
+  1486→                      <UserCircle className="size-5 text-primary" />
+  1487→                    </div>
+  1488→                  </div>
+  1489→                  <div className="space-y-2 text-sm">
+  1490→                    <div className="flex items-center justify-between">
+  1491→                      <span className="flex items-center gap-1.5 text-muted-foreground">
+  1492→                        <DollarSign className="size-3.5" />
+  1493→                        Total Sales
+  1494→                      </span>
+  1495→                      <span className="font-mono font-medium">{formatCurrency(p.totalSales)}</span>
+  1496→                    </div>
+  1497→                    <div className="flex items-center justify-between">
+  1498→                      <span className="flex items-center gap-1.5 text-muted-foreground">
+  1499→                        <TrendingUp className="size-3.5" />
+  1500→                        This Month&apos;s Commission
+  1501→                      </span>
+  1502→                      <span className="font-mono font-medium text-emerald-600 dark:text-emerald-400">
+  1503→                        {formatCurrency(p.commissionEarned)}
+  1504→                      </span>
+  1505→                    </div>
+  1506→                    <div className="flex items-center justify-between">
+  1507→                      <span className="flex items-center gap-1.5 text-muted-foreground">
+  1508→                        <ShoppingBag className="size-3.5" />
+  1509→                        Transactions
+  1510→                      </span>
+  1511→                      <span className="font-mono font-medium">{p.transactionCount}</span>
+  1512→                    </div>
+  1513→                  </div>
+  1514→                </Card>
+  1515→              ))}
+  1516→            </div>
+  1517→          </CardContent>
+  1518→        </Card>
+  1519→      )}
+  1520→
+  1521→      {/* ── Commission Breakdown ───────────────────────────────────────── */}
+  1522→      {commissionBreakdown.length > 0 && (
+  1523→        <Card>
+  1524→          <CardHeader>
+  1525→            <CardTitle className="flex items-center gap-2 text-xl">
+  1526→              <Trophy className="size-5 text-amber-500" />
+  1527→              Commission Breakdown
+  1528→            </CardTitle>
+  1529→            <CardDescription>
+  1530→              Detailed commission analysis for active staff — sorted by commission earned
+  1531→            </CardDescription>
+  1532→          </CardHeader>
+  1533→          <CardContent>
+  1534→            {/* Desktop Table */}
+  1535→            <div className="hidden md:block overflow-x-auto">
+  1536→              <Table>
+  1537→                <TableHeader>
+  1538→                  <TableRow>
+  1539→                    <TableHead className="pl-4">Staff</TableHead>
+  1540→                    <TableHead>Role</TableHead>
+  1541→                    <TableHead className="text-right">Sales Count</TableHead>
+  1542→                    <TableHead className="text-right">Total Sales</TableHead>
+  1543→                    <TableHead className="text-right">Rate (%)</TableHead>
+  1544→                    <TableHead className="text-right">Commission Earned</TableHead>
+  1545→                    <TableHead className="pr-4 text-right">Avg Sale Value</TableHead>
+  1546→                  </TableRow>
+  1547→                </TableHeader>
+  1548→                <TableBody>
+  1549→                  {commissionBreakdown.map((cb) => {
+  1550→                    const isTop = topCommissionEarner && cb.staffId === topCommissionEarner.staffId
+  1551→                    return (
+  1552→                      <TableRow key={cb.staffId} className={isTop ? 'bg-amber-50/50 dark:bg-amber-950/20' : ''}>
+  1553→                        <TableCell className="pl-4">
+  1554→                          <div className="flex items-center gap-2">
+  1555→                            {isTop && <Trophy className="size-4 text-amber-500 shrink-0" />}
+  1556→                            <span className={`font-medium ${isTop ? 'text-amber-700 dark:text-amber-400' : ''}`}>{cb.staffName}</span>
+  1557→                          </div>
+  1558→                        </TableCell>
+  1559→                        <TableCell>{renderRoleBadge(cb.staffRole)}</TableCell>
+  1560→                        <TableCell className="text-right font-mono">
+  1561→                          {cb.transactionCount}
+  1562→                        </TableCell>
+  1563→                        <TableCell className="text-right font-mono">
+  1564→                          {formatCurrency(cb.totalSales)}
+  1565→                        </TableCell>
+  1566→                        <TableCell className="text-right font-mono text-muted-foreground">
+  1567→                          {cb.commissionRate}%
+  1568→                        </TableCell>
+  1569→                        <TableCell className="text-right font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+  1570→                          {formatCurrency(cb.commissionEarned)}
+  1571→                        </TableCell>
+  1572→                        <TableCell className="pr-4 text-right font-mono">
+  1573→                          {cb.transactionCount > 0 ? formatCurrency(cb.avgSaleValue) : '—'}
+  1574→                        </TableCell>
+  1575→                      </TableRow>
+  1576→                    )
+  1577→                  })}
+  1578→                </TableBody>
+  1579→              </Table>
+  1580→            </div>
+  1581→
+  1582→            {/* Mobile Cards */}
+  1583→            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 md:hidden">
+  1584→              {commissionBreakdown.map((cb) => {
+  1585→                const isTop = topCommissionEarner && cb.staffId === topCommissionEarner.staffId
+  1586→                return (
+  1587→                  <Card key={cb.staffId} className={`p-4 ${isTop ? 'border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/20' : ''}`}>
+  1588→                    <div className="mb-3 flex items-center justify-between">
+  1589→                      <div className="min-w-0 flex items-center gap-2">
+  1590→                        {isTop && <Trophy className="size-4 text-amber-500 shrink-0" />}
+  1591→                        <p className={`truncate font-medium ${isTop ? 'text-amber-700 dark:text-amber-400' : ''}`}>{cb.staffName}</p>
+  1592→                      </div>
+  1593→                      {renderRoleBadge(cb.staffRole)}
+  1594→                    </div>
+  1595→                    <div className="space-y-2 text-sm">
+  1596→                      <div className="flex items-center justify-between">
+  1597→                        <span className="text-muted-foreground">Sales Count</span>
+  1598→                        <span className="font-mono font-medium">{cb.transactionCount}</span>
+  1599→                      </div>
+  1600→                      <div className="flex items-center justify-between">
+  1601→                        <span className="text-muted-foreground">Total Sales</span>
+  1602→                        <span className="font-mono font-medium">{formatCurrency(cb.totalSales)}</span>
+  1603→                      </div>
+  1604→                      <div className="flex items-center justify-between">
+  1605→                        <span className="text-muted-foreground">Rate</span>
+  1606→                        <span className="font-mono font-medium text-muted-foreground">{cb.commissionRate}%</span>
+  1607→                      </div>
+  1608→                      <div className="flex items-center justify-between">
+  1609→                        <span className="text-muted-foreground">Commission</span>
+  1610→                        <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(cb.commissionEarned)}</span>
+  1611→                      </div>
+  1612→                      <div className="flex items-center justify-between">
+  1613→                        <span className="text-muted-foreground">Avg Sale</span>
+  1614→                        <span className="font-mono font-medium">{cb.transactionCount > 0 ? formatCurrency(cb.avgSaleValue) : '—'}</span>
+  1615→                      </div>
+  1616→                    </div>
+  1617→                  </Card>
+  1618→                )
+  1619→              })}
+  1620→            </div>
+  1621→          </CardContent>
+  1622→        </Card>
+  1623→      )}
+  1624→
+  1625→      {/* ── Role-Based Access Reference ─────────────────────────────── */}
+  1626→      <Card>
+  1627→        <CardHeader>
+  1628→          <CardTitle className="flex items-center gap-2 text-xl">
+  1629→            <Lock className="size-5 text-primary" />
+  1630→            Role-Based Access
+  1631→          </CardTitle>
+  1632→          <CardDescription>Permission levels for each staff role</CardDescription>
+  1633→        </CardHeader>
+  1634→        <CardContent className="space-y-6">
+  1635→          <div className="overflow-x-auto">
+  1636→            <Table>
+
+[showing lines 1137-1636 of 2124; use offset=1637 with limit to continue reading]

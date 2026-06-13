@@ -28,6 +28,8 @@ import {
   AlertTriangle,
   Phone,
   MessageSquare,
+  Minus,
+  Plus as PlusIcon,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -500,26 +502,53 @@ export default function LabOrders() {
     return { received, pending, inLab, ready, overdue, total: orders.length }
   }, [orders])
 
-  // Power input group
+  // Power stepper helper
+  const stepValue = (current: string, step: number, min?: number, max?: number): string => {
+    if (current === '') return step > 0 ? String(step) : ''
+    const val = parseFloat(current)
+    if (isNaN(val)) return String(step)
+    let next = parseFloat((val + step).toFixed(2))
+    if (min !== undefined) next = Math.max(min, next)
+    if (max !== undefined) next = Math.min(max, next)
+    return String(next)
+  }
+
+  // Power input group with stepper buttons
   const renderPowerInputs = (label: string, power: LensPower, onChange: (p: LensPower) => void) => (
     <div className="space-y-2">
       <Label className="text-sm font-medium">{label}</Label>
       <div className="grid grid-cols-4 gap-2">
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">SPH</Label>
-          <Input type="number" step="0.25" placeholder="0.00" value={power.sph} onChange={(e) => onChange({ ...power, sph: e.target.value })} className="h-9 text-sm" />
+          <div className="flex items-center gap-0.5">
+            <button type="button" className="flex items-center justify-center min-w-[36px] min-h-[36px] rounded-l-md border border-r-0 bg-muted/50 hover:bg-accent transition-colors text-muted-foreground touch-manipulation" onClick={() => onChange({ ...power, sph: stepValue(power.sph, -0.25) })}><Minus className="h-3 w-3" /></button>
+            <Input type="number" step="0.25" placeholder="0.00" value={power.sph} onChange={(e) => onChange({ ...power, sph: e.target.value })} className="h-9 text-sm rounded-none text-center" />
+            <button type="button" className="flex items-center justify-center min-w-[36px] min-h-[36px] rounded-r-md border border-l-0 bg-muted/50 hover:bg-accent transition-colors text-muted-foreground touch-manipulation" onClick={() => onChange({ ...power, sph: stepValue(power.sph, 0.25) })}><PlusIcon className="h-3 w-3" /></button>
+          </div>
         </div>
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">CYL</Label>
-          <Input type="number" step="0.25" placeholder="0.00" value={power.cyl} onChange={(e) => onChange({ ...power, cyl: e.target.value })} className="h-9 text-sm" />
+          <div className="flex items-center gap-0.5">
+            <button type="button" className="flex items-center justify-center min-w-[36px] min-h-[36px] rounded-l-md border border-r-0 bg-muted/50 hover:bg-accent transition-colors text-muted-foreground touch-manipulation" onClick={() => onChange({ ...power, cyl: stepValue(power.cyl, -0.25) })}><Minus className="h-3 w-3" /></button>
+            <Input type="number" step="0.25" placeholder="0.00" value={power.cyl} onChange={(e) => onChange({ ...power, cyl: e.target.value })} className="h-9 text-sm rounded-none text-center" />
+            <button type="button" className="flex items-center justify-center min-w-[36px] min-h-[36px] rounded-r-md border border-l-0 bg-muted/50 hover:bg-accent transition-colors text-muted-foreground touch-manipulation" onClick={() => onChange({ ...power, cyl: stepValue(power.cyl, 0.25) })}><PlusIcon className="h-3 w-3" /></button>
+          </div>
         </div>
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">AXIS</Label>
-          <Input type="number" step="1" min="0" max="180" placeholder="0" value={power.axis} onChange={(e) => onChange({ ...power, axis: e.target.value })} className="h-9 text-sm" />
+          <div className="flex items-center gap-0.5">
+            <button type="button" className="flex items-center justify-center min-w-[36px] min-h-[36px] rounded-l-md border border-r-0 bg-muted/50 hover:bg-accent transition-colors text-muted-foreground touch-manipulation" onClick={() => onChange({ ...power, axis: stepValue(power.axis, -1, 0, 180) })}><Minus className="h-3 w-3" /></button>
+            <Input type="number" step="1" min="0" max="180" placeholder="0" value={power.axis} onChange={(e) => onChange({ ...power, axis: e.target.value })} className="h-9 text-sm rounded-none text-center" />
+            <button type="button" className="flex items-center justify-center min-w-[36px] min-h-[36px] rounded-r-md border border-l-0 bg-muted/50 hover:bg-accent transition-colors text-muted-foreground touch-manipulation" onClick={() => onChange({ ...power, axis: stepValue(power.axis, 1, 0, 180) })}><PlusIcon className="h-3 w-3" /></button>
+          </div>
         </div>
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">PD</Label>
-          <Input type="number" step="0.5" placeholder="mm" value={power.pd} onChange={(e) => onChange({ ...power, pd: e.target.value })} className="h-9 text-sm" />
+          <div className="flex items-center gap-0.5">
+            <button type="button" className="flex items-center justify-center min-w-[36px] min-h-[36px] rounded-l-md border border-r-0 bg-muted/50 hover:bg-accent transition-colors text-muted-foreground touch-manipulation" onClick={() => onChange({ ...power, pd: stepValue(power.pd, -0.5, 0) })}><Minus className="h-3 w-3" /></button>
+            <Input type="number" step="0.5" placeholder="mm" value={power.pd} onChange={(e) => onChange({ ...power, pd: e.target.value })} className="h-9 text-sm rounded-none text-center" />
+            <button type="button" className="flex items-center justify-center min-w-[36px] min-h-[36px] rounded-r-md border border-l-0 bg-muted/50 hover:bg-accent transition-colors text-muted-foreground touch-manipulation" onClick={() => onChange({ ...power, pd: stepValue(power.pd, 0.5, 0) })}><PlusIcon className="h-3 w-3" /></button>
+          </div>
         </div>
       </div>
     </div>
@@ -649,14 +678,34 @@ export default function LabOrders() {
                 <div className="space-y-2" ref={customerSearchRef}>
                   <Label className="flex items-center gap-2"><User className="h-3.5 w-3.5" />Customer <span className="text-destructive">*</span></Label>
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      placeholder="Search by name or phone..."
-                      value={selectedCustomer ? `${selectedCustomer.name} (${selectedCustomer.phone})` : customerSearch}
-                      onChange={(e) => { if (selectedCustomer) { setSelectedCustomer(null); setFormCustomerId('') }; setCustomerSearch(e.target.value) }}
-                      className="pl-9"
-                    />
-                    {customerSearching && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                    {selectedCustomer ? (
+                      <div className="flex items-center h-9 w-full rounded-md border bg-muted/30 pl-3 pr-1 gap-2">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className="font-medium text-sm truncate">{selectedCustomer.name}</span>
+                          <span className="text-xs text-muted-foreground shrink-0">{selectedCustomer.phone}</span>
+                        </div>
+                        <button
+                          type="button"
+                          className="flex items-center justify-center h-7 w-7 rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-foreground shrink-0 touch-manipulation"
+                          onClick={() => { setSelectedCustomer(null); setFormCustomerId(''); setCustomerSearch(''); }}
+                          title="Clear customer"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <Input
+                          placeholder="Search by name or phone..."
+                          value={customerSearch}
+                          onChange={(e) => setCustomerSearch(e.target.value)}
+                          className="pl-9"
+                        />
+                        {customerSearching && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
+                      </>
+                    )}
                     {customerResults.length > 0 && !selectedCustomer && (
                       <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-48 overflow-y-auto">
                         {customerResults.map((c) => (
@@ -844,10 +893,7 @@ export default function LabOrders() {
                   : 'bg-background text-foreground border-input hover:bg-accent hover:text-accent-foreground'
               )}
             >
-              {chip.label}
-              {chip.value !== 'all' && (
-                <span className="ml-1.5 text-[10px] opacity-70">{statusCounts[chip.value] ?? 0}</span>
-              )}
+              {chip.label} ({statusCounts[chip.value] ?? 0})
             </button>
           ))}
           <button

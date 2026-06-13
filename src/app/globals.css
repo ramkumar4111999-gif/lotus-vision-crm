@@ -296,6 +296,15 @@ body.sheet-open {
   }
 }
 
+/* Hide scrollbar utility */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* Focus visible for keyboard navigation */
 :focus-visible {
   outline: 2px solid #059669;
