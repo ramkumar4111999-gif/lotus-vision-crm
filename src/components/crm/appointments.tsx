@@ -562,10 +562,10 @@ function AppointmentFormDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting} className="min-h-[44px] touch-manipulation">
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={!canSubmit || submitting}>
+          <Button onClick={handleSubmit} disabled={!canSubmit || submitting} className="min-h-[44px] touch-manipulation">
             {submitting && <Loader2 className="size-4 animate-spin mr-2" />}
             {isEditing ? 'Save Changes' : isWalkIn ? 'Register Walk-in' : 'Create Appointment'}
           </Button>
@@ -1569,7 +1569,7 @@ export default function Appointments() {
               <Button
                 variant={viewMode === 'list' ? 'default' : 'ghost'}
                 size="sm"
-                className="rounded-none px-3"
+                className="rounded-none px-3 min-h-[44px]"
                 onClick={() => setViewMode('list')}
               >
                 List
@@ -1578,7 +1578,7 @@ export default function Appointments() {
               <Button
                 variant={viewMode === 'calendar' ? 'default' : 'ghost'}
                 size="sm"
-                className="rounded-none px-3"
+                className="rounded-none px-3 min-h-[44px]"
                 onClick={() => setViewMode('calendar')}
               >
                 Month
@@ -1587,7 +1587,7 @@ export default function Appointments() {
               <Button
                 variant={viewMode === 'week' ? 'default' : 'ghost'}
                 size="sm"
-                className="rounded-none px-3"
+                className="rounded-none px-3 min-h-[44px]"
                 onClick={() => setViewMode('week')}
               >
                 Week
@@ -1795,8 +1795,8 @@ export default function Appointments() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDeleteAppointment}>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} className="min-h-[44px] touch-manipulation">Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteAppointment} className="min-h-[44px] touch-manipulation">
               <Trash2 className="size-4 mr-2" />
               Delete
             </Button>
@@ -1818,8 +1818,8 @@ export default function Appointments() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setBulkReminderDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleBulkReminder}>
+            <Button variant="outline" onClick={() => setBulkReminderDialogOpen(false)} className="min-h-[44px] touch-manipulation">Cancel</Button>
+            <Button onClick={handleBulkReminder} className="min-h-[44px] touch-manipulation">
               <MessageSquare className="size-4 mr-2" />
               Send {bulkReminderCount} Reminder{bulkReminderCount !== 1 ? 's' : ''}
             </Button>

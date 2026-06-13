@@ -877,13 +877,13 @@ export default function Campaigns() {
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => { setCreateDialogOpen(false); resetCreateForm() }}>
+              <Button variant="outline" onClick={() => { setCreateDialogOpen(false); resetCreateForm() }} className="min-h-[44px] min-w-[44px] touch-manipulation">
                 Cancel
               </Button>
               <Button
                 onClick={handleCreateSubmit}
                 disabled={!formName.trim() || !formMessage.trim() || submitting}
-                className="gap-2"
+                className="min-h-[44px] min-w-[44px] touch-manipulation gap-2"
               >
                 {submitting ? (
                   <span className="size-4 animate-spin inline-block border-2 border-current border-t-transparent rounded-full" />
@@ -1048,7 +1048,7 @@ export default function Campaigns() {
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full mt-3 gap-2"
+                className="w-full mt-3 gap-2 min-h-[44px] touch-manipulation"
                 onClick={() => {
                   resetCreateForm()
                   setFormType('WhatsApp')
@@ -1109,7 +1109,7 @@ export default function Campaigns() {
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full mt-3 gap-2"
+                className="w-full mt-3 gap-2 min-h-[44px] touch-manipulation"
                 onClick={() => {
                   resetCreateForm()
                   setFormType('SMS')
@@ -1167,7 +1167,7 @@ export default function Campaigns() {
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full mt-3 gap-2"
+                className="w-full mt-3 gap-2 min-h-[44px] touch-manipulation"
                 onClick={() => {
                   resetCreateForm()
                   setFormType('WhatsApp')

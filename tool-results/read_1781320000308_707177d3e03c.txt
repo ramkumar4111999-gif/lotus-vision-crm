@@ -1,0 +1,1105 @@
+     1→     1→'use client'
+     2→     2→
+     3→     3→import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+     4→     4→import { toast } from 'sonner'
+     5→     5→import { format, differenceInDays } from 'date-fns'
+     6→     6→import {
+     7→     7→  Plus,
+     8→     8→  Search,
+     9→     9→  ChevronRight,
+    10→    10→  Loader2,
+    11→    11→  Eye,
+    12→    12→  FlaskConical,
+    13→    13→  CalendarDays,
+    14→    14→  IndianRupee,
+    15→    15→  User,
+    16→    16→  Package,
+    17→    17→  CheckCircle2,
+    18→    18→  Clock,
+    19→    19→  Truck,
+    20→    20→  ClipboardCheck,
+    21→    21→  LayoutGrid,
+    22→    22→  LayoutList,
+    23→    23→  Inbox,
+    24→    24→  Copy,
+    25→    25→  Ruler,
+    26→    26→  History,
+    27→    27→  X,
+    28→    28→} from 'lucide-react'
+    29→    29→
+    30→    30→import { cn } from '@/lib/utils'
+    31→    31→import { Button } from '@/components/ui/button'
+    32→    32→import { Badge } from '@/components/ui/badge'
+    33→    33→import { Input } from '@/components/ui/input'
+    34→    34→import { Label } from '@/components/ui/label'
+    35→    35→import { Textarea } from '@/components/ui/textarea'
+    36→    36→import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+    37→    37→import {
+    38→    38→  Table,
+    39→    39→  TableBody,
+    40→    40→  TableCell,
+    41→    41→  TableHead,
+    42→    42→  TableHeader,
+    43→    43→  TableRow,
+    44→    44→} from '@/components/ui/table'
+    45→    45→import {
+    46→    46→  Dialog,
+    47→    47→  DialogContent,
+    48→    48→  DialogDescription,
+    49→    49→  DialogFooter,
+    50→    50→  DialogHeader,
+    51→    51→  DialogTitle,
+    52→    52→  DialogTrigger,
+    53→    53→} from '@/components/ui/dialog'
+    54→    54→import {
+    55→    55→  Select,
+    56→    56→  SelectContent,
+    57→    57→  SelectItem,
+    58→    58→  SelectTrigger,
+    59→    59→  SelectValue,
+    60→    60→} from '@/components/ui/select'
+    61→    61→
+    62→    62→// ─── Types ───────────────────────────────────────────────────────────────────
+    63→    63→
+    64→    64→type LabOrderStatus = 'Received' | 'Pending' | 'In Lab' | 'Ready' | 'Delivered' | 'Sent' | 'In Progress'
+    65→    65→
+    66→    66→interface LensPower {
+    67→    67→  sph: string
+    68→    68→  cyl: string
+    69→    69→  axis: string
+    70→    70→  pd: string
+    71→    71→}
+    72→    72→
+    73→    73→interface CustomerOption {
+    74→    74→  id: string
+    75→    75→  name: string
+    76→    76→  phone: string
+    77→    77→  lastPrescription: {
+    78→    78→    leftSPH: number | null
+    79→    79→    leftCYL: number | null
+    80→    80→    leftAXIS: number | null
+    81→    81→    rightSPH: number | null
+    82→    82→    rightCYL: number | null
+    83→    83→    rightAXIS: number | null
+    84→    84→    date: string
+    85→    85→  } | null
+    86→    86→}
+    87→    87→
+    88→    88→interface FrameOption {
+    89→    89→  id: string
+    90→    90→  name: string
+    91→    91→  brand: string | null
+    92→    92→  price: number
+    93→    93→  frameWidth: number | null
+    94→    94→  bridge: number | null
+    95→    95→  temple: number | null
+    96→    96→}
+    97→    97→
+    98→    98→interface PrescriptionRecord {
+    99→    99→  id: string
+   100→   100→  date: string
+   101→   101→  leftSPH: number | null
+   102→   102→  leftCYL: number | null
+   103→   103→  leftAXIS: number | null
+   104→   104→  leftPD: number | null
+   105→   105→  rightSPH: number | null
+   106→   106→  rightCYL: number | null
+   107→   107→  rightAXIS: number | null
+   108→   108→  rightPD: number | null
+   109→   109→  notes: string | null
+   110→   110→}
+   111→   111→
+   112→   112→interface LabOrder {
+   113→   113→  id: string
+   114→   114→  customerId: string | null
+   115→   115→  customerName: string | null
+   116→   116→  customerPhone: string | null
+   117→   117→  lensType: string
+   118→   118→  leftSPH: number | null
+   119→   119→  leftCYL: number | null
+   120→   120→  leftAXIS: number | null
+   121→   121→  leftPD: number | null
+   122→   122→  rightSPH: number | null
+   123→   123→  rightCYL: number | null
+   124→   124→  rightAXIS: number | null
+   125→   125→  rightPD: number | null
+   126→   126→  frameId: string | null
+   127→   127→  frameName: string | null
+   128→   128→  status: LabOrderStatus
+   129→   129→  costPrice: number
+   130→   130→  sellingPrice: number
+   131→   131→  dueDate: string | null
+   132→   132→  notes: string | null
+   133→   133→  createdAt: string
+   134→   134→  updatedAt: string
+   135→   135→}
+   136→   136→
+   137→   137→// ─── Constants ───────────────────────────────────────────────────────────────
+   138→   138→
+   139→   139→const STATUS_FLOW: LabOrderStatus[] = ['Received', 'Pending', 'In Lab', 'Ready', 'Delivered']
+   140→   140→
+   141→   141→const STATUS_BADGE_CLASS: Record<string, string> = {
+   142→   142→  Received: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800',
+   143→   143→  Pending: 'bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300 border-slate-200 dark:border-slate-700',
+   144→   144→  'In Lab': 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800',
+   145→   145→  Ready: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+   146→   146→  Delivered: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-200 dark:border-blue-800',
+   147→   147→}
+   148→   148→
+   149→   149→const STATUS_ICON: Record<string, typeof Clock> = {
+   150→   150→  Received: Inbox,
+   151→   151→  Pending: Clock,
+   152→   152→  'In Lab': FlaskConical,
+   153→   153→  'In Progress': FlaskConical,
+   154→   154→  Ready: CheckCircle2,
+   155→   155→  Sent: Truck,
+   156→   156→  Delivered: Truck,
+   157→   157→}
+   158→   158→
+   159→   159→const STATUS_COLOR: Record<string, string> = {
+   160→   160→  Received: 'border-indigo-300 dark:border-indigo-800',
+   161→   161→  Pending: 'border-slate-300 dark:border-slate-700',
+   162→   162→  'In Lab': 'border-amber-300 dark:border-amber-800',
+   163→   163→  Ready: 'border-emerald-300 dark:border-emerald-800',
+   164→   164→  Delivered: 'border-blue-300 dark:border-blue-800',
+   165→   165→}
+   166→   166→
+   167→   167→const LENS_TYPES = [
+   168→   168→  'Single Vision',
+   169→   169→  'Bifocal',
+   170→   170→  'Progressive',
+   171→   171→  'Blue-cut',
+   172→   172→  'Photochromic',
+   173→   173→] as const
+   174→   174→
+   175→   175→function formatPower(sph: number | null, cyl: number | null, axis: number | null): string {
+   176→   176→  const parts: string[] = []
+   177→   177→  if (sph !== null && sph !== undefined) parts.push(`${sph > 0 ? '+' : ''}${sph}`)
+   178→   178→  else parts.push('--')
+   179→   179→  if (cyl !== null && cyl !== undefined && cyl !== 0) parts.push(`${cyl > 0 ? '+' : ''}${cyl}`)
+   180→   180→  else parts.push('--')
+   181→   181→  if (axis !== null && axis !== undefined) parts.push(`x${axis}`)
+   182→   182→  return parts.join(' / ')
+   183→   183→}
+   184→   184→
+   185→   185→function formatCurrency(value: number): string {
+   186→   186→  return `${'\u20B9'}${value.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+   187→   187→}
+   188→   188→
+   189→   189→function getNextStatus(current: LabOrderStatus): LabOrderStatus | null {
+   190→   190→  const idx = STATUS_FLOW.indexOf(current)
+   191→   191→  if (idx < 0 || idx >= STATUS_FLOW.length - 1) return null
+   192→   192→  return STATUS_FLOW[idx + 1]
+   193→   193→}
+   194→   194→
+   195→   195→function getDaysUntilDue(dueDate: string): number {
+   196→   196→  const now = new Date()
+   197→   197→  const due = new Date(dueDate)
+   198→   198→  const diff = due.getTime() - now.getTime()
+   199→   199→  return Math.ceil(diff / (1000 * 60 * 60 * 24))
+   200→   200→}
+   201→   201→
+   202→   202→// ─── Component ───────────────────────────────────────────────────────────────
+   203→   203→
+   204→   204→export default function LabOrders() {
+   205→   205→  // State
+   206→   206→  const [orders, setOrders] = useState<LabOrder[]>([])
+   207→   207→  const [loading, setLoading] = useState(true)
+   208→   208→  const [activeStatus, setActiveStatus] = useState<string>('all')
+   209→   209→  const [page, setPage] = useState(1)
+   210→   210→  const [totalPages, setTotalPages] = useState(1)
+   211→   211→  const [updatingId, setUpdatingId] = useState<string | null>(null)
+   212→   212→  const [viewMode, setViewMode] = useState<'table' | 'timeline'>('table')
+   213→   213→  const [searchQuery, setSearchQuery] = useState('')
+   214→   214→
+   215→   215→  // Dialog
+   216→   216→  const [dialogOpen, setDialogOpen] = useState(false)
+   217→   217→  const [detailOpen, setDetailOpen] = useState(false)
+   218→   218→  const [selectedOrder, setSelectedOrder] = useState<LabOrder | null>(null)
+   219→   219→  const [submitting, setSubmitting] = useState(false)
+   220→   220→
+   221→   221→  // Form
+   222→   222→  const [formLensType, setFormLensType] = useState<string>('Single Vision')
+   223→   223→  const [formLeft, setFormLeft] = useState<LensPower>({ sph: '', cyl: '', axis: '', pd: '' })
+   224→   224→  const [formRight, setFormRight] = useState<LensPower>({ sph: '', cyl: '', axis: '', pd: '' })
+   225→   225→  const [formCostPrice, setFormCostPrice] = useState('')
+   226→   226→  const [formSellingPrice, setFormSellingPrice] = useState('')
+   227→   227→  const [formDueDate, setFormDueDate] = useState('')
+   228→   228→  const [formNotes, setFormNotes] = useState('')
+   229→   229→  const [formCustomerId, setFormCustomerId] = useState('')
+   230→   230→  const [formFrameId, setFormFrameId] = useState('')
+   231→   231→
+   232→   232→  // Search
+   233→   233→  const [customerSearch, setCustomerSearch] = useState('')
+   234→   234→  const [customerResults, setCustomerResults] = useState<CustomerOption[]>([])
+   235→   235→  const [customerSearching, setCustomerSearching] = useState(false)
+   236→   236→  const [selectedCustomer, setSelectedCustomer] = useState<CustomerOption | null>(null)
+   237→   237→
+   238→   238→  const [frameSearch, setFrameSearch] = useState('')
+   239→   239→  const [frameResults, setFrameResults] = useState<FrameOption[]>([])
+   240→   240→  const [frameSearching, setFrameSearching] = useState(false)
+   241→   241→  const [selectedFrame, setSelectedFrame] = useState<FrameOption | null>(null)
+   242→   242→
+   243→   243→  // Prescription auto-fill
+   244→   244→  const [prescriptions, setPrescriptions] = useState<PrescriptionRecord[]>([])
+   245→   245→  const [loadingRx, setLoadingRx] = useState(false)
+   246→   246→
+   247→   247→  const customerSearchRef = useRef<HTMLDivElement>(null)
+   248→   248→  const frameSearchRef = useRef<HTMLDivElement>(null)
+   249→   249→
+   250→   250→  // Fetch orders
+   251→   251→  const fetchOrders = useCallback(async () => {
+   252→   252→    setLoading(true)
+   253→   253→    try {
+   254→   254→      const params = new URLSearchParams()
+   255→   255→      if (activeStatus !== 'all') params.set('status', activeStatus)
+   256→   256→      if (searchQuery.trim()) params.set('q', searchQuery.trim())
+   257→   257→      params.set('page', String(page))
+   258→   258→      const res = await fetch(`/api/lab-orders?${params}`)
+   259→   259→      if (!res.ok) throw new Error('Failed to fetch lab orders')
+   260→   260→      const data = await res.json()
+   261→   261→      setOrders(data.orders ?? [])
+   262→   262→      setTotalPages(data.totalPages ?? 1)
+   263→   263→    } catch {
+   264→   264→      toast.error('Failed to load lab orders')
+   265→   265→    } finally {
+   266→   266→      setLoading(false)
+   267→   267→    }
+   268→   268→  }, [activeStatus, page, searchQuery])
+   269→   269→
+   270→   270→  useEffect(() => { fetchOrders() }, [fetchOrders])
+   271→   271→  useEffect(() => { setPage(1) }, [activeStatus])
+   272→   272→  useEffect(() => { setPage(1) }, [searchQuery])
+   273→   273→
+   274→   274→  // Customer search
+   275→   275→  const searchCustomers = useCallback(async (query: string) => {
+   276→   276→    if (query.length < 1) { setCustomerResults([]); return }
+   277→   277→    setCustomerSearching(true)
+   278→   278→    try {
+   279→   279→      const res = await fetch(`/api/lab-orders?searchType=customers&q=${encodeURIComponent(query)}`)
+   280→   280→      if (!res.ok) throw new Error()
+   281→   281→      const data = await res.json()
+   282→   282→      setCustomerResults(data.results ?? [])
+   283→   283→    } catch { setCustomerResults([]) }
+   284→   284→    finally { setCustomerSearching(false) }
+   285→   285→  }, [])
+   286→   286→
+   287→   287→  useEffect(() => {
+   288→   288→    const timer = setTimeout(() => searchCustomers(customerSearch), 300)
+   289→   289→    return () => clearTimeout(timer)
+   290→   290→  }, [customerSearch, searchCustomers])
+   291→   291→
+   292→   292→  // Frame search
+   293→   293→  const searchFrames = useCallback(async (query: string) => {
+   294→   294→    if (query.length < 1) { setFrameResults([]); return }
+   295→   295→    setFrameSearching(true)
+   296→   296→    try {
+   297→   297→      const res = await fetch(`/api/lab-orders?searchType=frames&q=${encodeURIComponent(query)}`)
+   298→   298→      if (!res.ok) throw new Error()
+   299→   299→      const data = await res.json()
+   300→   300→      setFrameResults(data.results ?? [])
+   301→   301→    } catch { setFrameResults([]) }
+   302→   302→    finally { setFrameSearching(false) }
+   303→   303→  }, [])
+   304→   304→
+   305→   305→  useEffect(() => {
+   306→   306→    const timer = setTimeout(() => searchFrames(frameSearch), 300)
+   307→   307→    return () => clearTimeout(timer)
+   308→   308→  }, [frameSearch, searchFrames])
+   309→   309→
+   310→   310→  // Close dropdowns on outside click
+   311→   311→  useEffect(() => {
+   312→   312→    function handleClick(e: MouseEvent) {
+   313→   313→      if (customerSearchRef.current && !customerSearchRef.current.contains(e.target as Node)) setCustomerResults([])
+   314→   314→      if (frameSearchRef.current && !frameSearchRef.current.contains(e.target as Node)) setFrameResults([])
+   315→   315→    }
+   316→   316→    document.addEventListener('mousedown', handleClick)
+   317→   317→    return () => document.removeEventListener('mousedown', handleClick)
+   318→   318→  }, [])
+   319→   319→
+   320→   320→  // Fetch prescription history when customer is selected
+   321→   321→  const fetchPrescriptions = useCallback(async (customerId: string) => {
+   322→   322→    setLoadingRx(true)
+   323→   323→    try {
+   324→   324→      const res = await fetch(`/api/prescriptions?customerId=${customerId}`)
+   325→   325→      if (!res.ok) return
+   326→   326→      const data = await res.json()
+   327→   327→      setPrescriptions(data.prescriptions ?? [])
+   328→   328→    } catch { setPrescriptions([]) }
+   329→   329→    finally { setLoadingRx(false) }
+   330→   330→  }, [])
+   331→   331→
+   332→   332→  const handleSelectCustomer = (customer: CustomerOption) => {
+   333→   333→    setSelectedCustomer(customer)
+   334→   334→    setFormCustomerId(customer.id)
+   335→   335→    setCustomerSearch('')
+   336→   336→    setCustomerResults([])
+   337→   337→    fetchPrescriptions(customer.id)
+   338→   338→    // Instant auto-fill from last prescription embedded in search results
+   339→   339→    if (customer.lastPrescription) {
+   340→   340→      setFormLeft({
+   341→   341→        sph: customer.lastPrescription.leftSPH != null ? String(customer.lastPrescription.leftSPH) : '',
+   342→   342→        cyl: customer.lastPrescription.leftCYL != null ? String(customer.lastPrescription.leftCYL) : '',
+   343→   343→        axis: customer.lastPrescription.leftAXIS != null ? String(customer.lastPrescription.leftAXIS) : '',
+   344→   344→        pd: '',
+   345→   345→      })
+   346→   346→      setFormRight({
+   347→   347→        sph: customer.lastPrescription.rightSPH != null ? String(customer.lastPrescription.rightSPH) : '',
+   348→   348→        cyl: customer.lastPrescription.rightCYL != null ? String(customer.lastPrescription.rightCYL) : '',
+   349→   349→        axis: customer.lastPrescription.rightAXIS != null ? String(customer.lastPrescription.rightAXIS) : '',
+   350→   350→        pd: '',
+   351→   351→      })
+   352→   352→    }
+   353→   353→  }
+   354→   354→
+   355→   355→  const handleAutoFillRx = (rx: PrescriptionRecord) => {
+   356→   356→    setFormLeft({
+   357→   357→      sph: rx.leftSPH != null ? String(rx.leftSPH) : '',
+   358→   358→      cyl: rx.leftCYL != null ? String(rx.leftCYL) : '',
+   359→   359→      axis: rx.leftAXIS != null ? String(rx.leftAXIS) : '',
+   360→   360→      pd: rx.leftPD != null ? String(rx.leftPD) : '',
+   361→   361→    })
+   362→   362→    setFormRight({
+   363→   363→      sph: rx.rightSPH != null ? String(rx.rightSPH) : '',
+   364→   364→      cyl: rx.rightCYL != null ? String(rx.rightCYL) : '',
+   365→   365→      axis: rx.rightAXIS != null ? String(rx.rightAXIS) : '',
+   366→   366→      pd: rx.rightPD != null ? String(rx.rightPD) : '',
+   367→   367→    })
+   368→   368→    toast.success('Prescription auto-filled from history')
+   369→   369→  }
+   370→   370→
+   371→   371→  // Sorted orders
+   372→   372→  const sortedOrders = useMemo(() => {
+   373→   373→    return [...orders].sort((a, b) => {
+   374→   374→      if (!a.dueDate && !b.dueDate) return 0
+   375→   375→      if (!a.dueDate) return 1
+   376→   376→      if (!b.dueDate) return -1
+   377→   377→      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+   378→   378→    })
+   379→   379→  }, [orders])
+   380→   380→
+   381→   381→  // Reset form
+   382→   382→  const resetForm = useCallback(() => {
+   383→   383→    setFormLensType('Single Vision')
+   384→   384→    setFormLeft({ sph: '', cyl: '', axis: '', pd: '' })
+   385→   385→    setFormRight({ sph: '', cyl: '', axis: '', pd: '' })
+   386→   386→    setFormCostPrice('')
+   387→   387→    setFormSellingPrice('')
+   388→   388→    setFormDueDate('')
+   389→   389→    setFormNotes('')
+   390→   390→    setFormCustomerId('')
+   391→   391→    setFormFrameId('')
+   392→   392→    setCustomerSearch('')
+   393→   393→    setFrameSearch('')
+   394→   394→    setSelectedCustomer(null)
+   395→   395→    setSelectedFrame(null)
+   396→   396→    setCustomerResults([])
+   397→   397→    setFrameResults([])
+   398→   398→    setPrescriptions([])
+   399→   399→  }, [])
+   400→   400→
+   401→   401→  // Submit
+   402→   402→  const handleSubmit = async () => {
+   403→   403→    if (!formCustomerId) { toast.error('Please select a customer'); return }
+   404→   404→    if (!formCostPrice || Number(formCostPrice) < 0) { toast.error('Please enter a valid cost price'); return }
+   405→   405→    if (!formSellingPrice || Number(formSellingPrice) < 0) { toast.error('Please enter a valid selling price'); return }
+   406→   406→
+   407→   407→    setSubmitting(true)
+   408→   408→    try {
+   409→   409→      const payload = {
+   410→   410→        customerId: formCustomerId,
+   411→   411→        lensType: formLensType,
+   412→   412→        leftSPH: formLeft.sph ? parseFloat(formLeft.sph) : null,
+   413→   413→        leftCYL: formLeft.cyl ? parseFloat(formLeft.cyl) : null,
+   414→   414→        leftAXIS: formLeft.axis ? parseFloat(formLeft.axis) : null,
+   415→   415→        leftPD: formLeft.pd ? parseFloat(formLeft.pd) : null,
+   416→   416→        rightSPH: formRight.sph ? parseFloat(formRight.sph) : null,
+   417→   417→        rightCYL: formRight.cyl ? parseFloat(formRight.cyl) : null,
+   418→   418→        rightAXIS: formRight.axis ? parseFloat(formRight.axis) : null,
+   419→   419→        rightPD: formRight.pd ? parseFloat(formRight.pd) : null,
+   420→   420→        frameId: formFrameId || null,
+   421→   421→        costPrice: parseFloat(formCostPrice),
+   422→   422→        sellingPrice: parseFloat(formSellingPrice),
+   423→   423→        dueDate: formDueDate || null,
+   424→   424→        notes: formNotes || null,
+   425→   425→      }
+   426→   426→
+   427→   427→      const res = await fetch('/api/lab-orders', {
+   428→   428→        method: 'POST',
+   429→   429→        headers: { 'Content-Type': 'application/json' },
+   430→   430→        body: JSON.stringify(payload),
+   431→   431→      })
+   432→   432→
+   433→   433→      if (!res.ok) {
+   434→   434→        const err = await res.json()
+   435→   435→        throw new Error(err.error || 'Failed to create lab order')
+   436→   436→      }
+   437→   437→
+   438→   438→      toast.success('Lab order created successfully')
+   439→   439→      setDialogOpen(false)
+   440→   440→      resetForm()
+   441→   441→      fetchOrders()
+   442→   442→    } catch (err) {
+   443→   443→      toast.error(err instanceof Error ? err.message : 'Failed to create lab order')
+   444→   444→    } finally {
+   445→   445→      setSubmitting(false)
+   446→   446→    }
+   447→   447→  }
+   448→   448→
+   449→   449→  // Update status
+   450→   450→  const handleUpdateStatus = async (order: LabOrder, targetStatus?: LabOrderStatus) => {
+   451→   451→    const next = targetStatus || getNextStatus(order.status)
+   452→   452→    if (!next) return
+   453→   453→
+   454→   454→    setUpdatingId(order.id)
+   455→   455→    try {
+   456→   456→      const res = await fetch(`/api/lab-orders/${order.id}`, {
+   457→   457→        method: 'PUT',
+   458→   458→        headers: { 'Content-Type': 'application/json' },
+   459→   459→        body: JSON.stringify({ status: next }),
+   460→   460→      })
+   461→   461→      if (!res.ok) throw new Error('Failed to update status')
+   462→   462→
+   463→   463→      if (next === 'Delivered') toast.success(`Order ${order.id.slice(-6).toUpperCase()} delivered!`)
+   464→   464→      else if (next === 'Ready') toast.success(`Order ${order.id.slice(-6).toUpperCase()} ready for pickup!`)
+   465→   465→      else toast.success(`Status updated to "${next}"`)
+   466→   466→      fetchOrders()
+   467→   467→    } catch { toast.error('Failed to update order status') }
+   468→   468→    finally { setUpdatingId(null) }
+   469→   469→  }
+   470→   470→
+   471→   471→  const handleMarkReady = async (order: LabOrder) => {
+   472→   472→    if (order.status === 'Ready' || order.status === 'Delivered') return
+   473→   473→    await handleUpdateStatus(order, 'Ready')
+   474→   474→  }
+   475→   475→
+   476→   476→  // Tab counts
+   477→   477→  const statusCounts = useMemo(() => {
+   478→   478→    const counts: Record<string, number> = { all: orders.length }
+   479→   479→    for (const o of orders) counts[o.status] = (counts[o.status] || 0) + 1
+   480→   480→    return counts
+   481→   481→  }, [orders])
+   482→   482→
+   483→   483→  // Summary stats
+   484→   484→  const summaryStats = useMemo(() => {
+   485→   485→    const received = orders.filter(o => o.status === 'Received').length
+   486→   486→    const pending = orders.filter(o => o.status === 'Pending').length
+   487→   487→    const inLab = orders.filter(o => o.status === 'In Lab').length
+   488→   488→    const ready = orders.filter(o => o.status === 'Ready').length
+   489→   489→    const overdue = orders.filter(o =>
+   490→   490→      o.dueDate && new Date(o.dueDate) < new Date() && o.status !== 'Delivered'
+   491→   491→    ).length
+   492→   492→    return { received, pending, inLab, ready, overdue, total: orders.length }
+   493→   493→  }, [orders])
+   494→   494→
+   495→   495→  // Power input group
+   496→   496→  const renderPowerInputs = (label: string, power: LensPower, onChange: (p: LensPower) => void) => (
+   497→   497→    <div className="space-y-2">
+   498→   498→      <Label className="text-sm font-medium">{label}</Label>
+   499→   499→      <div className="grid grid-cols-4 gap-2">
+   500→   500→        <div className="space-y-1">
+   501→   501→          <Label className="text-xs text-muted-foreground">SPH</Label>
+   502→   502→          <Input type="number" step="0.25" placeholder="0.00" value={power.sph} onChange={(e) => onChange({ ...power, sph: e.target.value })} className="h-9 text-sm" />
+   503→   503→        </div>
+   504→   504→        <div className="space-y-1">
+   505→   505→          <Label className="text-xs text-muted-foreground">CYL</Label>
+   506→   506→          <Input type="number" step="0.25" placeholder="0.00" value={power.cyl} onChange={(e) => onChange({ ...power, cyl: e.target.value })} className="h-9 text-sm" />
+   507→   507→        </div>
+   508→   508→        <div className="space-y-1">
+   509→   509→          <Label className="text-xs text-muted-foreground">AXIS</Label>
+   510→   510→          <Input type="number" step="1" min="0" max="180" placeholder="0" value={power.axis} onChange={(e) => onChange({ ...power, axis: e.target.value })} className="h-9 text-sm" />
+   511→   511→        </div>
+   512→   512→        <div className="space-y-1">
+   513→   513→          <Label className="text-xs text-muted-foreground">PD</Label>
+   514→   514→          <Input type="number" step="0.5" placeholder="mm" value={power.pd} onChange={(e) => onChange({ ...power, pd: e.target.value })} className="h-9 text-sm" />
+   515→   515→        </div>
+   516→   516→      </div>
+   517→   517→    </div>
+   518→   518→  )
+   519→   519→
+   520→   520→  // Kanban card component
+   521→   521→  const renderKanbanCard = (order: LabOrder) => {
+   522→   522→    const margin = order.sellingPrice - order.costPrice
+   523→   523→    const isOverdue = order.dueDate && new Date(order.dueDate) < new Date() && order.status !== 'Delivered'
+   524→   524→    const next = getNextStatus(order.status)
+   525→   525→    const StatusIcon = STATUS_ICON[order.status] || Clock
+   526→   526→
+   527→   527→    return (
+   528→   528→      <div
+   529→   529→        key={order.id}
+   530→   530→        className={cn(
+   531→   531→          'rounded-lg border p-3 bg-card space-y-2 hover:shadow-md transition-shadow cursor-pointer',
+   532→   532→          STATUS_COLOR[order.status]
+   533→   533→        )}
+   534→   534→        onClick={() => { setSelectedOrder(order); setDetailOpen(true) }}
+   535→   535→      >
+   536→   536→        <div className="flex items-center justify-between">
+   537→   537→          <span className="font-mono text-xs text-muted-foreground">#{order.id.slice(-6).toUpperCase()}</span>
+   538→   538→          <Badge variant="outline" className={cn('text-[10px] gap-1', STATUS_BADGE_CLASS[order.status])}>
+   539→   539→            <StatusIcon className="h-2.5 w-2.5" />
+   540→   540→            {order.status}
+   541→   541→          </Badge>
+   542→   542→        </div>
+   543→   543→        <div>
+   544→   544→          <p className="font-medium text-sm">{order.customerName || 'Unknown'}</p>
+   545→   545→          {order.customerPhone && <p className="text-xs text-muted-foreground">{order.customerPhone}</p>}
+   546→   546→        </div>
+   547→   547→        <div className="flex items-center justify-between text-xs">
+   548→   548→          <Badge variant="outline" className="text-[10px]">{order.lensType}</Badge>
+   549→   549→          <span className="font-medium">{formatCurrency(order.sellingPrice)}</span>
+   550→   550→        </div>
+   551→   551→        {order.dueDate && (
+   552→   552→          <div className={cn('text-[10px]', isOverdue ? 'text-red-600 dark:text-red-400 font-medium' : 'text-muted-foreground')}>
+   553→   553→            {isOverdue ? 'Overdue' : `Due in ${getDaysUntilDue(order.dueDate)}d`} &middot; {format(new Date(order.dueDate), 'dd MMM')}
+   554→   554→          </div>
+   555→   555→        )}
+   556→   556→        {next && (
+   557→   557→          <Button
+   558→   558→            size="sm"
+   559→   559→            variant="outline"
+   560→   560→            className="w-full h-7 text-xs gap-1 mt-1"
+   561→   561→            disabled={updatingId === order.id}
+   562→   562→            onClick={(e) => { e.stopPropagation(); handleUpdateStatus(order) }}
+   563→   563→          >
+   564→   564→            {updatingId === order.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <>{next} <ChevronRight className="h-3 w-3" /></>}
+   565→   565→          </Button>
+   566→   566→        )}
+   567→   567→      </div>
+   568→   568→    )
+   569→   569→  }
+   570→   570→
+   571→   571→  // Tab config
+   572→   572→  const tabs = [
+   573→   573→    { value: 'all', label: 'All' },
+   574→   574→    { value: 'Received', label: 'Received' },
+   575→   575→    { value: 'Pending', label: 'Pending' },
+   576→   576→    { value: 'In Lab', label: 'In Lab' },
+   577→   577→    { value: 'Ready', label: 'Ready' },
+   578→   578→    { value: 'Delivered', label: 'Delivered' },
+   579→   579→  ] as const
+   580→   580→
+   581→   581→  return (
+   582→   582→    <div className="space-y-6">
+   583→   583→      {/* Header */}
+   584→   584→      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+   585→   585→        <div className="flex items-center gap-3">
+   586→   586→          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+   587→   587→            <FlaskConical className="h-5 w-5 text-primary" />
+   588→   588→          </div>
+   589→   589→          <div>
+   590→   590→            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+   591→   591→              Lab Orders
+   592→   592→              {summaryStats.ready > 0 && (
+   593→   593→                <Badge className="bg-emerald-600 text-white border-transparent text-xs">{summaryStats.ready} Ready</Badge>
+   594→   594→              )}
+   595→   595→              {summaryStats.overdue > 0 && (
+   596→   596→                <Badge variant="destructive" className="text-xs">{summaryStats.overdue} Overdue</Badge>
+   597→   597→              )}
+   598→   598→            </h1>
+   599→   599→            <p className="text-sm text-muted-foreground">
+   600→   600→              Track lens orders: Received &rarr; Pending &rarr; In Lab &rarr; Ready &rarr; Delivered
+   601→   601→            </p>
+   602→   602→          </div>
+   603→   603→        </div>
+   604→   604→        <div className="flex gap-2">
+   605→   605→          <div className="flex rounded-lg border overflow-hidden">
+   606→   606→            <Button
+   607→   607→              variant={viewMode === 'table' ? 'default' : 'ghost'}
+   608→   608→              size="sm"
+   609→   609→              className="rounded-none gap-1.5"
+   610→   610→              onClick={() => setViewMode('table')}
+   611→   611→            >
+   612→   612→              <LayoutList className="h-4 w-4" />
+   613→   613→              <span className="hidden sm:inline">Table</span>
+   614→   614→            </Button>
+   615→   615→            <Button
+   616→   616→              variant={viewMode === 'timeline' ? 'default' : 'ghost'}
+   617→   617→              size="sm"
+   618→   618→              className="rounded-none gap-1.5"
+   619→   619→              onClick={() => setViewMode('timeline')}
+   620→   620→            >
+   621→   621→              <LayoutGrid className="h-4 w-4" />
+   622→   622→              <span className="hidden sm:inline">Timeline</span>
+   623→   623→            </Button>
+   624→   624→          </div>
+   625→   625→          <Dialog open={dialogOpen} onOpenChange={(open) => { if (open) resetForm(); setDialogOpen(open) }}>
+   626→   626→            <DialogTrigger asChild>
+   627→   627→              <Button className="gap-2"><Plus className="h-4 w-4" />New Lab Order</Button>
+   628→   628→            </DialogTrigger>
+   629→   629→            <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+   630→   630→              <DialogHeader>
+   631→   631→                <DialogTitle>Create Lab Order</DialogTitle>
+   632→   632→                <DialogDescription>Enter the lens prescription details and submit to the lab.</DialogDescription>
+   633→   633→              </DialogHeader>
+   634→   634→              <div className="grid gap-5 py-2">
+   635→   635→                {/* Customer Selection */}
+   636→   636→                <div className="space-y-2" ref={customerSearchRef}>
+   637→   637→                  <Label className="flex items-center gap-2"><User className="h-3.5 w-3.5" />Customer <span className="text-destructive">*</span></Label>
+   638→   638→                  <div className="relative">
+   639→   639→                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   640→   640→                    <Input
+   641→   641→                      placeholder="Search by name or phone..."
+   642→   642→                      value={selectedCustomer ? `${selectedCustomer.name} (${selectedCustomer.phone})` : customerSearch}
+   643→   643→                      onChange={(e) => { if (selectedCustomer) { setSelectedCustomer(null); setFormCustomerId('') }; setCustomerSearch(e.target.value) }}
+   644→   644→                      className="pl-9"
+   645→   645→                    />
+   646→   646→                    {customerSearching && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
+   647→   647→                    {customerResults.length > 0 && !selectedCustomer && (
+   648→   648→                      <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-48 overflow-y-auto">
+   649→   649→                        {customerResults.map((c) => (
+   650→   650→                          <button key={c.id} type="button" className="flex w-full items-center gap-3 px-3 py-2 text-sm hover:bg-accent transition-colors text-left" onClick={() => handleSelectCustomer(c)}>
+   651→   651→                            <User className="h-4 w-4 text-muted-foreground shrink-0" />
+   652→   652→                            <span className="font-medium">{c.name}</span>
+   653→   653→                            <span className="text-muted-foreground">{c.phone}</span>
+   654→   654→                            {c.lastPrescription && (
+   655→   655→                              <Badge variant="outline" className="ml-auto text-[9px] px-1.5 py-0 bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 shrink-0">
+   656→   656→                                <History className="h-2.5 w-2.5 mr-0.5" />Rx
+   657→   657→                              </Badge>
+   658→   658→                            )}
+   659→   659→                          </button>
+   660→   660→                        ))}
+   661→   661→                      </div>
+   662→   662→                    )}
+   663→   663→                  </div>
+   664→   664→                </div>
+   665→   665→
+   666→   666→                {/* Prescription Auto-fill */}
+   667→   667→                {selectedCustomer && prescriptions.length > 0 && (
+   668→   668→                  <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 p-3 space-y-2">
+   669→   669→                    <div className="flex items-center justify-between">
+   670→   670→                      <Label className="flex items-center gap-2 text-sm font-medium text-emerald-800 dark:text-emerald-300">
+   671→   671→                        <Copy className="h-3.5 w-3.5" />
+   672→   672→                        Previous Prescriptions ({prescriptions.length})
+   673→   673→                      </Label>
+   674→   674→                      {loadingRx && <Loader2 className="h-3 w-3 animate-spin text-emerald-600" />}
+   675→   675→                    </div>
+   676→   676→                    <div className="flex flex-wrap gap-2">
+   677→   677→                      {prescriptions.slice(0, 3).map((rx) => (
+   678→   678→                        <Button
+   679→   679→                          key={rx.id}
+   680→   680→                          variant="outline"
+   681→   681→                          size="sm"
+   682→   682→                          className="h-7 text-xs gap-1 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
+   683→   683→                          onClick={() => handleAutoFillRx(rx)}
+   684→   684→                        >
+   685→   685→                          <Copy className="h-3 w-3" />
+   686→   686→                          {format(new Date(rx.date), 'dd MMM yyyy')}
+   687→   687→                          {rx.leftSPH != null && <span className="text-muted-foreground">L:{rx.leftSPH} R:{rx.rightSPH}</span>}
+   688→   688→                        </Button>
+   689→   689→                      ))}
+   690→   690→                    </div>
+   691→   691→                  </div>
+   692→   692→                )}
+   693→   693→
+   694→   694→                {/* Lens Type */}
+   695→   695→                <div className="space-y-2">
+   696→   696→                  <Label className="flex items-center gap-2"><FlaskConical className="h-3.5 w-3.5" />Lens Type <span className="text-destructive">*</span></Label>
+   697→   697→                  <Select value={formLensType} onValueChange={setFormLensType}>
+   698→   698→                    <SelectTrigger className="w-full"><SelectValue placeholder="Select lens type" /></SelectTrigger>
+   699→   699→                    <SelectContent>{LENS_TYPES.map((lt) => (<SelectItem key={lt} value={lt}>{lt}</SelectItem>))}</SelectContent>
+   700→   700→                  </Select>
+   701→   701→                </div>
+   702→   702→
+   703→   703→                {/* Eye Power */}
+   704→   704→                <div className="grid gap-4 sm:grid-cols-2">
+   705→   705→                  {renderPowerInputs('Left Eye (OD)', formLeft, setFormLeft)}
+   706→   706→                  {renderPowerInputs('Right Eye (OS)', formRight, setFormRight)}
+   707→   707→                </div>
+   708→   708→
+   709→   709→                {/* Frame Selection */}
+   710→   710→                <div className="space-y-2" ref={frameSearchRef}>
+   711→   711→                  <Label className="flex items-center gap-2"><Package className="h-3.5 w-3.5" />Frame <span className="text-muted-foreground font-normal">(optional)</span></Label>
+   712→   712→                  <div className="relative">
+   713→   713→                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   714→   714→                    <Input
+   715→   715→                      placeholder="Search frames by name or brand..."
+   716→   716→                      value={selectedFrame ? `${selectedFrame.name}${selectedFrame.brand ? ` (${selectedFrame.brand})` : ''}${selectedFrame.frameWidth ? ` [${selectedFrame.frameWidth}/${selectedFrame.bridge}/${selectedFrame.temple}]` : ''}` : frameSearch}
+   717→   717→                      onChange={(e) => { if (selectedFrame) { setSelectedFrame(null); setFormFrameId('') }; setFrameSearch(e.target.value) }}
+   718→   718→                      className="pl-9"
+   719→   719→                    />
+   720→   720→                    {frameSearching && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
+   721→   721→                    {frameResults.length > 0 && !selectedFrame && (
+   722→   722→                      <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-48 overflow-y-auto">
+   723→   723→                        {frameResults.map((f) => (
+   724→   724→                          <button key={f.id} type="button" className="flex w-full items-center justify-between gap-3 px-3 py-2 text-sm hover:bg-accent transition-colors text-left" onClick={() => { setSelectedFrame(f); setFormFrameId(f.id); setFrameSearch(''); setFrameResults([]) }}>
+   725→   725→                            <div className="flex items-center gap-2 min-w-0">
+   726→   726→                              <Package className="h-4 w-4 text-muted-foreground shrink-0" />
+   727→   727→                              <span className="truncate font-medium">{f.name}</span>
+   728→   728→                              {f.brand && <span className="text-muted-foreground shrink-0">{f.brand}</span>}
+   729→   729→                              {f.frameWidth && (
+   730→   730→                                <span className="text-[10px] text-muted-foreground shrink-0">
+   731→   731→                                  <Ruler className="h-3 w-3 inline mr-0.5" />{f.frameWidth}/{f.bridge}/{f.temple}
+   732→   732→                                </span>
+   733→   733→                              )}
+   734→   734→                            </div>
+   735→   735→                            <span className="text-muted-foreground shrink-0">{formatCurrency(f.price)}</span>
+   736→   736→                          </button>
+   737→   737→                        ))}
+   738→   738→                      </div>
+   739→   739→                    )}
+   740→   740→                  </div>
+   741→   741→                </div>
+   742→   742→
+   743→   743→                {/* Price Row */}
+   744→   744→                <div className="grid grid-cols-2 gap-4">
+   745→   745→                  <div className="space-y-2">
+   746→   746→                    <Label className="flex items-center gap-2"><IndianRupee className="h-3.5 w-3.5" />Cost Price <span className="text-destructive">*</span></Label>
+   747→   747→                    <Input type="number" step="0.01" min="0" placeholder="0.00" value={formCostPrice} onChange={(e) => setFormCostPrice(e.target.value)} />
+   748→   748→                  </div>
+   749→   749→                  <div className="space-y-2">
+   750→   750→                    <Label className="flex items-center gap-2"><IndianRupee className="h-3.5 w-3.5" />Selling Price <span className="text-destructive">*</span></Label>
+   751→   751→                    <Input type="number" step="0.01" min="0" placeholder="0.00" value={formSellingPrice} onChange={(e) => setFormSellingPrice(e.target.value)} />
+   752→   752→                  </div>
+   753→   753→                </div>
+   754→   754→
+   755→   755→                {/* Due Date */}
+   756→   756→                <div className="space-y-2">
+   757→   757→                  <Label className="flex items-center gap-2"><CalendarDays className="h-3.5 w-3.5" />Expected Delivery Date</Label>
+   758→   758→                  <Input type="date" value={formDueDate} onChange={(e) => setFormDueDate(e.target.value)} className="w-full sm:w-auto" />
+   759→   759→                </div>
+   760→   760→
+   761→   761→                {/* Notes */}
+   762→   762→                <div className="space-y-2">
+   763→   763→                  <Label>Notes</Label>
+   764→   764→                  <Textarea placeholder="Additional notes or special instructions..." value={formNotes} onChange={(e) => setFormNotes(e.target.value)} rows={3} className="resize-none" />
+   765→   765→                </div>
+   766→   766→              </div>
+   767→   767→              <DialogFooter>
+   768→   768→                <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+   769→   769→                <Button onClick={handleSubmit} disabled={submitting} className="gap-2">
+   770→   770→                  {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+   771→   771→                  Create Order
+   772→   772→                </Button>
+   773→   773→              </DialogFooter>
+   774→   774→            </DialogContent>
+   775→   775→          </Dialog>
+   776→   776→        </div>
+   777→   777→      </div>
+   778→   778→
+   779→   779→      {/* Summary Cards */}
+   780→   780→      <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+   781→   781→        {[
+   782→   782→          { label: 'Received', count: summaryStats.received, icon: Inbox, color: 'bg-indigo-100 dark:bg-indigo-900/40', iconColor: 'text-indigo-600 dark:text-indigo-400' },
+   783→   783→          { label: 'Pending', count: summaryStats.pending, icon: Clock, color: 'bg-slate-100 dark:bg-slate-800', iconColor: 'text-slate-600 dark:text-slate-400' },
+   784→   784→          { label: 'In Lab', count: summaryStats.inLab, icon: FlaskConical, color: 'bg-amber-100 dark:bg-amber-900/40', iconColor: 'text-amber-600 dark:text-amber-400' },
+   785→   785→          { label: 'Ready', count: summaryStats.ready, icon: CheckCircle2, color: 'bg-emerald-100 dark:bg-emerald-900/40', iconColor: 'text-emerald-600 dark:text-emerald-400' },
+   786→   786→          { label: 'Overdue', count: summaryStats.overdue, icon: AlertTriangle, color: 'bg-red-100 dark:bg-red-900/40', iconColor: 'text-red-600 dark:text-red-400' },
+   787→   787→        ].map((s) => (
+   788→   788→          <div key={s.label} className="rounded-lg border bg-muted/30 p-3 flex items-center gap-3">
+   789→   789→            <div className={cn('flex h-9 w-9 items-center justify-center rounded-full', s.color)}>
+   790→   790→              <s.icon className={cn('h-4 w-4', s.iconColor)} />
+   791→   791→            </div>
+   792→   792→            <div>
+   793→   793→              <p className={cn('text-2xl font-bold leading-none', s.label === 'Overdue' && s.count > 0 ? 'text-red-600 dark:text-red-400' : '')}>{s.count}</p>
+   794→   794→              <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
+   795→   795→            </div>
+   796→   796→          </div>
+   797→   797→        ))}
+   798→   798→      </div>
+   799→   799→
+   800→   800→      {/* Search Bar */}
+   801→   801→      <div className="relative max-w-sm">
+   802→   802→        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   803→   803→        <Input
+   804→   804→          placeholder="Search orders by ID or customer name..."
+   805→   805→          value={searchQuery}
+   806→   806→          onChange={(e) => setSearchQuery(e.target.value)}
+   807→   807→          className="pl-9"
+   808→   808→        />
+   809→   809→        {searchQuery && (
+   810→   810→          <button
+   811→   811→            onClick={() => setSearchQuery('')}
+   812→   812→            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+   813→   813→          >
+   814→   814→            <X className="h-3.5 w-3.5" />
+   815→   815→          </button>
+   816→   816→        )}
+   817→   817→      </div>
+   818→   818→
+   819→   819→      {/* Status Tabs */}
+   820→   820→      <Tabs value={activeStatus} onValueChange={setActiveStatus}>
+   821→   821→        <TabsList className="flex-wrap">
+   822→   822→          {tabs.map((tab) => (
+   823→   823→            <TabsTrigger key={tab.value} value={tab.value} className="gap-1.5">
+   824→   824→              {tab.label}
+   825→   825→              <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-[10px]">{statusCounts[tab.value] ?? 0}</Badge>
+   826→   826→            </TabsTrigger>
+   827→   827→          ))}
+   828→   828→        </TabsList>
+   829→   829→
+   830→   830→        {tabs.map((tab) => (
+   831→   831→          <TabsContent key={tab.value} value={tab.value}>
+   832→   832→            {viewMode === 'timeline' ? (
+   833→   833→              /* ── Kanban/Timeline View ── */
+   834→   834→              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+   835→   835→                {(tab.value === 'all' ? STATUS_FLOW.slice(0, -1) : [tab.value as LabOrderStatus]).map((status) => {
+   836→   836→                  const statusOrders = sortedOrders.filter((o) => o.status === status)
+   837→   837→                  const StatusIcon = STATUS_ICON[status] || Clock
+   838→   838→                  return (
+   839→   839→                    <div key={status} className={cn('rounded-lg border-t-4 bg-muted/20 p-3 space-y-3', STATUS_COLOR[status])}>
+   840→   840→                      <div className="flex items-center gap-2">
+   841→   841→                        <StatusIcon className="h-4 w-4" />
+   842→   842→                        <span className="font-medium text-sm">{status}</span>
+   843→   843→                        <Badge variant="secondary" className="ml-auto text-[10px]">{statusOrders.length}</Badge>
+   844→   844→                      </div>
+   845→   845→                      <div className="space-y-2 max-h-[500px] overflow-y-auto">
+   846→   846→                        {statusOrders.length === 0 ? (
+   847→   847→                          <p className="text-xs text-muted-foreground text-center py-4">No orders</p>
+   848→   848→                        ) : (
+   849→   849→                          statusOrders.map(renderKanbanCard)
+   850→   850→                        )}
+   851→   851→                      </div>
+   852→   852→                    </div>
+   853→   853→                  )
+   854→   854→                })}
+   855→   855→              </div>
+   856→   856→            ) : (
+   857→   857→              /* ── Table View ── */
+   858→   858→              <>
+   859→   859→                <div className="mt-4 rounded-lg border">
+   860→   860→                  <div className="max-h-[600px] overflow-x-auto overflow-y-auto">
+   861→   861→                    <Table>
+   862→   862→                      <TableHeader>
+   863→   863→                        <TableRow className="bg-muted/50">
+   864→   864→                          <TableHead className="w-[100px]">Order ID</TableHead>
+   865→   865→                          <TableHead>Customer</TableHead>
+   866→   866→                          <TableHead className="hidden md:table-cell">Lens Type</TableHead>
+   867→   867→                          <TableHead className="hidden lg:table-cell">Left Power</TableHead>
+   868→   868→                          <TableHead className="hidden lg:table-cell">Right Power</TableHead>
+   869→   869→                          <TableHead>Status</TableHead>
+   870→   870→                          <TableHead className="hidden sm:table-cell text-right">Cost</TableHead>
+   871→   871→                          <TableHead className="hidden sm:table-cell text-right">Selling</TableHead>
+   872→   872→                          <TableHead className="hidden md:table-cell text-right">Margin</TableHead>
+   873→   873→                          <TableHead className="hidden md:table-cell">Due Date</TableHead>
+   874→   874→                          <TableHead className="text-right">Actions</TableHead>
+   875→   875→                        </TableRow>
+   876→   876→                      </TableHeader>
+   877→   877→                      <TableBody>
+   878→   878→                        {loading ? (
+   879→   879→                          <TableRow>
+   880→   880→                            <TableCell colSpan={11} className="h-48 text-center">
+   881→   881→                              <div className="flex flex-col items-center gap-2">
+   882→   882→                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+   883→   883→                                <span className="text-sm text-muted-foreground">Loading lab orders...</span>
+   884→   884→                              </div>
+   885→   885→                            </TableCell>
+   886→   886→                          </TableRow>
+   887→   887→                        ) : sortedOrders.length === 0 ? (
+   888→   888→                          <TableRow>
+   889→   889→                            <TableCell colSpan={11} className="h-48 text-center">
+   890→   890→                              <div className="flex flex-col items-center gap-2">
+   891→   891→                                <FlaskConical className="h-10 w-10 text-muted-foreground/50" />
+   892→   892→                                <p className="text-sm text-muted-foreground">No lab orders found</p>
+   893→   893→                              </div>
+   894→   894→                            </TableCell>
+   895→   895→                          </TableRow>
+   896→   896→                        ) : (
+   897→   897→                          sortedOrders.map((order) => {
+   898→   898→                            const margin = order.sellingPrice - order.costPrice
+   899→   899→                            const next = getNextStatus(order.status)
+   900→   900→                            const isOverdue = order.dueDate && new Date(order.dueDate) < new Date() && order.status !== 'Delivered'
+   901→   901→                            const StatusIcon = STATUS_ICON[order.status] || Clock
+   902→   902→                            const canMarkReady = order.status !== 'Ready' && order.status !== 'Delivered'
+   903→   903→
+   904→   904→                            return (
+   905→   905→                              <TableRow key={order.id} className="group">
+   906→   906→                                <TableCell className="font-mono text-xs font-medium">#{order.id.slice(-6).toUpperCase()}</TableCell>
+   907→   907→                                <TableCell>
+   908→   908→                                  <div>
+   909→   909→                                    <div className="font-medium text-sm">{order.customerName || '--'}</div>
+   910→   910→                                    {order.customerPhone && <div className="text-xs text-muted-foreground">{order.customerPhone}</div>}
+   911→   911→                                  </div>
+   912→   912→                                </TableCell>
+   913→   913→                                <TableCell className="hidden md:table-cell"><Badge variant="outline" className="font-normal text-xs">{order.lensType}</Badge></TableCell>
+   914→   914→                                <TableCell className="hidden lg:table-cell font-mono text-xs">{formatPower(order.leftSPH, order.leftCYL, order.leftAXIS)}</TableCell>
+   915→   915→                                <TableCell className="hidden lg:table-cell font-mono text-xs">{formatPower(order.rightSPH, order.rightCYL, order.rightAXIS)}</TableCell>
+   916→   916→                                <TableCell>
+   917→   917→                                  <Badge variant="outline" className={cn('text-xs font-medium gap-1', STATUS_BADGE_CLASS[order.status])}>
+   918→   918→                                    <StatusIcon className="h-3 w-3" />{order.status}
+   919→   919→                                  </Badge>
+   920→   920→                                </TableCell>
+   921→   921→                                <TableCell className="hidden sm:table-cell text-right text-sm">{formatCurrency(order.costPrice)}</TableCell>
+   922→   922→                                <TableCell className="hidden sm:table-cell text-right text-sm font-medium">{formatCurrency(order.sellingPrice)}</TableCell>
+   923→   923→                                <TableCell className={cn('hidden md:table-cell text-right text-sm font-medium', margin >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400')}>
+   924→   924→                                  {margin >= 0 ? '+' : ''}{formatCurrency(margin)}
+   925→   925→                                </TableCell>
+   926→   926→                                <TableCell className="hidden md:table-cell">
+   927→   927→                                  {order.dueDate ? (
+   928→   928→                                    <div className="flex flex-col">
+   929→   929→                                      <span className={cn('text-sm', isOverdue && 'text-red-600 dark:text-red-400 font-medium')}>{format(new Date(order.dueDate), 'dd MMM yyyy')}</span>
+   930→   930→                                      {!isOverdue && order.status !== 'Delivered' && <span className="text-[10px] text-muted-foreground">{getDaysUntilDue(order.dueDate)}d left</span>}
+   931→   931→                                      {isOverdue && <span className="text-[10px] text-red-600 dark:text-red-400 font-medium">Overdue</span>}
+   932→   932→                                    </div>
+   933→   933→                                  ) : <span className="text-sm text-muted-foreground">--</span>}
+   934→   934→                                </TableCell>
+   935→   935→                                <TableCell className="text-right">
+   936→   936→                                  <div className="flex items-center justify-end gap-1">
+   937→   937→                                    <Button variant="ghost" size="sm" className="h-9 w-9 min-w-[44px] min-h-[44px] p-0 opacity-70 group-hover:opacity-100 touch-manipulation" onClick={() => { setSelectedOrder(order); setDetailOpen(true) }} title="View details"><Eye className="h-4 w-4" /></Button>
+   938→   938→                                    {canMarkReady && order.status !== 'Pending' && order.status !== 'Received' && (
+   939→   939→                                      <Button variant="outline" size="sm" className="h-9 min-w-[44px] min-h-[44px] gap-1 text-xs bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-900/40 touch-manipulation" disabled={updatingId === order.id} onClick={() => handleMarkReady(order)}>
+   940→   940→                                        {updatingId === order.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><ClipboardCheck className="h-3.5 w-3.5" />Ready</>}
+   941→   941→                                      </Button>
+   942→   942→                                    )}
+   943→   943→                                    {next && (
+   944→   944→                                      <Button variant="outline" size="sm" className="h-9 min-w-[44px] min-h-[44px] gap-1 text-xs touch-manipulation" disabled={updatingId === order.id} onClick={() => handleUpdateStatus(order)}>
+   945→   945→                                        {updatingId === order.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <>{next}<ChevronRight className="h-3 w-3" /></>}
+   946→   946→                                      </Button>
+   947→   947→                                    )}
+   948→   948→                                  </div>
+   949→   949→                                </TableCell>
+   950→   950→                              </TableRow>
+   951→   951→                            )
+   952→   952→                          })
+   953→   953→                        )}
+   954→   954→                      </TableBody>
+   955→   955→                    </Table>
+   956→   956→                  </div>
+   957→   957→                </div>
+   958→   958→                {totalPages > 1 && (
+   959→   959→                  <div className="mt-4 flex items-center justify-between">
+   960→   960→                    <p className="text-sm text-muted-foreground">Page {page} of {totalPages}</p>
+   961→   961→                    <div className="flex gap-2">
+   962→   962→                      <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Previous</Button>
+   963→   963→                      <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next</Button>
+   964→   964→                    </div>
+   965→   965→                  </div>
+   966→   966→                )}
+   967→   967→              </>
+   968→   968→            )}
+   969→   969→          </TabsContent>
+   970→   970→        ))}
+   971→   971→      </Tabs>
+   972→   972→
+   973→   973→      {/* Detail Dialog */}
+   974→   974→      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+   975→   975→        <DialogContent className="sm:max-w-lg">
+   976→   976→          <DialogHeader>
+   977→   977→            <DialogTitle className="flex items-center gap-2"><FlaskConical className="h-5 w-5" />Order #{selectedOrder?.id.slice(-6).toUpperCase()}</DialogTitle>
+   978→   978→            <DialogDescription>Lab order details and prescription information</DialogDescription>
+   979→   979→          </DialogHeader>
+   980→   980→
+   981→   981→          {selectedOrder && (
+   982→   982→            <div className="space-y-4">
+   983→   983→              {/* Status Flow Progress */}
+   984→   984→              <div className="rounded-lg border p-4 space-y-3">
+   985→   985→                <h4 className="text-sm font-semibold">Status Progress</h4>
+   986→   986→                <div className="flex items-center gap-1">
+   987→   987→                  {STATUS_FLOW.map((status, idx) => {
+   988→   988→                    const StatusIcon = STATUS_ICON[status] || Clock
+   989→   989→                    const isActive = STATUS_FLOW.indexOf(selectedOrder.status) >= idx
+   990→   990→                    const isCurrent = selectedOrder.status === status
+   991→   991→                    return (
+   992→   992→                      <React.Fragment key={status}>
+   993→   993→                        {idx > 0 && <div className={cn('h-0.5 flex-1 min-w-4', isActive ? 'bg-primary' : 'bg-muted')} />}
+   994→   994→                        <div className={cn('flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium', isCurrent && STATUS_BADGE_CLASS[status], isActive && !isCurrent && 'text-primary', !isActive && 'text-muted-foreground')}>
+   995→   995→                          <StatusIcon className={cn('h-3 w-3', isCurrent && 'text-current')} />
+   996→   996→                          <span className="hidden sm:inline">{status}</span>
+   997→   997→                        </div>
+   998→   998→                      </React.Fragment>
+   999→   999→                    )
+  1000→  1000→                  })}
+  1001→  1001→                </div>
+  1002→  1002→                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+  1003→  1003→                  <span>Created {format(new Date(selectedOrder.createdAt), 'dd MMM yyyy, HH:mm')}</span>
+  1004→  1004→                  {selectedOrder.dueDate && (
+  1005→  1005→                    <span className={cn(new Date(selectedOrder.dueDate) < new Date() && selectedOrder.status !== 'Delivered' && 'text-red-600 dark:text-red-400 font-medium')}>
+  1006→  1006→                      {' '} &middot; Due {format(new Date(selectedOrder.dueDate), 'dd MMM yyyy')}
+  1007→  1007→                      {selectedOrder.status !== 'Delivered' && (
+  1008→  1008→                        <span> ({differenceInDays(new Date(selectedOrder.dueDate), new Date())}d {differenceInDays(new Date(selectedOrder.dueDate), new Date()) >= 0 ? 'left' : 'ago'})</span>
+  1009→  1009→                      )}
+  1010→  1010→                    </span>
+  1011→  1011→                  )}
+  1012→  1012→                </div>
+  1013→  1013→              </div>
+  1014→  1014→
+  1015→  1015→              {/* Customer */}
+  1016→  1016→              <div className="rounded-lg border p-4 space-y-3">
+  1017→  1017→                <h4 className="text-sm font-semibold">Customer</h4>
+  1018→  1018→                <div className="grid grid-cols-2 gap-2 text-sm">
+  1019→  1019→                  <div><span className="text-muted-foreground">Name:</span>{' '}<span className="font-medium">{selectedOrder.customerName || '--'}</span></div>
+  1020→  1020→                  <div><span className="text-muted-foreground">Phone:</span>{' '}<span className="font-medium">{selectedOrder.customerPhone || '--'}</span></div>
+  1021→  1021→                </div>
+  1022→  1022→              </div>
+  1023→  1023→
+  1024→  1024→              {/* Prescription */}
+  1025→  1025→              <div className="rounded-lg border p-4 space-y-3">
+  1026→  1026→                <div className="flex items-center justify-between">
+  1027→  1027→                  <h4 className="text-sm font-semibold">Prescription</h4>
+  1028→  1028→                  <Badge variant="outline">{selectedOrder.lensType}</Badge>
+  1029→  1029→                </div>
+  1030→  1030→                <div className="grid grid-cols-2 gap-4">
+  1031→  1031→                  <div className="space-y-1">
+  1032→  1032→                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Left Eye (OD)</p>
+  1033→  1033→                    <p className="font-mono text-sm">{formatPower(selectedOrder.leftSPH, selectedOrder.leftCYL, selectedOrder.leftAXIS)}</p>
+  1034→  1034→                    {selectedOrder.leftPD != null && <p className="text-xs text-muted-foreground">PD: {selectedOrder.leftPD}mm</p>}
+  1035→  1035→                  </div>
+  1036→  1036→                  <div className="space-y-1">
+  1037→  1037→                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Right Eye (OS)</p>
+  1038→  1038→                    <p className="font-mono text-sm">{formatPower(selectedOrder.rightSPH, selectedOrder.rightCYL, selectedOrder.rightAXIS)}</p>
+  1039→  1039→                    {selectedOrder.rightPD != null && <p className="text-xs text-muted-foreground">PD: {selectedOrder.rightPD}mm</p>}
+  1040→  1040→                  </div>
+  1041→  1041→                </div>
+  1042→  1042→              </div>
+  1043→  1043→
+  1044→  1044→              {/* Pricing */}
+  1045→  1045→              <div className="rounded-lg border p-4 space-y-3">
+  1046→  1046→                <h4 className="text-sm font-semibold">Pricing</h4>
+  1047→  1047→                <div className="grid grid-cols-3 gap-2 text-sm text-center">
+  1048→  1048→                  <div className="rounded-md bg-muted/50 p-2"><p className="text-xs text-muted-foreground">Cost Price</p><p className="font-semibold">{formatCurrency(selectedOrder.costPrice)}</p></div>
+  1049→  1049→                  <div className="rounded-md bg-muted/50 p-2"><p className="text-xs text-muted-foreground">Selling Price</p><p className="font-semibold">{formatCurrency(selectedOrder.sellingPrice)}</p></div>
+  1050→  1050→                  <div className="rounded-md bg-muted/50 p-2">
+  1051→  1051→                    <p className="text-xs text-muted-foreground">Margin</p>
+  1052→  1052→                    <p className={cn('font-semibold', selectedOrder.sellingPrice - selectedOrder.costPrice >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400')}>
+  1053→  1053→                      {selectedOrder.sellingPrice - selectedOrder.costPrice >= 0 ? '+' : ''}{formatCurrency(selectedOrder.sellingPrice - selectedOrder.costPrice)}
+  1054→  1054→                    </p>
+  1055→  1055→                  </div>
+  1056→  1056→                </div>
+  1057→  1057→              </div>
+  1058→  1058→
+  1059→  1059→              {/* Meta */}
+  1060→  1060→              <div className="grid grid-cols-2 gap-3 text-sm">
+  1061→  1061→                {selectedOrder.frameName && <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Frame</p><p className="font-medium">{selectedOrder.frameName}</p></div>}
+  1062→  1062→                {selectedOrder.dueDate && (
+  1063→  1063→                  <div className="rounded-lg border p-3">
+  1064→  1064→                    <p className="text-xs text-muted-foreground">Due Date</p>
+  1065→  1065→                    <p className={cn('font-medium', new Date(selectedOrder.dueDate) < new Date() && selectedOrder.status !== 'Delivered' && 'text-red-600 dark:text-red-400')}>{format(new Date(selectedOrder.dueDate), 'dd MMM yyyy')}</p>
+  1066→  1066→                  </div>
+  1067→  1067→                )}
+  1068→  1068→              </div>
+  1069→  1069→
+  1070→  1070→              {selectedOrder.notes && (
+  1071→  1071→                <div className="rounded-lg border p-4">
+  1072→  1072→                  <p className="text-xs font-medium text-muted-foreground mb-1">Notes</p>
+  1073→  1073→                  <p className="text-sm whitespace-pre-wrap">{selectedOrder.notes}</p>
+  1074→  1074→                </div>
+  1075→  1075→              )}
+  1076→  1076→
+  1077→  1077→              {/* Status Actions */}
+  1078→  1078→              <div className="flex gap-2">
+  1079→  1079→                {getNextStatus(selectedOrder.status) && (
+  1080→  1080→                  <Button className="flex-1 gap-2" disabled={updatingId === selectedOrder.id} onClick={() => handleUpdateStatus(selectedOrder)}>
+  1081→  1081→                    {updatingId === selectedOrder.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><ChevronRight className="h-4 w-4" />Advance to {getNextStatus(selectedOrder.status)}</>}
+  1082→  1082→                  </Button>
+  1083→  1083→                )}
+  1084→  1084→                {selectedOrder.status !== 'Ready' && selectedOrder.status !== 'Delivered' && (
+  1085→  1085→                  <Button variant="outline" className="gap-2 bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-900/40" disabled={updatingId === selectedOrder.id} onClick={() => handleMarkReady(selectedOrder)}>
+  1086→  1086→                    {updatingId === selectedOrder.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><ClipboardCheck className="h-4 w-4" />Mark Ready</>}
+  1087→  1087→                  </Button>
+  1088→  1088→                )}
+  1089→  1089→              </div>
+  1090→  1090→            </div>
+  1091→  1091→          )}
+  1092→  1092→        </DialogContent>
+  1093→  1093→      </Dialog>
+  1094→  1094→    </div>
+  1095→  1095→  )
+  1096→  1096→}
+  1097→  1097→
+  1098→  1098→// Need AlertTriangle for the summary cards
+  1099→  1099→function AlertTriangle(props: React.SVGProps<SVGSVGElement> & { className?: string }) {
+  1100→  1100→  return (
+  1101→  1101→    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+  1102→  1102→      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4" /><path d="M12 17h.01" />
+  1103→  1103→    </svg>
+  1104→  1104→  )
+  1105→  1105→}

@@ -1,0 +1,252 @@
+/home/z/my-project/src/components/crm/staff.tsx:133:const EMPTY_FORM: StaffFormData = {
+/home/z/my-project/src/components/crm/staff.tsx:355:          <Button onClick={handleGenerate} disabled={genLoading || staffList.length === 0} variant="outline" className="min-w-[44px] min-h-[44px] touch-manipulation">
+/home/z/my-project/src/components/crm/staff.tsx:366:        ) : records.length === 0 ? (
+/home/z/my-project/src/components/crm/staff.tsx:369:            <p className="text-sm">No salary records for this month.</p>
+/home/z/my-project/src/components/crm/staff.tsx:399:                    <TableCell className="text-right font-mono text-sm">{formatCurrency(r.basicSalary)}</TableCell>
+/home/z/my-project/src/components/crm/staff.tsx:400:                    <TableCell className="text-right font-mono text-sm text-emerald-600 dark:text-emerald-400">{formatCurrency(r.commission)}</TableCell>
+/home/z/my-project/src/components/crm/staff.tsx:401:                    <TableCell className="text-right font-mono text-sm text-red-600 dark:text-red-400">{r.deductions > 0 ? formatCurrency(r.deductions) : '—'}</TableCell>
+/home/z/my-project/src/components/crm/staff.tsx:402:                    <TableCell className="text-right font-mono text-sm font-semibold">{formatCurrency(r.netPay)}</TableCell>
+/home/z/my-project/src/components/crm/staff.tsx:438:  const [form, setForm] = useState<StaffFormData>(EMPTY_FORM)
+/home/z/my-project/src/components/crm/staff.tsx:701:    if (performanceData.length === 0) return '—'
+/home/z/my-project/src/components/crm/staff.tsx:712:    setForm(EMPTY_FORM)
+/home/z/my-project/src/components/crm/staff.tsx:755:    return Object.keys(errors).length === 0
+/home/z/my-project/src/components/crm/staff.tsx:979:                {attendanceLog.length === 0 ? (
+/home/z/my-project/src/components/crm/staff.tsx:981:                    No one has clocked in yet today.
+/home/z/my-project/src/components/crm/staff.tsx:1017:                              <span className="text-xs font-mono text-muted-foreground tabular-nums">
+/home/z/my-project/src/components/crm/staff.tsx:1035:                {absentStaff.length === 0 ? (
+/home/z/my-project/src/components/crm/staff.tsx:1037:                    {staffList.length === 0 ? 'No staff registered.' : 'All active staff are present!'}
+/home/z/my-project/src/components/crm/staff.tsx:1098:          ) : staffList.length === 0 ? (
+/home/z/my-project/src/components/crm/staff.tsx:1101:              <p className="text-sm">No staff members yet.</p>
+/home/z/my-project/src/components/crm/staff.tsx:1166:                          <TableCell className="text-right font-mono text-sm">
+/home/z/my-project/src/components/crm/staff.tsx:1169:                          <TableCell className="text-right font-mono text-sm">
+/home/z/my-project/src/components/crm/staff.tsx:1191:                                    <span className="text-[10px] font-mono text-muted-foreground tabular-nums">
+/home/z/my-project/src/components/crm/staff.tsx:1318:                          <span className="font-mono font-medium">{formatCurrency(staff.salary)}/mo</span>
+/home/z/my-project/src/components/crm/staff.tsx:1322:                          <span className="font-mono font-medium">{staff.commission}%</span>
+/home/z/my-project/src/components/crm/staff.tsx:1333:                                  <span className="text-xs font-mono text-muted-foreground tabular-nums">
+/home/z/my-project/src/components/crm/staff.tsx:1416:                      <TableCell className="text-right font-mono text-emerald-600 dark:text-emerald-400">
+/home/z/my-project/src/components/crm/staff.tsx:1450:                      <span className="font-mono font-medium">{formatCurrency(p.totalSales)}</span>
+/home/z/my-project/src/components/crm/staff.tsx:1457:                      <span className="font-mono font-medium text-emerald-600 dark:text-emerald-400">
+/home/z/my-project/src/components/crm/staff.tsx:1466:                      <span className="font-mono font-medium">{p.transactionCount}</span>
+/home/z/my-project/src/components/crm/staff.tsx:1521:                        <TableCell className="text-right font-mono text-muted-foreground">
+/home/z/my-project/src/components/crm/staff.tsx:1524:                        <TableCell className="text-right font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+/home/z/my-project/src/components/crm/staff.tsx:1553:                        <span className="font-mono font-medium">{cb.transactionCount}</span>
+/home/z/my-project/src/components/crm/staff.tsx:1557:                        <span className="font-mono font-medium">{formatCurrency(cb.totalSales)}</span>
+/home/z/my-project/src/components/crm/staff.tsx:1561:                        <span className="font-mono font-medium text-muted-foreground">{cb.commissionRate}%</span>
+/home/z/my-project/src/components/crm/staff.tsx:1565:                        <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(cb.commissionEarned)}</span>
+/home/z/my-project/src/components/crm/staff.tsx:1569:                        <span className="font-mono font-medium">{cb.transactionCount > 0 ? formatCurrency(cb.avgSaleValue) : '—'}</span>
+/home/z/my-project/src/components/crm/staff.tsx:1711:            ) : historyRecords.length === 0 ? (
+/home/z/my-project/src/components/crm/staff.tsx:1714:                <p className="text-sm">No attendance records found for the selected range.</p>
+/home/z/my-project/src/components/crm/staff.tsx:1739:                          <TableCell className="font-mono text-sm">
+/home/z/my-project/src/components/crm/staff.tsx:1742:                          <TableCell className="font-mono text-sm">
+/home/z/my-project/src/components/crm/staff.tsx:1745:                          <TableCell className="text-right font-mono text-sm tabular-nums">
+/home/z/my-project/src/components/crm/staff.tsx:1789:                        <span>Hours: <span className="text-foreground font-mono tabular-nums">{formatHoursDecimal(r.hoursWorked)}</span></span>
+/home/z/my-project/src/components/crm/sales.tsx:324:      {open && !selected && query && filtered.length === 0 && (
+/home/z/my-project/src/components/crm/sales.tsx:326:          No customers found.
+/home/z/my-project/src/components/crm/sales.tsx:385:  if (!customerId || purchases.length === 0) return null;
+/home/z/my-project/src/components/crm/sales.tsx:395:          <span className="font-mono font-medium">{INR(p.total)}</span>
+/home/z/my-project/src/components/crm/sales.tsx:570:      <TableCell className="text-right font-mono text-sm">
+/home/z/my-project/src/components/crm/sales.tsx:588:      <TableCell className="text-right font-mono text-sm font-medium">
+/home/z/my-project/src/components/crm/sales.tsx:713:      const invoiceNo = generateInvoiceNo();
+/home/z/my-project/src/components/crm/sales.tsx:893:                      <TableCell className="text-right font-mono font-semibold">
+/home/z/my-project/src/components/crm/sales.tsx:1049:                <span className="font-mono text-destructive">- {INR(discountAmount)}</span>
+/home/z/my-project/src/components/crm/sales.tsx:1067:                <span className="font-mono text-lg">{INR(total)}</span>
+/home/z/my-project/src/components/crm/sales.tsx:1225:                    <TableCell className="text-right font-mono text-sm">{INR(item.price)}</TableCell>
+/home/z/my-project/src/components/crm/sales.tsx:1227:                    <TableCell className="text-right font-mono text-sm font-medium">
+/home/z/my-project/src/components/crm/sales.tsx:1246:                  <span className="font-mono text-destructive">- {INR(sale.discount)}</span>
+/home/z/my-project/src/components/crm/sales.tsx:1508:                    <TableCell className="text-right font-mono text-sm">
+/home/z/my-project/src/components/crm/sales.tsx:1530:              <span className="font-mono text-lg">{INR(grandRefund)}</span>
+/home/z/my-project/src/components/crm/sales.tsx:2114:            ) : sales.length === 0 ? (
+/home/z/my-project/src/components/crm/sales.tsx:2117:                <p className="mt-3 text-sm font-medium text-muted-foreground">No invoices found</p>
+/home/z/my-project/src/components/crm/sales.tsx:2157:                          <TableCell className="font-mono font-medium text-sm">
+/home/z/my-project/src/components/crm/sales.tsx:2162:                          <TableCell className="text-right font-mono text-sm">
+/home/z/my-project/src/components/crm/sales.tsx:2165:                          <TableCell className="text-right font-mono text-sm text-destructive">
+/home/z/my-project/src/components/crm/sales.tsx:2168:                          <TableCell className="text-right font-mono text-xs text-muted-foreground">
+/home/z/my-project/src/components/crm/sales.tsx:2171:                          <TableCell className="text-right font-mono font-semibold">
+/home/z/my-project/src/components/crm/customers.tsx:192:const EMPTY_CUSTOMER_FORM: CustomerFormData = {
+/home/z/my-project/src/components/crm/customers.tsx:202:const EMPTY_PRESCRIPTION_FORM: PrescriptionFormData = {
+/home/z/my-project/src/components/crm/customers.tsx:215:const EMPTY_VISIT_FORM: VisitFormData = {
+/home/z/my-project/src/components/crm/customers.tsx:311:  const [customerForm, setCustomerForm] = useState<CustomerFormData>(EMPTY_CUSTOMER_FORM);
+/home/z/my-project/src/components/crm/customers.tsx:317:  const [prescriptionForm, setPrescriptionForm] = useState<PrescriptionFormData>(EMPTY_PRESCRIPTION_FORM);
+/home/z/my-project/src/components/crm/customers.tsx:322:  const [visitForm, setVisitForm] = useState<VisitFormData>(EMPTY_VISIT_FORM);
+/home/z/my-project/src/components/crm/customers.tsx:537:    setCustomerForm(EMPTY_CUSTOMER_FORM);
+/home/z/my-project/src/components/crm/customers.tsx:572:    return Object.keys(errors).length === 0;
+/home/z/my-project/src/components/crm/customers.tsx:626:    setPrescriptionForm(EMPTY_PRESCRIPTION_FORM);
+/home/z/my-project/src/components/crm/customers.tsx:666:    setVisitForm(EMPTY_VISIT_FORM);
+/home/z/my-project/src/components/crm/customers.tsx:950:              ) : customers.length === 0 ? (
+/home/z/my-project/src/components/crm/customers.tsx:956:                        {search ? 'No customers found for your search.' : 'No customers yet.'}
+/home/z/my-project/src/components/crm/customers.tsx:1257:                      {prescriptions.length === 0 ? (
+/home/z/my-project/src/components/crm/customers.tsx:1260:                          <p className="text-sm">No prescriptions recorded yet.</p>
+/home/z/my-project/src/components/crm/customers.tsx:1326:                      {visits.length === 0 ? (
+/home/z/my-project/src/components/crm/customers.tsx:1329:                          <p className="text-sm">No visit history yet.</p>
+/home/z/my-project/src/components/crm/customers.tsx:1377:                      {purchases.length === 0 ? (
+/home/z/my-project/src/components/crm/customers.tsx:1380:                          <p className="text-sm">No purchase history yet.</p>
+/home/z/my-project/src/components/crm/customers.tsx:1396:                                <TableCell className="font-mono text-xs">{p.invoiceNo}</TableCell>
+/home/z/my-project/src/components/crm/customers.tsx:1397:                                <TableCell className="text-right font-mono text-xs font-medium">
+/home/z/my-project/src/components/crm/customers.tsx:1425:                      {dues.length === 0 ? (
+/home/z/my-project/src/components/crm/customers.tsx:1428:                          <p className="text-sm">No dues recorded.</p>
+/home/z/my-project/src/components/crm/dashboard.tsx:574:                        <span className="font-mono font-medium">{formatCurrency(value)}</span>
+/home/z/my-project/src/components/crm/dashboard.tsx:595:                <p className="text-sm font-medium">No sales trend data yet</p>
+/home/z/my-project/src/components/crm/dashboard.tsx:656:              No product data available
+/home/z/my-project/src/components/crm/dashboard.tsx:689:                    <TableCell className="font-mono text-xs font-medium">
+/home/z/my-project/src/components/crm/dashboard.tsx:695:                    <TableCell className="text-right font-mono font-medium text-emerald-700 dark:text-emerald-400">
+/home/z/my-project/src/components/crm/dashboard.tsx:715:              No recent sales
+/home/z/my-project/src/components/crm/dashboard.tsx:733:              : 'No appointments scheduled'}
+/home/z/my-project/src/components/crm/dashboard.tsx:744:                      <span className="text-sm font-mono font-medium text-foreground">
+/home/z/my-project/src/components/crm/dashboard.tsx:769:                <p className="text-sm font-medium">No appointments scheduled</p>
+/home/z/my-project/src/components/crm/dashboard.tsx:807:                          className={`text-sm font-mono font-bold ${
+/home/z/my-project/src/components/crm/dashboard.tsx:878:              : 'No customer data'}
+/home/z/my-project/src/components/crm/dashboard.tsx:922:              No customer group data
+/home/z/my-project/src/components/crm/dashboard.tsx:957:                    <span className="text-[10px] font-mono text-muted-foreground leading-tight">
+/home/z/my-project/src/components/crm/dashboard.tsx:982:              No sales data for heatmap
+/home/z/my-project/src/components/crm/dashboard.tsx:1132:              <p className={`text-lg font-bold font-mono ${isGoalReached ? 'text-emerald-700 dark:text-emerald-400' : 'text-foreground'}`}>
+/home/z/my-project/src/components/crm/dashboard.tsx:1216:              No payment data today
+/home/z/my-project/src/components/crm/dashboard.tsx:1248:              <p className="text-lg font-bold font-mono text-sky-600 dark:text-sky-400">
+/home/z/my-project/src/components/crm/dashboard.tsx:1255:              <p className="text-lg font-bold font-mono text-purple-600 dark:text-purple-400">
+/home/z/my-project/src/components/crm/dashboard.tsx:1262:              <p className="text-lg font-bold font-mono text-emerald-600 dark:text-emerald-400">
+/home/z/my-project/src/components/crm/inventory.tsx:187:const emptyForm: ProductFormData = {
+/home/z/my-project/src/components/crm/inventory.tsx:259:  const [form, setForm] = useState<ProductFormData>(emptyForm)
+/home/z/my-project/src/components/crm/inventory.tsx:347:    setForm(emptyForm)
+/home/z/my-project/src/components/crm/inventory.tsx:383:      // Auto-generate SKU when category changes and SKU is empty
+/home/z/my-project/src/components/crm/inventory.tsx:453:      setForm(emptyForm)
+/home/z/my-project/src/components/crm/inventory.tsx:953:                ) : sortedProducts.length === 0 ? (
+/home/z/my-project/src/components/crm/inventory.tsx:958:                        <p>No products found.</p>
+/home/z/my-project/src/components/crm/inventory.tsx:972:                      <TableCell className="font-mono text-xs text-muted-foreground">
+/home/z/my-project/src/components/crm/inventory.tsx:1070:          setForm(emptyForm)
+/home/z/my-project/src/components/crm/inventory.tsx:1231:                  Auto-generated if left empty
+/home/z/my-project/src/components/crm/inventory.tsx:1383:                setForm(emptyForm)
+/home/z/my-project/src/components/crm/inventory.tsx:1488:                className="font-mono text-xs"
+/home/z/my-project/src/components/crm/inventory.tsx:1651:                  {Object.keys(reportData.byCategory).length === 0 && (
+/home/z/my-project/src/components/crm/inventory.tsx:1652:                    <p className="text-sm text-muted-foreground">No categories affected.</p>
+/home/z/my-project/src/components/crm/inventory.tsx:1712:                  <p>No items are currently below minimum stock levels.</p>
+/home/z/my-project/src/components/crm/inventory.tsx:1745:              {' '}— Current stock: <span className="font-mono font-semibold">{adjustProduct?.stock ?? 0}</span>
+/home/z/my-project/src/components/crm/inventory.tsx:1757:                className="text-center text-xl font-mono h-10"
+/home/z/my-project/src/components/crm/inventory.tsx:1763:            {adjustProduct && adjustQty !== 0 && (
+/home/z/my-project/src/components/crm/inventory.tsx:1765:                New stock: <span className="font-mono font-bold text-lg">{Math.max(0, (adjustProduct.stock ?? 0) + adjustQty)}</span>
+/home/z/my-project/src/components/crm/lab-orders.tsx:542:          <span className="font-mono text-xs text-muted-foreground">#{order.id.slice(-6).toUpperCase()}</span>
+/home/z/my-project/src/components/crm/lab-orders.tsx:854:                        {statusOrders.length === 0 ? (
+/home/z/my-project/src/components/crm/lab-orders.tsx:855:                          <p className="text-xs text-muted-foreground text-center py-4">No orders</p>
+/home/z/my-project/src/components/crm/lab-orders.tsx:895:                        ) : sortedOrders.length === 0 ? (
+/home/z/my-project/src/components/crm/lab-orders.tsx:900:                                <p className="text-sm text-muted-foreground">No lab orders found</p>
+/home/z/my-project/src/components/crm/lab-orders.tsx:914:                                <TableCell className="font-mono text-xs font-medium">#{order.id.slice(-6).toUpperCase()}</TableCell>
+/home/z/my-project/src/components/crm/lab-orders.tsx:922:                                <TableCell className="hidden lg:table-cell font-mono text-xs">{formatPower(order.leftSPH, order.leftCYL, order.leftAXIS)}</TableCell>
+/home/z/my-project/src/components/crm/lab-orders.tsx:923:                                <TableCell className="hidden lg:table-cell font-mono text-xs">{formatPower(order.rightSPH, order.rightCYL, order.rightAXIS)}</TableCell>
+/home/z/my-project/src/components/crm/lab-orders.tsx:1056:                    <p className="font-mono text-sm">{formatPower(selectedOrder.leftSPH, selectedOrder.leftCYL, selectedOrder.leftAXIS)}</p>
+/home/z/my-project/src/components/crm/lab-orders.tsx:1061:                    <p className="font-mono text-sm">{formatPower(selectedOrder.rightSPH, selectedOrder.rightCYL, selectedOrder.rightAXIS)}</p>
+/home/z/my-project/src/components/crm/appointments.tsx:436:                    {filteredCustomers.length === 0 ? (
+/home/z/my-project/src/components/crm/appointments.tsx:437:                      <p className="text-sm text-muted-foreground p-2 text-center">No customers found.</p>
+/home/z/my-project/src/components/crm/appointments.tsx:456:                              {customer.email || customer.phone || 'No contact info'}
+/home/z/my-project/src/components/crm/appointments.tsx:743:          ) : selectedDateApts.length === 0 ? (
+/home/z/my-project/src/components/crm/appointments.tsx:746:              <p className="text-sm text-muted-foreground">No appointments scheduled.</p>
+/home/z/my-project/src/components/crm/appointments.tsx:891:                <div className="p-1.5 text-xs font-mono text-muted-foreground text-center flex items-center justify-center border-r">
+/home/z/my-project/src/components/crm/appointments.tsx:1214:      toast.error('No phone number found for this customer')
+/home/z/my-project/src/components/crm/appointments.tsx:1300:                    toast.info('No Scheduled/Confirmed appointments with phone numbers for today.')
+/home/z/my-project/src/components/crm/appointments.tsx:1406:                    <div className="text-sm font-mono font-medium min-w-[70px]">
+/home/z/my-project/src/components/crm/appointments.tsx:1621:            {appointments.length === 0 ? (
+/home/z/my-project/src/components/crm/appointments.tsx:1626:                <p className="text-muted-foreground text-sm">No appointments found for this date and filter.</p>
+/home/z/my-project/src/components/crm/appointments.tsx:1662:                      <TableCell className="font-mono text-sm">
+/home/z/my-project/src/components/crm/notifications.tsx:237:          {filteredNotifications.length === 0 ? (
+/home/z/my-project/src/components/crm/notifications.tsx:240:              <p className="text-sm">No notifications yet</p>
+/home/z/my-project/src/components/crm/purchase-orders.tsx:110:const EMPTY_ITEM: POItem = { productId: '', name: '', qty: 1, costPrice: 0 };
+/home/z/my-project/src/components/crm/purchase-orders.tsx:151:  const [items, setItems] = useState<POItem[]>([{ ...EMPTY_ITEM }]);
+/home/z/my-project/src/components/crm/purchase-orders.tsx:204:  const addItem = () => setItems([...items, { ...EMPTY_ITEM }]);
+/home/z/my-project/src/components/crm/purchase-orders.tsx:232:    setItems([{ ...EMPTY_ITEM }]);
+/home/z/my-project/src/components/crm/purchase-orders.tsx:244:      setItems(Array.isArray(parsedItems) ? parsedItems : [{ ...EMPTY_ITEM }]);
+/home/z/my-project/src/components/crm/purchase-orders.tsx:246:      setItems([{ ...EMPTY_ITEM }]);
+/home/z/my-project/src/components/crm/purchase-orders.tsx:260:    if (validItems.length === 0) { toast.error('Add at least one item'); return; }
+/home/z/my-project/src/components/crm/purchase-orders.tsx:385:      ) : orders.length === 0 ? (
+/home/z/my-project/src/components/crm/purchase-orders.tsx:389:            <p>No purchase orders found</p>
+/home/z/my-project/src/components/crm/purchase-orders.tsx:415:                        <TableCell className="font-mono font-medium">{order.poNumber}</TableCell>
+/home/z/my-project/src/components/crm/purchase-orders.tsx:538:                      {index === 0 && <Label className="text-xs text-muted-foreground">Product</Label>}
+/home/z/my-project/src/components/crm/purchase-orders.tsx:566:                      {index === 0 && <Label className="text-xs text-muted-foreground">Name</Label>}
+/home/z/my-project/src/components/crm/purchase-orders.tsx:574:                      {index === 0 && <Label className="text-xs text-muted-foreground">Qty</Label>}
+/home/z/my-project/src/components/crm/purchase-orders.tsx:583:                      {index === 0 && <Label className="text-xs text-muted-foreground">Cost Price</Label>}
+/home/z/my-project/src/components/crm/reports.tsx:340:// ─── Data Hooks (plain fetch, no react-query dependency) ──────────────────
+/home/z/my-project/src/components/crm/reports.tsx:480:            .font-mono { font-family: monospace; }
+/home/z/my-project/src/components/crm/reports.tsx:797:    if (!Array.isArray(allCustomersList) || allCustomersList.length === 0) return [];
+/home/z/my-project/src/components/crm/reports.tsx:806:    if (topProducts.length === 0) return [];
+/home/z/my-project/src/components/crm/reports.tsx:821:    if (salesTrendData.length === 0) {
+/home/z/my-project/src/components/crm/reports.tsx:915:            `"${s.invoiceNo || ""}"`,
+/home/z/my-project/src/components/crm/reports.tsx:1160:                  <p className="text-lg font-bold font-mono text-emerald-600 dark:text-emerald-400">{formatCurrency(revenueComp.summary.thisMonth.total)}</p>
+/home/z/my-project/src/components/crm/reports.tsx:1164:                  <p className="text-lg font-bold font-mono text-muted-foreground">{formatCurrency(revenueComp.summary.lastMonth.total)}</p>
+/home/z/my-project/src/components/crm/reports.tsx:1174:            {comparisonChartData.length === 0 ? (
+/home/z/my-project/src/components/crm/reports.tsx:1202:                    <p className="text-sm font-bold font-mono text-muted-foreground">{revenueComp.summary.lastMonth.orders}</p>
+/home/z/my-project/src/components/crm/reports.tsx:1212:                    <p className="text-sm font-bold font-mono text-muted-foreground">
+/home/z/my-project/src/components/crm/reports.tsx:1266:                    {monthlyRevenue.length === 0 ? (
+/home/z/my-project/src/components/crm/reports.tsx:1294:                    {paymentModes.length === 0 ? (
+/home/z/my-project/src/components/crm/reports.tsx:1295:                      <div className="flex items-center justify-center h-[320px] text-muted-foreground text-sm">No sales data in selected period</div>
+/home/z/my-project/src/components/crm/reports.tsx:1364:                  {dailyRevenue.length === 0 ? (
+/home/z/my-project/src/components/crm/reports.tsx:1365:                    <div className="flex items-center justify-center h-[300px] text-muted-foreground text-sm">No sales data in selected period</div>
+/home/z/my-project/src/components/crm/reports.tsx:1435:                  {topProductsByRevenue.length === 0 ? (
+/home/z/my-project/src/components/crm/reports.tsx:1436:                    <div className="flex items-center justify-center h-[400px] text-muted-foreground text-sm">No product sales data available</div>
+/home/z/my-project/src/components/crm/reports.tsx:1482:                              <TableCell className="text-muted-foreground font-mono text-xs">{i + 1}</TableCell>
+/home/z/my-project/src/components/crm/reports.tsx:1485:                              <TableCell className="text-right font-mono text-sm">{formatNumber(p.totalQtySold)}</TableCell>
+/home/z/my-project/src/components/crm/reports.tsx:1486:                              <TableCell className="text-right font-mono text-sm font-semibold">{formatCurrency(p.totalRevenue)}</TableCell>
+/home/z/my-project/src/components/crm/reports.tsx:1522:                              <TableCell className="text-muted-foreground font-mono text-xs">{i + 1}</TableCell>
+/home/z/my-project/src/components/crm/reports.tsx:1525:                              <TableCell className="text-right font-mono text-sm">{formatNumber(p.quantity)}</TableCell>
+/home/z/my-project/src/components/crm/reports.tsx:1526:                              <TableCell className="text-right font-mono text-sm font-semibold">{formatCurrency(p.revenue)}</TableCell>
+/home/z/my-project/src/components/crm/reports.tsx:1548:                  {customerAcquisition.length === 0 ? (
+/home/z/my-project/src/components/crm/reports.tsx:1549:                    <div className="flex items-center justify-center h-[280px] text-muted-foreground text-sm">No customer acquisition data in selected period</div>
+/home/z/my-project/src/components/crm/reports.tsx:1570:                  {topCustomers.length === 0 ? (
+/home/z/my-project/src/components/crm/reports.tsx:1573:                      <p className="text-sm">No customer data available</p>
+/home/z/my-project/src/components/crm/reports.tsx:1591:                              <TableCell className="text-muted-foreground font-mono text-xs">{i + 1}</TableCell>
+/home/z/my-project/src/components/crm/reports.tsx:1597:                              <TableCell className="text-right font-mono text-sm">{c._count?.sales ?? 0}</TableCell>
+/home/z/my-project/src/components/crm/reports.tsx:1598:                              <TableCell className="text-right font-mono text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(c.totalSpent || 0)}</TableCell>
+/home/z/my-project/src/components/crm/reports.tsx:1613:              {inventoryTurnover.length === 0 ? (
+/home/z/my-project/src/components/crm/reports.tsx:1617:                    <p className="text-sm">No inventory data available</p>
+/home/z/my-project/src/components/crm/reports.tsx:1650:                                  <TableCell className="text-right font-mono text-sm text-red-600 dark:text-red-400 font-semibold">{p.currentStock}</TableCell>
+/home/z/my-project/src/components/crm/reports.tsx:1651:                                  <TableCell className="text-right font-mono text-sm text-muted-foreground">{p.minStock}</TableCell>
+/home/z/my-project/src/components/crm/reports.tsx:1691:                                <TableCell className="text-muted-foreground font-mono text-xs">{i + 1}</TableCell>
+/home/z/my-project/src/components/crm/reports.tsx:1695:                                <TableCell className="text-right font-mono text-sm">{formatNumber(p.totalQtySold)}</TableCell>
+/home/z/my-project/src/components/crm/reports.tsx:1696:                                <TableCell className="text-right font-mono text-sm">
+/home/z/my-project/src/components/crm/reports.tsx:1699:                                <TableCell className="hidden lg:table-cell text-right font-mono text-sm">
+/home/z/my-project/src/components/crm/reports.tsx:1773:                        <p className="text-3xl font-bold font-mono text-muted-foreground">{customerAcqComparison.lastMonthNew}</p>
+/home/z/my-project/src/components/crm/reports.tsx:1794:                        <p className="text-3xl font-bold font-mono text-emerald-600 dark:text-emerald-400">{customerAcqComparison.thisMonthNew}</p>
+/home/z/my-project/src/components/crm/reports.tsx:1939:                              <TableCell className="text-muted-foreground font-mono text-xs">
+/home/z/my-project/src/components/crm/reports.tsx:1945:                              <TableCell className="text-right font-mono text-sm">{formatNumber(p.totalQtySold)}</TableCell>
+/home/z/my-project/src/components/crm/reports.tsx:1946:                              <TableCell className="text-right font-mono text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(p.totalRevenue)}</TableCell>
+/home/z/my-project/src/components/crm/reports.tsx:1967:                              <TableCell className="text-muted-foreground font-mono text-xs">
+/home/z/my-project/src/components/crm/reports.tsx:1972:                              <TableCell className="text-right font-mono text-sm">{formatNumber(p.quantity)}</TableCell>
+/home/z/my-project/src/components/crm/reports.tsx:1973:                              <TableCell className="text-right font-mono text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(p.revenue)}</TableCell>
+/home/z/my-project/src/components/crm/reports.tsx:1982:                      <p className="text-sm">No product performance data available</p>
+/home/z/my-project/src/components/crm/reports.tsx:2033:                        <p className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-1">{formatCurrency(topCustomers[0].totalSpent || 0)}</p>
+/home/z/my-project/src/components/crm/reports.tsx:2079:                  {top5CustomersBySpend.length === 0 ? (
+/home/z/my-project/src/components/crm/reports.tsx:2082:                      <p className="text-sm">No customer data available</p>
+/home/z/my-project/src/components/crm/reports.tsx:2106:                                {c.phone ? `${c.phone as string}` : "No phone"}
+/home/z/my-project/src/components/crm/reports.tsx:2111:                              <p className="font-bold text-sm font-mono text-emerald-600 dark:text-emerald-400">
+/home/z/my-project/src/components/crm/reports.tsx:2141:                  {topCustomers.length === 0 ? (
+/home/z/my-project/src/components/crm/reports.tsx:2144:                      <p className="text-sm">No customer data available</p>
+/home/z/my-project/src/components/crm/reports.tsx:2162:                              <TableCell className="text-muted-foreground font-mono text-xs">
+/home/z/my-project/src/components/crm/reports.tsx:2170:                              <TableCell className="text-right font-mono text-sm">{c._count?.sales ?? 0}</TableCell>
+/home/z/my-project/src/components/crm/reports.tsx:2171:                              <TableCell className="text-right font-mono text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(c.totalSpent || 0)}</TableCell>
+/home/z/my-project/src/components/crm/reports.tsx:2248:                  {monthlyCustomerAcq.length === 0 ? (
+/home/z/my-project/src/components/crm/reports.tsx:2318:                  {top10InventoryValue.length === 0 ? (
+/home/z/my-project/src/components/crm/reports.tsx:2358:                            <TableCell className="text-muted-foreground font-mono text-xs">{i + 1}</TableCell>
+/home/z/my-project/src/components/crm/reports.tsx:2361:                            <TableCell className="text-right font-mono text-sm">{formatCurrency(p.price)}</TableCell>
+/home/z/my-project/src/components/crm/reports.tsx:2362:                            <TableCell className="text-right font-mono text-sm">{formatNumber(p.stock)}</TableCell>
+/home/z/my-project/src/components/crm/reports.tsx:2363:                            <TableCell className="text-right font-mono text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(p.inventoryValue)}</TableCell>
+/home/z/my-project/src/components/crm/reports.tsx:2393:                    <p className="text-sm">No sales data available</p>
+/home/z/my-project/src/components/crm/reports.tsx:2412:                            <p className="text-sm font-bold font-mono text-emerald-600 dark:text-emerald-400">{formatCurrency(d.revenue)}</p>
+/home/z/my-project/src/components/crm/accounting.tsx:282:      {gstSales.length === 0 ? (
+/home/z/my-project/src/components/crm/accounting.tsx:283:        <p className="text-sm text-muted-foreground text-center py-8">No GST invoices for this month.</p>
+/home/z/my-project/src/components/crm/accounting.tsx:291:                <p className="text-lg font-bold text-blue-600 dark:text-blue-400 font-mono mt-1">{formatINR(totals.cgst)}</p>
+/home/z/my-project/src/components/crm/accounting.tsx:297:                <p className="text-lg font-bold text-violet-600 dark:text-violet-400 font-mono mt-1">{formatINR(totals.sgst)}</p>
+/home/z/my-project/src/components/crm/accounting.tsx:303:                <p className="text-lg font-bold text-amber-600 dark:text-amber-400 font-mono mt-1">{formatINR(totals.igst)}</p>
+/home/z/my-project/src/components/crm/accounting.tsx:309:                <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 font-mono mt-1">{formatINR(totals.cgst + totals.sgst + totals.igst)}</p>
+/home/z/my-project/src/components/crm/accounting.tsx:329:                  <TableCell className="font-mono text-xs">{s.invoiceNo as string}</TableCell>
+/home/z/my-project/src/components/crm/accounting.tsx:331:                  <TableCell className="text-right font-mono text-sm">{formatINR((s.subtotal as number) || 0)}</TableCell>
+/home/z/my-project/src/components/crm/accounting.tsx:332:                  <TableCell className="text-right font-mono text-sm text-blue-600 dark:text-blue-400">{formatINR((s.cgst as number) || 0)}</TableCell>
+/home/z/my-project/src/components/crm/accounting.tsx:333:                  <TableCell className="text-right font-mono text-sm text-blue-600 dark:text-blue-400">{formatINR((s.sgst as number) || 0)}</TableCell>
+/home/z/my-project/src/components/crm/accounting.tsx:334:                  <TableCell className="text-right font-mono text-sm text-purple-600 dark:text-purple-400">{formatINR((s.igst as number) || 0)}</TableCell>
+/home/z/my-project/src/components/crm/accounting.tsx:335:                  <TableCell className="text-right font-mono text-sm font-semibold">{formatINR((s.totalAmount as number) || 0)}</TableCell>
+/home/z/my-project/src/components/crm/accounting.tsx:340:                <TableCell className="text-right font-mono text-sm">{formatINR(totals.subtotal)}</TableCell>
+/home/z/my-project/src/components/crm/accounting.tsx:341:                <TableCell className="text-right font-mono text-sm">{formatINR(totals.cgst)}</TableCell>
+/home/z/my-project/src/components/crm/accounting.tsx:342:                <TableCell className="text-right font-mono text-sm">{formatINR(totals.sgst)}</TableCell>
+/home/z/my-project/src/components/crm/accounting.tsx:343:                <TableCell className="text-right font-mono text-sm">{formatINR(totals.igst)}</TableCell>
+/home/z/my-project/src/components/crm/accounting.tsx:344:                <TableCell className="text-right font-mono text-sm">{formatINR(totals.total)}</TableCell>
+/home/z/my-project/src/components/crm/accounting.tsx:352:              <p className="font-mono font-semibold">{formatINR(totals.cgst)}</p>
+/home/z/my-project/src/components/crm/accounting.tsx:356:              <p className="font-mono font-semibold">{formatINR(totals.sgst)}</p>
+/home/z/my-project/src/components/crm/accounting.tsx:360:              <p className="font-mono font-semibold">{formatINR(totals.igst)}</p>
+/home/z/my-project/src/components/crm/accounting.tsx:364:              <p className="font-mono font-semibold text-emerald-700 dark:text-emerald-400">{formatINR(totals.cgst + totals.sgst + totals.igst)}</p>
+/home/z/my-project/src/components/crm/accounting.tsx:842:        description: `Sale - ${s.customer?.name || s.customerName || 'Customer'} (${s.invoiceNo || ''})`,
+
+[Showing results with pagination = limit: 250]

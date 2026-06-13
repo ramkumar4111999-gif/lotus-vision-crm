@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import { toast } from 'sonner'
 import {
   Package,
   Plus,
@@ -54,6 +55,7 @@ import {
 } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
+import { Progress } from '@/components/ui/progress'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -277,6 +279,9 @@ export default function Inventory() {
   const [adjustProduct, setAdjustProduct] = useState<Product | null>(null)
   const [adjustQty, setAdjustQty] = useState(0)
   const [adjusting, setAdjusting] = useState(false)
+
+  // File upload for CSV import
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   // ─── Sorted products ─────────────────────────────────────────────────────
 
@@ -865,7 +870,7 @@ export default function Inventory() {
                   variant={lowStockFilter ? 'default' : 'outline'}
                   size="sm"
                   onClick={handleLowStockToggle}
-                  className="gap-1.5"
+                  className="gap-1.5 min-h-[44px] touch-manipulation"
                 >
                   {lowStockFilter ? (
                     <Eye className="h-3.5 w-3.5" />
@@ -955,6 +960,7 @@ export default function Inventory() {
                           variant="link"
                           size="sm"
                           onClick={openCreateDialog}
+                          className="min-h-[44px] touch-manipulation"
                         >
                           Add your first product
                         </Button>
@@ -1378,6 +1384,7 @@ export default function Inventory() {
                 setForm(emptyForm)
               }}
               disabled={submitting}
+              className="min-h-[44px] min-w-[44px] touch-manipulation"
             >
               Cancel
             </Button>
@@ -1390,6 +1397,7 @@ export default function Inventory() {
                 !form.price.trim() ||
                 !form.stock.trim()
               }
+              className="min-h-[44px] min-w-[44px] touch-manipulation"
             >
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {editingProduct ? 'Update Product' : 'Add Product'}
@@ -1419,6 +1427,7 @@ export default function Inventory() {
                 setDeletingProduct(null)
               }}
               disabled={deleting}
+              className="min-h-[44px] min-w-[44px] touch-manipulation"
             >
               Cancel
             </Button>
@@ -1426,6 +1435,7 @@ export default function Inventory() {
               variant="destructive"
               onClick={handleDelete}
               disabled={deleting}
+              className="min-h-[44px] min-w-[44px] touch-manipulation"
             >
               {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Delete
@@ -1529,16 +1539,45 @@ export default function Inventory() {
                 setImportResult(null)
               }}
               disabled={importing}
+              className="min-h-[44px] touch-manipulation"
             >
               Close
             </Button>
             <Button
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={importing}
+              className="gap-2 min-h-[44px] touch-manipulation"
+            >
+              <Upload className="h-4 w-4" />
+              Upload .csv File
+            </Button>
+            <Button
               onClick={handleCsvImport}
               disabled={importing || !csvData.trim()}
+              className="min-h-[44px] touch-manipulation"
             >
               {importing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Import Products
             </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,text/csv"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0]
+                if (!file) return
+                try {
+                  const text = await file.text()
+                  setCsvData(text)
+                  toast.success(`Loaded ${file.name} (${(file.size / 1024).toFixed(1)} KB)`)
+                } catch {
+                  toast.error('Failed to read file')
+                }
+                if (fileInputRef.current) fileInputRef.current.value = ''
+              }}
+            />
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1570,6 +1609,17 @@ export default function Inventory() {
           ) : reportData ? (
             <div className="space-y-6 py-2">
               {/* Summary cards */}
+              {/* Reorder urgency bar */}
+              {reportData.total > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Reorder Urgency</span>
+                    <span className="font-medium">{Math.min(100, Math.round((reportData.total / Math.max(1, total)) * 100))}% of inventory needs reorder</span>
+                  </div>
+                  <Progress value={Math.min(100, (reportData.total / Math.max(1, total)) * 100)} className="h-2" />
+                </div>
+              )}
+
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <Card>
                   <CardContent className="pt-6">
@@ -1681,6 +1731,7 @@ export default function Inventory() {
                 setReportDialogOpen(false)
                 setReportData(null)
               }}
+              className="min-h-[44px] min-w-[44px] touch-manipulation"
             >
               Close
             </Button>
@@ -1733,8 +1784,8 @@ export default function Inventory() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAdjustProduct(null)}>Cancel</Button>
-            <Button onClick={handleStockAdjust} disabled={adjusting || !adjustProduct || adjustQty === 0} className="gap-2">
+            <Button variant="outline" onClick={() => setAdjustProduct(null)} className="min-h-[44px] min-w-[44px] touch-manipulation">Cancel</Button>
+            <Button onClick={handleStockAdjust} disabled={adjusting || !adjustProduct || adjustQty === 0} className="min-h-[44px] min-w-[44px] touch-manipulation gap-2">
               {adjusting && <Loader2 className="h-4 w-4 animate-spin" />}
               Apply
             </Button>

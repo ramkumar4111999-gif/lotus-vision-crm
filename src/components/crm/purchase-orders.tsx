@@ -437,13 +437,13 @@ export default function PurchaseOrders() {
                         <TableCell className="text-sm text-muted-foreground">{formatDate(order.createdAt)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => setViewOrder(order)}>
+                            <Button variant="ghost" size="sm" className="min-w-[44px] min-h-[44px] touch-manipulation" onClick={() => setViewOrder(order)}>
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => openEditDialog(order)}>
+                            <Button variant="ghost" size="sm" className="min-w-[44px] min-h-[44px] touch-manipulation" onClick={() => openEditDialog(order)}>
                               <Pencil className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDelete(order)}>
+                            <Button variant="ghost" size="sm" className="min-w-[44px] min-h-[44px] touch-manipulation" onClick={() => handleDelete(order)}>
                               <Trash2 className="h-4 w-4 text-red-500" />
                             </Button>
                           </div>
@@ -463,10 +463,10 @@ export default function PurchaseOrders() {
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">Page {page} of {totalPages}</p>
           <div className="flex gap-1">
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+            <Button variant="outline" size="sm" className="min-w-[44px] min-h-[44px] touch-manipulation" disabled={page <= 1} onClick={() => setPage(page - 1)}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
+            <Button variant="outline" size="sm" className="min-w-[44px] min-h-[44px] touch-manipulation" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
@@ -526,7 +526,7 @@ export default function PurchaseOrders() {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <Label className="font-medium">Items</Label>
-                <Button variant="outline" size="sm" onClick={addItem}>
+                <Button variant="outline" size="sm" className="min-h-[44px] touch-manipulation" onClick={addItem}>
                   <Plus className="mr-1 h-3 w-3" /> Add Item
                 </Button>
               </div>
@@ -590,7 +590,7 @@ export default function PurchaseOrders() {
                     </div>
                     <div className="col-span-1 flex items-center justify-center">
                       {items.length > 1 && (
-                        <Button variant="ghost" size="sm" onClick={() => removeItem(index)}>
+                        <Button variant="ghost" size="sm" className="min-w-[44px] min-h-[44px] touch-manipulation" onClick={() => removeItem(index)}>
                           <X className="h-4 w-4 text-red-500" />
                         </Button>
                       )}
@@ -613,8 +613,8 @@ export default function PurchaseOrders() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSubmit} disabled={submitting}>
+            <Button variant="outline" className="min-h-[44px] min-w-[44px] touch-manipulation" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button className="min-h-[44px] min-w-[44px] touch-manipulation" onClick={handleSubmit} disabled={submitting}>
               {submitting && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
               {editingOrder ? 'Update PO' : 'Create PO'}
             </Button>
@@ -750,8 +750,8 @@ export default function PurchaseOrders() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setStatusDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleStatusChange} disabled={submitting || newStatus === statusChangeOrder?.status}>
+            <Button variant="outline" className="min-h-[44px] min-w-[44px] touch-manipulation" onClick={() => setStatusDialogOpen(false)}>Cancel</Button>
+            <Button className="min-h-[44px] min-w-[44px] touch-manipulation" onClick={handleStatusChange} disabled={submitting || newStatus === statusChangeOrder?.status}>
               {submitting && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
               Update Status
             </Button>

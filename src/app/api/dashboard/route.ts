@@ -33,6 +33,7 @@ export async function GET() {
       overdueDues,
       todayAppointmentsCount,
       allSales,
+      todaySalesWithMode,
     ] = await Promise.all([
       // Total customers
       db.customer.count(),
@@ -163,6 +164,12 @@ export async function GET() {
         },
         select: { createdAt: true, totalAmount: true },
       }),
+
+      // ── Today's sales with payment mode (for donut chart) ──
+      db.sale.findMany({
+        where: { createdAt: { gte: todayStart } },
+        select: { totalAmount: true, paymentMode: true },
+      }),
     ]);
 
     // ── Calculate pending dues ─────────────────────────────────────────
@@ -265,6 +272,19 @@ export async function GET() {
       lowStockItems: lowStockCount,
     };
 
+    // ── Today's payment mode breakdown ──────────────────────────────
+    const modeMap: Record<string, { mode: string; amount: number; count: number }> = {};
+    for (const s of todaySalesWithMode) {
+      const mode = s.paymentMode || "Cash";
+      if (!modeMap[mode]) modeMap[mode] = { mode, amount: 0, count: 0 };
+      modeMap[mode].amount += s.totalAmount;
+      modeMap[mode].count += 1;
+    }
+    const todayPaymentModes = Object.values(modeMap).sort((a, b) => b.amount - a.amount);
+    const todayAvgOrderValue = todaySalesWithMode.length > 0
+      ? Math.round(todayPaymentModes.reduce((s, m) => s + m.amount, 0) / todaySalesWithMode.length)
+      : 0;
+
     const headers = new Headers({ 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' });
     return NextResponse.json(
       {
@@ -276,6 +296,8 @@ export async function GET() {
         revenueByDayOfWeek,
         comparison,
         pendingTasks,
+        todayPaymentModes,
+        todayAvgOrderValue,
       },
       { headers },
     );

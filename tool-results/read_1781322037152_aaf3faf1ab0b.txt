@@ -1,0 +1,602 @@
+   401→   401→      a.click();
+   402→   402→      URL.revokeObjectURL(url);
+   403→   403→    } catch {
+   404→   404→      setError('Failed to export CSV');
+   405→   405→    } finally {
+   406→   406→      setExporting(false);
+   407→   407→    }
+   408→   408→  };
+   409→   409→
+   410→   410→  const fetchCustomers = useCallback(async () => {
+   411→   411→    setLoading(true);
+   412→   412→    setError(null);
+   413→   413→    try {
+   414→   414→      const params = new URLSearchParams({
+   415→   415→        page: String(page),
+   416→   416→        limit: String(PAGE_LIMIT),
+   417→   417→      });
+   418→   418→      if (search) params.set('search', search);
+   419→   419→      if (groupFilter !== 'all') params.set('group', groupFilter);
+   420→   420→      if (fromDate) params.set('fromDate', fromDate);
+   421→   421→      if (toDate) params.set('toDate', toDate);
+   422→   422→      params.set('sort', `${sortField}:${sortDir}`);
+   423→   423→
+   424→   424→      const res = await fetch(`/api/customers?${params}`);
+   425→   425→      if (!res.ok) throw new Error(`Failed to fetch customers (HTTP ${res.status})`);
+   426→   426→      const json: PaginatedResponse<Customer> = await res.json();
+   427→   427→      // Duplicate phone detection
+   428→   428→      const phoneMap = new Map<string, number>();
+   429→   429→      json.data.forEach((c) => {
+   430→   430→        const cleaned = c.phone.replace(/\D/g, '');
+   431→   431→        phoneMap.set(cleaned, (phoneMap.get(cleaned) || 0) + 1);
+   432→   432→      });
+   433→   433→      const dupes = Array.from(phoneMap.entries()).filter(([, count]) => count > 1);
+   434→   434→      setDuplicateWarning(dupes.length > 0 ? `${dupes.length} duplicate phone number(s) found` : null);
+   435→   435→      setCustomers(json.data);
+   436→   436→      setTotalPages(json.totalPages);
+   437→   437→      setTotal(json.total);
+   438→   438→    } catch (err) {
+   439→   439→      setError(err instanceof Error ? err.message : 'An error occurred');
+   440→   440→    } finally {
+   441→   441→      setLoading(false);
+   442→   442→    }
+   443→   443→  }, [page, search, groupFilter, sortField, sortDir, fromDate, toDate]);
+   444→   444→
+   445→   445→  useEffect(() => {
+   446→   446→    fetchCustomers();
+   447→   447→  }, [fetchCustomers]);
+   448→   448→
+   449→   449→  // ─── Fetch customer details ────────────────────────────────────────────
+   450→   450→
+   451→   451→  const fetchCustomerDetails = useCallback(async (customerId: string) => {
+   452→   452→    setDetailLoading(true);
+   453→   453→    setDetailError(null);
+   454→   454→    setPurchases([]);
+   455→   455→    try {
+   456→   456→      const [prescRes, visitRes, dueRes, purchaseRes] = await Promise.all([
+   457→   457→        fetch(`/api/prescriptions?customerId=${customerId}`),
+   458→   458→        fetch(`/api/visits?customerId=${customerId}`),
+   459→   459→        fetch(`/api/dues?customerId=${customerId}`),
+   460→   460→        fetch(`/api/sales?customerId=${customerId}&limit=50`),
+   461→   461→      ]);
+   462→   462→
+   463→   463→      if (!prescRes.ok) throw new Error('Failed to fetch prescriptions');
+   464→   464→      if (!visitRes.ok) throw new Error('Failed to fetch visit history');
+   465→   465→      if (!dueRes.ok) throw new Error('Failed to fetch dues');
+   466→   466→
+   467→   467→      const prescJson = await prescRes.json();
+   468→   468→      const visitJson = await visitRes.json();
+   469→   469→      const dueJson = await dueRes.json();
+   470→   470→
+   471→   471→      setPrescriptions(Array.isArray(prescJson.data) ? prescJson.data : prescJson || []);
+   472→   472→      setVisits(Array.isArray(visitJson.data) ? visitJson.data : visitJson || []);
+   473→   473→      setDues(Array.isArray(dueJson.data) ? dueJson.data : dueJson || []);
+   474→   474→
+   475→   475→      // Fetch purchase history
+   476→   476→      if (purchaseRes.ok) {
+   477→   477→        const purchaseJson = await purchaseRes.json();
+   478→   478→        const saleList = Array.isArray(purchaseJson.sales) ? purchaseJson.sales : [];
+   479→   479→        setPurchases(saleList.map((s: { id: string; invoiceNo: string; total: number; status: string; createdAt: string }) => ({
+   480→   480→          id: s.id,
+   481→   481→          invoiceNo: s.invoiceNo,
+   482→   482→          total: s.total,
+   483→   483→          status: s.status,
+   484→   484→          createdAt: s.createdAt,
+   485→   485→        })));
+   486→   486→      }
+   487→   487→    } catch (err) {
+   488→   488→      setDetailError(err instanceof Error ? err.message : 'Failed to load details');
+   489→   489→    } finally {
+   490→   490→      setDetailLoading(false);
+   491→   491→    }
+   492→   492→  }, []);
+   493→   493→
+   494→   494→  // ─── Search handler ────────────────────────────────────────────────────
+   495→   495→
+   496→   496→  const handleSearch = () => {
+   497→   497→    setSearch(searchInput);
+   498→   498→    setPage(1);
+   499→   499→  };
+   500→   500→
+   501→   501→  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+   502→   502→    if (e.key === 'Enter') handleSearch();
+   503→   503→  };
+   504→   504→
+   505→   505→  const handleClearSearch = () => {
+   506→   506→    setSearchInput('');
+   507→   507→    setSearch('');
+   508→   508→    setPage(1);
+   509→   509→  };
+   510→   510→
+   511→   511→  const handleFromDateChange = (value: string) => {
+   512→   512→    setFromDate(value);
+   513→   513→    setPage(1);
+   514→   514→  };
+   515→   515→
+   516→   516→  const handleToDateChange = (value: string) => {
+   517→   517→    setToDate(value);
+   518→   518→    setPage(1);
+   519→   519→  };
+   520→   520→
+   521→   521→  const hasActiveFilters = search || groupFilter !== 'all' || fromDate || toDate;
+   522→   522→
+   523→   523→  const handleClearFilters = () => {
+   524→   524→    setSearchInput('');
+   525→   525→    setSearch('');
+   526→   526→    setGroupFilter('all');
+   527→   527→    setFromDate('');
+   528→   528→    setToDate('');
+   529→   529→    setPage(1);
+   530→   530→  };
+   531→   531→
+   532→   532→  // ─── Customer form handlers ────────────────────────────────────────────
+   533→   533→
+   534→   534→  const openAddCustomerDialog = () => {
+   535→   535→    setEditingCustomer(null);
+   536→   536→    setCustomerForm(EMPTY_CUSTOMER_FORM);
+   537→   537→    setCustomerFormErrors({});
+   538→   538→    setCustomerDialogOpen(true);
+   539→   539→  };
+   540→   540→
+   541→   541→  const openEditCustomerDialog = (customer: Customer) => {
+   542→   542→    setEditingCustomer(customer);
+   543→   543→    setCustomerForm({
+   544→   544→      name: customer.name,
+   545→   545→      phone: customer.phone,
+   546→   546→      email: customer.email || '',
+   547→   547→      dob: customer.dob || '',
+   548→   548→      address: customer.address || '',
+   549→   549→      aadhar: customer.aadhar || '',
+   550→   550→      group: customer.group,
+   551→   551→    });
+   552→   552→    setCustomerFormErrors({});
+   553→   553→    setCustomerDialogOpen(true);
+   554→   554→  };
+   555→   555→
+   556→   556→  const validateCustomerForm = (): boolean => {
+   557→   557→    const errors: Partial<Record<keyof CustomerFormData, string>> = {};
+   558→   558→    if (!customerForm.name.trim()) errors.name = 'Name is required';
+   559→   559→    if (!customerForm.phone.trim()) errors.phone = 'Phone is required';
+   560→   560→    else if (!/^\+?[\d\s-]{7,15}$/.test(customerForm.phone.trim()))
+   561→   561→      errors.phone = 'Enter a valid phone number';
+   562→   562→    if (customerForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerForm.email))
+   563→   563→      errors.email = 'Enter a valid email';
+   564→   564→    // Duplicate phone check (exclude current editing customer)
+   565→   565→    const cleaned = customerForm.phone.replace(/\D/g, '');
+   566→   566→    const isDuplicate = customers.some(
+   567→   567→      (c) => c.phone.replace(/\D/g, '') === cleaned && c.id !== editingCustomer?.id
+   568→   568→    );
+   569→   569→    if (isDuplicate) errors.phone = 'This phone number already exists!';
+   570→   570→    setCustomerFormErrors(errors);
+   571→   571→    return Object.keys(errors).length === 0;
+   572→   572→  };
+   573→   573→
+   574→   574→  const handleCustomerSubmit = async () => {
+   575→   575→    if (!validateCustomerForm()) return;
+   576→   576→    setCustomerSubmitting(true);
+   577→   577→    try {
+   578→   578→      const url = editingCustomer
+   579→   579→        ? `/api/customers/${editingCustomer.id}`
+   580→   580→        : '/api/customers';
+   581→   581→      const method = editingCustomer ? 'PUT' : 'POST';
+   582→   582→      const res = await fetch(url, {
+   583→   583→        method,
+   584→   584→        headers: { 'Content-Type': 'application/json' },
+   585→   585→        body: JSON.stringify(customerForm),
+   586→   586→      });
+   587→   587→      if (!res.ok) {
+   588→   588→        const body = await res.json().catch(() => null);
+   589→   589→        throw new Error(body?.error || `Failed to ${editingCustomer ? 'update' : 'create'} customer`);
+   590→   590→      }
+   591→   591→      setCustomerDialogOpen(false);
+   592→   592→      fetchCustomers();
+   593→   593→      // If we're editing the currently viewed customer, refresh details
+   594→   594→      if (editingCustomer && selectedCustomer?.id === editingCustomer.id) {
+   595→   595→        const updated: Customer = { ...editingCustomer, ...customerForm };
+   596→   596→        setSelectedCustomer(updated);
+   597→   597→      }
+   598→   598→    } catch (err) {
+   599→   599→      setCustomerFormErrors({
+   600→   600→        _form: err instanceof Error ? err.message : 'An error occurred',
+   601→   601→      });
+   602→   602→    } finally {
+   603→   603→      setCustomerSubmitting(false);
+   604→   604→    }
+   605→   605→  };
+   606→   606→
+   607→   607→  // ─── Customer selection (detail panel) ─────────────────────────────────
+   608→   608→
+   609→   609→  const handleSelectCustomer = (customer: Customer) => {
+   610→   610→    setSelectedCustomer(customer);
+   611→   611→    fetchCustomerDetails(customer.id);
+   612→   612→  };
+   613→   613→
+   614→   614→  const handleCloseDetail = () => {
+   615→   615→    setSelectedCustomer(null);
+   616→   616→    setPrescriptions([]);
+   617→   617→    setVisits([]);
+   618→   618→    setDues([]);
+   619→   619→    setDetailError(null);
+   620→   620→  };
+   621→   621→
+   622→   622→  // ─── Prescription handlers ─────────────────────────────────────────────
+   623→   623→
+   624→   624→  const openPrescriptionDialog = () => {
+   625→   625→    setPrescriptionForm(EMPTY_PRESCRIPTION_FORM);
+   626→   626→    setPrescriptionDialogOpen(true);
+   627→   627→  };
+   628→   628→
+   629→   629→  const handlePrescriptionSubmit = async () => {
+   630→   630→    if (!selectedCustomer || !prescriptionForm.date) return;
+   631→   631→    setPrescriptionSubmitting(true);
+   632→   632→    try {
+   633→   633→      const res = await fetch('/api/prescriptions', {
+   634→   634→        method: 'POST',
+   635→   635→        headers: { 'Content-Type': 'application/json' },
+   636→   636→        body: JSON.stringify({
+   637→   637→          customerId: selectedCustomer.id,
+   638→   638→          ...prescriptionForm,
+   639→   639→          leftSph: prescriptionForm.leftSph ? parseFloat(prescriptionForm.leftSph) : null,
+   640→   640→          leftCyl: prescriptionForm.leftCyl ? parseFloat(prescriptionForm.leftCyl) : null,
+   641→   641→          leftAxis: prescriptionForm.leftAxis ? parseFloat(prescriptionForm.leftAxis) : null,
+   642→   642→          leftPd: prescriptionForm.leftPd ? parseFloat(prescriptionForm.leftPd) : null,
+   643→   643→          rightSph: prescriptionForm.rightSph ? parseFloat(prescriptionForm.rightSph) : null,
+   644→   644→          rightCyl: prescriptionForm.rightCyl ? parseFloat(prescriptionForm.rightCyl) : null,
+   645→   645→          rightAxis: prescriptionForm.rightAxis ? parseFloat(prescriptionForm.rightAxis) : null,
+   646→   646→          rightPd: prescriptionForm.rightPd ? parseFloat(prescriptionForm.rightPd) : null,
+   647→   647→        }),
+   648→   648→      });
+   649→   649→      if (!res.ok) {
+   650→   650→        const body = await res.json().catch(() => null);
+   651→   651→        throw new Error(body?.error || 'Failed to add prescription');
+   652→   652→      }
+   653→   653→      setPrescriptionDialogOpen(false);
+   654→   654→      fetchCustomerDetails(selectedCustomer.id);
+   655→   655→    } catch (err) {
+   656→   656→      toast.error(err instanceof Error ? err.message : 'Failed to save prescription');
+   657→   657→    } finally {
+   658→   658→      setPrescriptionSubmitting(false);
+   659→   659→    }
+   660→   660→  };
+   661→   661→
+   662→   662→  // ─── Visit handlers ────────────────────────────────────────────────────
+   663→   663→
+   664→   664→  const openVisitDialog = () => {
+   665→   665→    setVisitForm(EMPTY_VISIT_FORM);
+   666→   666→    setVisitDialogOpen(true);
+   667→   667→  };
+   668→   668→
+   669→   669→  const handleVisitSubmit = async () => {
+   670→   670→    if (!selectedCustomer || !visitForm.date || !visitForm.purpose.trim()) return;
+   671→   671→    setVisitSubmitting(true);
+   672→   672→    try {
+   673→   673→      const res = await fetch('/api/visits', {
+   674→   674→        method: 'POST',
+   675→   675→        headers: { 'Content-Type': 'application/json' },
+   676→   676→        body: JSON.stringify({
+   677→   677→          customerId: selectedCustomer.id,
+   678→   678→          ...visitForm,
+   679→   679→        }),
+   680→   680→      });
+   681→   681→      if (!res.ok) {
+   682→   682→        const body = await res.json().catch(() => null);
+   683→   683→        throw new Error(body?.error || 'Failed to add visit');
+   684→   684→      }
+   685→   685→      setVisitDialogOpen(false);
+   686→   686→      fetchCustomerDetails(selectedCustomer.id);
+   687→   687→    } catch (err) {
+   688→   688→      toast.error(err instanceof Error ? err.message : 'Failed to save visit');
+   689→   689→    } finally {
+   690→   690→      setVisitSubmitting(false);
+   691→   691→    }
+   692→   692→  };
+   693→   693→
+   694→   694→  // ─── Loyalty handlers ────────────────────────────────────────────────
+   695→   695→
+   696→   696→  const openLoyaltyDialog = (type: 'earn' | 'redeem') => {
+   697→   697→    setLoyaltyType(type);
+   698→   698→    setLoyaltyPoints('');
+   699→   699→    setLoyaltyReason('');
+   700→   700→    setLoyaltyDialogOpen(true);
+   701→   701→  };
+   702→   702→
+   703→   703→  const handleLoyaltySubmit = async () => {
+   704→   704→    if (!selectedCustomer) return;
+   705→   705→    const pts = parseInt(loyaltyPoints, 10);
+   706→   706→    if (!pts || pts <= 0) {
+   707→   707→      toast.error('Please enter valid points');
+   708→   708→      return;
+   709→   709→    }
+   710→   710→    if (loyaltyType === 'redeem' && pts > selectedCustomer.loyaltyPoints) {
+   711→   711→      toast.error(`Only ${selectedCustomer.loyaltyPoints} points available`);
+   712→   712→      return;
+   713→   713→    }
+   714→   714→    setLoyaltySubmitting(true);
+   715→   715→    try {
+   716→   716→      const res = await fetch(`/api/customers/${selectedCustomer.id}/loyalty`, {
+   717→   717→        method: 'PATCH',
+   718→   718→        headers: { 'Content-Type': 'application/json' },
+   719→   719→        body: JSON.stringify({
+   720→   720→          points: loyaltyType === 'earn' ? pts : -pts,
+   721→   721→          reason: loyaltyReason.trim(),
+   722→   722→          type: loyaltyType,
+   723→   723→        }),
+   724→   724→      });
+   725→   725→      if (!res.ok) {
+   726→   726→        const body = await res.json().catch(() => null);
+   727→   727→        throw new Error(body?.error || 'Failed to update points');
+   728→   728→      }
+   729→   729→      const result = await res.json();
+   730→   730→      toast.success(result.message);
+   731→   731→      setLoyaltyDialogOpen(false);
+   732→   732→      // Refresh customer data
+   733→   733→      setSelectedCustomer({ ...selectedCustomer, loyaltyPoints: result.loyaltyPoints });
+   734→   734→      fetchCustomers();
+   735→   735→    } catch (err) {
+   736→   736→      toast.error(err instanceof Error ? err.message : 'Failed to update loyalty points');
+   737→   737→    } finally {
+   738→   738→      setLoyaltySubmitting(false);
+   739→   739→    }
+   740→   740→  };
+   741→   741→
+   742→   742→  // ─── CSV Import handler ──────────────────────────────────────────────
+   743→   743→
+   744→   744→  const handleCSVImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+   745→   745→    const file = e.target.files?.[0];
+   746→   746→    if (!file) return;
+   747→   747→    setImporting(true);
+   748→   748→    try {
+   749→   749→      const formData = new FormData();
+   750→   750→      formData.append('file', file);
+   751→   751→      const res = await fetch('/api/customers/import', {
+   752→   752→        method: 'POST',
+   753→   753→        body: formData,
+   754→   754→      });
+   755→   755→      if (!res.ok) {
+   756→   756→        const body = await res.json().catch(() => null);
+   757→   757→        throw new Error(body?.error || 'Import failed');
+   758→   758→      }
+   759→   759→      const result = await res.json();
+   760→   760→      toast.success(`Imported ${result.imported} customers${result.skipped > 0 ? `, ${result.skipped} skipped` : ''}`);
+   761→   761→      if (result.errors?.length) {
+   762→   762→        toast.warning(`${result.errors.length} row(s) had errors and were skipped`);
+   763→   763→      }
+   764→   764→      fetchCustomers();
+   765→   765→    } catch (err) {
+   766→   766→      toast.error(err instanceof Error ? err.message : 'Failed to import CSV');
+   767→   767→    } finally {
+   768→   768→      setImporting(false);
+   769→   769→      if (importInputRef.current) importInputRef.current.value = '';
+   770→   770→    }
+   771→   771→  };
+   772→   772→
+   773→   773→  // ─── Render helpers ────────────────────────────────────────────────────
+   774→   774→
+   775→   775→  const renderGroupBadge = (group: Customer['group']) => (
+   776→   776→    <Badge variant={GROUP_BADGE_VARIANT[group]} className={GROUP_COLORS[group]}>
+   777→   777→      {group}
+   778→   778→    </Badge>
+   779→   779→  );
+   780→   780→
+   781→   781→  // ─── Loading skeleton for table ────────────────────────────────────────
+   782→   782→
+   783→   783→  const renderTableSkeleton = () => (
+   784→   784→    <>
+   785→   785→      {Array.from({ length: 8 }).map((_, i) => (
+   786→   786→        <TableRow key={i}>
+   787→   787→          <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+   788→   788→          <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+   789→   789→          <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+   790→   790→          <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+   791→   791→          <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+   792→   792→          <TableCell><Skeleton className="h-8 w-16" /></TableCell>
+   793→   793→        </TableRow>
+   794→   794→      ))}
+   795→   795→    </>
+   796→   796→  );
+   797→   797→
+   798→   798→  // ─── Main render ───────────────────────────────────────────────────────
+   799→   799→
+   800→   800→  return (
+   801→   801→    <div className="flex flex-col gap-6 p-4 md:p-6">
+   802→   802→      {/* ─── Header ─────────────────────────────────────────────────── */}
+   803→   803→      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+   804→   804→        <div>
+   805→   805→          <h1 className="text-2xl font-bold tracking-tight">Customers</h1>
+   806→   806→          <p className="text-muted-foreground text-sm">
+   807→   807→            {total} customer{total !== 1 ? 's' : ''} total
+   808→   808→          </p>
+   809→   809→        </div>
+   810→   810→        <div className="flex gap-2 w-full sm:w-auto">
+   811→   811→            <Button onClick={openAddCustomerDialog} className="flex-1 sm:flex-none">
+   812→   812→              <Plus className="mr-2 size-4" />
+   813→   813→              Add Customer
+   814→   814→            </Button>
+   815→   815→            <Button variant="outline" className="flex-1 sm:flex-none" disabled={importing} onClick={() => importInputRef.current?.click()}>
+   816→   816→              {importing ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Upload className="mr-2 size-4" />}
+   817→   817→              Import CSV
+   818→   818→            </Button>
+   819→   819→            <input
+   820→   820→              ref={importInputRef}
+   821→   821→              type="file"
+   822→   822→              accept=".csv"
+   823→   823→              className="hidden"
+   824→   824→              onChange={handleCSVImport}
+   825→   825→            />
+   826→   826→            <Button variant="outline" onClick={handleExportCSV} className="flex-1 sm:flex-none" disabled={exporting}>
+   827→   827→              {exporting ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Download className="mr-2 size-4" />}
+   828→   828→              Export CSV
+   829→   829→            </Button>
+   830→   830→          </div>
+   831→   831→      </div>
+   832→   832→
+   833→   833→      {/* ─── Search + Filters Bar ──────────────────────────────────── */}
+   834→   834→      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+   835→   835→        <div className="flex flex-1 gap-2">
+   836→   836→          <div className="relative flex-1">
+   837→   837→            <Search className="text-muted-foreground absolute left-3 top-1/2 size-4 -translate-y-1/2" />
+   838→   838→            <Input
+   839→   839→              placeholder="Search by name or phone..."
+   840→   840→              value={searchInput}
+   841→   841→              onChange={(e) => setSearchInput(e.target.value)}
+   842→   842→              onKeyDown={handleSearchKeyDown}
+   843→   843→              className="pl-9"
+   844→   844→            />
+   845→   845→            {searchInput && (
+   846→   846→              <button
+   847→   847→                onClick={handleClearSearch}
+   848→   848→                className="text-muted-foreground hover:text-foreground absolute right-3 top-1/2 -translate-y-1/2"
+   849→   849→                aria-label="Clear search"
+   850→   850→              >
+   851→   851→                <X className="size-4" />
+   852→   852→              </button>
+   853→   853→            )}
+   854→   854→          </div>
+   855→   855→          <Button variant="outline" onClick={handleSearch}>
+   856→   856→            Search
+   857→   857→          </Button>
+   858→   858→        </div>
+   859→   859→        <div className="flex items-end gap-2 flex-shrink-0">
+   860→   860→          <Select value={groupFilter} onValueChange={handleGroupFilterChange}>
+   861→   861→            <SelectTrigger className="w-36">
+   862→   862→              <SelectValue placeholder="All Groups" />
+   863→   863→            </SelectTrigger>
+   864→   864→            <SelectContent>
+   865→   865→              <SelectItem value="all">All Groups</SelectItem>
+   866→   866→              {GROUP_LIST.map((g) => (
+   867→   867→                <SelectItem key={g} value={g}>{g}</SelectItem>
+   868→   868→              ))}
+   869→   869→            </SelectContent>
+   870→   870→          </Select>
+   871→   871→          <div className="flex flex-col gap-0.5">
+   872→   872→            <span className="text-xs text-muted-foreground">From</span>
+   873→   873→            <Input
+   874→   874→              type="date"
+   875→   875→              value={fromDate}
+   876→   876→              onChange={(e) => handleFromDateChange(e.target.value)}
+   877→   877→              className="w-36"
+   878→   878→            />
+   879→   879→          </div>
+   880→   880→          <div className="flex flex-col gap-0.5">
+   881→   881→            <span className="text-xs text-muted-foreground">To</span>
+   882→   882→            <Input
+   883→   883→              type="date"
+   884→   884→              value={toDate}
+   885→   885→              onChange={(e) => handleToDateChange(e.target.value)}
+   886→   886→              className="w-36"
+   887→   887→            />
+   888→   888→          </div>
+   889→   889→          {hasActiveFilters && (
+   890→   890→            <Button variant="ghost" size="sm" onClick={handleClearFilters}>
+   891→   891→              <X className="mr-1 size-3" />
+   892→   892→              Clear
+   893→   893→            </Button>
+   894→   894→          )}
+   895→   895→        </div>
+   896→   896→      </div>
+   897→   897→      {duplicateWarning && (
+   898→   898→        <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30">
+   899→   899→          <AlertTriangle className="size-4 text-amber-600" />
+   900→   900→          <AlertDescription className="text-amber-800 dark:text-amber-300">
+   901→   901→            {duplicateWarning}
+   902→   902→          </AlertDescription>
+   903→   903→        </Alert>
+   904→   904→      )}
+   905→   905→
+   906→   906→      {/* ─── Customer Table ────────────────────────────────────────── */}
+   907→   907→      <Card>
+   908→   908→        <CardContent className="p-0">
+   909→   909→          <div className="overflow-x-auto">
+   910→   910→          <Table>
+   911→   911→            <TableHeader>
+   912→   912→              <TableRow>
+   913→   913→                <TableHead className="min-w-[160px] cursor-pointer select-none" onClick={() => handleSort('name')}>
+   914→   914→                  <div className="flex items-center gap-1">Name <SortIcon field="name" /></div>
+   915→   915→                </TableHead>
+   916→   916→                <TableHead className="min-w-[200px] cursor-pointer select-none" onClick={() => handleSort('phone')}>
+   917→   917→                  <div className="flex items-center gap-1">Phone <SortIcon field="phone" /></div>
+   918→   918→                </TableHead>
+   919→   919→                <TableHead className="cursor-pointer select-none" onClick={() => handleSort('group')}>
+   920→   920→                  <div className="flex items-center gap-1">Group <SortIcon field="group" /></div>
+   921→   921→                </TableHead>
+   922→   922→                <TableHead className="text-right cursor-pointer select-none" onClick={() => handleSort('loyaltyPoints')}>
+   923→   923→                  <div className="flex items-center justify-end gap-1">Points <SortIcon field="loyaltyPoints" /></div>
+   924→   924→                </TableHead>
+   925→   925→                <TableHead className="text-right cursor-pointer select-none" onClick={() => handleSort('totalSpent')}>
+   926→   926→                  <div className="flex items-center justify-end gap-1">Total Spent <SortIcon field="totalSpent" /></div>
+   927→   927→                </TableHead>
+   928→   928→                <TableHead className="text-right">Actions</TableHead>
+   929→   929→              </TableRow>
+   930→   930→            </TableHeader>
+   931→   931→            <TableBody>
+   932→   932→              {error ? (
+   933→   933→                <TableRow>
+   934→   934→                  <TableCell colSpan={6} className="h-48 text-center">
+   935→   935→                    <div className="flex flex-col items-center gap-2">
+   936→   936→                      <AlertCircle className="size-8 text-destructive" />
+   937→   937→                      <p className="text-sm text-destructive">{error}</p>
+   938→   938→                      <Button variant="outline" size="sm" onClick={fetchCustomers}>
+   939→   939→                        Retry
+   940→   940→                      </Button>
+   941→   941→                    </div>
+   942→   942→                  </TableCell>
+   943→   943→                </TableRow>
+   944→   944→              ) : loading ? (
+   945→   945→                renderTableSkeleton()
+   946→   946→              ) : customers.length === 0 ? (
+   947→   947→                <TableRow>
+   948→   948→                  <TableCell colSpan={6} className="h-48 text-center">
+   949→   949→                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+   950→   950→                      <User className="size-8" />
+   951→   951→                      <p className="text-sm">
+   952→   952→                        {search ? 'No customers found for your search.' : 'No customers yet.'}
+   953→   953→                      </p>
+   954→   954→                      {!search && (
+   955→   955→                        <Button variant="outline" size="sm" onClick={openAddCustomerDialog}>
+   956→   956→                          <Plus className="mr-1 size-3" />
+   957→   957→                          Add your first customer
+   958→   958→                        </Button>
+   959→   959→                      )}
+   960→   960→                    </div>
+   961→   961→                  </TableCell>
+   962→   962→                </TableRow>
+   963→   963→              ) : (
+   964→   964→                customers.map((customer) => (
+   965→   965→                  <TableRow
+   966→   966→                    key={customer.id}
+   967→   967→                    className="cursor-pointer"
+   968→   968→                    onClick={() => handleSelectCustomer(customer)}
+   969→   969→                  >
+   970→   970→                    <TableCell className="font-medium">{customer.name}</TableCell>
+   971→   971→                    <TableCell>
+   972→   972→                      <div className="flex items-center gap-1.5">
+   973→   973→                        <span className="tabular-nums">{customer.phone}</span>
+   974→   974→                        <button
+   975→   975→                          onClick={(e) => {
+   976→   976→                            e.stopPropagation();
+   977→   977→                            openWhatsApp(customer.phone, customer.name);
+   978→   978→                          }}
+   979→   979→                          className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-md text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-950/50 transition-colors shrink-0 touch-manipulation"
+   980→   980→                          aria-label={`WhatsApp ${customer.name}`}
+   981→   981→                          title="Chat on WhatsApp"
+   982→   982→                        >
+   983→   983→                          <MessageCircle className="size-4" />
+   984→   984→                        </button>
+   985→   985→                      </div>
+   986→   986→                    </TableCell>
+   987→   987→                    <TableCell>{renderGroupBadge(customer.group)}</TableCell>
+   988→   988→                    <TableCell className="text-right tabular-nums">
+   989→   989→                      {customer.loyaltyPoints.toLocaleString()}
+   990→   990→                    </TableCell>
+   991→   991→                    <TableCell className="text-right tabular-nums">
+   992→   992→                      {formatCurrency(customer.totalSpent)}
+   993→   993→                    </TableCell>
+   994→   994→                    <TableCell className="text-right">
+   995→   995→                      <div className="flex items-center justify-end gap-1">
+   996→   996→                        <Button
+   997→   997→                          variant="ghost"
+   998→   998→                          size="icon"
+   999→   999→                          className="min-w-[44px] min-h-[44px] touch-manipulation"
+  1000→  1000→                          onClick={(e) => {
+
+[showing lines 401-1000 of 1962; use offset=1001 with limit to continue reading]

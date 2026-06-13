@@ -39,7 +39,7 @@ import {
   Crown,
   Hash,
 } from "lucide-react";
-import { format, subDays, parseISO, isWithinInterval, startOfMonth, endOfMonth, subMonths } from "date-fns";
+import { format, subDays, parseISO, isWithinInterval, startOfMonth, endOfMonth, subMonths, startOfWeek, startOfYear } from "date-fns";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -694,6 +694,22 @@ export default function Reports() {
     }));
   }, [allSales, dateFrom, dateTo]);
 
+  // ─── Sales by Day of Week ──────────────────────────────────────────────
+  const salesByDayOfWeek = useMemo(() => {
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const dayData = dayNames.map((day) => ({ day, revenue: 0, orders: 0 }));
+    allSales.forEach((s) => {
+      try {
+        const d = new Date(s.createdAt);
+        const dayIndex = d.getDay();
+        dayData[dayIndex].revenue += s.total || s.totalAmount || 0;
+        dayData[dayIndex].orders += 1;
+      } catch { /* ignore */ }
+    });
+    // Reorder to start from Monday
+    return [...dayData.slice(1), dayData[0]];
+  }, [allSales]);
+
   // ─── Customer acquisition from real sales data ─────────────────────────
 
   const customerAcquisition = useMemo(() => {
@@ -1073,6 +1089,20 @@ export default function Reports() {
               </Button>
               <Separator orientation="vertical" className="h-6 hidden sm:block" />
               <Button variant="outline" size="sm" className="text-xs min-h-[44px] touch-manipulation" onClick={() => {
+                const todayStr = format(today, "yyyy-MM-dd");
+                setDateFromInput(todayStr); setDateToInput(todayStr);
+                setDateFrom(todayStr); setDateTo(todayStr);
+              }}>
+                Today
+              </Button>
+              <Button variant="outline" size="sm" className="text-xs min-h-[44px] touch-manipulation" onClick={() => {
+                const from = format(startOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd");
+                setDateFromInput(from); setDateToInput(defaultTo);
+                setDateFrom(from); setDateTo(defaultTo);
+              }}>
+                This Week
+              </Button>
+              <Button variant="outline" size="sm" className="text-xs min-h-[44px] touch-manipulation" onClick={() => {
                 const from = format(startOfMonth(today), "yyyy-MM-dd");
                 setDateFromInput(from); setDateToInput(defaultTo);
                 setDateFrom(from); setDateTo(defaultTo);
@@ -1092,6 +1122,13 @@ export default function Reports() {
                 setDateFrom(from); setDateTo(defaultTo);
               }}>
                 Last 7 Days
+              </Button>
+              <Button variant="outline" size="sm" className="text-xs min-h-[44px] touch-manipulation" onClick={() => {
+                const from = format(startOfYear(today), "yyyy-MM-dd");
+                setDateFromInput(from); setDateToInput(defaultTo);
+                setDateFrom(from); setDateTo(defaultTo);
+              }}>
+                This Year
               </Button>
             </div>
           </div>
@@ -1212,6 +1249,7 @@ export default function Reports() {
             <TabsTrigger value="top-spenders" className="gap-1.5 min-h-[44px] touch-manipulation"><Crown className="h-4 w-4" /><span className="hidden sm:inline">Top Spenders</span></TabsTrigger>
             <TabsTrigger value="monthly-acq" className="gap-1.5 min-h-[44px] touch-manipulation"><CalendarDays className="h-4 w-4" /><span className="hidden sm:inline">Monthly Acq.</span></TabsTrigger>
             <TabsTrigger value="inventory-value" className="gap-1.5 min-h-[44px] touch-manipulation"><BarChart3 className="h-4 w-4" /><span className="hidden sm:inline">Inventory Val.</span></TabsTrigger>
+            <TabsTrigger value="day-of-week" className="gap-1.5 min-h-[44px] touch-manipulation"><CalendarDays className="h-4 w-4" /><span className="hidden sm:inline">Day of Week</span></TabsTrigger>
           </TabsList>
 
           {/* ─── Overview Tab ──────────────────────────────────────────── */}
@@ -2336,6 +2374,52 @@ export default function Reports() {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          {/* ─── Day of Week Tab ───────────────────────────────────────── */}
+          <TabsContent value="day-of-week">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <CalendarDays className="h-5 w-5" />
+                  Sales by Day of Week
+                </CardTitle>
+                <CardDescription>Which days generate the most revenue? Use this for staffing and promotions.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {salesByDayOfWeek.every((d) => d.revenue === 0) ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                    <CalendarDays className="h-10 w-10 mb-2 opacity-40" />
+                    <p className="text-sm">No sales data available</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={salesByDayOfWeek} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                        <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                        <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+                        <Tooltip content={<ChartTooltip valuePrefix="₹" />} />
+                        <Bar dataKey="revenue" fill="#059669" radius={[4, 4, 0, 0]} barSize={36} name="Revenue" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+                      {salesByDayOfWeek.map((d) => {
+                        const avg = d.orders > 0 ? Math.round(d.revenue / d.orders) : 0;
+                        return (
+                          <div key={d.day} className="rounded-lg border p-2.5 text-center">
+                            <p className="text-[10px] text-muted-foreground font-medium">{d.day.slice(0, 3)}</p>
+                            <p className="text-sm font-bold font-mono text-emerald-600 dark:text-emerald-400">{formatCurrency(d.revenue)}</p>
+                            <p className="text-[10px] text-muted-foreground">{d.orders} orders</p>
+                            <p className="text-[10px] text-muted-foreground">Avg: {formatCurrency(avg)}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

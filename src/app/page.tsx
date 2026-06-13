@@ -6,7 +6,8 @@ import {
   BarChart3, UserCog, Megaphone, Menu, Moon, Sun, LogOut, X, Search,
   Database, Settings,
   Loader, Download, Upload, AlertOctagon, TrendingUp, ChevronDown,
-  ShoppingCart, Calculator,
+  ShoppingCart, Calculator, MoreHorizontal,
+  PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -33,6 +34,13 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+} from '@/components/ui/drawer';
 import { CrmProvider, useCrmStore, type SectionKey } from '@/components/crm/store';
 import { getSettings, saveSettings, type CrmSettings } from '@/lib/settings';
 import { toast } from 'sonner';
@@ -103,16 +111,19 @@ function SectionRenderer() {
   }, [activeSection, setLoadingBar]);
 
   return (
-    <div key={activeSection} className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+    <div key={activeSection} className="section-enter">
       <Component />
     </div>
   );
 }
 
-// ─── Sidebar (Desktop) ─────────────────────────────────────────────────
+// ─── Sidebar (Desktop — supports collapsed & expanded) ─────────────────
 
 function Sidebar({ onNav }: { onNav?: () => void }) {
-  const { activeSection, setActiveSection, darkMode, toggleDarkMode } = useCrmStore();
+  const {
+    activeSection, setActiveSection, darkMode, toggleDarkMode,
+    sidebarCollapsed, toggleSidebarCollapsed,
+  } = useCrmStore();
   // Quick stats for mobile sidebar
   const [quickStats, setQuickStats] = useState({ todaySales: 0, pendingLab: 0, lowStock: 0, dueAmount: 0 });
   const [statsLoaded, setStatsLoaded] = useState(false);
@@ -167,21 +178,74 @@ function Sidebar({ onNav }: { onNav?: () => void }) {
     return () => { cancelled = true; };
   }, []);
 
+  const navButton = (item: NavItem) => {
+    const Icon = item.icon;
+    const isActive = activeSection === item.key;
+
+    // When collapsed, wrap in tooltip
+    const buttonContent = (
+      <button
+        key={item.key}
+        onClick={() => {
+          setActiveSection(item.key);
+          onNav?.();
+        }}
+        className={`
+          w-full text-left flex items-center gap-3 rounded-lg text-sm font-medium transition-all duration-150 min-h-[44px] touch-manipulation
+          ${sidebarCollapsed ? 'justify-center px-0' : 'px-3'}
+          ${isActive
+            ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200 dark:shadow-emerald-900/40'
+            : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700'
+          }
+        `}
+      >
+        <Icon className="h-5 w-5 shrink-0" />
+        {!sidebarCollapsed && (
+          <>
+            <span className="truncate">{item.label}</span>
+            {item.key === 'lab-orders' && (
+              <Badge variant="secondary" className="ml-auto bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400 text-[10px] px-1.5">
+                3
+              </Badge>
+            )}
+          </>
+        )}
+      </button>
+    );
+
+    if (sidebarCollapsed) {
+      return (
+        <Tooltip key={item.key}>
+          <TooltipTrigger asChild>
+            {buttonContent}
+          </TooltipTrigger>
+          <TooltipContent side="right" sideOffset={8}>
+            <p>{item.label}</p>
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
+
+    return buttonContent;
+  };
+
   return (
-    <div className="flex h-full flex-col bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800">
+    <div className="flex h-full flex-col bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-all duration-200">
       {/* Brand */}
-      <div className="flex items-center gap-3 px-5 py-5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white font-bold text-sm shadow-lg shadow-emerald-200 dark:shadow-emerald-900/40">
+      <div className={`flex items-center gap-3 ${sidebarCollapsed ? 'px-3 py-4 justify-center' : 'px-5 py-5'}`}>
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white font-bold text-sm shadow-lg shadow-emerald-200 dark:shadow-emerald-900/40 shrink-0">
           LVO
         </div>
-        <div className="flex flex-col">
-          <span className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight">
-            Lotus Vision
-          </span>
-          <span className="text-xs text-slate-500 dark:text-slate-400 leading-tight">
-            Opticals CRM
-          </span>
-        </div>
+        {!sidebarCollapsed && (
+          <div className="flex flex-col min-w-0">
+            <span className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight">
+              Lotus Vision
+            </span>
+            <span className="text-xs text-slate-500 dark:text-slate-400 leading-tight">
+              Opticals CRM
+            </span>
+          </div>
+        )}
       </div>
 
       <Separator />
@@ -234,34 +298,7 @@ function Sidebar({ onNav }: { onNav?: () => void }) {
         )}
 
         <nav className="flex flex-col gap-1">
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeSection === item.key;
-            return (
-              <button
-                    key={item.key}
-                    onClick={() => {
-                      setActiveSection(item.key);
-                      onNav?.();
-                    }}
-                    className={`
-                      w-full text-left flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-all duration-150 min-h-[44px] touch-manipulation
-                      ${isActive
-                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200 dark:shadow-emerald-900/40'
-                        : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700'
-                      }
-                    `}
-                  >
-                    <Icon className="h-5 w-5 shrink-0" />
-                    <span>{item.label}</span>
-                    {item.key === 'lab-orders' && (
-                      <Badge variant="secondary" className="ml-auto bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400 text-[10px] px-1.5">
-                        3
-                      </Badge>
-                    )}
-                  </button>
-            );
-          })}
+          {NAV_ITEMS.map((item) => navButton(item))}
         </nav>
       </ScrollArea>
 
@@ -271,25 +308,44 @@ function Sidebar({ onNav }: { onNav?: () => void }) {
       <div className="p-3 space-y-1">
         <button
           onClick={toggleDarkMode}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 transition-colors min-h-[44px] touch-manipulation"
+          className={`flex items-center rounded-lg text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 transition-colors min-h-[44px] touch-manipulation ${sidebarCollapsed ? 'justify-center px-0' : 'w-full gap-3 px-3'}`}
+          aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
         >
-          {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-          {darkMode ? 'Light Mode' : 'Dark Mode'}
+          {darkMode ? <Sun className="h-5 w-5 shrink-0" /> : <Moon className="h-5 w-5 shrink-0" />}
+          {!sidebarCollapsed && (darkMode ? 'Light Mode' : 'Dark Mode')}
         </button>
-        <div className="flex items-center gap-3 px-3 py-2.5 min-h-[44px]">
-          <Avatar className="h-9 w-9">
+        <div className={`flex items-center gap-3 min-h-[44px] ${sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'px-3 py-2.5'}`}>
+          <Avatar className="h-9 w-9 shrink-0">
             <AvatarFallback className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 text-xs font-semibold">
               RK
             </AvatarFallback>
           </Avatar>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">Ram Kumar</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">Owner</p>
-          </div>
-          <button className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors h-10 w-10 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 touch-manipulation" aria-label="Log out" onClick={() => toast.info('Session management is not configured. Contact your admin.')}>
-            <LogOut className="h-4.5 w-4.5" />
-          </button>
+          {!sidebarCollapsed && (
+            <>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">Ram Kumar</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">Owner</p>
+              </div>
+              <button className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors h-10 w-10 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 touch-manipulation" aria-label="Log out" onClick={() => toast.info('Session management is not configured. Contact your admin.')}>
+                <LogOut className="h-4.5 w-4.5" />
+              </button>
+            </>
+          )}
         </div>
+
+        {/* Collapse toggle — desktop only */}
+        <button
+          onClick={toggleSidebarCollapsed}
+          className="hidden lg:flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 transition-colors min-h-[44px] touch-manipulation"
+          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {sidebarCollapsed ? <PanelLeftOpen className="h-5 w-5 shrink-0 mx-auto" /> : (
+            <>
+              <PanelLeftClose className="h-5 w-5 shrink-0" />
+              <span>Collapse</span>
+            </>
+          )}
+        </button>
       </div>
     </div>
   );
@@ -314,10 +370,9 @@ function GlobalSearch() {
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { setActiveSection } = useCrmStore();
+  const { setActiveSection, setSearchInputRef } = useCrmStore();
 
   // Expose the ref to the store for keyboard shortcut focus
-  const { setSearchInputRef } = useCrmStore();
   useEffect(() => {
     setSearchInputRef(inputRef);
   }, [inputRef, setSearchInputRef]);
@@ -404,7 +459,7 @@ function GlobalSearch() {
 
   // Close on click outside
   useEffect(() => {
-    function handleClick(e: MouseEvent) {
+    function handleClick(e: Event) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false);
         setMobileExpanded(false);
@@ -455,7 +510,7 @@ function GlobalSearch() {
   return (
     <div ref={containerRef} className="relative">
       {/* Mobile: icon-only, expandable */}
-      <div className="sm:hidden">
+      <div className="lg:hidden">
         {mobileExpanded ? (
           <div className="flex items-center gap-1">
             <Input
@@ -469,7 +524,7 @@ function GlobalSearch() {
             <Button
               variant="ghost"
               size="icon"
-              className="shrink-0"
+              className="shrink-0 min-w-[44px] min-h-[44px] touch-manipulation"
               onClick={() => { setMobileExpanded(false); setQuery(''); setOpen(false); }}
             >
               <X className="h-4 w-4" />
@@ -481,7 +536,7 @@ function GlobalSearch() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="shrink-0"
+                className="shrink-0 min-w-[44px] min-h-[44px] touch-manipulation"
                 onClick={() => setMobileExpanded(true)}
               >
                 <Search className="h-4.5 w-4.5 text-slate-600 dark:text-slate-400" />
@@ -493,7 +548,7 @@ function GlobalSearch() {
       </div>
 
       {/* Desktop: full search input */}
-      <div className="hidden sm:block">
+      <div className="hidden lg:block">
         <Tooltip>
           <TooltipTrigger asChild>
             <div className="relative w-64">
@@ -517,7 +572,7 @@ function GlobalSearch() {
 
       {/* Dropdown */}
       {open && hasResults && (
-        <div className="absolute right-0 sm:right-auto sm:left-0 top-full mt-1.5 w-[calc(100vw-1.5rem)] sm:w-80 z-50 rounded-lg border bg-popover shadow-lg max-h-80 overflow-y-auto">
+        <div className="absolute right-0 lg:right-auto lg:left-0 top-full mt-1.5 w-[calc(100vw-1.5rem)] lg:w-80 z-50 rounded-lg border bg-popover shadow-lg max-h-80 overflow-y-auto">
           {/* Customers group */}
           {customers.length > 0 && (
             <div>
@@ -600,7 +655,7 @@ function GlobalSearch() {
 
       {/* No results message */}
       {open && query.length >= 2 && !searching && !hasResults && (
-        <div className="absolute right-0 sm:right-auto sm:left-0 top-full mt-1.5 w-[340px] sm:w-80 z-50 rounded-lg border bg-popover shadow-lg p-4 text-center">
+        <div className="absolute right-0 lg:right-auto lg:left-0 top-full mt-1.5 w-[340px] lg:w-80 z-50 rounded-lg border bg-popover shadow-lg p-4 text-center">
           <p className="text-sm text-muted-foreground">No results found for &ldquo;{query}&rdquo;</p>
         </div>
       )}
@@ -805,11 +860,11 @@ function SettingsDialog() {
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setSettingsOpen(false)}>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={() => setSettingsOpen(false)} className="min-h-[44px] min-w-[44px] touch-manipulation">
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={saving}>
+          <Button onClick={handleSave} disabled={saving} className="min-h-[44px] min-w-[44px] touch-manipulation">
             {saving ? <Loader className="h-4 w-4 animate-spin mr-1.5" /> : null}
             Save Settings
           </Button>
@@ -838,24 +893,37 @@ function LoadingBar() {
 // ─── Top Bar ────────────────────────────────────────────────────────────
 
 function TopBar() {
-  const { activeSection, setSidebarOpen, darkMode, toggleDarkMode, setSettingsOpen } = useCrmStore();
+  const { activeSection, setSidebarOpen, darkMode, toggleDarkMode, setSettingsOpen, sidebarCollapsed, toggleSidebarCollapsed } = useCrmStore();
 
   const currentLabel = NAV_ITEMS.find((n) => n.key === activeSection)?.label ?? 'Dashboard';
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 sm:h-16 items-center gap-2 sm:gap-4 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md px-3 sm:px-4 md:px-6">
-      {/* Mobile menu button */}
+    <header className="sticky top-0 z-30 flex h-12 lg:h-14 items-center gap-2 sm:gap-4 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md px-3 sm:px-4 md:px-6 pb-0">
+      {/* Desktop: hamburger for md→lg range where sidebar is hidden */}
       <Button
         variant="ghost"
         size="icon"
-        className="lg:hidden shrink-0 h-11 w-11 touch-manipulation"
+        className="hidden md:flex lg:hidden shrink-0 h-11 w-11 touch-manipulation"
         onClick={() => setSidebarOpen(true)}
         aria-label="Open menu"
       >
         <Menu className="h-5 w-5" />
       </Button>
 
-      <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100 truncate">
+      {/* Desktop: collapse toggle visible when sidebar is collapsed */}
+      {sidebarCollapsed && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="hidden lg:flex shrink-0 h-11 w-11 touch-manipulation"
+          onClick={toggleSidebarCollapsed}
+          aria-label="Expand sidebar"
+        >
+          <PanelLeftOpen className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+        </Button>
+      )}
+
+      <h1 className="text-base lg:text-lg font-semibold text-slate-900 dark:text-slate-100 truncate">
         {currentLabel}
       </h1>
 
@@ -868,7 +936,7 @@ function TopBar() {
       <Button
         variant="ghost"
         size="icon"
-        className="shrink-0 h-11 w-11 sm:h-10 sm:w-10 min-w-[44px] min-h-[44px] touch-manipulation"
+        className="shrink-0 h-11 w-11 lg:h-10 lg:w-10 min-w-[44px] min-h-[44px] touch-manipulation"
         onClick={() => setSettingsOpen(true)}
         aria-label="Settings"
       >
@@ -879,7 +947,7 @@ function TopBar() {
       <Button
         variant="ghost"
         size="icon"
-        className="shrink-0 h-11 w-11 sm:h-10 sm:w-10 min-w-[44px] min-h-[44px] touch-manipulation"
+        className="shrink-0 h-11 w-11 lg:h-10 lg:w-10 min-w-[44px] min-h-[44px] touch-manipulation"
         onClick={toggleDarkMode}
         aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
       >
@@ -897,6 +965,7 @@ function TopBar() {
 }
 
 // ─── Mobile Sidebar Overlay with transitions ────────────────────────────
+// Kept for md→lg range where sidebar is hidden but bottom nav is not shown
 
 function MobileSidebar() {
   const { sidebarOpen, setSidebarOpen } = useCrmStore();
@@ -907,7 +976,7 @@ function MobileSidebar() {
 
   return (
     <div
-      className={`fixed inset-0 z-50 lg:hidden pointer-events-none transition-[visibility,opacity] duration-200 ${
+      className={`fixed inset-0 z-50 md:flex lg:hidden pointer-events-none transition-[visibility,opacity] duration-200 ${
         sidebarOpen ? 'pointer-events-auto !visible opacity-100' : 'invisible opacity-0'
       }`}
     >
@@ -926,6 +995,7 @@ function MobileSidebar() {
       >
         <button
           onClick={handleClose}
+          aria-label="Close menu"
           className="absolute top-3 right-3 z-20 rounded-md bg-white/80 dark:bg-slate-800/80 p-2.5 shadow-sm transition-colors hover:bg-white dark:hover:bg-slate-800 min-h-[44px] min-w-[44px] flex items-center justify-center touch-manipulation"
         >
           <X className="h-5 w-5 text-slate-600 dark:text-slate-400" />
@@ -933,6 +1003,141 @@ function MobileSidebar() {
         <Sidebar onNav={handleClose} />
       </div>
     </div>
+  );
+}
+
+// ─── Bottom Navigation Bar (Mobile) ────────────────────────────────────
+
+const BOTTOM_NAV_TABS: { key: SectionKey | 'more'; label: string; icon: React.ElementType }[] = [
+  { key: 'dashboard', label: 'Home', icon: LayoutDashboard },
+  { key: 'customers', label: 'Customers', icon: Users },
+  { key: 'sales', label: 'Sales', icon: Receipt },
+  { key: 'inventory', label: 'Inventory', icon: Package },
+  { key: 'more', label: 'More', icon: MoreHorizontal },
+];
+
+function BottomNavBar() {
+  const { activeSection, setActiveSection, setMoreSheetOpen } = useCrmStore();
+
+  const handleTabPress = (tab: typeof BOTTOM_NAV_TABS[number]) => {
+    if (tab.key === 'more') {
+      setMoreSheetOpen(true);
+    } else {
+      setActiveSection(tab.key);
+    }
+  };
+
+  return (
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 shadow-[0_-2px_10px_rgba(0,0,0,0.06)] dark:shadow-[0_-2px_10px_rgba(0,0,0,0.3)] bottom-nav-safe"
+      aria-label="Main navigation"
+    >
+      <div className="flex items-stretch justify-around h-16">
+        {BOTTOM_NAV_TABS.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = tab.key !== 'more' && activeSection === tab.key;
+
+          return (
+            <button
+              key={tab.key}
+              onClick={() => handleTabPress(tab)}
+              className="flex flex-col items-center justify-center flex-1 min-w-0 min-h-[44px] touch-manipulation relative py-1 transition-colors duration-150"
+              aria-label={tab.label}
+              aria-current={isActive ? 'page' : undefined}
+            >
+              <Icon
+                className={`h-5 w-5 transition-colors duration-150 ${
+                  isActive
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-slate-400 dark:text-slate-500'
+                }`}
+              />
+              <span
+                className={`text-[10px] leading-tight mt-0.5 transition-colors duration-150 ${
+                  isActive
+                    ? 'text-emerald-600 dark:text-emerald-400 font-medium'
+                    : 'text-slate-400 dark:text-slate-500'
+                }`}
+              >
+                {tab.label}
+              </span>
+              {/* Active indicator pill */}
+              {isActive && (
+                <span className="absolute bottom-1 left-1/2 -translate-x-1/2 h-1 w-5 rounded-full bg-emerald-600 dark:bg-emerald-400 transition-all duration-200" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
+// ─── "More" Bottom Sheet (Mobile) ──────────────────────────────────────
+
+function MoreSheet() {
+  const { moreSheetOpen, setMoreSheetOpen, activeSection, setActiveSection } = useCrmStore();
+
+  // Lock body scroll when sheet is open
+  useEffect(() => {
+    if (moreSheetOpen) {
+      document.body.classList.add('sheet-open');
+    } else {
+      document.body.classList.remove('sheet-open');
+    }
+    return () => {
+      document.body.classList.remove('sheet-open');
+    };
+  }, [moreSheetOpen]);
+
+  const handleSelect = (key: SectionKey) => {
+    setActiveSection(key);
+    setMoreSheetOpen(false);
+  };
+
+  return (
+    <Drawer
+      open={moreSheetOpen}
+      onOpenChange={(open) => {
+        setMoreSheetOpen(open);
+        if (!open) {
+          document.body.classList.remove('sheet-open');
+        }
+      }}
+      dismissible
+      handleOnly
+    >
+      <DrawerContent className="max-h-[70vh]">
+        <DrawerHeader className="text-center pb-2">
+          <DrawerTitle className="text-base">All Sections</DrawerTitle>
+          <DrawerDescription className="text-xs">Tap to navigate</DrawerDescription>
+        </DrawerHeader>
+        <div className="px-4 pb-6">
+          <div className="grid grid-cols-3 gap-3">
+            {NAV_ITEMS.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeSection === item.key;
+              return (
+                <button
+                  key={item.key}
+                  onClick={() => handleSelect(item.key)}
+                  className={`flex flex-col items-center justify-center gap-2 rounded-xl p-3 min-h-[68px] min-w-[44px] touch-manipulation transition-colors duration-150 ${
+                    isActive
+                      ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 active:bg-slate-300 dark:active:bg-slate-600'
+                  }`}
+                >
+                  <Icon className="h-5 w-5 shrink-0" />
+                  <span className="text-[11px] font-medium leading-tight text-center line-clamp-1">
+                    {item.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </DrawerContent>
+    </Drawer>
   );
 }
 
@@ -1004,29 +1209,41 @@ function KeyboardShortcuts() {
 // ─── Main Layout ────────────────────────────────────────────────────────
 
 function CrmLayout() {
+  const { sidebarCollapsed } = useCrmStore();
+
   return (
     <div className="flex h-screen overflow-hidden bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
       <DarkModeEffect />
       <KeyboardShortcuts />
 
-      {/* Desktop sidebar */}
-      <aside className="hidden lg:flex lg:w-64 lg:shrink-0">
+      {/* Desktop sidebar — md:w-56 for tablet, lg:w-64/w-16 for desktop */}
+      <aside
+        className={`hidden md:flex md:w-56 lg:w-64 shrink-0 transition-all duration-200 ${
+          sidebarCollapsed ? 'lg:!w-16' : ''
+        }`}
+      >
         <Sidebar />
       </aside>
 
-      {/* Mobile sidebar */}
+      {/* Mobile/tablet sidebar overlay (md to lg) */}
       <MobileSidebar />
 
       {/* Main content area */}
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar />
         <LoadingBar />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">
           <ErrorBoundary>
             <SectionRenderer />
           </ErrorBoundary>
         </main>
       </div>
+
+      {/* Bottom Navigation Bar — mobile only */}
+      <BottomNavBar />
+
+      {/* More Sheet — mobile only */}
+      <MoreSheet />
 
       {/* Settings Dialog */}
       <SettingsDialog />

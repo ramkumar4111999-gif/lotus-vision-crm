@@ -21,6 +21,8 @@ import {
   ArrowDownRight,
   ChevronRight,
   Loader2,
+  Receipt,
+  BarChart3,
 } from 'lucide-react';
 import { getSettings } from '@/lib/settings';
 import {
@@ -50,9 +52,10 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, Tooltip as RechartsTooltip } from 'recharts';
 import { format, parseISO, isToday, startOfDay } from 'date-fns';
 import { useCrmStore } from '@/components/crm/store';
+import { toast } from 'sonner';
 
 // ───────────────────────────────────────────────
 // Types
@@ -436,6 +439,8 @@ export default function Dashboard() {
   const [revenueByDayOfWeek, setRevenueByDayOfWeek] = useState<DayRevenue[]>([]);
   const [comparison, setComparison] = useState<Comparison | null>(null);
   const [pendingTasks, setPendingTasks] = useState<PendingTasks | null>(null);
+  const [todayPaymentModes, setTodayPaymentModes] = useState<{ mode: string; amount: number; count: number }[]>([]);
+  const [todayAvgOrderValue, setTodayAvgOrderValue] = useState<number>(0);
   const { setActiveSection } = useCrmStore();
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
@@ -459,6 +464,8 @@ export default function Dashboard() {
         setRevenueByDayOfWeek(dashData.revenueByDayOfWeek ?? []);
         setComparison(dashData.comparison ?? null);
         setPendingTasks(dashData.pendingTasks ?? null);
+        setTodayPaymentModes(dashData.todayPaymentModes ?? []);
+        setTodayAvgOrderValue(dashData.todayAvgOrderValue ?? 0);
       }
 
       // Sales trend
@@ -472,8 +479,9 @@ export default function Dashboard() {
         const prodData = await productsRes.value.json();
         setTopProducts(prodData.data ?? prodData ?? []);
       }
-    } catch {
-      // Silently handle — UI shows empty state
+    } catch (err) {
+      console.error('[Dashboard] fetch failed:', err);
+      toast.error('Failed to load dashboard data. Retrying...');
     } finally {
       setLoading(false);
       setLastRefresh(new Date());
@@ -1136,6 +1144,132 @@ export default function Dashboard() {
     );
   };
 
+  // ─── Today's Payment Mode Donut ───
+  const PAYMENT_COLORS_DASH: Record<string, string> = { Cash: '#059669', UPI: '#7c3aed', Card: '#2563eb', Credit: '#dc2626' };
+
+  const renderTodayPaymentDonut = () => {
+    if (loading) {
+      return (
+        <Card className="h-[200px]">
+          <CardHeader className="pb-2"><Skeleton className="h-5 w-36" /></CardHeader>
+          <CardContent><Skeleton className="h-full w-full rounded-lg" /></CardContent>
+        </Card>
+      );
+    }
+
+    const totalAmt = todayPaymentModes.reduce((s, m) => s + m.amount, 0);
+    const totalTx = todayPaymentModes.reduce((s, m) => s + m.count, 0);
+
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Receipt className="h-4 w-4" />
+            Today&apos;s Payment Modes
+          </CardTitle>
+          <CardDescription>
+            {totalTx} transactions totaling {formatCurrency(totalAmt)}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {todayPaymentModes.length > 0 ? (
+            <div className="flex items-center gap-4">
+              <ChartContainer config={{ amount: { label: 'Amount' } }} className="h-[140px] w-[140px] shrink-0">
+                <PieChart>
+                  <Pie
+                    data={todayPaymentModes}
+                    dataKey="amount"
+                    nameKey="mode"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={35}
+                    outerRadius={60}
+                    strokeWidth={2}
+                  >
+                    {todayPaymentModes.map((m) => (
+                      <Cell key={m.mode} fill={PAYMENT_COLORS_DASH[m.mode] || '#94a3b8'} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip formatter={(value: number) => formatCurrency(value)} />
+                </PieChart>
+              </ChartContainer>
+              <div className="flex-1 space-y-2">
+                {todayPaymentModes.map((m) => {
+                  const pct = totalAmt > 0 ? ((m.amount / totalAmt) * 100).toFixed(0) : '0';
+                  return (
+                    <div key={m.mode} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: PAYMENT_COLORS_DASH[m.mode] || '#94a3b8' }} />
+                        <span className="text-muted-foreground">{m.mode}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{formatCurrency(m.amount)}</span>
+                        <span className="text-xs text-muted-foreground">{pct}%</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="flex h-[100px] items-center justify-center text-muted-foreground text-sm">
+              No payment data today
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // ─── Avg Order Value + Transactions Today ───
+  const renderTodayMetrics = () => {
+    const todayTx = stats?.todaySales !== undefined
+      ? (todayPaymentModes.reduce((s, m) => s + m.count, 0) || (stats.todaySales > 0 && todayAvgOrderValue > 0 ? Math.round(stats.todaySales / todayAvgOrderValue) : 0))
+      : 0;
+
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Today&apos;s Metrics
+          </CardTitle>
+          <CardDescription>Key performance indicators for today</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg border p-3">
+              <p className="text-[10px] text-muted-foreground font-medium">Total Transactions</p>
+              <p className="text-lg font-bold font-mono">{todayTx}</p>
+              <p className="text-[10px] text-muted-foreground">Orders placed</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-[10px] text-muted-foreground font-medium">Avg Order Value</p>
+              <p className="text-lg font-bold font-mono text-sky-600 dark:text-sky-400">
+                {todayAvgOrderValue > 0 ? formatCurrency(todayAvgOrderValue) : '—'}
+              </p>
+              <p className="text-[10px] text-muted-foreground">Per transaction</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-[10px] text-muted-foreground font-medium">Lab Orders Pending</p>
+              <p className="text-lg font-bold font-mono text-purple-600 dark:text-purple-400">
+                {pendingTasks?.labOrdersPending ?? stats?.pendingLabOrders ?? 0}
+              </p>
+              <p className="text-[10px] text-muted-foreground">In pipeline</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-[10px] text-muted-foreground font-medium">Customer Visits</p>
+              <p className="text-lg font-bold font-mono text-emerald-600 dark:text-emerald-400">
+                {todayTx + (pendingTasks?.appointmentsToday ?? 0)}
+              </p>
+              <p className="text-[10px] text-muted-foreground">Sales + appointments</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   // ─── Main Render ───
 
   return (
@@ -1166,6 +1300,12 @@ export default function Dashboard() {
 
       {/* Quick Action Buttons */}
       {renderQuickActions()}
+
+      {/* Today's KPIs Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {renderTodayPaymentDonut()}
+        {renderTodayMetrics()}
+      </div>
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

@@ -25,9 +25,9 @@ import {
   Ruler,
   History,
   X,
+  AlertTriangle,
 } from 'lucide-react'
 
-import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -58,6 +58,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { cn } from '@/lib/utils'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -190,6 +191,10 @@ function getNextStatus(current: LabOrderStatus): LabOrderStatus | null {
   const idx = STATUS_FLOW.indexOf(current)
   if (idx < 0 || idx >= STATUS_FLOW.length - 1) return null
   return STATUS_FLOW[idx + 1]
+}
+
+function getDaysInStatus(order: LabOrder): number {
+  return differenceInDays(new Date(), new Date(order.updatedAt))
 }
 
 function getDaysUntilDue(dueDate: string): number {
@@ -553,11 +558,14 @@ export default function LabOrders() {
             {isOverdue ? 'Overdue' : `Due in ${getDaysUntilDue(order.dueDate)}d`} &middot; {format(new Date(order.dueDate), 'dd MMM')}
           </div>
         )}
+        <div className="text-[10px] text-muted-foreground">
+          {getDaysInStatus(order)}d in {order.status}
+        </div>
         {next && (
           <Button
             size="sm"
             variant="outline"
-            className="w-full h-7 text-xs gap-1 mt-1"
+            className="w-full min-h-[44px] text-xs gap-1 mt-1 touch-manipulation"
             disabled={updatingId === order.id}
             onClick={(e) => { e.stopPropagation(); handleUpdateStatus(order) }}
           >
@@ -647,7 +655,7 @@ export default function LabOrders() {
                     {customerResults.length > 0 && !selectedCustomer && (
                       <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-48 overflow-y-auto">
                         {customerResults.map((c) => (
-                          <button key={c.id} type="button" className="flex w-full items-center gap-3 px-3 py-2 text-sm hover:bg-accent transition-colors text-left" onClick={() => handleSelectCustomer(c)}>
+                          <button key={c.id} type="button" className="flex w-full items-center gap-3 px-3 py-2 text-sm hover:bg-accent transition-colors text-left min-h-[44px] touch-manipulation" onClick={() => handleSelectCustomer(c)}>
                             <User className="h-4 w-4 text-muted-foreground shrink-0" />
                             <span className="font-medium">{c.name}</span>
                             <span className="text-muted-foreground">{c.phone}</span>
@@ -679,7 +687,7 @@ export default function LabOrders() {
                           key={rx.id}
                           variant="outline"
                           size="sm"
-                          className="h-7 text-xs gap-1 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
+                          className="min-h-[44px] text-xs gap-1 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 touch-manipulation"
                           onClick={() => handleAutoFillRx(rx)}
                         >
                           <Copy className="h-3 w-3" />
@@ -721,7 +729,7 @@ export default function LabOrders() {
                     {frameResults.length > 0 && !selectedFrame && (
                       <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-48 overflow-y-auto">
                         {frameResults.map((f) => (
-                          <button key={f.id} type="button" className="flex w-full items-center justify-between gap-3 px-3 py-2 text-sm hover:bg-accent transition-colors text-left" onClick={() => { setSelectedFrame(f); setFormFrameId(f.id); setFrameSearch(''); setFrameResults([]) }}>
+                          <button key={f.id} type="button" className="flex w-full items-center justify-between gap-3 px-3 py-2 text-sm hover:bg-accent transition-colors text-left min-h-[44px] touch-manipulation" onClick={() => { setSelectedFrame(f); setFormFrameId(f.id); setFrameSearch(''); setFrameResults([]) }}>
                             <div className="flex items-center gap-2 min-w-0">
                               <Package className="h-4 w-4 text-muted-foreground shrink-0" />
                               <span className="truncate font-medium">{f.name}</span>
@@ -914,9 +922,24 @@ export default function LabOrders() {
                                 <TableCell className="hidden lg:table-cell font-mono text-xs">{formatPower(order.leftSPH, order.leftCYL, order.leftAXIS)}</TableCell>
                                 <TableCell className="hidden lg:table-cell font-mono text-xs">{formatPower(order.rightSPH, order.rightCYL, order.rightAXIS)}</TableCell>
                                 <TableCell>
-                                  <Badge variant="outline" className={cn('text-xs font-medium gap-1', STATUS_BADGE_CLASS[order.status])}>
-                                    <StatusIcon className="h-3 w-3" />{order.status}
-                                  </Badge>
+                                  <div className="flex flex-col gap-1">
+                                    <Badge variant="outline" className={cn('text-xs font-medium gap-1 w-fit', STATUS_BADGE_CLASS[order.status])}>
+                                      <StatusIcon className="h-3 w-3" />{order.status}
+                                    </Badge>
+                                    {/* Mini pipeline progress dots */}
+                                    <div className="flex items-center gap-0.5">
+                                      {STATUS_FLOW.map((s, idx) => (
+                                        <div
+                                          key={s}
+                                          className={cn(
+                                            'h-1.5 w-1.5 rounded-full',
+                                            STATUS_FLOW.indexOf(order.status) >= idx ? 'bg-primary' : 'bg-muted-foreground/20'
+                                          )}
+                                        />
+                                      ))}
+                                      <span className="text-[9px] text-muted-foreground ml-1">{getDaysInStatus(order)}d</span>
+                                    </div>
+                                  </div>
                                 </TableCell>
                                 <TableCell className="hidden sm:table-cell text-right text-sm">{formatCurrency(order.costPrice)}</TableCell>
                                 <TableCell className="hidden sm:table-cell text-right text-sm font-medium">{formatCurrency(order.sellingPrice)}</TableCell>
@@ -959,8 +982,8 @@ export default function LabOrders() {
                   <div className="mt-4 flex items-center justify-between">
                     <p className="text-sm text-muted-foreground">Page {page} of {totalPages}</p>
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Previous</Button>
-                      <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next</Button>
+                      <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="min-w-[44px] min-h-[44px] touch-manipulation">Previous</Button>
+                      <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className="min-w-[44px] min-h-[44px] touch-manipulation">Next</Button>
                     </div>
                   </div>
                 )}
@@ -1065,6 +1088,12 @@ export default function LabOrders() {
                     <p className={cn('font-medium', new Date(selectedOrder.dueDate) < new Date() && selectedOrder.status !== 'Delivered' && 'text-red-600 dark:text-red-400')}>{format(new Date(selectedOrder.dueDate), 'dd MMM yyyy')}</p>
                   </div>
                 )}
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Time in Status</p>
+                  <p className={cn('font-medium', getDaysInStatus(selectedOrder) > 3 && selectedOrder.status !== 'Delivered' && 'text-amber-600 dark:text-amber-400')}>
+                    {getDaysInStatus(selectedOrder)} day{getDaysInStatus(selectedOrder) !== 1 ? 's' : ''}
+                  </p>
+                </div>
               </div>
 
               {selectedOrder.notes && (
@@ -1075,16 +1104,35 @@ export default function LabOrders() {
               )}
 
               {/* Status Actions */}
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-2">
                 {getNextStatus(selectedOrder.status) && (
-                  <Button className="flex-1 gap-2" disabled={updatingId === selectedOrder.id} onClick={() => handleUpdateStatus(selectedOrder)}>
+                  <Button className="flex-1 gap-2 min-h-[44px] touch-manipulation" disabled={updatingId === selectedOrder.id} onClick={() => handleUpdateStatus(selectedOrder)}>
                     {updatingId === selectedOrder.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><ChevronRight className="h-4 w-4" />Advance to {getNextStatus(selectedOrder.status)}</>}
                   </Button>
                 )}
                 {selectedOrder.status !== 'Ready' && selectedOrder.status !== 'Delivered' && (
-                  <Button variant="outline" className="gap-2 bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-900/40" disabled={updatingId === selectedOrder.id} onClick={() => handleMarkReady(selectedOrder)}>
+                  <Button variant="outline" className="gap-2 bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-900/40 min-h-[44px] touch-manipulation" disabled={updatingId === selectedOrder.id} onClick={() => handleMarkReady(selectedOrder)}>
                     {updatingId === selectedOrder.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><ClipboardCheck className="h-4 w-4" />Mark Ready</>}
                   </Button>
+                )}
+                </div>
+                {/* Jump to any status */}
+                {selectedOrder.status !== 'Delivered' && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">Jump to:</span>
+                    <Select onValueChange={(val) => handleUpdateStatus(selectedOrder, val as LabOrderStatus)} disabled={updatingId === selectedOrder.id}>
+                      <SelectTrigger className="h-9 flex-1">
+                        <SelectValue placeholder="Select status..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STATUS_FLOW.filter(s => s !== selectedOrder.status && s !== 'Delivered').map(s => (
+                          <SelectItem key={s} value={s}>{s}</SelectItem>
+                        ))}
+                        <SelectItem value="Delivered">Delivered</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 )}
               </div>
             </div>
@@ -1095,11 +1143,3 @@ export default function LabOrders() {
   )
 }
 
-// Need AlertTriangle for the summary cards
-function AlertTriangle(props: React.SVGProps<SVGSVGElement> & { className?: string }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4" /><path d="M12 17h.01" />
-    </svg>
-  )
-}

@@ -1,0 +1,2002 @@
+     1→"use client";
+     2→
+     3→import * as React from "react";
+     4→import { toast } from "sonner";
+     5→import {
+     6→  Plus,
+     7→  Search,
+     8→  Eye,
+     9→  Printer,
+    10→  RotateCcw,
+    11→  X,
+    12→  ChevronLeft,
+    13→  ChevronRight,
+    14→  ChevronsLeft,
+    15→  ChevronsRight,
+    16→  Loader2,
+    17→  AlertCircle,
+    18→ ShoppingCart,
+    19→  FileText,
+    20→  UserPlus,
+    21→  Trash2,
+    22→  IndianRupee,
+    23→  Package,
+    24→  CreditCard,
+    25→  CalendarDays,
+    26→} from "lucide-react";
+    27→
+    28→import { cn } from "@/lib/utils";
+    29→import { useCrmStore } from "@/components/crm/store";
+    30→import { getSettings } from "@/lib/settings";
+    31→import { Button } from "@/components/ui/button";
+    32→import { Input } from "@/components/ui/input";
+    33→import { Label } from "@/components/ui/label";
+    34→import { Badge } from "@/components/ui/badge";
+    35→import { Separator } from "@/components/ui/separator";
+    36→import { Textarea } from "@/components/ui/textarea";
+    37→import { Skeleton } from "@/components/ui/skeleton";
+    38→import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+    39→import { Checkbox } from "@/components/ui/checkbox";
+    40→import {
+    41→  Dialog,
+    42→  DialogContent,
+    43→  DialogHeader,
+    44→  DialogTitle,
+    45→  DialogDescription,
+    46→  DialogFooter,
+    47→} from "@/components/ui/dialog";
+    48→import {
+    49→  Table,
+    50→  TableBody,
+    51→  TableCell,
+    52→  TableHead,
+    53→  TableHeader,
+    54→  TableRow,
+    55→  TableFooter,
+    56→} from "@/components/ui/table";
+    57→import {
+    58→  Select,
+    59→  SelectContent,
+    60→  SelectItem,
+    61→  SelectTrigger,
+    62→  SelectValue,
+    63→} from "@/components/ui/select";
+    64→import { Alert, AlertDescription } from "@/components/ui/alert";
+    65→
+    66→// ---------------------------------------------------------------------------
+    67→// Types
+    68→// ---------------------------------------------------------------------------
+    69→
+    70→interface Product {
+    71→  id: string;
+    72→  name: string;
+    73→  price: number;
+    74→  stock: number;
+    75→  sku?: string;
+    76→}
+    77→
+    78→interface Customer {
+    79→  id: string;
+    80→  name: string;
+    81→  phone: string;
+    82→  email?: string;
+    83→  address?: string;
+    84→}
+    85→
+    86→interface SaleItem {
+    87→  id: string;
+    88→  productId: string;
+    89→  productName: string;
+    90→  price: number;
+    91→  qty: number;
+    92→  lineTotal: number;
+    93→}
+    94→
+    95→interface Sale {
+    96→  id: string;
+    97→  invoiceNo: string;
+    98→  customerId: string;
+    99→  customerName: string;
+   100→  customerPhone?: string;
+   101→  customerEmail?: string;
+   102→  customerAddress?: string;
+   103→  items: SaleItem[];
+   104→  subtotal: number;
+   105→  discount: number;
+   106→  discountType: "percentage" | "flat";
+   107→  cgst: number;
+   108→  sgst: number;
+   109→  total: number;
+   110→  paymentMode: "Cash" | "Card" | "UPI" | "Credit" | "Split";
+   111→  status: "Completed" | "Pending" | "Return";
+   112→  notes?: string;
+   113→  createdAt: string;
+   114→}
+   115→
+   116→interface SaleListItem {
+   117→  id: string;
+   118→  invoiceNo: string;
+   119→  customerName: string;
+   120→  itemsCount: number;
+   121→  subtotal: number;
+   122→  discount: number;
+   123→  cgst: number;
+   124→  sgst: number;
+   125→  total: number;
+   126→  paymentMode: string;
+   127→  status: "Completed" | "Pending" | "Return";
+   128→  createdAt: string;
+   129→}
+   130→
+   131→interface SalesResponse {
+   132→  sales: SaleListItem[];
+   133→  total: number;
+   134→  page: number;
+   135→  pageSize: number;
+   136→}
+   137→
+   138→interface CreateSaleItem {
+   139→  productId: string;
+   140→  productName: string;
+   141→  price: number;
+   142→  qty: number;
+   143→}
+   144→
+   145→interface ReturnItem {
+   146→  saleItemId: string;
+   147→  productName: string;
+   148→  originalQty: number;
+   149→  returnQty: number;
+   150→  price: number;
+   151→}
+   152→
+   153→// ---------------------------------------------------------------------------
+   154→// Helpers
+   155→// ---------------------------------------------------------------------------
+   156→
+   157→const INR = (amount: number): string =>
+   158→  new Intl.NumberFormat("en-IN", {
+   159→    style: "currency",
+   160→    currency: "INR",
+   161→    minimumFractionDigits: 2,
+   162→    maximumFractionDigits: 2,
+   163→  }).format(amount);
+   164→
+   165→const CGST_RATE = 0.09;
+   166→const SGST_RATE = 0.09;
+   167→
+   168→function generateInvoiceNo(): string {
+   169→  const now = new Date();
+   170→  const y = now.getFullYear().toString().slice(-2);
+   171→  const m = (now.getMonth() + 1).toString().padStart(2, "0");
+   172→  const d = now.getDate().toString().padStart(2, "0");
+   173→  const rand = Math.floor(Math.random() * 9000) + 1000;
+   174→  return `INV-${y}${m}${d}-${rand}`;
+   175→}
+   176→
+   177→function uid(): string {
+   178→  return Math.random().toString(36).slice(2, 11);
+   179→}
+   180→
+   181→// ---------------------------------------------------------------------------
+   182→// Component: Status Badge
+   183→// ---------------------------------------------------------------------------
+   184→
+   185→function StatusBadge({ status }: { status: string }) {
+   186→  switch (status) {
+   187→    case "Completed":
+   188→      return (
+   189→        <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-800">
+   190→          Completed
+   191→        </Badge>
+   192→      );
+   193→    case "Pending":
+   194→      return (
+   195→        <Badge className="bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-800">
+   196→          Pending
+   197→        </Badge>
+   198→      );
+   199→    case "Return":
+   200→      return (
+   201→        <Badge className="bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-100 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-800">
+   202→          Return
+   203→        </Badge>
+   204→      );
+   205→    default:
+   206→      return <Badge variant="outline">{status}</Badge>;
+   207→  }
+   208→}
+   209→
+   210→// ---------------------------------------------------------------------------
+   211→// Component: Customer Search/Select
+   212→// ---------------------------------------------------------------------------
+   213→
+   214→interface CustomerSelectProps {
+   215→  customers: Customer[];
+   216→  selectedCustomerId: string | null;
+   217→  onSelect: (customer: Customer | null) => void;
+   218→  onCreateNew: () => void;
+   219→}
+   220→
+   221→function CustomerSelect({
+   222→  customers,
+   223→  selectedCustomerId,
+   224→  onSelect,
+   225→  onCreateNew,
+   226→}: CustomerSelectProps) {
+   227→  const [query, setQuery] = React.useState("");
+   228→  const [open, setOpen] = React.useState(false);
+   229→  const containerRef = React.useRef<HTMLDivElement>(null);
+   230→
+   231→  const filtered = query
+   232→    ? customers.filter(
+   233→        (c) =>
+   234→          c.name.toLowerCase().includes(query.toLowerCase()) ||
+   235→          c.phone.includes(query)
+   236→      )
+   237→    : customers;
+   238→
+   239→  const selected = customers.find((c) => c.id === selectedCustomerId) ?? null;
+   240→
+   241→  React.useEffect(() => {
+   242→    function handleClickOutside(e: MouseEvent) {
+   243→      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+   244→        setOpen(false);
+   245→      }
+   246→    }
+   247→    document.addEventListener("mousedown", handleClickOutside);
+   248→    return () => document.removeEventListener("mousedown", handleClickOutside);
+   249→  }, []);
+   250→
+   251→  return (
+   252→    <div className="relative" ref={containerRef}>
+   253→      <Label className="mb-1.5">Customer</Label>
+   254→      <div className="relative">
+   255→        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+   256→        <Input
+   257→          placeholder="Search customer by name or phone..."
+   258→          value={selected ? selected.name : query}
+   259→          onChange={(e) => {
+   260→            if (selected) {
+   261→              onSelect(null);
+   262→            }
+   263→            setQuery(e.target.value);
+   264→            setOpen(true);
+   265→          }}
+   266→          onFocus={() => setOpen(true)}
+   267→          className="pl-9 pr-20"
+   268→        />
+   269→        {selected && (
+   270→          <Button
+   271→            type="button"
+   272→            variant="ghost"
+   273→            size="sm"
+   274→            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 text-xs"
+   275→            onClick={() => {
+   276→              onSelect(null);
+   277→              setQuery("");
+   278→            }}
+   279→          >
+   280→            <X className="size-3" />
+   281→          </Button>
+   282→        )}
+   283→        {!selected && (
+   284→          <Button
+   285→            type="button"
+   286→            variant="ghost"
+   287→            size="sm"
+   288→            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 text-xs"
+   289→            onClick={onCreateNew}
+   290→          >
+   291→            <UserPlus className="size-3 mr-1" />
+   292→            New
+   293→          </Button>
+   294→        )}
+   295→      </div>
+   296→
+   297→      {open && !selected && filtered.length > 0 && (
+   298→        <div className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto rounded-md border bg-popover shadow-md">
+   299→          {filtered.map((c) => (
+   300→            <button
+   301→              key={c.id}
+   302→              type="button"
+   303→              className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center justify-between gap-2"
+   304→              onClick={() => {
+   305→                onSelect(c);
+   306→                setQuery("");
+   307→                setOpen(false);
+   308→              }}
+   309→            >
+   310→              <div>
+   311→                <div className="font-medium">{c.name}</div>
+   312→                <div className="text-xs text-muted-foreground">{c.phone}</div>
+   313→              </div>
+   314→              {c.email && (
+   315→                <span className="text-xs text-muted-foreground truncate max-w-32">
+   316→                  {c.email}
+   317→                </span>
+   318→              )}
+   319→            </button>
+   320→          ))}
+   321→        </div>
+   322→      )}
+   323→
+   324→      {open && !selected && query && filtered.length === 0 && (
+   325→        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md p-3 text-sm text-muted-foreground text-center">
+   326→          No customers found.
+   327→          <Button
+   328→            type="button"
+   329→            variant="link"
+   330→            size="sm"
+   331→            className="ml-1 h-auto p-0 text-primary"
+   332→            onClick={onCreateNew}
+   333→          >
+   334→            Create new customer
+   335→          </Button>
+   336→        </div>
+   337→      )}
+   338→
+   339→      {selected && (
+   340→        <div className="mt-1.5 text-xs text-muted-foreground space-y-0.5">
+   341→          <div>
+   342→            {selected.phone}
+   343→            {selected.email && ` · ${selected.email}`}
+   344→          </div>
+   345→          {selected.address && <div>{selected.address}</div>}
+   346→        </div>
+   347→      )}
+   348→      <CustomerPurchaseHistory customerId={selected?.id ?? null} />
+   349→    </div>
+   350→  );
+   351→}
+   352→
+   353→// ---------------------------------------------------------------------------
+   354→// Component: Customer Purchase History (last 3 purchases)
+   355→// ---------------------------------------------------------------------------
+   356→
+   357→function CustomerPurchaseHistory({ customerId }: { customerId: string | null }) {
+   358→  const [purchases, setPurchases] = React.useState<{ date: string; total: number }[]>([]);
+   359→
+   360→  React.useEffect(() => {
+   361→    if (!customerId) {
+   362→      setPurchases([]);
+   363→      return;
+   364→    }
+   365→    let cancelled = false;
+   366→    (async () => {
+   367→      try {
+   368→        const res = await fetch(`/api/sales?customerId=${customerId}&limit=3`);
+   369→        if (cancelled) return;
+   370→        if (res.ok) {
+   371→          const data = await res.json();
+   372→          const list = Array.isArray(data.sales) ? data.sales : [];
+   373→          setPurchases(list.map(function(s) {
+   374→            const r = s as Record<string, unknown>;
+   375→            return { date: r.createdAt as string, total: r.total as number };
+   376→          }));
+   377→        }
+   378→      } catch {
+   379→        // silently ignore
+   380→      }
+   381→    })();
+   382→    return () => { cancelled = true; };
+   383→  }, [customerId]);
+   384→
+   385→  if (!customerId || purchases.length === 0) return null;
+   386→
+   387→  return (
+   388→    <div className="mt-2 rounded-md border bg-muted/30 p-2">
+   389→      <p className="text-xs font-medium text-muted-foreground mb-1.5">Recent Purchases</p>
+   390→      {purchases.map((p, i) => (
+   391→        <div key={i} className="flex items-center justify-between text-xs gap-2">
+   392→          <span className="text-muted-foreground">
+   393→            {new Date(p.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+   394→          </span>
+   395→          <span className="font-mono font-medium">{INR(p.total)}</span>
+   396→        </div>
+   397→      ))}
+   398→    </div>
+   399→  );
+   400→}
+   401→
+   402→// ---------------------------------------------------------------------------
+   403→// Component: New Customer Inline Form
+   404→// ---------------------------------------------------------------------------
+   405→
+   406→interface NewCustomerFormProps {
+   407→  onSave: (customer: Customer) => void;
+   408→  onCancel: () => void;
+   409→}
+   410→
+   411→function NewCustomerForm({ onSave, onCancel }: NewCustomerFormProps) {
+   412→  const [name, setName] = React.useState("");
+   413→  const [phone, setPhone] = React.useState("");
+   414→  const [email, setEmail] = React.useState("");
+   415→  const [address, setAddress] = React.useState("");
+   416→
+   417→  const valid = name.trim().length > 0 && phone.trim().length >= 10;
+   418→
+   419→  return (
+   420→    <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+   421→      <div className="flex items-center justify-between">
+   422→        <span className="text-sm font-medium">New Customer</span>
+   423→        <Button type="button" variant="ghost" size="icon" className="min-w-[44px] min-h-[44px] touch-manipulation" onClick={onCancel}>
+   424→          <X className="size-3.5" />
+   425→        </Button>
+   426→      </div>
+   427→      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   428→        <div>
+   429→          <Label className="mb-1">Name *</Label>
+   430→          <Input placeholder="Full name" value={name} onChange={(e) => setName(e.target.value)} />
+   431→        </div>
+   432→        <div>
+   433→          <Label className="mb-1">Phone *</Label>
+   434→          <Input placeholder="Phone number" value={phone} onChange={(e) => setPhone(e.target.value)} />
+   435→        </div>
+   436→        <div>
+   437→          <Label className="mb-1">Email</Label>
+   438→          <Input placeholder="Email (optional)" value={email} onChange={(e) => setEmail(e.target.value)} type="email" />
+   439→        </div>
+   440→        <div>
+   441→          <Label className="mb-1">Address</Label>
+   442→          <Input placeholder="Address (optional)" value={address} onChange={(e) => setAddress(e.target.value)} />
+   443→        </div>
+   444→      </div>
+   445→      <div className="flex justify-end gap-2">
+   446→        <Button type="button" variant="outline" size="sm" onClick={onCancel}>
+   447→          Cancel
+   448→        </Button>
+   449→        <Button
+   450→          type="button"
+   451→          size="sm"
+   452→          disabled={!valid}
+   453→          onClick={() => {
+   454→            if (!valid) return;
+   455→            onSave({
+   456→              id: `c-${uid()}`,
+   457→              name: name.trim(),
+   458→              phone: phone.trim(),
+   459→              email: email.trim() || undefined,
+   460→              address: address.trim() || undefined,
+   461→            });
+   462→          }}
+   463→        >
+   464→          Add Customer
+   465→        </Button>
+   466→      </div>
+   467→    </div>
+   468→  );
+   469→}
+   470→
+   471→// ---------------------------------------------------------------------------
+   472→// Component: Product Item Row (for Create Sale)
+   473→// ---------------------------------------------------------------------------
+   474→
+   475→interface ItemRowProps {
+   476→  row: CreateSaleItem;
+   477→  index: number;
+   478→  products: Product[];
+   479→  onUpdate: (index: number, data: Partial<CreateSaleItem>) => void;
+   480→  onRemove: (index: number) => void;
+   481→  canRemove: boolean;
+   482→}
+   483→
+   484→function ItemRow({ row, index, products, onUpdate, onRemove, canRemove }: ItemRowProps) {
+   485→  const [search, setSearch] = React.useState("");
+   486→  const [dropdownOpen, setDropdownOpen] = React.useState(false);
+   487→  const rowRef = React.useRef<HTMLTableRowElement>(null);
+   488→
+   489→  const filteredProducts = row.productId
+   490→    ? products.filter((p) => p.id === row.productId)
+   491→    : search
+   492→      ? products.filter(
+   493→          (p) =>
+   494→            p.name.toLowerCase().includes(search.toLowerCase()) ||
+   495→            p.sku?.toLowerCase().includes(search.toLowerCase())
+   496→        )
+   497→      : products;
+   498→
+   499→  React.useEffect(() => {
+   500→    function handleClick(e: MouseEvent) {
+   501→      if (rowRef.current && !rowRef.current.contains(e.target as Node)) {
+   502→        setDropdownOpen(false);
+   503→      }
+   504→    }
+   505→    document.addEventListener("mousedown", handleClick);
+   506→    return () => document.removeEventListener("mousedown", handleClick);
+   507→  }, []);
+   508→
+   509→  const selectedProduct = products.find((p) => p.id === row.productId);
+   510→
+   511→  return (
+   512→    <TableRow ref={rowRef}>
+   513→      <TableCell className="relative">
+   514→        {row.productId ? (
+   515→          <div className="flex items-center gap-2 min-w-0">
+   516→            <Package className="size-3.5 text-muted-foreground shrink-0" />
+   517→            <div className="min-w-0">
+   518→              <div className="font-medium text-sm truncate max-w-56">{row.productName}</div>
+   519→              {selectedProduct?.sku && (
+   520→                <div className="text-xs text-muted-foreground">{selectedProduct.sku}</div>
+   521→              )}
+   522→            </div>
+   523→          </div>
+   524→        ) : (
+   525→          <div className="relative">
+   526→            <div className="flex items-center gap-1">
+   527→              <Search className="size-3.5 text-muted-foreground shrink-0" />
+   528→              <Input
+   529→                placeholder="Search product..."
+   530→                value={search}
+   531→                onChange={(e) => {
+   532→                  setSearch(e.target.value);
+   533→                  setDropdownOpen(true);
+   534→                }}
+   535→                onFocus={() => setDropdownOpen(true)}
+   536→                className="h-8 text-sm min-w-[180px]"
+   537→              />
+   538→            </div>
+   539→            {dropdownOpen && filteredProducts.length > 0 && (
+   540→              <div className="absolute z-50 left-0 top-full mt-1 w-72 max-h-48 overflow-y-auto rounded-md border bg-popover shadow-md">
+   541→                {filteredProducts.map((p) => (
+   542→                  <button
+   543→                    key={p.id}
+   544→                    type="button"
+   545→                    className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center justify-between"
+   546→                    onClick={() => {
+   547→                      onUpdate(index, {
+   548→                        productId: p.id,
+   549→                        productName: p.name,
+   550→                        price: p.price,
+   551→                      });
+   552→                      setSearch("");
+   553→                      setDropdownOpen(false);
+   554→                    }}
+   555→                  >
+   556→                    <div>
+   557→                      <div className="font-medium">{p.name}</div>
+   558→                      <div className="text-xs text-muted-foreground">
+   559→                        {p.sku} · Stock: {p.stock}
+   560→                      </div>
+   561→                    </div>
+   562→                    <span className="text-sm font-medium shrink-0 ml-2">{INR(p.price)}</span>
+   563→                  </button>
+   564→                ))}
+   565→              </div>
+   566→            )}
+   567→          </div>
+   568→        )}
+   569→      </TableCell>
+   570→      <TableCell className="text-right font-mono text-sm">
+   571→        {row.price > 0 ? INR(row.price) : "—"}
+   572→      </TableCell>
+   573→      <TableCell>
+   574→        <Input
+   575→          type="number"
+   576→          min={1}
+   577→          value={row.qty}
+   578→          onChange={(e) => {
+   579→            const val = parseInt(e.target.value, 10);
+   580→            if (!isNaN(val) && val >= 1) {
+   581→              onUpdate(index, { qty: val });
+   582→            }
+   583→          }}
+   584→          disabled={!row.productId}
+   585→          className="h-8 w-20 text-right"
+   586→        />
+   587→      </TableCell>
+   588→      <TableCell className="text-right font-mono text-sm font-medium">
+   589→        {row.productId ? INR(row.price * row.qty) : "—"}
+   590→      </TableCell>
+   591→      <TableCell>
+   592→        {canRemove && (
+   593→          <Button
+   594→            type="button"
+   595→            variant="ghost"
+   596→            size="icon"
+   597→            className="min-w-[44px] min-h-[44px] touch-manipulation text-destructive hover:text-destructive hover:bg-destructive/10"
+   598→            onClick={() => onRemove(index)}
+   599→          >
+   600→            <Trash2 className="size-3.5" />
+   601→          </Button>
+   602→        )}
+   603→      </TableCell>
+   604→    </TableRow>
+   605→  );
+   606→}
+   607→
+   608→// ---------------------------------------------------------------------------
+   609→// Component: Create Sale Dialog
+   610→// ---------------------------------------------------------------------------
+   611→
+   612→interface CreateSaleDialogProps {
+   613→  open: boolean;
+   614→  onOpenChange: (open: boolean) => void;
+   615→  onCreated: () => void;
+   616→}
+   617→
+   618→function CreateSaleDialog({ open, onOpenChange, onCreated }: CreateSaleDialogProps) {
+   619→  const [customers, setCustomers] = React.useState<Customer[]>([]);
+   620→  const [products, setProducts] = React.useState<Product[]>([]);
+   621→  const [customersLoaded, setCustomersLoaded] = React.useState(false);
+   622→  const [productsLoaded, setProductsLoaded] = React.useState(false);
+   623→
+   624→  // Fetch real customers and products when dialog opens
+   625→  React.useEffect(() => {
+   626→    if (!open) return;
+   627→    let cancelled = false;
+   628→    (async () => {
+   629→      try {
+   630→        const [custRes, prodRes] = await Promise.all([
+   631→          fetch('/api/customers?limit=999'),
+   632→          fetch('/api/products?pageSize=999'),
+   633→        ]);
+   634→        if (cancelled) return;
+   635→        if (custRes.ok) {
+   636→          const data = await custRes.json();
+   637→          const list = Array.isArray(data.data) ? data.data : data || [];
+   638→          setCustomers(list);
+   639→        }
+   640→        if (prodRes.ok) {
+   641→          const data = await prodRes.json();
+   642→          const list = Array.isArray(data.products) ? data.products : data || [];
+   643→          setProducts(list);
+   644→        }
+   645→      } catch {
+   646→        setCustomers([]);
+   647→        setProducts([]);
+   648→        toast.error('Failed to load customers or products');
+   649→      }
+   650→      setCustomersLoaded(true);
+   651→      setProductsLoaded(true);
+   652→    })();
+   653→    return () => { cancelled = true; };
+   654→  }, [open]);
+   655→  const [selectedCustomer, setSelectedCustomer] = React.useState<Customer | null>(null);
+   656→  const [showNewCustomer, setShowNewCustomer] = React.useState(false);
+   657→  const [items, setItems] = React.useState<CreateSaleItem[]>([
+   658→    { productId: "", productName: "", price: 0, qty: 1 },
+   659→  ]);
+   660→  const [discount, setDiscount] = React.useState(0);
+   661→  const [discountType, setDiscountType] = React.useState<"percentage" | "flat">("flat");
+   662→  const [paymentMode, setPaymentMode] = React.useState<"Cash" | "Card" | "UPI" | "Credit">("Cash");
+   663→  const [notes, setNotes] = React.useState("");
+   664→  const [submitting, setSubmitting] = React.useState(false);
+   665→  const [splitPayment, setSplitPayment] = React.useState(false);
+   666→  const [secondaryPaymentMode, setSecondaryPaymentMode] = React.useState<"Cash" | "Card" | "UPI">("UPI");
+   667→  const [secondaryAmount, setSecondaryAmount] = React.useState(0);
+   668→
+   669→  const handleItemUpdate = (index: number, data: Partial<CreateSaleItem>) => {
+   670→    setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...data } : item)));
+   671→  };
+   672→
+   673→  const handleItemRemove = (index: number) => {
+   674→    setItems((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
+   675→  };
+   676→
+   677→  const handleAddItem = () => {
+   678→    setItems((prev) => [...prev, { productId: "", productName: "", price: 0, qty: 1 }]);
+   679→  };
+   680→
+   681→  const subtotal = items.reduce((sum, item) => sum + item.price * item.qty, 0);
+   682→  const discountAmount =
+   683→    discountType === "percentage" ? Math.round((subtotal * discount) / 100) : discount;
+   684→  const taxable = Math.max(0, subtotal - discountAmount);
+   685→  const cgst = Math.round(taxable * CGST_RATE * 100) / 100;
+   686→  const sgst = Math.round(taxable * SGST_RATE * 100) / 100;
+   687→  const total = Math.round((taxable + cgst + sgst) * 100) / 100;
+   688→
+   689→  // Split payment derived values
+   690→  const canSplit = paymentMode !== "Credit";
+   691→  const primaryAmount = splitPayment ? Math.round((total - secondaryAmount) * 100) / 100 : total;
+   692→  const splitValid = !splitPayment || (secondaryAmount > 0 && secondaryAmount < total);
+   693→
+   694→  const totalQty = items.reduce((sum, item) => sum + (item.productId ? item.qty : 0), 0);
+   695→  const hasValidItems = items.some((item) => item.productId && item.qty > 0);
+   696→
+   697→  const handleCreate = async () => {
+   698→    if (!selectedCustomer) {
+   699→      toast.error("Please select a customer");
+   700→      return;
+   701→    }
+   702→    if (!hasValidItems) {
+   703→      toast.error("Please add at least one product");
+   704→      return;
+   705→    }
+   706→    if (splitPayment && (secondaryAmount <= 0 || secondaryAmount >= total)) {
+   707→      toast.error("Secondary amount must be greater than 0 and less than the total");
+   708→      return;
+   709→    }
+   710→
+   711→    setSubmitting(true);
+   712→    try {
+   713→      const invoiceNo = generateInvoiceNo();
+   714→      const validItems = items.filter((i) => i.productId && i.qty > 0);
+   715→
+   716→      const payload: Record<string, unknown> = {
+   717→        invoiceNo,
+   718→        customerId: selectedCustomer.id,
+   719→        customerName: selectedCustomer.name,
+   720→        customerPhone: selectedCustomer.phone,
+   721→        customerEmail: selectedCustomer.email,
+   722→        customerAddress: selectedCustomer.address,
+   723→        items: validItems.map((item, idx) => ({
+   724→          id: `si-${uid()}-${idx}`,
+   725→          productId: item.productId,
+   726→          productName: item.productName,
+   727→          price: item.price,
+   728→          qty: item.qty,
+   729→          lineTotal: item.price * item.qty,
+   730→        })),
+   731→        subtotal,
+   732→        discount: discountAmount,
+   733→        discountType,
+   734→        cgst,
+   735→        sgst,
+   736→        total,
+   737→        paymentMode: splitPayment ? "Split" : paymentMode,
+   738→        status: "Completed",
+   739→        notes: splitPayment
+   740→          ? `Split Payment: ${paymentMode} ${INR(primaryAmount)} + ${secondaryPaymentMode} ${INR(secondaryAmount)}${notes.trim() ? "\n" + notes.trim() : ""}`
+   741→          : (notes.trim() || undefined),
+   742→      };
+   743→
+   744→      if (splitPayment) {
+   745→        payload.paymentModeSplit = {
+   746→          primary: paymentMode,
+   747→          secondary: secondaryPaymentMode,
+   748→          secondaryAmount,
+   749→        };
+   750→      }
+   751→
+   752→      const res = await fetch("/api/sales", {
+   753→        method: "POST",
+   754→        headers: { "Content-Type": "application/json" },
+   755→        body: JSON.stringify(payload),
+   756→      });
+   757→
+   758→      if (res.ok) {
+   759→        const result = await res.json().catch(() => ({}));
+   760→        toast.success(`Invoice ${invoiceNo} created successfully!`);
+   761→        // Auto-earn loyalty points (1 point per ₹100 spent)
+   762→        if (selectedCustomer.id && selectedCustomer.id !== 'undefined' && selectedCustomer.id.startsWith('c')) {
+   763→          const earnedPoints = Math.floor(total / 100);
+   764→          if (earnedPoints > 0) {
+   765→            try {
+   766→              await fetch(`/api/customers/${selectedCustomer.id}/loyalty`, {
+   767→                method: "PATCH",
+   768→                headers: { "Content-Type": "application/json" },
+   769→                body: JSON.stringify({
+   770→                  points: earnedPoints,
+   771→                  reason: `Auto-earned from invoice ${invoiceNo}`,
+   772→                  type: "earn",
+   773→                }),
+   774→              });
+   775→            } catch {
+   776→              // silently ignore loyalty failure
+   777→            }
+   778→            toast.info(`+${earnedPoints} loyalty points earned!`);
+   779→          }
+   780→        }
+   781→        resetForm();
+   782→        onOpenChange(false);
+   783→        onCreated();
+   784→      } else {
+   785→        const err = await res.json().catch(() => ({}));
+   786→        toast.error(err.error || "Failed to create invoice");
+   787→      }
+   788→    } catch {
+   789→      toast.error("Network error. Please try again.");
+   790→    } finally {
+   791→      setSubmitting(false);
+   792→    }
+   793→  };
+   794→
+   795→  const resetForm = () => {
+   796→    setSelectedCustomer(null);
+   797→    setItems([{ productId: "", productName: "", price: 0, qty: 1 }]);
+   798→    setDiscount(0);
+   799→    setDiscountType("flat");
+   800→    setPaymentMode("Cash");
+   801→    setNotes("");
+   802→    setShowNewCustomer(false);
+   803→    setSplitPayment(false);
+   804→    setSecondaryPaymentMode("UPI");
+   805→    setSecondaryAmount(0);
+   806→  };
+   807→
+   808→  return (
+   809→    <Dialog
+   810→      open={open}
+   811→      onOpenChange={(o) => {
+   812→        if (!o) resetForm();
+   813→        onOpenChange(o);
+   814→      }}
+   815→    >
+   816→      <DialogContent className="sm:max-w-4xl max-h-[92vh] overflow-y-auto p-0">
+   817→        <div className="p-6 pb-0">
+   818→          <DialogHeader>
+   819→            <DialogTitle className="flex items-center gap-2">
+   820→              <ShoppingCart className="size-5" />
+   821→              Create New Invoice
+   822→            </DialogTitle>
+   823→            <DialogDescription>
+   824→              Add customer and products to generate a sales invoice.
+   825→            </DialogDescription>
+   826→          </DialogHeader>
+   827→        </div>
+   828→
+   829→        <div className="p-6 space-y-6">
+   830→          {/* Customer Selection */}
+   831→          {showNewCustomer ? (
+   832→            <NewCustomerForm
+   833→              onSave={(c) => {
+   834→                setCustomers((prev) => [c, ...prev]);
+   835→                setSelectedCustomer(c);
+   836→                setShowNewCustomer(false);
+   837→                toast.success(`Customer "${c.name}" added`);
+   838→              }}
+   839→              onCancel={() => setShowNewCustomer(false)}
+   840→            />
+   841→          ) : (
+   842→            <CustomerSelect
+   843→              customers={customers}
+   844→              selectedCustomerId={selectedCustomer?.id ?? null}
+   845→              onSelect={setSelectedCustomer}
+   846→              onCreateNew={() => setShowNewCustomer(true)}
+   847→            />
+   848→          )}
+   849→
+   850→          <Separator />
+   851→
+   852→          {/* Product Items */}
+   853→          <div className="space-y-3">
+   854→            <div className="flex items-center justify-between">
+   855→              <Label className="text-base font-semibold">Items</Label>
+   856→              <Button type="button" variant="outline" size="sm" onClick={handleAddItem}>
+   857→                <Plus className="size-3.5 mr-1" />
+   858→                Add Item
+   859→              </Button>
+   860→            </div>
+   861→
+   862→            <div className="rounded-lg border overflow-x-auto overflow-hidden">
+   863→              <Table>
+   864→                <TableHeader>
+   865→                  <TableRow className="bg-muted/50">
+   866→                    <TableHead className="w-[50%]">Product</TableHead>
+   867→                    <TableHead className="text-right w-[15%]">Price</TableHead>
+   868→                    <TableHead className="w-[15%]">Qty</TableHead>
+   869→                    <TableHead className="text-right w-[15%]">Total</TableHead>
+   870→                    <TableHead className="w-[5%]" />
+   871→                  </TableRow>
+   872→                </TableHeader>
+   873→                <TableBody>
+   874→                  {items.map((item, idx) => (
+   875→                    <ItemRow
+   876→                      key={idx}
+   877→                      row={item}
+   878→                      index={idx}
+   879→                      products={products}
+   880→                      onUpdate={handleItemUpdate}
+   881→                      onRemove={handleItemRemove}
+   882→                      canRemove={items.length > 1}
+   883→                    />
+   884→                  ))}
+   885→                </TableBody>
+   886→                {hasValidItems && (
+   887→                  <TableFooter>
+   888→                    <TableRow className="bg-muted/30">
+   889→                      <TableCell colSpan={2} className="font-medium text-sm">
+   890→                        Totals
+   891→                      </TableCell>
+   892→                      <TableCell className="text-sm">{totalQty} items</TableCell>
+   893→                      <TableCell className="text-right font-mono font-semibold">
+   894→                        {INR(subtotal)}
+   895→                      </TableCell>
+   896→                      <TableCell />
+   897→                    </TableRow>
+   898→                  </TableFooter>
+   899→                )}
+   900→              </Table>
+   901→            </div>
+   902→          </div>
+   903→
+   904→          <Separator />
+   905→
+   906→          {/* Summary */}
+   907→          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+   908→            <div className="space-y-4">
+   909→              {/* Discount */}
+   910→              <div className="space-y-2">
+   911→                <Label>Discount</Label>
+   912→                <div className="flex gap-2">
+   913→                  <div className="relative flex-1">
+   914→                    <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+   915→                    <Input
+   916→                      type="number"
+   917→                      min={0}
+   918→                      value={discount}
+   919→                      onChange={(e) => setDiscount(Math.max(0, parseFloat(e.target.value) || 0))}
+   920→                      className="pl-9"
+   921→                      placeholder="0"
+   922→                    />
+   923→                  </div>
+   924→                  <Select
+   925→                    value={discountType}
+   926→                    onValueChange={(v) => setDiscountType(v as "percentage" | "flat")}
+   927→                  >
+   928→                    <SelectTrigger className="w-24">
+   929→                      <SelectValue />
+   930→                    </SelectTrigger>
+   931→                    <SelectContent>
+   932→                      <SelectItem value="flat">Flat (₹)</SelectItem>
+   933→                      <SelectItem value="percentage">Percentage (%)</SelectItem>
+   934→                    </SelectContent>
+   935→                  </Select>
+   936→                </div>
+   937→              </div>
+   938→
+   939→              {/* Payment Mode */}
+   940→              <div className="space-y-2">
+   941→                <Label>Payment Mode</Label>
+   942→                <RadioGroup
+   943→                  value={paymentMode}
+   944→                  onValueChange={(v) => {
+   945→                    setPaymentMode(v as typeof paymentMode);
+   946→                    if (v === "Credit") setSplitPayment(false);
+   947→                  }}
+   948→                  className="flex flex-wrap gap-3"
+   949→                >
+   950→                  {(["Cash", "Card", "UPI", "Credit"] as const).map((mode) => (
+   951→                    <div key={mode} className="flex items-center gap-2">
+   952→                      <RadioGroupItem value={mode} id={`pm-${mode}`} />
+   953→                      <Label htmlFor={`pm-${mode}`} className="font-normal cursor-pointer">
+   954→                        {mode}
+   955→                      </Label>
+   956→                    </div>
+   957→                  ))}
+   958→                </RadioGroup>
+   959→
+   960→                {canSplit && (
+   961→                  <div className="flex items-center gap-2 mt-2">
+   962→                    <Checkbox
+   963→                      id="split-payment"
+   964→                      checked={splitPayment}
+   965→                      onCheckedChange={(checked) => {
+   966→                        setSplitPayment(!!checked);
+   967→                        if (checked) setSecondaryAmount(total);
+   968→                      }}
+   969→                    />
+   970→                    <Label htmlFor="split-payment" className="font-normal text-sm cursor-pointer">
+   971→                      Split Payment?
+   972→                    </Label>
+   973→                  </div>
+   974→                )}
+   975→
+   976→                {splitPayment && canSplit && (
+   977→                  <div className="ml-6 mt-2 space-y-2 rounded-md border bg-muted/30 p-3">
+   978→                    <p className="text-xs text-muted-foreground">
+   979→                      Primary: {paymentMode} — {INR(primaryAmount)}
+   980→                    </p>
+   981→                    <div className="flex flex-wrap items-center gap-2">
+   982→                      <div className="space-y-1">
+   983→                        <Label className="text-xs">Secondary Mode</Label>
+   984→                        <Select
+   985→                          value={secondaryPaymentMode}
+   986→                          onValueChange={(v) => setSecondaryPaymentMode(v as "Cash" | "Card" | "UPI")}
+   987→                        >
+   988→                          <SelectTrigger className="w-28 h-8 text-sm">
+   989→                            <SelectValue />
+   990→                          </SelectTrigger>
+   991→                          <SelectContent>
+   992→                            {(["Cash", "Card", "UPI"] as const)
+   993→                              .filter((m) => m !== paymentMode)
+   994→                              .map((m) => (
+   995→                                <SelectItem key={m} value={m}>{m}</SelectItem>
+   996→                              ))}
+   997→                          </SelectContent>
+   998→                        </Select>
+   999→                      </div>
+  1000→                      <div className="space-y-1 flex-1 min-w-[120px]">
+  1001→                        <Label className="text-xs">Secondary Amount</Label>
+  1002→                        <div className="relative">
+  1003→                          <IndianRupee className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+  1004→                          <Input
+  1005→                            type="number"
+  1006→                            min={0}
+  1007→                            step={0.01}
+  1008→                            value={secondaryAmount || ""}
+  1009→                            onChange={(e) => setSecondaryAmount(parseFloat(e.target.value) || 0)}
+  1010→                            className="pl-8 h-8 text-sm"
+  1011→                            placeholder="0"
+  1012→                          />
+  1013→                        </div>
+  1014→                      </div>
+  1015→                    </div>
+  1016→                    {splitPayment && (secondaryAmount <= 0 || secondaryAmount >= total) && (
+  1017→                      <p className="text-xs text-destructive">
+  1018→                        Secondary amount must be between ₹0 and {INR(total)} (exclusive)
+  1019→                      </p>
+  1020→                    )}
+  1021→                  </div>
+  1022→                )}
+  1023→              </div>
+  1024→
+  1025→              {/* Notes */}
+  1026→              <div className="space-y-2">
+  1027→                <Label htmlFor="sale-notes">Notes</Label>
+  1028→                <Textarea
+  1029→                  id="sale-notes"
+  1030→                  placeholder="Add any notes for this invoice..."
+  1031→                  value={notes}
+  1032→                  onChange={(e) => setNotes(e.target.value)}
+  1033→                  className="min-h-16"
+  1034→                />
+  1035→              </div>
+  1036→            </div>
+  1037→
+  1038→            {/* Calculated Totals */}
+  1039→            <div className="rounded-lg border bg-muted/20 p-4 space-y-2.5 h-fit">
+  1040→              <div className="flex justify-between text-sm">
+  1041→                <span className="text-muted-foreground">Subtotal</span>
+  1042→                <span className="font-mono">{INR(subtotal)}</span>
+  1043→              </div>
+  1044→              <div className="flex justify-between text-sm">
+  1045→                <span className="text-muted-foreground">
+  1046→                  Discount
+  1047→                  {discountType === "percentage" && discount > 0 ? ` (${discount}%)` : ""}
+  1048→                </span>
+  1049→                <span className="font-mono text-destructive">- {INR(discountAmount)}</span>
+  1050→              </div>
+  1051→              <Separator />
+  1052→              <div className="flex justify-between text-sm">
+  1053→                <span className="text-muted-foreground">Taxable Amount</span>
+  1054→                <span className="font-mono">{INR(taxable)}</span>
+  1055→              </div>
+  1056→              <div className="flex justify-between text-sm">
+  1057→                <span className="text-muted-foreground">CGST @9%</span>
+  1058→                <span className="font-mono">{INR(cgst)}</span>
+  1059→              </div>
+  1060→              <div className="flex justify-between text-sm">
+  1061→                <span className="text-muted-foreground">SGST @9%</span>
+  1062→                <span className="font-mono">{INR(sgst)}</span>
+  1063→              </div>
+  1064→              <Separator />
+  1065→              <div className="flex justify-between text-base font-semibold">
+  1066→                <span>Total Amount</span>
+  1067→                <span className="font-mono text-lg">{INR(total)}</span>
+  1068→              </div>
+  1069→            </div>
+  1070→          </div>
+  1071→        </div>
+  1072→
+  1073→        {/* Footer */}
+  1074→        <div className="border-t px-6 py-4 bg-muted/20 flex flex-col-reverse sm:flex-row items-center justify-between gap-2 sticky bottom-0">
+  1075→          <div className="text-xs text-muted-foreground">
+  1076→            Tax calculated on subtotal minus discount
+  1077→          </div>
+  1078→          <DialogFooter className="gap-2 sm:gap-2">
+  1079→            <Button
+  1080→              type="button"
+  1081→              variant="outline"
+  1082→              onClick={() => {
+  1083→                resetForm();
+  1084→                onOpenChange(false);
+  1085→              }}
+  1086→            >
+  1087→              Cancel
+  1088→            </Button>
+  1089→            <Button
+  1090→              type="button"
+  1091→              onClick={handleCreate}
+  1092→              disabled={submitting || !selectedCustomer || !hasValidItems || !splitValid}
+  1093→            >
+  1094→              {submitting ? (
+  1095→                <Loader2 className="size-4 animate-spin" />
+  1096→              ) : (
+  1097→                <FileText className="size-4" />
+  1098→              )}
+  1099→              Create Invoice
+  1100→            </Button>
+  1101→          </DialogFooter>
+  1102→        </div>
+  1103→      </DialogContent>
+  1104→    </Dialog>
+  1105→  );
+  1106→}
+  1107→
+  1108→// ---------------------------------------------------------------------------
+  1109→// Component: Sale Detail Dialog
+  1110→// ---------------------------------------------------------------------------
+  1111→
+  1112→interface SaleDetailDialogProps {
+  1113→  sale: Sale | null;
+  1114→  open: boolean;
+  1115→  onOpenChange: (open: boolean) => void;
+  1116→  onReturn: (sale: Sale) => void;
+  1117→  onToggleStatus: (sale: Sale) => void;
+  1118→}
+  1119→
+  1120→function SaleDetailDialog({ sale, open, onOpenChange, onReturn, onToggleStatus }: SaleDetailDialogProps) {
+  1121→  if (!sale) return null;
+  1122→
+  1123→  // Get settings for print (SSR-safe with fallback)
+  1124→  let settings: { shopName: string; gstin: string; phone: string; address: string };
+  1125→  try {
+  1126→    settings = getSettings();
+  1127→  } catch {
+  1128→    // Fallback defaults
+  1129→    settings = { shopName: 'Lotus Vision Opticals', gstin: '33BPKPS1234F1Z5', phone: '+91 94432 12345', address: 'Main Road, Sankarankovil - 627751' };
+  1130→  }
+  1131→
+  1132→  const handlePrint = () => {
+  1133→    window.print();
+  1134→  };
+  1135→
+  1136→  return (
+  1137→    <Dialog open={open} onOpenChange={onOpenChange}>
+  1138→      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0 print:max-w-none print:max-h-none print:shadow-none print:rounded-none print:border-0" showCloseButton={false}>
+  1139→        {/* Print-friendly header */}
+  1140→        <div className="p-6 pb-0 print:p-8 print:pb-2 print:bg-white">
+  1141→          <DialogHeader className="print:hidden">
+  1142→            <DialogTitle className="flex items-center gap-2">
+  1143→              <FileText className="size-5" />
+  1144→              Invoice {sale.invoiceNo}
+  1145→            </DialogTitle>
+  1146→            <DialogDescription>Full invoice details</DialogDescription>
+  1147→          </DialogHeader>
+  1148→
+  1149→          {/* Print Header */}
+  1150→          <div className="hidden print:block print:mb-4">
+  1151→            <div className="border-b-2 border-gray-800 pb-3 mb-4">
+  1152→              <h1 className="text-xl font-bold tracking-wide text-center">TAX INVOICE</h1>
+  1153→            </div>
+  1154→            <div className="flex justify-between text-sm">
+  1155→              <div>
+  1156→                <p className="font-bold text-base">{settings.shopName}</p>
+  1157→                <p className="text-gray-600 mt-0.5">{settings.address}</p>
+  1158→                <p className="text-gray-600">GSTIN: {settings.gstin}</p>
+  1159→                <p className="text-gray-600">Ph: {settings.phone}</p>
+  1160→              </div>
+  1161→              <div className="text-right">
+  1162→                <p className="font-bold text-base">{sale.invoiceNo}</p>
+  1163→                <p className="text-gray-600">
+  1164→                  Date: {new Date(sale.createdAt).toLocaleDateString("en-IN", {
+  1165→                    day: "2-digit",
+  1166→                    month: "short",
+  1167→                    year: "numeric",
+  1168→                  })}
+  1169→                </p>
+  1170→                <div className="mt-1">
+  1171→                  <StatusBadge status={sale.status} />
+  1172→                </div>
+  1173→              </div>
+  1174→            </div>
+  1175→          </div>
+  1176→        </div>
+  1177→
+  1178→        <div className="px-6 pb-6 space-y-6 print:px-8 print:pb-4 print:space-y-4">
+  1179→          {/* Invoice Header (screen only) */}
+  1180→          <div className="print:hidden flex items-start justify-between">
+  1181→            <div className="space-y-1">
+  1182→              <StatusBadge status={sale.status} />
+  1183→              <p className="text-sm text-muted-foreground">
+  1184→                {new Date(sale.createdAt).toLocaleDateString("en-IN", {
+  1185→                  day: "2-digit",
+  1186→                  month: "short",
+  1187→                  year: "numeric",
+  1188→                })}
+  1189→              </p>
+  1190→              <p className="text-sm text-muted-foreground">Payment: {sale.paymentMode}</p>
+  1191→            </div>
+  1192→            <div className="text-right">
+  1193→              <h2 className="text-xl font-bold">{sale.invoiceNo}</h2>
+  1194→            </div>
+  1195→          </div>
+  1196→
+  1197→          {/* Customer Info */}
+  1198→          <div className="rounded-lg border p-4 print:border print:p-4">
+  1199→            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+  1200→              Bill To
+  1201→            </p>
+  1202→            <p className="font-semibold">{sale.customerName}</p>
+  1203→            {sale.customerPhone && <p className="text-sm text-muted-foreground">{sale.customerPhone}</p>}
+  1204→            {sale.customerEmail && <p className="text-sm text-muted-foreground">{sale.customerEmail}</p>}
+  1205→            {sale.customerAddress && <p className="text-sm text-muted-foreground">{sale.customerAddress}</p>}
+  1206→          </div>
+  1207→
+  1208→          {/* Items Table */}
+  1209→          <div className="rounded-lg border overflow-x-auto overflow-hidden print:border">
+  1210→            <Table>
+  1211→              <TableHeader>
+  1212→                <TableRow className="bg-muted/50">
+  1213→                  <TableHead className="w-[10%]">#</TableHead>
+  1214→                  <TableHead>Product</TableHead>
+  1215→                  <TableHead className="text-right">Price</TableHead>
+  1216→                  <TableHead className="text-right">Qty</TableHead>
+  1217→                  <TableHead className="text-right">Total</TableHead>
+  1218→                </TableRow>
+  1219→              </TableHeader>
+  1220→              <TableBody>
+  1221→                {sale.items.map((item, idx) => (
+  1222→                  <TableRow key={item.id}>
+  1223→                    <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
+  1224→                    <TableCell className="font-medium">{item.productName}</TableCell>
+  1225→                    <TableCell className="text-right font-mono text-sm">{INR(item.price)}</TableCell>
+  1226→                    <TableCell className="text-right text-sm">{item.qty}</TableCell>
+  1227→                    <TableCell className="text-right font-mono text-sm font-medium">
+  1228→                      {INR(item.lineTotal)}
+  1229→                    </TableCell>
+  1230→                  </TableRow>
+  1231→                ))}
+  1232→              </TableBody>
+  1233→            </Table>
+  1234→          </div>
+  1235→
+  1236→          {/* Totals */}
+  1237→          <div className="flex justify-end">
+  1238→            <div className="w-72 space-y-2 rounded-lg border p-4 print:border print:p-4">
+  1239→              <div className="flex justify-between text-sm">
+  1240→                <span className="text-muted-foreground">Subtotal</span>
+  1241→                <span className="font-mono">{INR(sale.subtotal)}</span>
+  1242→              </div>
+  1243→              {sale.discount > 0 && (
+  1244→                <div className="flex justify-between text-sm">
+  1245→                  <span className="text-muted-foreground">Discount</span>
+  1246→                  <span className="font-mono text-destructive">- {INR(sale.discount)}</span>
+  1247→                </div>
+  1248→              )}
+  1249→              <Separator />
+  1250→              <div className="flex justify-between text-sm">
+  1251→                <span className="text-muted-foreground">CGST @9%</span>
+  1252→                <span className="font-mono">{INR(sale.cgst)}</span>
+  1253→              </div>
+  1254→              <div className="flex justify-between text-sm">
+  1255→                <span className="text-muted-foreground">SGST @9%</span>
+  1256→                <span className="font-mono">{INR(sale.sgst)}</span>
+  1257→              </div>
+  1258→              <Separator />
+  1259→              <div className="flex justify-between text-lg font-bold">
+  1260→                <span>Total</span>
+  1261→                <span className="font-mono">{INR(sale.total)}</span>
+  1262→              </div>
+  1263→              <div className="flex justify-between text-sm text-muted-foreground">
+  1264→                <span>Payment Mode</span>
+  1265→                <span>{sale.paymentMode}</span>
+  1266→              </div>
+  1267→            </div>
+  1268→          </div>
+  1269→
+  1270→          {sale.notes && (
+  1271→            <div className="rounded-lg border p-4 print:border print:p-4">
+  1272→              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+  1273→                Notes
+  1274→              </p>
+  1275→              <p className="text-sm">{sale.notes}</p>
+  1276→            </div>
+  1277→          )}
+  1278→
+  1279→          {/* Thank you (print only) */}
+  1280→          <div className="hidden print:block text-center pt-6 mt-4 border-t border-gray-200">
+  1281→            <p className="text-base font-semibold text-gray-800">Thank you for shopping with Lotus Vision Opticals!</p>
+  1282→            <p className="text-xs text-gray-500 mt-1">This is a computer-generated invoice.</p>
+  1283→            <p className="text-xs text-gray-500">Ph: {settings.phone} · GSTIN: {settings.gstin}</p>
+  1284→          </div>
+  1285→
+  1286→          {/* Actions (screen only) */}
+  1287→          <div className="print:hidden flex flex-wrap gap-2 pt-2">
+  1288→            <Button variant="outline" size="sm" className="min-h-[44px] touch-manipulation" onClick={handlePrint}>
+  1289→              <Printer className="size-3.5 mr-1.5" />
+  1290→              Print
+  1291→            </Button>
+  1292→            {sale.customerPhone && (
+  1293→              <Button
+  1294→                variant="outline"
+  1295→                size="sm"
+  1296→                className="min-h-[44px] touch-manipulation text-emerald-600 border-emerald-200 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-950/50"
+  1297→                onClick={() => {
+  1298→                  const cleanPhone = (sale.customerPhone ?? '').replace(/\D/g, '');
+  1299→                  window.open(`https://wa.me/91${cleanPhone}?text=${encodeURIComponent(`Hi ${sale.customerName}, your invoice ${sale.invoiceNo} for ${INR(sale.total)} is ready. Thank you for choosing Lotus Vision Opticals!`)}`, '_blank', 'noopener,noreferrer');
+  1300→                }}
+  1301→              >
+  1302→                <svg viewBox="0 0 24 24" className="size-3.5 mr-1.5 fill-current"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+  1303→                WhatsApp
+  1304→              </Button>
+  1305→            )}
+  1306→            {sale.status === "Completed" && (
+  1307→              <Button
+  1308→                variant="outline"
+  1309→                size="sm"
+  1310→                className="min-h-[44px] touch-manipulation"
+  1311→                onClick={() => onToggleStatus(sale)}
+  1312→              >
+  1313→                <AlertCircle className="size-3.5 mr-1.5 text-amber-500" />
+  1314→                Mark as Pending
+  1315→              </Button>
+  1316→            )}
+  1317→            {sale.status === "Pending" && (
+  1318→              <Button
+  1319→                variant="outline"
+  1320→                size="sm"
+  1321→                className="min-h-[44px] touch-manipulation"
+  1322→                onClick={() => onToggleStatus(sale)}
+  1323→              >
+  1324→                <AlertCircle className="size-3.5 mr-1.5 text-emerald-500" />
+  1325→                Mark as Completed
+  1326→              </Button>
+  1327→            )}
+  1328→            {sale.status !== "Return" && (
+  1329→              <Button
+  1330→                variant="outline"
+  1331→                size="sm"
+  1332→                className="min-h-[44px] touch-manipulation text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-950/50"
+  1333→                onClick={() => onReturn(sale)}
+  1334→              >
+  1335→                <RotateCcw className="size-3.5 mr-1.5" />
+  1336→                Process Return
+  1337→              </Button>
+  1338→            )}
+  1339→            <Button variant="ghost" size="sm" className="ml-auto" onClick={() => onOpenChange(false)}>
+  1340→              Close
+  1341→            </Button>
+  1342→          </div>
+  1343→        </div>
+  1344→      </DialogContent>
+  1345→    </Dialog>
+  1346→  );
+  1347→}
+  1348→
+  1349→// ---------------------------------------------------------------------------
+  1350→// Component: Return Dialog
+  1351→// ---------------------------------------------------------------------------
+  1352→
+  1353→interface ReturnDialogProps {
+  1354→  sale: Sale | null;
+  1355→  open: boolean;
+  1356→  onOpenChange: (open: boolean) => void;
+  1357→  onProcessed: () => void;
+  1358→}
+  1359→
+  1360→function ReturnDialog({ sale, open, onOpenChange, onProcessed }: ReturnDialogProps) {
+  1361→  const [returnItems, setReturnItems] = React.useState<ReturnItem[]>([]);
+  1362→  const [reason, setReason] = React.useState("");
+  1363→  const [submitting, setSubmitting] = React.useState(false);
+  1364→
+  1365→  React.useEffect(() => {
+  1366→    if (sale && open) {
+  1367→      setReturnItems(
+  1368→        sale.items.map((item) => ({
+  1369→          saleItemId: item.id,
+  1370→          productName: item.productName,
+  1371→          originalQty: item.qty,
+  1372→          returnQty: 0,
+  1373→          price: item.price,
+  1374→        }))
+  1375→      );
+  1376→      setReason("");
+  1377→    }
+  1378→  }, [sale, open]);
+  1379→
+  1380→  if (!sale) return null;
+  1381→
+  1382→  const handleReturnQtyChange = (index: number, qty: number) => {
+  1383→    setReturnItems((prev) =>
+  1384→      prev.map((item, i) =>
+  1385→        i === index ? { ...item, returnQty: Math.min(Math.max(0, qty), item.originalQty) } : item
+  1386→      )
+  1387→    );
+  1388→  };
+  1389→
+  1390→  const toggleSelectAll = (checked: boolean) => {
+  1391→    setReturnItems((prev) =>
+  1392→      prev.map((item) => ({
+  1393→        ...item,
+  1394→        returnQty: checked ? item.originalQty : 0,
+  1395→      }))
+  1396→    );
+  1397→  };
+  1398→
+  1399→  const totalRefund = returnItems.reduce((sum, item) => sum + item.price * item.returnQty, 0);
+  1400→  const taxRefund = Math.round(totalRefund * (CGST_RATE + SGST_RATE) * 100) / 100;
+  1401→  const grandRefund = Math.round((totalRefund + taxRefund) * 100) / 100;
+  1402→  const hasItems = returnItems.some((item) => item.returnQty > 0);
+  1403→
+  1404→  const handleProcessReturn = async () => {
+  1405→    if (!hasItems) {
+  1406→      toast.error("Select at least one item to return");
+  1407→      return;
+  1408→    }
+  1409→    if (!reason.trim()) {
+  1410→      toast.error("Please provide a reason for the return");
+  1411→      return;
+  1412→    }
+  1413→
+  1414→    setSubmitting(true);
+  1415→    try {
+  1416→      const res = await fetch("/api/returns", {
+  1417→        method: "POST",
+  1418→        headers: { "Content-Type": "application/json" },
+  1419→        body: JSON.stringify({
+  1420→          saleId: sale.id,
+  1421→          invoiceNo: sale.invoiceNo,
+  1422→          items: returnItems
+  1423→            .filter((item) => item.returnQty > 0)
+  1424→            .map((item) => ({
+  1425→              saleItemId: item.saleItemId,
+  1426→              productName: item.productName,
+  1427→              returnQty: item.returnQty,
+  1428→              price: item.price,
+  1429→            })),
+  1430→          reason: reason.trim(),
+  1431→          refundAmount: grandRefund,
+  1432→        }),
+  1433→      });
+  1434→
+  1435→      if (res.ok) {
+  1436→        toast.success(`Return processed for ${sale.invoiceNo}. Refund: ${INR(grandRefund)}`);
+  1437→        onOpenChange(false);
+  1438→        onProcessed();
+  1439→      } else {
+  1440→        const err = await res.json().catch(() => ({}));
+  1441→        toast.error(err.error || "Failed to process return");
+  1442→      }
+  1443→    } catch {
+  1444→      toast.error("Network error. Please try again.");
+  1445→    } finally {
+  1446→      setSubmitting(false);
+  1447→    }
+  1448→  };
+  1449→
+  1450→  return (
+  1451→    <Dialog open={open} onOpenChange={onOpenChange}>
+  1452→      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+  1453→        <DialogHeader>
+  1454→          <DialogTitle className="flex items-center gap-2">
+  1455→            <RotateCcw className="size-5" />
+  1456→            Process Return
+  1457→          </DialogTitle>
+  1458→          <DialogDescription>
+  1459→            Invoice {sale.invoiceNo} — {sale.customerName}
+  1460→          </DialogDescription>
+  1461→        </DialogHeader>
+  1462→
+  1463→        <div className="space-y-4">
+  1464→          {/* Items to return */}
+  1465→          <div className="rounded-lg border overflow-x-auto overflow-hidden">
+  1466→            <Table>
+  1467→              <TableHeader>
+  1468→                <TableRow className="bg-muted/50">
+  1469→                  <TableHead className="w-10">
+  1470→                    <Checkbox
+  1471→                      checked={returnItems.every((i) => i.returnQty > 0) && returnItems.length > 0}
+  1472→                      onCheckedChange={(checked) => toggleSelectAll(checked === true)}
+  1473→                    />
+  1474→                  </TableHead>
+  1475→                  <TableHead>Product</TableHead>
+  1476→                  <TableHead className="text-right">Sold</TableHead>
+  1477→                  <TableHead className="text-right">Return Qty</TableHead>
+  1478→                  <TableHead className="text-right">Refund</TableHead>
+  1479→                </TableRow>
+  1480→              </TableHeader>
+  1481→              <TableBody>
+  1482→                {returnItems.map((item, idx) => (
+  1483→                  <TableRow key={item.saleItemId}>
+  1484→                    <TableCell>
+  1485→                      <Checkbox
+  1486→                        checked={item.returnQty > 0}
+  1487→                        onCheckedChange={(checked) =>
+  1488→                          handleReturnQtyChange(idx, checked ? item.originalQty : 0)
+  1489→                        }
+  1490→                      />
+  1491→                    </TableCell>
+  1492→                    <TableCell className="text-sm font-medium max-w-40 truncate">
+  1493→                      {item.productName}
+  1494→                    </TableCell>
+  1495→                    <TableCell className="text-right text-sm">{item.originalQty}</TableCell>
+  1496→                    <TableCell className="text-right">
+  1497→                      <Input
+  1498→                        type="number"
+  1499→                        min={0}
+  1500→                        max={item.originalQty}
+  1501→                        value={item.returnQty || ""}
+  1502→                        onChange={(e) =>
+  1503→                          handleReturnQtyChange(idx, parseInt(e.target.value, 10) || 0)
+  1504→                        }
+  1505→                        className="h-8 w-16 text-right"
+  1506→                      />
+  1507→                    </TableCell>
+  1508→                    <TableCell className="text-right font-mono text-sm">
+  1509→                      {INR(item.price * item.returnQty)}
+  1510→                    </TableCell>
+  1511→                  </TableRow>
+  1512→                ))}
+  1513→              </TableBody>
+  1514→            </Table>
+  1515→          </div>
+  1516→
+  1517→          {/* Refund Summary */}
+  1518→          <div className="rounded-lg border bg-muted/20 p-4 space-y-1.5">
+  1519→            <div className="flex justify-between text-sm">
+  1520→              <span className="text-muted-foreground">Items Refund</span>
+  1521→              <span className="font-mono">{INR(totalRefund)}</span>
+  1522→            </div>
+  1523→            <div className="flex justify-between text-sm">
+  1524→              <span className="text-muted-foreground">Tax Refund (CGST+SGST)</span>
+  1525→              <span className="font-mono">{INR(taxRefund)}</span>
+  1526→            </div>
+  1527→            <Separator />
+  1528→            <div className="flex justify-between font-semibold">
+  1529→              <span>Total Refund</span>
+  1530→              <span className="font-mono text-lg">{INR(grandRefund)}</span>
+  1531→            </div>
+  1532→          </div>
+  1533→
+  1534→          {/* Reason */}
+  1535→          <div className="space-y-2">
+  1536→            <Label htmlFor="return-reason">Reason for Return *</Label>
+  1537→            <Textarea
+  1538→              id="return-reason"
+  1539→              placeholder="Describe the reason for this return..."
+  1540→              value={reason}
+  1541→              onChange={(e) => setReason(e.target.value)}
+  1542→              className="min-h-20"
+  1543→            />
+  1544→          </div>
+  1545→        </div>
+  1546→
+  1547→        <DialogFooter>
+  1548→          <Button variant="outline" onClick={() => onOpenChange(false)}>
+  1549→            Cancel
+  1550→          </Button>
+  1551→          <Button
+  1552→            variant="destructive"
+  1553→            onClick={handleProcessReturn}
+  1554→            disabled={submitting || !hasItems || !reason.trim()}
+  1555→          >
+  1556→            {submitting ? (
+  1557→              <Loader2 className="size-4 animate-spin" />
+  1558→            ) : (
+  1559→              <RotateCcw className="size-4" />
+  1560→            )}
+  1561→            Process Return
+  1562→          </Button>
+  1563→        </DialogFooter>
+  1564→      </DialogContent>
+  1565→    </Dialog>
+  1566→  );
+  1567→}
+  1568→
+  1569→// ---------------------------------------------------------------------------
+  1570→// Component: Pagination Controls
+  1571→// ---------------------------------------------------------------------------
+  1572→
+  1573→interface PaginationControlsProps {
+  1574→  page: number;
+  1575→  totalPages: number;
+  1576→  onPageChange: (page: number) => void;
+  1577→}
+  1578→
+  1579→function PaginationControls({ page, totalPages, onPageChange }: PaginationControlsProps) {
+  1580→  if (totalPages <= 1) return null;
+  1581→
+  1582→  const pages: (number | "ellipsis")[] = [];
+  1583→  if (totalPages <= 7) {
+  1584→    for (let i = 1; i <= totalPages; i++) pages.push(i);
+  1585→  } else {
+  1586→    pages.push(1);
+  1587→    if (page > 3) pages.push("ellipsis");
+  1588→    for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) {
+  1589→      pages.push(i);
+  1590→    }
+  1591→    if (page < totalPages - 2) pages.push("ellipsis");
+  1592→    pages.push(totalPages);
+  1593→  }
+  1594→
+  1595→  return (
+  1596→    <nav className="flex items-center justify-center gap-1" aria-label="Pagination">
+  1597→      <Button
+  1598→        variant="outline"
+  1599→        size="icon"
+  1600→        className="min-w-[44px] min-h-[44px] touch-manipulation"
+  1601→        disabled={page <= 1}
+  1602→        onClick={() => onPageChange(1)}
+  1603→        aria-label="First page"
+  1604→      >
+  1605→        <ChevronsLeft className="size-4" />
+  1606→      </Button>
+  1607→      <Button
+  1608→        variant="outline"
+  1609→        size="icon"
+  1610→        className="min-w-[44px] min-h-[44px] touch-manipulation"
+  1611→        disabled={page <= 1}
+  1612→        onClick={() => onPageChange(page - 1)}
+  1613→        aria-label="Previous page"
+  1614→      >
+  1615→        <ChevronLeft className="size-4" />
+  1616→      </Button>
+  1617→      {pages.map((p, idx) =>
+  1618→        p === "ellipsis" ? (
+  1619→          <span key={`el-${idx}`} className="px-2 text-muted-foreground">
+  1620→            ...
+  1621→          </span>
+  1622→        ) : (
+  1623→          <Button
+  1624→            key={p}
+  1625→            variant={p === page ? "default" : "outline"}
+  1626→            size="icon"
+  1627→            className="min-w-[44px] min-h-[44px] touch-manipulation"
+  1628→            onClick={() => onPageChange(p)}
+  1629→            aria-label={`Page ${p}`}
+  1630→            aria-current={p === page ? "page" : undefined}
+  1631→          >
+  1632→            {p}
+  1633→          </Button>
+  1634→        )
+  1635→      )}
+  1636→      <Button
+  1637→        variant="outline"
+  1638→        size="icon"
+  1639→        className="min-w-[44px] min-h-[44px] touch-manipulation"
+  1640→        disabled={page >= totalPages}
+  1641→        onClick={() => onPageChange(page + 1)}
+  1642→        aria-label="Next page"
+  1643→      >
+  1644→        <ChevronRight className="size-4" />
+  1645→      </Button>
+  1646→      <Button
+  1647→        variant="outline"
+  1648→        size="icon"
+  1649→        className="min-w-[44px] min-h-[44px] touch-manipulation"
+  1650→        disabled={page >= totalPages}
+  1651→        onClick={() => onPageChange(totalPages)}
+  1652→        aria-label="Last page"
+  1653→      >
+  1654→        <ChevronsRight className="size-4" />
+  1655→      </Button>
+  1656→    </nav>
+  1657→  );
+  1658→}
+  1659→
+  1660→// ---------------------------------------------------------------------------
+  1661→// Component: Sales Table Skeleton
+  1662→// ---------------------------------------------------------------------------
+  1663→
+  1664→function SalesTableSkeleton() {
+  1665→  return (
+  1666→    <div className="space-y-3">
+  1667→      {Array.from({ length: 8 }).map((_, i) => (
+  1668→        <div key={i} className="flex items-center gap-4 px-2">
+  1669→          <Skeleton className="h-4 w-28" />
+  1670→          <Skeleton className="h-4 w-32" />
+  1671→          <Skeleton className="h-4 w-12" />
+  1672→          <Skeleton className="h-4 w-20" />
+  1673→          <Skeleton className="h-4 w-16" />
+  1674→          <Skeleton className="h-4 w-16" />
+  1675→          <Skeleton className="h-4 w-24" />
+  1676→          <Skeleton className="h-4 w-16" />
+  1677→          <Skeleton className="h-4 w-20" />
+  1678→          <Skeleton className="h-6 w-20 rounded-full" />
+  1679→          <Skeleton className="size-8" />
+  1680→        </div>
+  1681→      ))}
+  1682→    </div>
+  1683→  );
+  1684→}
+  1685→
+  1686→// ---------------------------------------------------------------------------
+  1687→// Main Component: Sales
+  1688→// ---------------------------------------------------------------------------
+  1689→
+  1690→export default function Sales() {
+  1691→  // -- State --
+  1692→  const [sales, setSales] = React.useState<SaleListItem[]>([]);
+  1693→  const [total, setTotal] = React.useState(0);
+  1694→  const [page, setPage] = React.useState(1);
+  1695→  const [search, setSearch] = React.useState("");
+  1696→  const [fromDate, setFromDate] = React.useState("");
+  1697→  const [toDate, setToDate] = React.useState("");
+  1698→  const [loading, setLoading] = React.useState(true);
+  1699→  const [error, setError] = React.useState<string | null>(null);
+  1700→  const [todayCount, setTodayCount] = React.useState(0);
+  1701→  const [todayTotal, setTodayTotal] = React.useState(0);
+  1702→  const [todayLoading, setTodayLoading] = React.useState(true);
+  1703→
+  1704→  const [createOpen, setCreateOpen] = React.useState(false);
+  1705→  const { triggerNewSale } = useCrmStore();
+  1706→
+  1707→  // Listen for triggerNewSale signal from keyboard shortcuts
+  1708→  React.useEffect(() => {
+  1709→    if (triggerNewSale > 0) {
+  1710→      setCreateOpen(true);
+  1711→    }
+  1712→  }, [triggerNewSale]);
+  1713→  const [detailSale, setDetailSale] = React.useState<Sale | null>(null);
+  1714→  const [detailOpen, setDetailOpen] = React.useState(false);
+  1715→  const [returnSale, setReturnSale] = React.useState<Sale | null>(null);
+  1716→  const [returnOpen, setReturnOpen] = React.useState(false);
+  1717→
+  1718→  const [creditFilter, setCreditFilter] = React.useState(false);
+  1719→  const [creditTotal, setCreditTotal] = React.useState(0);
+  1720→  const [summaryPeriod, setSummaryPeriod] = React.useState<"today" | "week" | "month">("today");
+  1721→  const [statusFilter, setStatusFilter] = React.useState<"all" | "Completed" | "Pending" | "Return">("all");
+  1722→  const [paymentModeFilter, setPaymentModeFilter] = React.useState<"all" | "Cash" | "Card" | "UPI" | "Credit" | "Split">("all");
+  1723→
+  1724→  // -- Fetch Outstanding Credit Total --
+  1725→  const fetchCreditTotal = React.useCallback(async () => {
+  1726→    try {
+  1727→      const res = await fetch('/api/sales?paymentMode=Credit&limit=9999');
+  1728→      if (res.ok) {
+  1729→        const data: SalesResponse = await res.json();
+  1730→        setCreditTotal(data.sales.reduce((sum, s) => sum + s.total, 0));
+  1731→      }
+  1732→    } catch {
+  1733→      // Silent fail
+  1734→    }
+  1735→  }, []);
+  1736→
+  1737→  React.useEffect(() => {
+  1738→    fetchCreditTotal();
+  1739→  }, [fetchCreditTotal]);
+  1740→
+  1741→  const pageSize = 10;
+  1742→
+  1743→  // -- Fetch Period Summary (Today / This Week / This Month) --
+  1744→  const fetchTodaySummary = React.useCallback(async () => {
+  1745→    setTodayLoading(true);
+  1746→    try {
+  1747→      const now = new Date();
+  1748→      let fromDate: string;
+  1749→      let periodLabel: string;
+  1750→
+  1751→      if (summaryPeriod === "week") {
+  1752→        const dayOfWeek = now.getDay();
+  1753→        const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Monday start
+  1754→        const monday = new Date(now);
+  1755→        monday.setDate(now.getDate() - diff);
+  1756→        fromDate = monday.toISOString().split('T')[0];
+  1757→        periodLabel = "This Week";
+  1758→      } else if (summaryPeriod === "month") {
+  1759→        fromDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  1760→        periodLabel = "This Month";
+  1761→      } else {
+  1762→        fromDate = now.toISOString().split('T')[0];
+  1763→        periodLabel = "Today";
+  1764→      }
+  1765→
+  1766→      const toDate = now.toISOString().split('T')[0];
+  1767→      const params = new URLSearchParams({
+  1768→        fromDate,
+  1769→        toDate,
+  1770→        limit: '999',
+  1771→      });
+  1772→      const res = await fetch(`/api/sales?${params.toString()}`);
+  1773→      if (res.ok) {
+  1774→        const data: SalesResponse = await res.json();
+  1775→        setTodayCount(data.sales.length);
+  1776→        setTodayTotal(data.sales.reduce((sum, s) => sum + s.total, 0));
+  1777→      }
+  1778→    } catch {
+  1779→      // Silent fail - summary is non-critical
+  1780→    } finally {
+  1781→      setTodayLoading(false);
+  1782→    }
+  1783→  }, [summaryPeriod]);
+  1784→
+  1785→  React.useEffect(() => {
+  1786→    fetchTodaySummary();
+  1787→  }, [fetchTodaySummary]);
+  1788→
+  1789→  // -- Fetch Sales --
+  1790→  const fetchSales = React.useCallback(async () => {
+  1791→    setLoading(true);
+  1792→    setError(null);
+  1793→    const params = new URLSearchParams();
+  1794→    if (search) params.set("search", search);
+  1795→    if (page) params.set("page", page.toString());
+  1796→    if (fromDate) params.set("fromDate", fromDate);
+  1797→    if (toDate) params.set("toDate", toDate);
+  1798→    if (creditFilter) params.set("paymentMode", "Credit");
+  1799→    if (statusFilter && statusFilter !== "all") params.set("status", statusFilter);
+  1800→    if (paymentModeFilter && paymentModeFilter !== "all") params.set("paymentMode", paymentModeFilter);
+  1801→
+  1802→    try {
+  1803→      const res = await fetch(`/api/sales?${params.toString()}`);
+  1804→      if (res.ok) {
+  1805→        const data: SalesResponse = await res.json();
+  1806→        setSales(data.sales);
+  1807→        setTotal(data.total);
+  1808→      } else {
+  1809→        setSales([]);
+  1810→        setTotal(0);
+  1811→        toast.error("Failed to load sales");
+  1812→      }
+  1813→    } catch {
+  1814→      setSales([]);
+  1815→      setTotal(0);
+  1816→      toast.error("Network error while loading sales");
+  1817→    } finally {
+  1818→      setLoading(false);
+  1819→      fetchCreditTotal();
+  1820→    }
+  1821→  }, [search, page, fromDate, toDate, creditFilter, statusFilter, paymentModeFilter, fetchCreditTotal]);
+  1822→
+  1823→  React.useEffect(() => {
+  1824→    fetchSales();
+  1825→  }, [fetchSales]);
+  1826→
+  1827→  // Reset to page 1 when filters change
+  1828→  const handleSearchChange = (val: string) => {
+  1829→    setSearch(val);
+  1830→    setPage(1);
+  1831→  };
+  1832→  const handleFromDateChange = (val: string) => {
+  1833→    setFromDate(val);
+  1834→    setPage(1);
+  1835→  };
+  1836→  const handleToDateChange = (val: string) => {
+  1837→    setToDate(val);
+  1838→    setPage(1);
+  1839→  };
+  1840→  const handleStatusFilterChange = (val: string) => {
+  1841→    setStatusFilter(val as "all" | "Completed" | "Pending" | "Return");
+  1842→    setPage(1);
+  1843→  };
+  1844→  const handlePaymentModeFilterChange = (val: string) => {
+  1845→    setPaymentModeFilter(val as "all" | "Cash" | "Card" | "UPI" | "Credit" | "Split");
+  1846→    setPage(1);
+  1847→  };
+  1848→
+  1849→  const periodLabels: Record<string, string> = {
+  1850→    today: "Today's Sales",
+  1851→    week: "This Week's Sales",
+  1852→    month: "This Month's Sales",
+  1853→  };
+  1854→  const periodInvoiceLabels: Record<string, string> = {
+  1855→    today: "invoices today",
+  1856→    week: "invoices this week",
+  1857→    month: "invoices this month",
+  1858→  };
+  1859→
+  1860→  const totalPages = Math.ceil(total / pageSize);
+  1861→
+  1862→  // -- Detail --
+  1863→  const handleViewDetail = async (saleItem: SaleListItem) => {
+  1864→    try {
+  1865→      const res = await fetch(`/api/sales/${saleItem.id}`);
+  1866→      if (res.ok) {
+  1867→        const data: Sale = await res.json();
+  1868→        setDetailSale(data);
+  1869→      } else {
+  1870→        toast.error("Failed to load sale details");
+  1871→      }
+  1872→    } catch {
+  1873→      toast.error("Network error");
+  1874→    }
+  1875→    setDetailOpen(true);
+  1876→  };
+  1877→
+  1878→  // -- Status Toggle --
+  1879→  const handleToggleStatus = async (sale: Sale) => {
+  1880→    const newStatus = sale.status === "Completed" ? "Pending" : "Completed";
+  1881→
+  1882→    try {
+  1883→      const res = await fetch(`/api/sales/${sale.id}`, {
+  1884→        method: "PATCH",
+  1885→        headers: { "Content-Type": "application/json" },
+  1886→        body: JSON.stringify({ status: newStatus }),
+  1887→      });
+  1888→      if (res.ok) {
+  1889→        setDetailSale((prev) => (prev ? { ...prev, status: newStatus as Sale["status"] } : null));
+  1890→        toast.success(`Invoice marked as ${newStatus}`);
+  1891→        fetchSales();
+  1892→      } else {
+  1893→        toast.error("Failed to update status");
+  1894→      }
+  1895→    } catch {
+  1896→      toast.error("Network error");
+  1897→    }
+  1898→  };
+  1899→
+  1900→  // -- Return --
+  1901→  const handleOpenReturn = (sale: Sale) => {
+  1902→    setReturnSale(sale);
+  1903→    setReturnOpen(true);
+  1904→  };
+  1905→
+  1906→  const handleReturnProcessed = () => {
+  1907→    setDetailOpen(false);
+  1908→    setDetailSale(null);
+  1909→    fetchSales();
+  1910→  };
+  1911→
+  1912→  // -- Stats for summary cards --
+  1913→  const totalRevenue = sales.reduce((sum, s) => sum + s.total, 0);
+  1914→  const completedCount = sales.filter((s) => s.status === "Completed").length;
+  1915→  const pendingCount = sales.filter((s) => s.status === "Pending").length;
+  1916→
+  1917→  // -- Render --
+  1918→  return (
+  1919→    <section className="min-h-screen bg-background">
+  1920→      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+  1921→        {/* Header */}
+  1922→        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+  1923→          <div>
+  1924→            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+  1925→              <ShoppingCart className="size-6" />
+  1926→              Sales & Billing
+  1927→            </h1>
+  1928→            <p className="text-sm text-muted-foreground mt-1">
+  1929→              Manage invoices, track payments, and process returns.
+  1930→            </p>
+  1931→          </div>
+  1932→          <div className="flex gap-2">
+  1933→            <Button onClick={() => setCreateOpen(true)}>
+  1934→              <Plus className="size-4" />
+  1935→              New Invoice
+  1936→            </Button>
+  1937→            <Button
+  1938→              variant={creditFilter ? "default" : "outline"}
+  1939→              className={cn(
+  1940→                "shrink-0",
+  1941→                creditFilter && "bg-red-600 hover:bg-red-700 text-white dark:bg-red-700 dark:hover:bg-red-800"
+  1942→              )}
+  1943→              onClick={() => setCreditFilter((f) => !f)}
+  1944→            >
+  1945→              <CreditCard className="size-3.5 mr-1" />
+  1946→              {creditFilter ? "Showing Credit Only" : "Credit Sales"}
+  1947→            </Button>
+  1948→          </div>
+  1949→        </div>
+  1950→
+  1951→        {/* Outstanding Credit Alert */}
+  1952→        {creditTotal > 0 && (
+  1953→          <div className="rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20 p-4 flex items-center justify-between">
+  1954→            <div className="flex items-center gap-3">
+  1955→              <div className="rounded-lg p-2 bg-red-100 dark:bg-red-950/60">
+  1956→                <CreditCard className="h-5 w-5 text-red-600 dark:text-red-400" />
+  1957→              </div>
+  1958→              <div>
+  1959→                <p className="text-sm font-medium text-red-800 dark:text-red-300">
+  1960→                  Outstanding Credit
+  1961→                </p>
+  1962→                <p className="text-xs text-red-600/80 dark:text-red-400/80">
+  1963→                  Total credit amount pending from customers
+  1964→                </p>
+  1965→              </div>
+  1966→            </div>
+  1967→            <span className="text-lg font-bold text-red-700 dark:text-red-300 font-mono">
+  1968→              {INR(creditTotal)}
+  1969→            </span>
+  1970→          </div>
+  1971→        )}
+  1972→
+  1973→        {/* Summary Cards */}
+  1974→        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+  1975→          <div className="rounded-lg border bg-card p-4 shadow-sm">
+  1976→            <div className="flex items-center justify-between">
+  1977→              <div className="flex items-center gap-1.5">
+  1978→                <CalendarDays className="size-4 text-muted-foreground" />
+  1979→                <p className="text-sm font-medium text-muted-foreground">{periodLabels[summaryPeriod]}</p>
+  1980→              </div>
+  1981→              <div className="flex items-center gap-1.5">
+  1982→                {todayLoading && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
+  1983→                <Select value={summaryPeriod} onValueChange={(v) => setSummaryPeriod(v as typeof summaryPeriod)}>
+  1984→                  <SelectTrigger className="h-7 w-[110px] text-xs" aria-label="Select period">
+  1985→                    <SelectValue />
+  1986→                  </SelectTrigger>
+  1987→                  <SelectContent>
+  1988→                    <SelectItem value="today">Today</SelectItem>
+  1989→                    <SelectItem value="week">This Week</SelectItem>
+  1990→                    <SelectItem value="month">This Month</SelectItem>
+  1991→                  </SelectContent>
+  1992→                </Select>
+  1993→              </div>
+  1994→            </div>
+  1995→            <p className="text-2xl font-bold mt-1 font-mono">{INR(todayTotal)}</p>
+  1996→            <p className="text-xs text-muted-foreground mt-1">{todayCount} invoice{todayCount !== 1 ? 's' : ''} {periodInvoiceLabels[summaryPeriod]}</p>
+  1997→          </div>
+  1998→          <div className="rounded-lg border bg-card p-4 shadow-sm">
+  1999→            <p className="text-sm font-medium text-muted-foreground">This Page Revenue</p>
+  2000→            <p className="text-2xl font-bold mt-1 font-mono">{INR(totalRevenue)}</p>
+
+[showing lines 1-2000 of 2256; use offset=2001 with limit to continue reading]

@@ -1,0 +1,1831 @@
+     1→'use client'
+     2→
+     3→import React, { useState, useEffect, useCallback, useMemo } from 'react'
+     4→import {
+     5→  format,
+     6→  parseISO,
+     7→  isToday,
+     8→  isSameMonth,
+     9→  startOfWeek,
+    10→  addDays,
+    11→} from 'date-fns'
+    12→import { DayPicker } from 'react-day-picker'
+    13→import {
+    14→  CalendarDays,
+    15→  Plus,
+    16→  Search,
+    17→  CheckCircle2,
+    18→  XCircle,
+    19→  Pencil,
+    20→  Clock,
+    21→  Loader2,
+    22→  CalendarIcon,
+    23→  User,
+    24→  FileText,
+    25→  Trash2,
+    26→  MoreHorizontal,
+    27→  AlertTriangle,
+    28→  MessageSquare,
+    29→  Footprints,
+    30→  CalendarRange,
+    31→  ChevronLeft,
+    32→  ChevronRight,
+    33→  Phone,
+    34→} from 'lucide-react'
+    35→import { toast } from 'sonner'
+    36→
+    37→import { cn } from '@/lib/utils'
+    38→import { Button } from '@/components/ui/button'
+    39→import { Badge } from '@/components/ui/badge'
+    40→import { Input } from '@/components/ui/input'
+    41→import { Label } from '@/components/ui/label'
+    42→import { Textarea } from '@/components/ui/textarea'
+    43→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+    44→import { Skeleton } from '@/components/ui/skeleton'
+    45→import { ScrollArea } from '@/components/ui/scroll-area'
+    46→import {
+    47→  Table,
+    48→  TableBody,
+    49→  TableCell,
+    50→  TableHead,
+    51→  TableHeader,
+    52→  TableRow,
+    53→} from '@/components/ui/table'
+    54→import {
+    55→  Dialog,
+    56→  DialogContent,
+    57→  DialogDescription,
+    58→  DialogFooter,
+    59→  DialogHeader,
+    60→  DialogTitle,
+    61→} from '@/components/ui/dialog'
+    62→import {
+    63→  Select,
+    64→  SelectContent,
+    65→  SelectItem,
+    66→  SelectTrigger,
+    67→  SelectValue,
+    68→} from '@/components/ui/select'
+    69→import {
+    70→  DropdownMenu,
+    71→  DropdownMenuContent,
+    72→  DropdownMenuItem,
+    73→  DropdownMenuSeparator,
+    74→  DropdownMenuTrigger,
+    75→} from '@/components/ui/dropdown-menu'
+    76→import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+    77→import {
+    78→  Popover,
+    79→  PopoverContent,
+    80→  PopoverTrigger,
+    81→} from '@/components/ui/popover'
+    82→import {
+    83→  Tooltip,
+    84→  TooltipContent,
+    85→  TooltipTrigger,
+    86→} from '@/components/ui/tooltip'
+    87→
+    88→// ─── Types ───────────────────────────────────────────────────────────────────
+    89→
+    90→type AppointmentStatus = 'Scheduled' | 'Confirmed' | 'Completed' | 'Cancelled' | 'No-Show'
+    91→
+    92→type AppointmentPurpose =
+    93→  | 'Eye Exam'
+    94→  | 'Frame Selection'
+    95→  | 'Lens Fitting'
+    96→  | 'Delivery'
+    97→  | 'Follow-up'
+    98→  | 'Walk-in'
+    99→  | 'Other'
+   100→
+   101→interface Customer {
+   102→  id: string
+   103→  name: string
+   104→  email?: string
+   105→  phone?: string
+   106→}
+   107→
+   108→interface Appointment {
+   109→  id: string
+   110→  customerId: string
+   111→  customer?: { id: string; name: string; phone?: string; email?: string }
+   112→  customerName: string
+   113→  customerPhone?: string
+   114→  date: string
+   115→  time?: string | null
+   116→  purpose?: string | null
+   117→  status: string
+   118→  notes?: string | null
+   119→  recurrence?: string | null
+   120→  createdAt: string
+   121→  updatedAt: string
+   122→}
+   123→
+   124→// ─── Constants ───────────────────────────────────────────────────────────────
+   125→
+   126→const PURPOSE_OPTIONS: { value: AppointmentPurpose; label: string }[] = [
+   127→  { value: 'Eye Exam', label: 'Eye Exam' },
+   128→  { value: 'Frame Selection', label: 'Frame Selection' },
+   129→  { value: 'Lens Fitting', label: 'Lens Fitting' },
+   130→  { value: 'Delivery', label: 'Delivery' },
+   131→  { value: 'Follow-up', label: 'Follow-up' },
+   132→  { value: 'Walk-in', label: 'Walk-in' },
+   133→  { value: 'Other', label: 'Other' },
+   134→]
+   135→
+   136→const PURPOSE_COLORS: Record<string, string> = {
+   137→  'Eye Exam': 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-400 border-teal-200 dark:border-teal-800',
+   138→  'Frame Selection': 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 border-purple-200 dark:border-purple-800',
+   139→  'Lens Fitting': 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800',
+   140→  'Delivery': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
+   141→  'Follow-up': 'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400 border-sky-200 dark:border-sky-800',
+   142→  'Walk-in': 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800',
+   143→  'Other': 'bg-gray-100 text-gray-700 dark:bg-gray-800/30 dark:text-gray-400 border-gray-200 dark:border-gray-800',
+   144→}
+   145→
+   146→const PURPOSE_DURATION: Record<string, number> = {
+   147→  'Eye Exam': 30,
+   148→  'Frame Selection': 45,
+   149→  'Lens Fitting': 20,
+   150→  'Delivery': 15,
+   151→  'Follow-up': 15,
+   152→  'Walk-in': 30,
+   153→  'Other': 20,
+   154→}
+   155→
+   156→const STATUS_VARIANTS: Record<string, { label: string; className: string }> = {
+   157→  Scheduled: {
+   158→    label: 'Scheduled',
+   159→    className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800',
+   160→  },
+   161→  Confirmed: {
+   162→    label: 'Confirmed',
+   163→    className: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800',
+   164→  },
+   165→  Completed: {
+   166→    label: 'Completed',
+   167→    className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800',
+   168→  },
+   169→  Cancelled: {
+   170→    label: 'Cancelled',
+   171→    className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800',
+   172→  },
+   173→  'No-Show': {
+   174→    label: 'No-Show',
+   175→    className: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800',
+   176→  },
+   177→}
+   178→
+   179→const STATUS_LIST: string[] = ['Scheduled', 'Confirmed', 'Completed', 'Cancelled', 'No-Show']
+   180→
+   181→const RECURRENCE_OPTIONS = [
+   182→  { value: '', label: 'Does not repeat' },
+   183→  { value: 'weekly', label: 'Every week' },
+   184→  { value: 'biweekly', label: 'Every 2 weeks' },
+   185→  { value: 'monthly', label: 'Every month' },
+   186→] as const
+   187→
+   188→const WEEK_TIME_SLOTS: string[] = [
+   189→  '09:00', '10:00', '11:00', '12:00', '13:00',
+   190→  '14:00', '15:00', '16:00', '17:00', '18:00', '19:00',
+   191→]
+   192→
+   193→const WEEK_DAYS: string[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+   194→
+   195→// ─── Helpers ─────────────────────────────────────────────────────────────────
+   196→
+   197→function formatDate(dateStr: string): string {
+   198→  try {
+   199→    const date = parseISO(dateStr)
+   200→    if (isToday(date)) return 'Today'
+   201→    return format(date, 'MMM d, yyyy')
+   202→  } catch {
+   203→    return dateStr
+   204→  }
+   205→}
+   206→
+   207→function formatTime(timeStr: string | null | undefined): string {
+   208→  if (!timeStr) return '—'
+   209→  try {
+   210→    const [hours, minutes] = timeStr.split(':').map(Number)
+   211→    const period = hours >= 12 ? 'PM' : 'AM'
+   212→    const displayHours = hours % 12 || 12
+   213→    return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`
+   214→  } catch {
+   215→    return timeStr
+   216→  }
+   217→}
+   218→
+   219→function toDateString(date: Date): string {
+   220→  return format(date, 'yyyy-MM-dd')
+   221→}
+   222→
+   223→function transformAppointment(raw: Record<string, unknown>): Appointment {
+   224→  const customer = raw.customer as { id: string; name: string; phone?: string; email?: string } | undefined
+   225→  return {
+   226→    id: raw.id as string,
+   227→    customerId: raw.customerId as string,
+   228→    customer,
+   229→    customerName: customer?.name ?? 'Unknown',
+   230→    customerPhone: customer?.phone,
+   231→    date: raw.date as string,
+   232→    time: (raw.time as string) ?? null,
+   233→    purpose: (raw.purpose as string) ?? null,
+   234→    status: (raw.status as string) ?? 'Scheduled',
+   235→    notes: (raw.notes as string) ?? null,
+   236→    recurrence: (raw.recurrence as string) ?? null,
+   237→    createdAt: (raw.createdAt as string) ?? '',
+   238→    updatedAt: (raw.updatedAt as string) ?? '',
+   239→  }
+   240→}
+   241→
+   242→// ─── Sub-components ──────────────────────────────────────────────────────────
+   243→
+   244→function StatusBadge({ status }: { status: string }) {
+   245→  const config = STATUS_VARIANTS[status] ?? STATUS_VARIANTS.Scheduled
+   246→  return (
+   247→    <Badge variant="outline" className={cn('text-xs font-medium', config.className)}>
+   248→      {config.label}
+   249→    </Badge>
+   250→  )
+   251→}
+   252→
+   253→function PurposeBadge({ purpose }: { purpose: string | null | undefined }) {
+   254→  if (!purpose) return null
+   255→  return (
+   256→    <Badge variant="outline" className={cn('text-xs', PURPOSE_COLORS[purpose] ?? PURPOSE_COLORS['Other'])}>
+   257→      {purpose}
+   258→    </Badge>
+   259→  )
+   260→}
+   261→
+   262→function TableSkeleton() {
+   263→  return (
+   264→    <div className="space-y-3 p-4">
+   265→      {Array.from({ length: 5 }).map((_, i) => (
+   266→        <div key={i} className="flex items-center gap-4">
+   267→          <Skeleton className="h-4 w-28" />
+   268→          <Skeleton className="h-4 w-32" />
+   269→          <Skeleton className="h-5 w-20 rounded-full" />
+   270→          <Skeleton className="h-5 w-24 rounded-full" />
+   271→          <Skeleton className="h-4 w-40" />
+   272→          <Skeleton className="h-8 w-8" />
+   273→        </div>
+   274→      ))}
+   275→    </div>
+   276→  )
+   277→}
+   278→
+   279→// ─── Appointment Form Dialog ─────────────────────────────────────────────────
+   280→
+   281→interface AppointmentFormDialogProps {
+   282→  open: boolean
+   283→  onOpenChange: (open: boolean) => void
+   284→  appointment?: Appointment | null
+   285→  customers: Customer[]
+   286→  isWalkIn?: boolean
+   287→  onSubmit: (data: {
+   288→    customerId: string
+   289→    date: string
+   290→    time: string
+   291→    purpose: string
+   292→    status: string
+   293→    notes: string
+   294→    isWalkIn?: boolean
+   295→  }) => Promise<void>
+   296→}
+   297→
+   298→function AppointmentFormDialog({
+   299→  open,
+   300→  onOpenChange,
+   301→  appointment,
+   302→  customers,
+   303→  isWalkIn = false,
+   304→  onSubmit,
+   305→}: AppointmentFormDialogProps) {
+   306→  const isEditing = !!appointment
+   307→  const [submitting, setSubmitting] = useState(false)
+   308→  const [customerId, setCustomerId] = useState(appointment?.customerId ?? '')
+   309→  const [date, setDate] = useState(appointment?.date ? toDateString(parseISO(appointment.date)) : toDateString(new Date()))
+   310→  const [time, setTime] = useState(appointment?.time ?? '09:00')
+   311→  const [purpose, setPurpose] = useState<string>(appointment?.purpose ?? 'Eye Exam')
+   312→  const [status, setStatus] = useState(appointment?.status ?? 'Scheduled')
+   313→  const [notes, setNotes] = useState(appointment?.notes ?? '')
+   314→  const [recurrence, setRecurrence] = useState(appointment?.recurrence ?? '')
+   315→  const [customerSearch, setCustomerSearch] = useState('')
+   316→  const [showCustomerPicker, setShowCustomerPicker] = useState(false)
+   317→
+   318→  useEffect(() => {
+   319→    if (open) {
+   320→      // If creating a new appointment with walk-in mode, prefill purpose & status
+   321→      if (!appointment && isWalkIn) {
+   322→        setCustomerId('')
+   323→        setDate(toDateString(new Date()))
+   324→        setTime(format(new Date(), 'HH:mm'))
+   325→        setPurpose('Walk-in')
+   326→        setStatus('Completed')
+   327→        setNotes('')
+   328→      } else {
+   329→        setCustomerId(appointment?.customerId ?? '')
+   330→        setDate(appointment?.date ? toDateString(parseISO(appointment.date)) : toDateString(new Date()))
+   331→        setTime(appointment?.time ?? '09:00')
+   332→        setPurpose(appointment?.purpose ?? 'Eye Exam')
+   333→        setStatus(appointment?.status ?? 'Scheduled')
+   334→        setNotes(appointment?.notes ?? '')
+   335→      }
+   336→      setCustomerSearch('')
+   337→      setShowCustomerPicker(false)
+   338→    }
+   339→  }, [open, appointment, isWalkIn])
+   340→
+   341→  const selectedCustomer = useMemo(
+   342→    () => customers.find((c) => c.id === customerId),
+   343→    [customers, customerId]
+   344→  )
+   345→
+   346→  const filteredCustomers = useMemo(() => {
+   347→    if (!customerSearch.trim()) return customers.slice(0, 8)
+   348→    const q = customerSearch.toLowerCase()
+   349→    return customers.filter(
+   350→      (c) =>
+   351→        c.name.toLowerCase().includes(q) ||
+   352→        c.email?.toLowerCase().includes(q) ||
+   353→        c.phone?.includes(q)
+   354→    )
+   355→  }, [customers, customerSearch])
+   356→
+   357→  const canSubmit = customerId && date && time && purpose
+   358→
+   359→  const handleSubmit = async () => {
+   360→    if (!canSubmit) return
+   361→    setSubmitting(true)
+   362→    try {
+   363→      await onSubmit({ customerId, date, time, purpose, status, notes, recurrence, isWalkIn: isEditing ? false : isWalkIn })
+   364→      onOpenChange(false)
+   365→    } finally {
+   366→      setSubmitting(false)
+   367→    }
+   368→  }
+   369→
+   370→  return (
+   371→    <Dialog open={open} onOpenChange={onOpenChange}>
+   372→      <DialogContent className="sm:max-w-[500px]">
+   373→        <DialogHeader>
+   374→          <DialogTitle>{isEditing ? 'Edit Appointment' : isWalkIn ? 'New Walk-in' : 'New Appointment'}</DialogTitle>
+   375→          <DialogDescription>
+   376→            {isEditing
+   377→              ? 'Update the appointment details below.'
+   378→              : isWalkIn
+   379→                ? 'Quickly register a walk-in visit.'
+   380→                : 'Schedule a new appointment by filling in the details below.'}
+   381→          </DialogDescription>
+   382→        </DialogHeader>
+   383→
+   384→        <div className="space-y-4 py-2">
+   385→          {/* Walk-in indicator */}
+   386→          {!isEditing && isWalkIn && (
+   387→            <div className="flex items-center gap-2 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 p-3">
+   388→              <Footprints className="size-4 text-orange-600 dark:text-orange-400 shrink-0" />
+   389→              <span className="text-sm text-orange-800 dark:text-orange-300">
+   390→                Walk-in mode — purpose and status are auto-set. You can still change them below.
+   391→              </span>
+   392→            </div>
+   393→          )}
+   394→
+   395→          {/* Customer Selection */}
+   396→          <div className="space-y-2">
+   397→            <Label htmlFor="customer" className="flex items-center gap-1.5">
+   398→              <User className="size-3.5" />
+   399→              Customer <span className="text-destructive">*</span>
+   400→            </Label>
+   401→            <Popover open={showCustomerPicker} onOpenChange={setShowCustomerPicker}>
+   402→              <PopoverTrigger asChild>
+   403→                <Button
+   404→                  id="customer"
+   405→                  variant="outline"
+   406→                  role="combobox"
+   407→                  aria-expanded={showCustomerPicker}
+   408→                  className="w-full justify-between font-normal"
+   409→                >
+   410→                  {selectedCustomer ? (
+   411→                    <span className="flex items-center gap-2">
+   412→                      <span>{selectedCustomer.name}</span>
+   413→                      {selectedCustomer.phone && (
+   414→                        <span className="text-muted-foreground text-xs">{selectedCustomer.phone}</span>
+   415→                      )}
+   416→                    </span>
+   417→                  ) : (
+   418→                    <span className="text-muted-foreground">Search & select customer...</span>
+   419→                  )}
+   420→                </Button>
+   421→              </PopoverTrigger>
+   422→              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+   423→                <div className="p-2 border-b">
+   424→                  <div className="relative">
+   425→                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+   426→                    <Input
+   427→                      placeholder="Search customers..."
+   428→                      value={customerSearch}
+   429→                      onChange={(e) => setCustomerSearch(e.target.value)}
+   430→                      className="pl-8 h-8"
+   431→                    />
+   432→                  </div>
+   433→                </div>
+   434→                <ScrollArea className="max-h-48">
+   435→                  <div className="p-1">
+   436→                    {filteredCustomers.length === 0 ? (
+   437→                      <p className="text-sm text-muted-foreground p-2 text-center">No customers found.</p>
+   438→                    ) : (
+   439→                      filteredCustomers.map((customer) => (
+   440→                        <button
+   441→                          key={customer.id}
+   442→                          type="button"
+   443→                          className={cn(
+   444→                            'flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors text-left',
+   445→                            customerId === customer.id && 'bg-accent'
+   446→                          )}
+   447→                          onClick={() => {
+   448→                            setCustomerId(customer.id)
+   449→                            setShowCustomerPicker(false)
+   450→                            setCustomerSearch('')
+   451→                          }}
+   452→                        >
+   453→                          <div className="flex flex-col">
+   454→                            <span className="font-medium">{customer.name}</span>
+   455→                            <span className="text-xs text-muted-foreground">
+   456→                              {customer.email || customer.phone || 'No contact info'}
+   457→                            </span>
+   458→                          </div>
+   459→                        </button>
+   460→                      ))
+   461→                    )}
+   462→                  </div>
+   463→                </ScrollArea>
+   464→              </PopoverContent>
+   465→            </Popover>
+   466→          </div>
+   467→
+   468→          {/* Date & Time */}
+   469→          <div className="grid grid-cols-2 gap-4">
+   470→            <div className="space-y-2">
+   471→              <Label htmlFor="date" className="flex items-center gap-1.5">
+   472→                <CalendarIcon className="size-3.5" />
+   473→                Date <span className="text-destructive">*</span>
+   474→              </Label>
+   475→              <Input
+   476→                id="date"
+   477→                type="date"
+   478→                value={date}
+   479→                onChange={(e) => setDate(e.target.value)}
+   480→              />
+   481→            </div>
+   482→            <div className="space-y-2">
+   483→              <Label htmlFor="time" className="flex items-center gap-1.5">
+   484→                <Clock className="size-3.5" />
+   485→                Time <span className="text-destructive">*</span>
+   486→              </Label>
+   487→              <Input
+   488→                id="time"
+   489→                type="time"
+   490→                value={time}
+   491→                onChange={(e) => setTime(e.target.value)}
+   492→              />
+   493→            </div>
+   494→          </div>
+   495→
+   496→          {/* Purpose & Status */}
+   497→          <div className="grid grid-cols-2 gap-4">
+   498→            <div className="space-y-2">
+   499→              <Label htmlFor="purpose" className="flex items-center gap-1.5">
+   500→                <FileText className="size-3.5" />
+   501→                Purpose
+   502→              </Label>
+   503→              <Select value={purpose} onValueChange={setPurpose}>
+   504→                <SelectTrigger id="purpose" className="w-full">
+   505→                  <SelectValue placeholder="Select purpose" />
+   506→                </SelectTrigger>
+   507→                <SelectContent>
+   508→                  {PURPOSE_OPTIONS.map((opt) => (
+   509→                    <SelectItem key={opt.value} value={opt.value}>
+   510→                      {opt.label}
+   511→                    </SelectItem>
+   512→                  ))}
+   513→                </SelectContent>
+   514→              </Select>
+   515→            </div>
+   516→            <div className="space-y-2">
+   517→              <Label htmlFor="status">Status</Label>
+   518→              <Select value={status} onValueChange={setStatus}>
+   519→                <SelectTrigger id="status" className="w-full">
+   520→                  <SelectValue placeholder="Select status" />
+   521→                </SelectTrigger>
+   522→                <SelectContent>
+   523→                  {STATUS_LIST.map((s) => (
+   524→                    <SelectItem key={s} value={s}>{s}</SelectItem>
+   525→                  ))}
+   526→                </SelectContent>
+   527→              </Select>
+   528→            </div>
+   529→          </div>
+   530→
+   531→          {/* Notes */}
+   532→          <div className="space-y-2">
+   533→            <Label htmlFor="notes">Notes</Label>
+   534→            <Textarea
+   535→              id="notes"
+   536→              value={notes}
+   537→              onChange={(e) => setNotes(e.target.value)}
+   538→              placeholder="Add any relevant notes for this appointment..."
+   539→              rows={3}
+   540→              className="resize-none"
+   541→            />
+   542→          </div>
+   543→
+   544→          {/* Recurrence (new appointments only) */}
+   545→          {!isEditing && (
+   546→            <div className="space-y-2">
+   547→              <Label>Repeat</Label>
+   548→              <Select value={recurrence} onValueChange={setRecurrence}>
+   549→                <SelectTrigger>
+   550→                  <SelectValue placeholder="Does not repeat" />
+   551→                </SelectTrigger>
+   552→                <SelectContent>
+   553→                  {RECURRENCE_OPTIONS.map((opt) => (
+   554→                    <SelectItem key={opt.value || 'none'} value={opt.value || 'none'}>
+   555→                      {opt.label}
+   556→                    </SelectItem>
+   557→                  ))}
+   558→                </SelectContent>
+   559→              </Select>
+   560→            </div>
+   561→          )}
+   562→        </div>
+   563→
+   564→        <DialogFooter>
+   565→          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
+   566→            Cancel
+   567→          </Button>
+   568→          <Button onClick={handleSubmit} disabled={!canSubmit || submitting}>
+   569→            {submitting && <Loader2 className="size-4 animate-spin mr-2" />}
+   570→            {isEditing ? 'Save Changes' : isWalkIn ? 'Register Walk-in' : 'Create Appointment'}
+   571→          </Button>
+   572→        </DialogFooter>
+   573→      </DialogContent>
+   574→    </Dialog>
+   575→  )
+   576→}
+   577→
+   578→// ─── Calendar Month View ───────────────────────────────────────────────────
+   579→
+   580→interface CalendarViewProps {
+   581→  appointments: Appointment[]
+   582→  selectedDate: Date | undefined
+   583→  onDateSelect: (date: Date) => void
+   584→}
+   585→
+   586→function CalendarMonthView({ appointments, selectedDate, onDateSelect }: CalendarViewProps) {
+   587→  const [currentMonth, setCurrentMonth] = useState(new Date())
+   588→
+   589→  const appointmentDateMap = useMemo(() => {
+   590→    const map: Record<string, { total: number; scheduled: number; completed: number; cancelled: number; confirmed: number; noshow: number }> = {}
+   591→    appointments.forEach((apt) => {
+   592→      const dateStr = apt.date.startsWith('{') ? '' : apt.date
+   593→      const dayOnly = dateStr ? toDateString(parseISO(dateStr)) : ''
+   594→      if (!dayOnly) return
+   595→      if (!map[dayOnly]) {
+   596→        map[dayOnly] = { total: 0, scheduled: 0, completed: 0, cancelled: 0, confirmed: 0, noshow: 0 }
+   597→      }
+   598→      map[dayOnly].total++
+   599→      const s = apt.status.toLowerCase()
+   600→      if (s === 'scheduled') map[dayOnly].scheduled++
+   601→      else if (s === 'confirmed') map[dayOnly].confirmed++
+   602→      else if (s === 'completed') map[dayOnly].completed++
+   603→      else if (s === 'cancelled') map[dayOnly].cancelled++
+   604→      else if (s === 'no-show') map[dayOnly].noshow++
+   605→    })
+   606→    return map
+   607→  }, [appointments])
+   608→
+   609→  const appointmentDates = useMemo(() => {
+   610→    const dates: Set<string> = new Set()
+   611→    appointments.forEach((apt) => {
+   612→      try {
+   613→        const dateStr = apt.date.startsWith('{') ? '' : apt.date
+   614→        if (dateStr && isSameMonth(parseISO(dateStr), currentMonth)) {
+   615→          dates.add(toDateString(parseISO(dateStr)))
+   616→        }
+   617→      } catch {
+   618→        // skip
+   619→      }
+   620→    })
+   621→    return dates
+   622→  }, [appointments, currentMonth])
+   623→
+   624→  const selectedDateApts = useMemo(() => {
+   625→    if (!selectedDate) return []
+   626→    const dateStr = toDateString(selectedDate)
+   627→    return appointments
+   628→      .filter((apt) => {
+   629→        try {
+   630→          return toDateString(parseISO(apt.date)) === dateStr
+   631→        } catch {
+   632→          return false
+   633→        }
+   634→      })
+   635→      .sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''))
+   636→  }, [appointments, selectedDate])
+   637→
+   638→  const dayRender = (day: Date) => {
+   639→    const dateStr = toDateString(day)
+   640→    const info = appointmentDateMap[dateStr]
+   641→    if (!info) return null
+   642→    return (
+   643→      <div className="flex gap-0.5 justify-center mt-0.5">
+   644→        {(info.scheduled + info.confirmed) > 0 && (
+   645→          <span className="size-1 rounded-full bg-blue-500" />
+   646→        )}
+   647→        {info.completed > 0 && (
+   648→          <span className="size-1 rounded-full bg-green-500" />
+   649→        )}
+   650→        {(info.cancelled + info.noshow) > 0 && (
+   651→          <span className="size-1 rounded-full bg-red-500" />
+   652→        )}
+   653→      </div>
+   654→    )
+   655→  }
+   656→
+   657→  const totalMonthAppointments = useMemo(() => {
+   658→    return appointments.filter((apt) => {
+   659→      try {
+   660→        return isSameMonth(parseISO(apt.date), currentMonth)
+   661→      } catch {
+   662→        return false
+   663→      }
+   664→    }).length
+   665→  }, [appointments, currentMonth])
+   666→
+   667→  return (
+   668→    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+   669→      {/* Calendar Grid */}
+   670→      <Card className="lg:col-span-2">
+   671→        <CardHeader className="pb-3">
+   672→          <div className="flex items-center justify-between">
+   673→            <CardTitle className="text-lg flex items-center gap-2">
+   674→              <CalendarDays className="size-5" />
+   675→              {format(currentMonth, 'MMMM yyyy')}
+   676→            </CardTitle>
+   677→            <Badge variant="secondary" className="text-xs">
+   678→              {totalMonthAppointments} appointment{totalMonthAppointments !== 1 ? 's' : ''}
+   679→            </Badge>
+   680→          </div>
+   681→        </CardHeader>
+   682→        <CardContent>
+   683→          <DayPicker
+   684→            mode="single"
+   685→            selected={selectedDate}
+   686→            onSelect={(date) => date && onDateSelect(date)}
+   687→            month={currentMonth}
+   688→            onMonthChange={setCurrentMonth}
+   689→            showOutsideDays
+   690→            modifiers={{
+   691→              hasAppointments: (day) => appointmentDates.has(toDateString(day)),
+   692→            }}
+   693→            modifiersStyles={{
+   694→              hasAppointments: { fontWeight: '600' },
+   695→            }}
+   696→            className="mx-auto"
+   697→            classNames={{
+   698→              day: 'relative w-full h-full p-0 text-center [&:first-child[data-selected=true]_button]:rounded-l-md [&:last-child[data-selected=true]_button]:rounded-r-md group/day aspect-square select-none',
+   699→            }}
+   700→            components={{
+   701→              DayContent: ({ date }) => (
+   702→                <div className="flex flex-col items-center justify-center w-full h-full py-1">
+   703→                  <span>{format(date, 'd')}</span>
+   704→                  {dayRender(date)}
+   705→                </div>
+   706→              ),
+   707→            }}
+   708→          />
+   709→          <div className="flex items-center justify-center gap-4 mt-4 text-xs text-muted-foreground flex-wrap">
+   710→            <div className="flex items-center gap-1.5">
+   711→              <span className="size-2 rounded-full bg-blue-500" />
+   712→              Scheduled / Confirmed
+   713→            </div>
+   714→            <div className="flex items-center gap-1.5">
+   715→              <span className="size-2 rounded-full bg-green-500" />
+   716→              Completed
+   717→            </div>
+   718→            <div className="flex items-center gap-1.5">
+   719→              <span className="size-2 rounded-full bg-red-500" />
+   720→              Cancelled / No-Show
+   721→            </div>
+   722→          </div>
+   723→        </CardContent>
+   724→      </Card>
+   725→
+   726→      {/* Selected Date Details */}
+   727→      <Card>
+   728→        <CardHeader className="pb-3">
+   729→          <CardTitle className="text-lg">
+   730→            {selectedDate
+   731→              ? isToday(selectedDate)
+   732→                ? "Today's Appointments"
+   733→                : format(selectedDate, 'EEEE, MMM d')
+   734→              : 'Select a Date'}
+   735→          </CardTitle>
+   736→        </CardHeader>
+   737→        <CardContent>
+   738→          {!selectedDate ? (
+   739→            <div className="flex flex-col items-center justify-center py-8 text-center">
+   740→              <CalendarDays className="size-10 text-muted-foreground/40 mb-3" />
+   741→              <p className="text-sm text-muted-foreground">Click on a date to view appointments.</p>
+   742→            </div>
+   743→          ) : selectedDateApts.length === 0 ? (
+   744→            <div className="flex flex-col items-center justify-center py-8 text-center">
+   745→              <Clock className="size-10 text-muted-foreground/40 mb-3" />
+   746→              <p className="text-sm text-muted-foreground">No appointments scheduled.</p>
+   747→            </div>
+   748→          ) : (
+   749→            <ScrollArea className="max-h-[400px]">
+   750→              <div className="space-y-3 pr-3">
+   751→                {selectedDateApts.map((apt) => (
+   752→                  <div
+   753→                    key={apt.id}
+   754→                    className="rounded-lg border p-3 space-y-2 hover:bg-accent/50 transition-colors"
+   755→                  >
+   756→                    <div className="flex items-center justify-between">
+   757→                      <span className="font-medium text-sm">{formatTime(apt.time)}</span>
+   758→                      <StatusBadge status={apt.status} />
+   759→                    </div>
+   760→                    <div className="text-sm font-medium">{apt.customerName}</div>
+   761→                    {apt.purpose && <PurposeBadge purpose={apt.purpose} />}
+   762→                    {apt.notes && (
+   763→                      <p className="text-xs text-muted-foreground line-clamp-2">{apt.notes}</p>
+   764→                    )}
+   765→                  </div>
+   766→                ))}
+   767→              </div>
+   768→            </ScrollArea>
+   769→          )}
+   770→        </CardContent>
+   771→      </Card>
+   772→    </div>
+   773→  )
+   774→}
+   775→
+   776→// ─── Calendar Week View ─────────────────────────────────────────────────────
+   777→
+   778→function CalendarWeekView({ appointments }: { appointments: Appointment[] }) {
+   779→  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }))
+   780→
+   781→  const weekDates = useMemo(() => {
+   782→    return WEEK_DAYS.map((_, i) => addDays(weekStart, i))
+   783→  }, [weekStart])
+   784→
+   785→  const handlePrevWeek = () => setWeekStart((w) => addDays(w, -7))
+   786→  const handleNextWeek = () => setWeekStart((w) => addDays(w, 7))
+   787→  const handleGoToday = () => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))
+   788→
+   789→  // Build lookup: { 'yyyy-MM-dd:HH:MM': Appointment[] }
+   790→  const slotMap = useMemo(() => {
+   791→    const map: Record<string, Appointment[]> = {}
+   792→    appointments.forEach((apt) => {
+   793→      try {
+   794→        const dateStr = apt.date.startsWith('{') ? '' : apt.date
+   795→        if (!dateStr) return
+   796→        const d = toDateString(parseISO(dateStr))
+   797→        const timeKey = apt.time ? apt.time.substring(0, 5) : null
+   798→        if (timeKey && WEEK_TIME_SLOTS.includes(timeKey)) {
+   799→          const key = `${d}:${timeKey}`
+   800→          if (!map[key]) map[key] = []
+   801→          map[key].push(apt)
+   802→        }
+   803→      } catch {
+   804→        // skip
+   805→      }
+   806→    })
+   807→    return map
+   808→  }, [appointments])
+   809→
+   810→  // For each slot+date, determine if the appointment continues into the next slot
+   811→  const continuationMap = useMemo(() => {
+   812→    const map: Record<string, boolean> = {}
+   813→    appointments.forEach((apt) => {
+   814→      try {
+   815→        const dateStr = apt.date.startsWith('{') ? '' : apt.date
+   816→        if (!dateStr || !apt.time) return
+   817→        const d = toDateString(parseISO(dateStr))
+   818→        const timeKey = apt.time.substring(0, 5)
+   819→        if (!WEEK_TIME_SLOTS.includes(timeKey)) return
+   820→        const duration = PURPOSE_DURATION[apt.purpose ?? ''] ?? 30
+   821→        const slotMinutes = 60 // each slot is 1 hour
+   822→        if (duration > slotMinutes) {
+   823→          // This appointment spans multiple slots
+   824→          const key = `${d}:${timeKey}`
+   825→          map[key] = true
+   826→        }
+   827→      } catch {
+   828→        // skip
+   829→      }
+   830→    })
+   831→    return map
+   832→  }, [appointments])
+   833→
+   834→  return (
+   835→    <Card>
+   836→      <CardHeader className="pb-3">
+   837→        <div className="flex items-center justify-between flex-wrap gap-2">
+   838→          <CardTitle className="text-lg flex items-center gap-2">
+   839→            <CalendarRange className="size-5" />
+   840→            Week of {format(weekStart, 'MMM d')} – {format(addDays(weekStart, 6), 'MMM d, yyyy')}
+   841→          </CardTitle>
+   842→          <div className="flex items-center gap-2">
+   843→            <Button variant="outline" size="sm" className="min-h-[44px] touch-manipulation" onClick={handleGoToday}>
+   844→              Today
+   845→            </Button>
+   846→            <Button variant="outline" size="icon" className="min-w-[44px] min-h-[44px] touch-manipulation" onClick={handlePrevWeek}>
+   847→              <ChevronLeft className="size-4" />
+   848→            </Button>
+   849→            <Button variant="outline" size="icon" className="min-w-[44px] min-h-[44px] touch-manipulation" onClick={handleNextWeek}>
+   850→              <ChevronRight className="size-4" />
+   851→            </Button>
+   852→          </div>
+   853→        </div>
+   854→      </CardHeader>
+   855→      <CardContent className="p-0">
+   856→        <ScrollArea className="w-full">
+   857→          <div className="min-w-[640px]">
+   858→            {/* Header row */}
+   859→            <div className="grid grid-cols-8 border-b">
+   860→              <div className="p-2 text-xs font-medium text-muted-foreground text-center border-r">
+   861→                Time
+   862→              </div>
+   863→              {weekDates.map((d, i) => {
+   864→                const isDateToday = isToday(d)
+   865→                const isSelected = toDateString(d) === toDateString(weekStart)
+   866→                return (
+   867→                  <div
+   868→                    key={i}
+   869→                    className={cn(
+   870→                      'p-2 text-center border-r last:border-r-0',
+   871→                      isDateToday && 'bg-blue-50 dark:bg-blue-950/30'
+   872→                    )}
+   873→                  >
+   874→                    <div className="text-xs font-medium text-muted-foreground">{WEEK_DAYS[i]}</div>
+   875→                    <div
+   876→                      className={cn(
+   877→                        'text-sm font-semibold mt-0.5',
+   878→                        isDateToday && 'text-blue-600 dark:text-blue-400'
+   879→                      )}
+   880→                    >
+   881→                      {format(d, 'd')}
+   882→                    </div>
+   883→                  </div>
+   884→                )
+   885→              })}
+   886→            </div>
+   887→
+   888→            {/* Time rows */}
+   889→            {WEEK_TIME_SLOTS.map((slot, slotIndex) => (
+   890→              <div key={slot} className="grid grid-cols-8 border-b last:border-b-0 min-h-[3rem]">
+   891→                <div className="p-1.5 text-xs font-mono text-muted-foreground text-center flex items-center justify-center border-r">
+   892→                  {formatTime(slot)}
+   893→                </div>
+   894→                {weekDates.map((d, i) => {
+   895→                  const key = `${toDateString(d)}:${slot}`
+   896→                  const slotApts = slotMap[key] ?? []
+   897→                  const isDateToday = isToday(d)
+   898→                  const hasContinuation = continuationMap[key]
+   899→                  return (
+   900→                    <div
+   901→                      key={i}
+   902→                      className={cn(
+   903→                        'p-0.5 border-r last:border-r-0 border-b relative',
+   904→                        isDateToday && 'bg-blue-50/50 dark:bg-blue-950/10'
+   905→                      )}
+   906→                    >
+   907→                      {slotApts.length > 0 ? (
+   908→                        <div className="space-y-0.5">
+   909→                          {slotApts.map((apt) => {
+   910→                            const duration = PURPOSE_DURATION[apt.purpose ?? ''] ?? 30
+   911→                            const spansMultiple = duration > 60
+   912→                            return (
+   913→                              <div
+   914→                                key={apt.id}
+   915→                                className="rounded px-1.5 py-0.5 text-[10px] leading-tight truncate"
+   916→                                style={{
+   917→                                  backgroundColor: apt.purpose
+   918→                                    ? (apt.status === 'Completed' ? '#dcfce7' : apt.status === 'Cancelled' ? '#fee2e2' : '#dbeafe')
+   919→                                    : '#f3f4f6',
+   920→                                }}
+   921→                              >
+   922→                                <span className="font-semibold">{apt.customerName}</span>
+   923→                                {apt.purpose && (
+   924→                                  <span className="text-muted-foreground ml-0.5">· {apt.purpose}</span>
+   925→                                )}
+   926→                              </div>
+   927→                            )
+   928→                          })}
+   929→                        </div>
+   930→                      ) : null}
+   931→                      {/* Continuation indicator: a small visual bar at the bottom */}
+   932→                      {hasContinuation && (
+   933→                        <div className="absolute bottom-0 left-1 right-1 h-[3px] rounded-t-full bg-gradient-to-r from-blue-400 to-purple-400 dark:from-blue-500 dark:to-purple-500 opacity-60" />
+   934→                      )}
+   935→                    </div>
+   936→                  )
+   937→                })}
+   938→              </div>
+   939→            ))}
+   940→          </div>
+   941→        </ScrollArea>
+   942→      </CardContent>
+   943→    </Card>
+   944→  )
+   945→}
+   946→
+   947→// ─── Main Component ──────────────────────────────────────────────────────────
+   948→
+   949→type ViewMode = 'list' | 'calendar' | 'week'
+   950→type StatusFilter = 'all' | AppointmentStatus
+   951→
+   952→export default function Appointments() {
+   953→  const [viewMode, setViewMode] = useState<ViewMode>('list')
+   954→  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+   955→  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
+   956→  const [appointments, setAppointments] = useState<Appointment[]>([])
+   957→  const [allAppointments, setAllAppointments] = useState<Appointment[]>([])
+   958→  const [customers, setCustomers] = useState<Customer[]>([])
+   959→  const [loading, setLoading] = useState(true)
+   960→  const [page, setPage] = useState(1)
+   961→  const [total, setTotal] = useState(0)
+   962→  const pageSize = 50
+   963→
+   964→  // Walk-in toggle state
+   965→  const [isWalkIn, setIsWalkIn] = useState(false)
+   966→
+   967→  // Dialogs
+   968→  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+   969→  const [editAppointment, setEditAppointment] = useState<Appointment | null>(null)
+   970→  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+   971→  const [deletingId, setDeletingId] = useState<string | null>(null)
+   972→  const [bulkReminderDialogOpen, setBulkReminderDialogOpen] = useState(false)
+   973→
+   974→  // ─── Data Fetching ───────────────────────────────────────────────────────
+   975→
+   976→  const fetchAppointments = useCallback(async () => {
+   977→    setLoading(true)
+   978→    try {
+   979→      const params = new URLSearchParams()
+   980→      params.set('date', toDateString(selectedDate))
+   981→      if (statusFilter !== 'all') params.set('status', statusFilter)
+   982→      params.set('limit', pageSize.toString())
+   983→
+   984→      const res = await fetch(`/api/appointments?${params.toString()}`)
+   985→      if (res.ok) {
+   986→        const json = await res.json()
+   987→        const data = (json.data ?? json.appointments ?? []).map(transformAppointment)
+   988→        setAppointments(data.sort((a, b) => (a.time ?? '').localeCompare(b.time ?? '')))
+   989→        setTotal(json.pagination?.total ?? data.length)
+   990→      }
+   991→    } catch {
+   992→      // Silently fail
+   993→    } finally {
+   994→      setLoading(false)
+   995→    }
+   996→  }, [selectedDate, statusFilter, pageSize])
+   997→
+   998→  const fetchAllAppointments = useCallback(async () => {
+   999→    try {
+  1000→      // Fetch appointments for current month (for calendar dots and stats)
+  1001→      const now = new Date()
+  1002→      const monthStart = format(new Date(now.getFullYear(), now.getMonth(), 1), 'yyyy-MM-dd')
+  1003→      const monthEnd = format(new Date(now.getFullYear(), now.getMonth() + 1, 0), 'yyyy-MM-dd')
+  1004→
+  1005→      const params = new URLSearchParams()
+  1006→      params.set('fromDate', monthStart)
+  1007→      params.set('toDate', monthEnd)
+  1008→      params.set('limit', '500')
+  1009→
+  1010→      const res = await fetch(`/api/appointments?${params.toString()}`)
+  1011→      if (res.ok) {
+  1012→        const json = await res.json()
+  1013→        const data = (json.data ?? json.appointments ?? []).map(transformAppointment)
+  1014→        setAllAppointments(data)
+  1015→      }
+  1016→    } catch {
+  1017→      // Silently fail
+  1018→    }
+  1019→  }, [])
+  1020→
+  1021→  const fetchCustomers = useCallback(async () => {
+  1022→    try {
+  1023→      const res = await fetch('/api/customers?limit=100')
+  1024→      if (res.ok) {
+  1025→        const json = await res.json()
+  1026→        setCustomers(json.data ?? json.customers ?? [])
+  1027→      }
+  1028→    } catch {
+  1029→      // Silently fail
+  1030→    }
+  1031→  }, [])
+  1032→
+  1033→  useEffect(() => {
+  1034→    fetchCustomers()
+  1035→  }, [fetchCustomers])
+  1036→
+  1037→  useEffect(() => {
+  1038→    fetchAppointments()
+  1039→    fetchAllAppointments()
+  1040→  }, [fetchAppointments, fetchAllAppointments])
+  1041→
+  1042→  // ─── Grouped Appointments by Date ─────────────────────────────────────────
+  1043→
+  1044→  const groupedAppointments = useMemo(() => {
+  1045→    const groups: Record<string, Appointment[]> = {}
+  1046→    appointments.forEach((apt) => {
+  1047→      try {
+  1048→        const key = toDateString(parseISO(apt.date))
+  1049→        if (!groups[key]) groups[key] = []
+  1050→        groups[key].push(apt)
+  1051→      } catch {
+  1052→        // skip
+  1053→      }
+  1054→    })
+  1055→    return groups
+  1056→  }, [appointments])
+  1057→
+  1058→  // ─── Today's Appointments ───────────────────────────────────────────────
+  1059→
+  1060→  const todayAppointments = useMemo(() => {
+  1061→    const todayStr = toDateString(new Date())
+  1062→    return allAppointments
+  1063→      .filter((apt) => {
+  1064→        try {
+  1065→          return toDateString(parseISO(apt.date)) === todayStr
+  1066→        } catch {
+  1067→          return false
+  1068→        }
+  1069→      })
+  1070→      .sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''))
+  1071→  }, [allAppointments])
+  1072→
+  1073→  // ─── Stats ──────────────────────────────────────────────────────────────
+  1074→
+  1075→  const stats = useMemo(() => {
+  1076→    const todayStr = toDateString(new Date())
+  1077→    const todayApts = allAppointments.filter((a) => {
+  1078→      try {
+  1079→        return toDateString(parseISO(a.date)) === todayStr
+  1080→      } catch {
+  1081→        return false
+  1082→      }
+  1083→    })
+  1084→    return {
+  1085→      today: todayApts.length,
+  1086→      scheduled: todayApts.filter((a) => a.status === 'Scheduled').length,
+  1087→      completed: todayApts.filter((a) => a.status === 'Completed').length,
+  1088→    }
+  1089→  }, [allAppointments])
+  1090→
+  1091→  // ─── Purpose Stats (today's breakdown by purpose) ───────────────────────
+  1092→
+  1093→  const purposeStats = useMemo(() => {
+  1094→    const todayStr = toDateString(new Date())
+  1095→    const todayApts = allAppointments.filter((a) => {
+  1096→      try {
+  1097→        return toDateString(parseISO(a.date)) === todayStr
+  1098→      } catch {
+  1099→        return false
+  1100→      }
+  1101→    })
+  1102→    const counts: Record<string, number> = {}
+  1103→    todayApts.forEach((a) => {
+  1104→      const purpose = a.purpose ?? 'Other'
+  1105→      counts[purpose] = (counts[purpose] || 0) + 1
+  1106→    })
+  1107→    return counts
+  1108→  }, [allAppointments])
+  1109→
+  1110→  // ─── Bulk Reminder eligible appointments ────────────────────────────────
+  1111→
+  1112→  const bulkReminderCount = useMemo(() => {
+  1113→    const todayStr = toDateString(new Date())
+  1114→    return allAppointments.filter((a) => {
+  1115→      try {
+  1116→        return (
+  1117→          toDateString(parseISO(a.date)) === todayStr &&
+  1118→          (a.status === 'Scheduled' || a.status === 'Confirmed') &&
+  1119→          (a.customerPhone || a.customer?.phone)
+  1120→        )
+  1121→      } catch {
+  1122→        return false
+  1123→      }
+  1124→    }).length
+  1125→  }, [allAppointments])
+  1126→
+  1127→  // ─── Actions ────────────────────────────────────────────────────────────
+  1128→
+  1129→  const handleCreateAppointment = async (data: {
+  1130→    customerId: string
+  1131→    date: string
+  1132→    time: string
+  1133→    purpose: string
+  1134→    status: string
+  1135→    notes: string
+  1136→    recurrence: string
+  1137→    isWalkIn?: boolean
+  1138→  }) => {
+  1139→    try {
+  1140→      const res = await fetch('/api/appointments', {
+  1141→        method: 'POST',
+  1142→        headers: { 'Content-Type': 'application/json' },
+  1143→        body: JSON.stringify(data),
+  1144→      })
+  1145→      if (res.ok) {
+  1146→        await Promise.all([fetchAppointments(), fetchAllAppointments()])
+  1147→        return
+  1148→      }
+  1149→    } catch {
+  1150→      // fallback
+  1151→    }
+  1152→  }
+  1153→
+  1154→  const handleEditAppointment = async (data: {
+  1155→    customerId: string
+  1156→    date: string
+  1157→    time: string
+  1158→    purpose: string
+  1159→    status: string
+  1160→    notes: string
+  1161→    isWalkIn?: boolean
+  1162→  }) => {
+  1163→    if (!editAppointment) return
+  1164→    try {
+  1165→      const res = await fetch(`/api/appointments/${editAppointment.id}`, {
+  1166→        method: 'PUT',
+  1167→        headers: { 'Content-Type': 'application/json' },
+  1168→        body: JSON.stringify(data),
+  1169→      })
+  1170→      if (res.ok) {
+  1171→        setEditAppointment(null)
+  1172→        await Promise.all([fetchAppointments(), fetchAllAppointments()])
+  1173→        return
+  1174→      }
+  1175→    } catch {
+  1176→      // fallback
+  1177→    }
+  1178→    setEditAppointment(null)
+  1179→  }
+  1180→
+  1181→  const handleUpdateStatus = async (appointmentId: string, newStatus: string) => {
+  1182→    try {
+  1183→      const res = await fetch(`/api/appointments/${appointmentId}`, {
+  1184→        method: 'PATCH',
+  1185→        headers: { 'Content-Type': 'application/json' },
+  1186→        body: JSON.stringify({ status: newStatus }),
+  1187→      })
+  1188→      if (res.ok) {
+  1189→        await Promise.all([fetchAppointments(), fetchAllAppointments()])
+  1190→        return
+  1191→      }
+  1192→    } catch {
+  1193→      // fallback
+  1194→    }
+  1195→  }
+  1196→
+  1197→  const handleDeleteAppointment = async () => {
+  1198→    if (!deletingId) return
+  1199→    try {
+  1200→      const res = await fetch(`/api/appointments/${deletingId}`, { method: 'DELETE' })
+  1201→      if (res.ok) {
+  1202→        setDeleteDialogOpen(false)
+  1203→        setDeletingId(null)
+  1204→        await Promise.all([fetchAppointments(), fetchAllAppointments()])
+  1205→      }
+  1206→    } catch {
+  1207→      // fallback
+  1208→    }
+  1209→  }
+  1210→
+  1211→  const handleSMSReminder = (appointment: Appointment) => {
+  1212→    const phone = appointment.customerPhone || appointment.customer?.phone
+  1213→    if (!phone) {
+  1214→      toast.error('No phone number found for this customer')
+  1215→      return
+  1216→    }
+  1217→    const cleanPhone = phone.replace(/\D/g, '')
+  1218→    const formattedDate = formatDate(appointment.date)
+  1219→    const formattedTime = formatTime(appointment.time)
+  1220→    const message = encodeURIComponent(
+  1221→      `Hi ${appointment.customerName}, reminder from Lotus Vision Opticals:\nYour appointment is on ${formattedDate}${appointment.time ? ` at ${formattedTime}` : ''}${appointment.purpose ? ` for ${appointment.purpose}` : ''}.\nPlease visit us on time. Thank you!`
+  1222→    )
+  1223→    window.open(`https://wa.me/91${cleanPhone}?text=${message}`, '_blank')
+  1224→    toast.success('WhatsApp reminder opened', { description: 'Send the message in the opened window' })
+  1225→  }
+  1226→
+  1227→  const handleSMSReminderPlaceholder = () => {
+  1228→    toast.info('SMS gateway integration is not configured. Contact your admin to set up SMS reminders via Twilio/Msg91.')
+  1229→  }
+  1230→
+  1231→  const handleBulkReminder = () => {
+  1232→    const todayStr = toDateString(new Date())
+  1233→    const eligible = allAppointments.filter((a) => {
+  1234→      try {
+  1235→        return (
+  1236→          toDateString(parseISO(a.date)) === todayStr &&
+  1237→          (a.status === 'Scheduled' || a.status === 'Confirmed') &&
+  1238→          (a.customerPhone || a.customer?.phone)
+  1239→        )
+  1240→      } catch {
+  1241→        return false
+  1242→      }
+  1243→    })
+  1244→
+  1245→    let openedCount = 0
+  1246→    eligible.forEach((apt) => {
+  1247→      handleSMSReminder(apt)
+  1248→      openedCount++
+  1249→    })
+  1250→
+  1251→    setBulkReminderDialogOpen(false)
+  1252→    toast.success(`Opened ${openedCount} reminder window(s)`)
+  1253→  }
+  1254→
+  1255→  // ─── Render ─────────────────────────────────────────────────────────────
+  1256→
+  1257→  return (
+  1258→    <div className="space-y-6">
+  1259→      {/* Header */}
+  1260→      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+  1261→        <div>
+  1262→          <h1 className="text-2xl font-bold tracking-tight">Appointments</h1>
+  1263→          <p className="text-muted-foreground text-sm mt-1">
+  1264→            Manage and schedule customer appointments.
+  1265→          </p>
+  1266→        </div>
+  1267→        <div className="flex items-center gap-2 shrink-0">
+  1268→          {/* Walk-in / Scheduled Toggle */}
+  1269→          <Tooltip>
+  1270→            <TooltipTrigger asChild>
+  1271→              <Button
+  1272→                variant={isWalkIn ? 'default' : 'outline'}
+  1273→                size="sm"
+  1274→                onClick={() => setIsWalkIn(!isWalkIn)}
+  1275→                className={cn(
+  1276→                  'gap-1.5 transition-colors',
+  1277→                  isWalkIn && 'bg-orange-600 hover:bg-orange-700 text-white'
+  1278→                )}
+  1279→              >
+  1280→                <Footprints className="size-3.5" />
+  1281→                {isWalkIn ? 'Walk-in' : 'Scheduled'}
+  1282→              </Button>
+  1283→            </TooltipTrigger>
+  1284→            <TooltipContent>
+  1285→              {isWalkIn
+  1286→                ? 'Walk-in mode: new entries auto-set purpose & status'
+  1287→                : 'Switch to Walk-in mode for quick registration'}
+  1288→            </TooltipContent>
+  1289→          </Tooltip>
+  1290→
+  1291→          {/* Send Reminders Button */}
+  1292→          <Tooltip>
+  1293→            <TooltipTrigger asChild>
+  1294→              <Button
+  1295→                variant="outline"
+  1296→                size="sm"
+  1297→                className="gap-1.5 min-h-[44px] touch-manipulation"
+  1298→                onClick={() => {
+  1299→                  if (bulkReminderCount === 0) {
+  1300→                    toast.info('No Scheduled/Confirmed appointments with phone numbers for today.')
+  1301→                    return
+  1302→                  }
+  1303→                  setBulkReminderDialogOpen(true)
+  1304→                }}
+  1305→              >
+  1306→                <MessageSquare className="size-3.5" />
+  1307→                <span className="hidden sm:inline">Send Reminders</span>
+  1308→              </Button>
+  1309→            </TooltipTrigger>
+  1310→            <TooltipContent>
+  1311→              Send WhatsApp reminders to all Scheduled/Confirmed appointments for today
+  1312→            </TooltipContent>
+  1313→          </Tooltip>
+  1314→
+  1315→          <Button
+  1316→            onClick={() => setCreateDialogOpen(true)}
+  1317→            className="gap-2"
+  1318→          >
+  1319→            <Plus className="size-4" />
+  1320→            New Appointment
+  1321→          </Button>
+  1322→        </div>
+  1323→      </div>
+  1324→
+  1325→      {/* Stats Cards */}
+  1326→      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+  1327→        <Card className="p-4">
+  1328→          <div className="flex items-center gap-3">
+  1329→            <div className="rounded-lg bg-muted p-2.5">
+  1330→              <CalendarDays className="size-5 text-foreground" />
+  1331→            </div>
+  1332→            <div>
+  1333→              <p className="text-sm text-muted-foreground">Today&apos;s Total</p>
+  1334→              <p className="text-2xl font-bold">{stats.today}</p>
+  1335→            </div>
+  1336→          </div>
+  1337→        </Card>
+  1338→        <Card className="p-4">
+  1339→          <div className="flex items-center gap-3">
+  1340→            <div className="rounded-lg bg-blue-100 dark:bg-blue-900/30 p-2.5">
+  1341→              <Clock className="size-5 text-blue-600 dark:text-blue-400" />
+  1342→            </div>
+  1343→            <div>
+  1344→              <p className="text-sm text-muted-foreground">Scheduled</p>
+  1345→              <p className="text-2xl font-bold">{stats.scheduled}</p>
+  1346→            </div>
+  1347→          </div>
+  1348→        </Card>
+  1349→        <Card className="p-4">
+  1350→          <div className="flex items-center gap-3">
+  1351→            <div className="rounded-lg bg-green-100 dark:bg-green-900/30 p-2.5">
+  1352→              <CheckCircle2 className="size-5 text-green-600 dark:text-green-400" />
+  1353→            </div>
+  1354→            <div>
+  1355→              <p className="text-sm text-muted-foreground">Completed</p>
+  1356→              <p className="text-2xl font-bold">{stats.completed}</p>
+  1357→            </div>
+  1358→          </div>
+  1359→        </Card>
+  1360→      </div>
+  1361→
+  1362→      {/* Purpose Stats Card */}
+  1363→      {Object.keys(purposeStats).length > 0 && (
+  1364→        <Card className="p-4">
+  1365→          <p className="text-sm font-medium text-muted-foreground mb-3">Today&apos;s Appointments by Purpose</p>
+  1366→          <div className="flex flex-wrap gap-2">
+  1367→            {PURPOSE_OPTIONS.map((opt) => {
+  1368→              const count = purposeStats[opt.value] || 0
+  1369→              if (count === 0) return null
+  1370→              return (
+  1371→                <Badge
+  1372→                  key={opt.value}
+  1373→                  variant="outline"
+  1374→                  className={cn('text-xs gap-1.5', PURPOSE_COLORS[opt.value])}
+  1375→                >
+  1376→                  {opt.label}
+  1377→                  <span className="font-bold">{count}</span>
+  1378→                </Badge>
+  1379→              )
+  1380→            })}
+  1381→          </div>
+  1382→        </Card>
+  1383→      )}
+  1384→
+  1385→      {/* Today's Appointments Highlighted */}
+  1386→      {todayAppointments.length > 0 && viewMode === 'list' && (
+  1387→        <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+  1388→          <CardHeader className="pb-3">
+  1389→            <CardTitle className="text-lg flex items-center gap-2">
+  1390→              <CalendarDays className="size-5 text-blue-600" />
+  1391→              Today&apos;s Appointments
+  1392→              <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
+  1393→                {todayAppointments.length}
+  1394→              </Badge>
+  1395→            </CardTitle>
+  1396→          </CardHeader>
+  1397→          <CardContent>
+  1398→            <div className="space-y-2">
+  1399→              {todayAppointments.map((apt) => {
+  1400→                const isWalkInApt = apt.purpose === 'Walk-in'
+  1401→                return (
+  1402→                  <div
+  1403→                    key={apt.id}
+  1404→                    className="flex items-center gap-3 rounded-lg border border-blue-100 dark:border-blue-900 p-3 bg-white dark:bg-slate-900 hover:bg-accent/50 transition-colors"
+  1405→                  >
+  1406→                    <div className="text-sm font-mono font-medium min-w-[70px]">
+  1407→                      {formatTime(apt.time)}
+  1408→                    </div>
+  1409→                    <div className="flex-1 min-w-0">
+  1410→                      <div className="flex items-center gap-2">
+  1411→                        <p className="font-medium text-sm truncate">{apt.customerName}</p>
+  1412→                        {/* Appointment type badge */}
+  1413→                        <span className={cn(
+  1414→                          'inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0',
+  1415→                          isWalkInApt
+  1416→                            ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400'
+  1417→                            : 'bg-slate-100 text-slate-600 dark:bg-slate-800/40 dark:text-slate-400'
+  1418→                        )}>
+  1419→                          {isWalkInApt ? (
+  1420→                            <>
+  1421→                              <Footprints className="size-2.5" />
+  1422→                              Walk-in
+  1423→                            </>
+  1424→                          ) : (
+  1425→                            <>
+  1426→                              <CalendarIcon className="size-2.5" />
+  1427→                              Scheduled
+  1428→                            </>
+  1429→                          )}
+  1430→                        </span>
+  1431→                      </div>
+  1432→                      <div className="flex items-center gap-2 mt-0.5">
+  1433→                        <PurposeBadge purpose={apt.purpose} />
+  1434→                        {apt.customerPhone && (
+  1435→                          <span className="text-xs text-muted-foreground">{apt.customerPhone}</span>
+  1436→                        )}
+  1437→                      </div>
+  1438→                    </div>
+  1439→                    <StatusBadge status={apt.status} />
+  1440→                    {/* WhatsApp Reminder Button */}
+  1441→                    <Tooltip>
+  1442→                      <TooltipTrigger asChild>
+  1443→                        <Button
+  1444→                          variant="ghost"
+  1445→                          size="icon"
+  1446→                          className="min-w-[44px] min-h-[44px] touch-manipulation text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400"
+  1447→                          onClick={() => handleSMSReminder(apt)}
+  1448→                        >
+  1449→                          <MessageSquare className="size-3.5" />
+  1450→                        </Button>
+  1451→                      </TooltipTrigger>
+  1452→                      <TooltipContent>WhatsApp Reminder</TooltipContent>
+  1453→                    </Tooltip>
+  1454→                    {/* SMS Reminder Placeholder Button */}
+  1455→                    <Tooltip>
+  1456→                      <TooltipTrigger asChild>
+  1457→                        <Button
+  1458→                          variant="ghost"
+  1459→                          size="icon"
+  1460→                          className="min-w-[44px] min-h-[44px] touch-manipulation text-muted-foreground hover:text-blue-600 dark:hover:text-blue-400"
+  1461→                          onClick={handleSMSReminderPlaceholder}
+  1462→                        >
+  1463→                          <Phone className="size-3.5" />
+  1464→                        </Button>
+  1465→                      </TooltipTrigger>
+  1466→                      <TooltipContent>SMS Reminder</TooltipContent>
+  1467→                    </Tooltip>
+  1468→                    <DropdownMenu>
+  1469→                      <DropdownMenuTrigger asChild>
+  1470→                        <Button variant="ghost" size="icon" className="min-w-[44px] min-h-[44px] touch-manipulation">
+  1471→                          <MoreHorizontal className="size-4" />
+  1472→                        </Button>
+  1473→                      </DropdownMenuTrigger>
+  1474→                      <DropdownMenuContent align="end">
+  1475→                        <DropdownMenuItem onClick={() => setEditAppointment(apt)}>
+  1476→                          <Pencil className="size-4 mr-2" /> Edit
+  1477→                        </DropdownMenuItem>
+  1478→                        {apt.status === 'Scheduled' && (
+  1479→                          <DropdownMenuItem onClick={() => handleUpdateStatus(apt.id, 'Confirmed')}>
+  1480→                            <CheckCircle2 className="size-4 mr-2" /> Confirm
+  1481→                          </DropdownMenuItem>
+  1482→                        )}
+  1483→                        {(apt.status === 'Scheduled' || apt.status === 'Confirmed') && (
+  1484→                          <DropdownMenuItem onClick={() => handleUpdateStatus(apt.id, 'Completed')}>
+  1485→                            <CheckCircle2 className="size-4 mr-2" /> Mark Completed
+  1486→                          </DropdownMenuItem>
+  1487→                        )}
+  1488→                        {(apt.status === 'Scheduled' || apt.status === 'Confirmed') && (
+  1489→                          <DropdownMenuItem onClick={() => handleUpdateStatus(apt.id, 'No-Show')}>
+  1490→                            <AlertTriangle className="size-4 mr-2" /> Mark No-Show
+  1491→                          </DropdownMenuItem>
+  1492→                        )}
+  1493→                        {apt.status !== 'Cancelled' && apt.status !== 'Completed' && (
+  1494→                          <>
+  1495→                            <DropdownMenuSeparator />
+  1496→                            <DropdownMenuItem onClick={() => handleUpdateStatus(apt.id, 'Cancelled')} className="text-destructive">
+  1497→                              <XCircle className="size-4 mr-2" /> Cancel
+  1498→                            </DropdownMenuItem>
+  1499→                          </>
+  1500→                        )}
+  1501→                      </DropdownMenuContent>
+  1502→                    </DropdownMenu>
+  1503→                  </div>
+  1504→                )
+  1505→              })}
+  1506→            </div>
+  1507→          </CardContent>
+  1508→        </Card>
+  1509→      )}
+  1510→
+  1511→      {/* Toolbar */}
+  1512→      <Card>
+  1513→        <CardContent className="p-4">
+  1514→          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+  1515→            {/* Date Picker */}
+  1516→            <Popover>
+  1517→              <PopoverTrigger asChild>
+  1518→                <Button
+  1519→                  variant="outline"
+  1520→                  className={cn(
+  1521→                    'justify-start text-left font-normal gap-2 w-full sm:w-auto',
+  1522→                    !selectedDate && 'text-muted-foreground'
+  1523→                  )}
+  1524→                >
+  1525→                  <CalendarIcon className="size-4" />
+  1526→                  {selectedDate
+  1527→                    ? isToday(selectedDate)
+  1528→                      ? 'Today'
+  1529→                      : format(selectedDate, 'MMM d, yyyy')
+  1530→                    : 'Pick a date'}
+  1531→                </Button>
+  1532→              </PopoverTrigger>
+  1533→              <PopoverContent className="w-auto p-0" align="start">
+  1534→                <DayPicker
+  1535→                  mode="single"
+  1536→                  selected={selectedDate}
+  1537→                  onSelect={(date) => {
+  1538→                    if (date) {
+  1539→                      setSelectedDate(date)
+  1540→                      setPage(1)
+  1541→                    }
+  1542→                  }}
+  1543→                  initialFocus
+  1544→                />
+  1545→              </PopoverContent>
+  1546→            </Popover>
+  1547→
+  1548→            {/* Status Filter Tabs */}
+  1549→            <Tabs
+  1550→              value={statusFilter}
+  1551→              onValueChange={(v) => {
+  1552→                setStatusFilter(v as StatusFilter)
+  1553→                setPage(1)
+  1554→              }}
+  1555→            >
+  1556→              <TabsList>
+  1557→                <TabsTrigger value="all">All</TabsTrigger>
+  1558→                <TabsTrigger value="Scheduled">Scheduled</TabsTrigger>
+  1559→                <TabsTrigger value="Confirmed">Confirmed</TabsTrigger>
+  1560→                <TabsTrigger value="Completed">Completed</TabsTrigger>
+  1561→                <TabsTrigger value="Cancelled">Cancelled</TabsTrigger>
+  1562→              </TabsList>
+  1563→            </Tabs>
+  1564→
+  1565→            <div className="flex-1" />
+  1566→
+  1567→            {/* View Toggle: List / Calendar / Week */}
+  1568→            <div className="flex items-center border rounded-md">
+  1569→              <Button
+  1570→                variant={viewMode === 'list' ? 'default' : 'ghost'}
+  1571→                size="sm"
+  1572→                className="rounded-none px-3"
+  1573→                onClick={() => setViewMode('list')}
+  1574→              >
+  1575→                List
+  1576→              </Button>
+  1577→              <div className="w-px bg-border" />
+  1578→              <Button
+  1579→                variant={viewMode === 'calendar' ? 'default' : 'ghost'}
+  1580→                size="sm"
+  1581→                className="rounded-none px-3"
+  1582→                onClick={() => setViewMode('calendar')}
+  1583→              >
+  1584→                Month
+  1585→              </Button>
+  1586→              <div className="w-px bg-border" />
+  1587→              <Button
+  1588→                variant={viewMode === 'week' ? 'default' : 'ghost'}
+  1589→                size="sm"
+  1590→                className="rounded-none px-3"
+  1591→                onClick={() => setViewMode('week')}
+  1592→              >
+  1593→                Week
+  1594→              </Button>
+  1595→            </div>
+  1596→          </div>
+  1597→        </CardContent>
+  1598→      </Card>
+  1599→
+  1600→      {/* Content */}
+  1601→      {loading ? (
+  1602→        <Card>
+  1603→          <CardContent className="p-4">
+  1604→            <TableSkeleton />
+  1605→          </CardContent>
+  1606→        </Card>
+  1607→      ) : viewMode === 'week' ? (
+  1608→        <CalendarWeekView appointments={allAppointments} />
+  1609→      ) : viewMode === 'calendar' ? (
+  1610→        <CalendarMonthView
+  1611→          appointments={allAppointments}
+  1612→          selectedDate={selectedDate}
+  1613→          onDateSelect={(date) => {
+  1614→            setSelectedDate(date)
+  1615→            setPage(1)
+  1616→          }}
+  1617→        />
+  1618→      ) : (
+  1619→        <Card>
+  1620→          <CardContent className="p-0">
+  1621→            {appointments.length === 0 ? (
+  1622→              <div className="flex flex-col items-center justify-center py-12 gap-3">
+  1623→                <div className="flex items-center justify-center size-12 rounded-full bg-muted">
+  1624→                  <CalendarDays className="size-6 text-muted-foreground" />
+  1625→                </div>
+  1626→                <p className="text-muted-foreground text-sm">No appointments found for this date and filter.</p>
+  1627→                <Button variant="outline" size="sm" onClick={() => setCreateDialogOpen(true)}>
+  1628→                  <Plus className="size-4 mr-1" />
+  1629→                  Schedule an Appointment
+  1630→                </Button>
+  1631→              </div>
+  1632→            ) : (
+  1633→              <div className="overflow-x-auto">
+  1634→              <Table>
+  1635→                <TableHeader>
+  1636→                  <TableRow>
+  1637→                    <TableHead className="pl-4">Customer</TableHead>
+  1638→                    <TableHead className="hidden sm:table-cell">Date</TableHead>
+  1639→                    <TableHead>Time</TableHead>
+  1640→                    <TableHead className="hidden md:table-cell">Purpose</TableHead>
+  1641→                    <TableHead>Status</TableHead>
+  1642→                    <TableHead className="hidden lg:table-cell">Duration</TableHead>
+  1643→                    <TableHead className="hidden lg:table-cell">Notes</TableHead>
+  1644→                    <TableHead className="hidden xl:table-cell">Repeat</TableHead>
+  1645→                    <TableHead className="pr-4 text-right">Actions</TableHead>
+  1646→                  </TableRow>
+  1647→                </TableHeader>
+  1648→                <TableBody>
+  1649→                  {appointments.map((apt) => (
+  1650→                    <TableRow key={apt.id}>
+  1651→                      <TableCell className="pl-4">
+  1652→                        <div>
+  1653→                          <p className="font-medium text-sm">{apt.customerName}</p>
+  1654→                          {apt.customerPhone && (
+  1655→                            <p className="text-xs text-muted-foreground">{apt.customerPhone}</p>
+  1656→                          )}
+  1657→                        </div>
+  1658→                      </TableCell>
+  1659→                      <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
+  1660→                        {formatDate(apt.date)}
+  1661→                      </TableCell>
+  1662→                      <TableCell className="font-mono text-sm">
+  1663→                        {formatTime(apt.time)}
+  1664→                      </TableCell>
+  1665→                      <TableCell className="hidden md:table-cell">
+  1666→                        <PurposeBadge purpose={apt.purpose} />
+  1667→                      </TableCell>
+  1668→                      <TableCell>
+  1669→                        <StatusBadge status={apt.status} />
+  1670→                      </TableCell>
+  1671→                      <TableCell className="hidden lg:table-cell">
+  1672→                        <span className="text-xs text-muted-foreground">
+  1673→                          {PURPOSE_DURATION[apt.purpose ?? ''] ?? 30} min
+  1674→                        </span>
+  1675→                      </TableCell>
+  1676→                      <TableCell className="hidden lg:table-cell">
+  1677→                        <p className="text-xs text-muted-foreground max-w-[200px] truncate">
+  1678→                          {apt.notes || '—'}
+  1679→                        </p>
+  1680→                      </TableCell>
+  1681→                      <TableCell className="hidden xl:table-cell">
+  1682→                        {apt.recurrence ? (
+  1683→                          <Badge variant="outline" className="bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 text-[10px]">
+  1684→                            {apt.recurrence}
+  1685→                          </Badge>
+  1686→                        ) : '—'}
+  1687→                      </TableCell>
+  1688→                      <TableCell className="pr-4 text-right">
+  1689→                        <div className="flex items-center justify-end gap-0.5">
+  1690→                          {/* WhatsApp Reminder Button */}
+  1691→                          <Tooltip>
+  1692→                            <TooltipTrigger asChild>
+  1693→                              <Button
+  1694→                                variant="ghost"
+  1695→                                size="icon"
+  1696→                                className="min-w-[44px] min-h-[44px] touch-manipulation text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400"
+  1697→                                onClick={() => handleSMSReminder(apt)}
+  1698→                              >
+  1699→                                <MessageSquare className="size-3.5" />
+  1700→                              </Button>
+  1701→                            </TooltipTrigger>
+  1702→                            <TooltipContent>WhatsApp Reminder</TooltipContent>
+  1703→                          </Tooltip>
+  1704→                          {/* SMS Reminder Placeholder Button */}
+  1705→                          <Tooltip>
+  1706→                            <TooltipTrigger asChild>
+  1707→                              <Button
+  1708→                                variant="ghost"
+  1709→                                size="icon"
+  1710→                                className="min-w-[44px] min-h-[44px] touch-manipulation text-muted-foreground hover:text-blue-600 dark:hover:text-blue-400"
+  1711→                                onClick={handleSMSReminderPlaceholder}
+  1712→                              >
+  1713→                                <Phone className="size-3.5" />
+  1714→                              </Button>
+  1715→                            </TooltipTrigger>
+  1716→                            <TooltipContent>SMS Reminder</TooltipContent>
+  1717→                          </Tooltip>
+  1718→                          <DropdownMenu>
+  1719→                            <DropdownMenuTrigger asChild>
+  1720→                              <Button variant="ghost" size="icon" className="min-w-[44px] min-h-[44px] touch-manipulation">
+  1721→                                <MoreHorizontal className="size-4" />
+  1722→                              </Button>
+  1723→                            </DropdownMenuTrigger>
+  1724→                            <DropdownMenuContent align="end">
+  1725→                              <DropdownMenuItem onClick={() => setEditAppointment(apt)}>
+  1726→                                <Pencil className="size-4 mr-2" /> Edit
+  1727→                              </DropdownMenuItem>
+  1728→                              {apt.status === 'Scheduled' && (
+  1729→                                <DropdownMenuItem onClick={() => handleUpdateStatus(apt.id, 'Confirmed')}>
+  1730→                                  <CheckCircle2 className="size-4 mr-2" /> Confirm
+  1731→                                </DropdownMenuItem>
+  1732→                              )}
+  1733→                              {(apt.status === 'Scheduled' || apt.status === 'Confirmed') && (
+  1734→                                <DropdownMenuItem onClick={() => handleUpdateStatus(apt.id, 'Completed')}>
+  1735→                                  <CheckCircle2 className="size-4 mr-2" /> Mark Completed
+  1736→                                </DropdownMenuItem>
+  1737→                              )}
+  1738→                              {(apt.status === 'Scheduled' || apt.status === 'Confirmed') && (
+  1739→                                <DropdownMenuItem onClick={() => handleUpdateStatus(apt.id, 'No-Show')}>
+  1740→                                  <AlertTriangle className="size-4 mr-2" /> Mark No-Show
+  1741→                                </DropdownMenuItem>
+  1742→                              )}
+  1743→                              {apt.status !== 'Cancelled' && apt.status !== 'Completed' && (
+  1744→                                <>
+  1745→                                  <DropdownMenuSeparator />
+  1746→                                  <DropdownMenuItem onClick={() => handleUpdateStatus(apt.id, 'Cancelled')} className="text-destructive">
+  1747→                                    <XCircle className="size-4 mr-2" /> Cancel
+  1748→                                  </DropdownMenuItem>
+  1749→                                </>
+  1750→                              )}
+  1751→                              <DropdownMenuSeparator />
+  1752→                              <DropdownMenuItem onClick={() => { setDeletingId(apt.id); setDeleteDialogOpen(true) }} className="text-destructive">
+  1753→                                <Trash2 className="size-4 mr-2" /> Delete
+  1754→                              </DropdownMenuItem>
+  1755→                            </DropdownMenuContent>
+  1756→                          </DropdownMenu>
+  1757→                        </div>
+  1758→                      </TableCell>
+  1759→                    </TableRow>
+  1760→                  ))}
+  1761→                </TableBody>
+  1762→              </Table>
+  1763→              </div>
+  1764→            )}
+  1765→          </CardContent>
+  1766→        </Card>
+  1767→      )}
+  1768→
+  1769→      {/* New Appointment Dialog */}
+  1770→      <AppointmentFormDialog
+  1771→        open={createDialogOpen}
+  1772→        onOpenChange={setCreateDialogOpen}
+  1773→        customers={customers}
+  1774→        isWalkIn={isWalkIn}
+  1775→        onSubmit={handleCreateAppointment}
+  1776→      />
+  1777→
+  1778→      {/* Edit Appointment Dialog */}
+  1779→      <AppointmentFormDialog
+  1780→        open={!!editAppointment}
+  1781→        onOpenChange={(open) => { if (!open) setEditAppointment(null) }}
+  1782→        appointment={editAppointment}
+  1783→        customers={customers}
+  1784→        isWalkIn={false}
+  1785→        onSubmit={handleEditAppointment}
+  1786→      />
+  1787→
+  1788→      {/* Delete Confirmation Dialog */}
+  1789→      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+  1790→        <DialogContent className="sm:max-w-md">
+  1791→          <DialogHeader>
+  1792→            <DialogTitle>Delete Appointment</DialogTitle>
+  1793→            <DialogDescription>
+  1794→              Are you sure you want to delete this appointment? This action cannot be undone.
+  1795→            </DialogDescription>
+  1796→          </DialogHeader>
+  1797→          <DialogFooter>
+  1798→            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+  1799→            <Button variant="destructive" onClick={handleDeleteAppointment}>
+  1800→              <Trash2 className="size-4 mr-2" />
+  1801→              Delete
+  1802→            </Button>
+  1803→          </DialogFooter>
+  1804→        </DialogContent>
+  1805→      </Dialog>
+  1806→
+  1807→      {/* Bulk Reminder Confirmation Dialog */}
+  1808→      <Dialog open={bulkReminderDialogOpen} onOpenChange={setBulkReminderDialogOpen}>
+  1809→        <DialogContent className="sm:max-w-md">
+  1810→          <DialogHeader>
+  1811→            <DialogTitle className="flex items-center gap-2">
+  1812→              <MessageSquare className="size-5" />
+  1813→              Send Reminders
+  1814→            </DialogTitle>
+  1815→            <DialogDescription>
+  1816→              Send reminders to all Scheduled/Confirmed appointments for today?
+  1817→              This will open {bulkReminderCount} WhatsApp window{bulkReminderCount !== 1 ? 's' : ''}.
+  1818→            </DialogDescription>
+  1819→          </DialogHeader>
+  1820→          <DialogFooter>
+  1821→            <Button variant="outline" onClick={() => setBulkReminderDialogOpen(false)}>Cancel</Button>
+  1822→            <Button onClick={handleBulkReminder}>
+  1823→              <MessageSquare className="size-4 mr-2" />
+  1824→              Send {bulkReminderCount} Reminder{bulkReminderCount !== 1 ? 's' : ''}
+  1825→            </Button>
+  1826→          </DialogFooter>
+  1827→        </DialogContent>
+  1828→      </Dialog>
+  1829→    </div>
+  1830→  )
+  1831→}

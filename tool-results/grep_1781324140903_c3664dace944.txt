@@ -1,0 +1,502 @@
+/home/z/my-project/src/components/crm/staff.tsx:46:  DialogFooter,
+/home/z/my-project/src/components/crm/staff.tsx-47-  DialogHeader,
+/home/z/my-project/src/components/crm/staff.tsx-48-  DialogTitle,
+/home/z/my-project/src/components/crm/staff.tsx-49-} from '@/components/ui/dialog'
+/home/z/my-project/src/components/crm/staff.tsx-50-import {
+/home/z/my-project/src/components/crm/staff.tsx-51-  Select,
+/home/z/my-project/src/components/crm/staff.tsx-52-  SelectContent,
+/home/z/my-project/src/components/crm/staff.tsx-53-  SelectItem,
+/home/z/my-project/src/components/crm/staff.tsx-54-  SelectTrigger,
+/home/z/my-project/src/components/crm/staff.tsx-55-  SelectValue,
+/home/z/my-project/src/components/crm/staff.tsx-56-} from '@/components/ui/select'
+/home/z/my-project/src/components/crm/staff.tsx-57-import {
+/home/z/my-project/src/components/crm/staff.tsx-58-  Table,
+/home/z/my-project/src/components/crm/staff.tsx-59-  TableBody,
+/home/z/my-project/src/components/crm/staff.tsx-60-  TableCell,
+/home/z/my-project/src/components/crm/staff.tsx-61-  TableHead,
+/home/z/my-project/src/components/crm/staff.tsx-62-  TableHeader,
+/home/z/my-project/src/components/crm/staff.tsx-63-  TableRow,
+/home/z/my-project/src/components/crm/staff.tsx-64-} from '@/components/ui/table'
+/home/z/my-project/src/components/crm/staff.tsx-65-
+/home/z/my-project/src/components/crm/staff.tsx-66-// ─── Types ───────────────────────────────────────────────────────────────────
+--
+/home/z/my-project/src/components/crm/staff.tsx:1975:          <DialogFooter>
+/home/z/my-project/src/components/crm/staff.tsx-1976-            <Button
+/home/z/my-project/src/components/crm/staff.tsx-1977-              type="button"
+/home/z/my-project/src/components/crm/staff.tsx-1978-              variant="outline"
+/home/z/my-project/src/components/crm/staff.tsx-1979-              onClick={() => setDialogOpen(false)}
+/home/z/my-project/src/components/crm/staff.tsx-1980-              disabled={submitting}
+/home/z/my-project/src/components/crm/staff.tsx-1981-              className="min-w-[44px] min-h-[44px] touch-manipulation"
+/home/z/my-project/src/components/crm/staff.tsx-1982-            >
+/home/z/my-project/src/components/crm/staff.tsx-1983-              Cancel
+/home/z/my-project/src/components/crm/staff.tsx-1984-            </Button>
+/home/z/my-project/src/components/crm/staff.tsx-1985-            <Button type="button" onClick={handleSubmit} disabled={submitting} className="min-w-[44px] min-h-[44px] touch-manipulation">
+/home/z/my-project/src/components/crm/staff.tsx-1986-              {submitting && <Loader2 className="size-4 animate-spin" />}
+/home/z/my-project/src/components/crm/staff.tsx-1987-              {editingStaff ? 'Update Staff' : 'Add Staff'}
+/home/z/my-project/src/components/crm/staff.tsx-1988-            </Button>
+/home/z/my-project/src/components/crm/staff.tsx:1989:          </DialogFooter>
+/home/z/my-project/src/components/crm/staff.tsx-1990-        </DialogContent>
+/home/z/my-project/src/components/crm/staff.tsx-1991-      </Dialog>
+/home/z/my-project/src/components/crm/staff.tsx-1992-
+/home/z/my-project/src/components/crm/staff.tsx-1993-      {/* ── Delete Confirmation Dialog ──────────────────────────────────── */}
+/home/z/my-project/src/components/crm/staff.tsx-1994-      <Dialog open={deleteDialogOpen} onOpenChange={(open) => !submitting && setDeleteDialogOpen(open)}>
+/home/z/my-project/src/components/crm/staff.tsx-1995-        <DialogContent className="sm:max-w-md">
+/home/z/my-project/src/components/crm/staff.tsx-1996-          <DialogHeader>
+/home/z/my-project/src/components/crm/staff.tsx-1997-            <DialogTitle>Delete Staff Member</DialogTitle>
+/home/z/my-project/src/components/crm/staff.tsx-1998-            <DialogDescription>
+/home/z/my-project/src/components/crm/staff.tsx-1999-              Are you sure you want to delete{' '}
+/home/z/my-project/src/components/crm/staff.tsx-2000-              <span className="font-semibold text-foreground">{deletingStaff?.name}</span>? This
+/home/z/my-project/src/components/crm/staff.tsx-2001-              action cannot be undone.
+/home/z/my-project/src/components/crm/staff.tsx-2002-            </DialogDescription>
+/home/z/my-project/src/components/crm/staff.tsx-2003-          </DialogHeader>
+/home/z/my-project/src/components/crm/staff.tsx:2004:          <DialogFooter>
+/home/z/my-project/src/components/crm/staff.tsx-2005-            <Button
+/home/z/my-project/src/components/crm/staff.tsx-2006-              type="button"
+/home/z/my-project/src/components/crm/staff.tsx-2007-              variant="outline"
+/home/z/my-project/src/components/crm/staff.tsx-2008-              onClick={() => setDeleteDialogOpen(false)}
+/home/z/my-project/src/components/crm/staff.tsx-2009-              disabled={submitting}
+/home/z/my-project/src/components/crm/staff.tsx-2010-              className="min-w-[44px] min-h-[44px] touch-manipulation"
+/home/z/my-project/src/components/crm/staff.tsx-2011-            >
+/home/z/my-project/src/components/crm/staff.tsx-2012-              Cancel
+/home/z/my-project/src/components/crm/staff.tsx-2013-            </Button>
+/home/z/my-project/src/components/crm/staff.tsx-2014-            <Button type="button" variant="destructive" onClick={handleDelete} disabled={submitting} className="min-w-[44px] min-h-[44px] touch-manipulation">
+/home/z/my-project/src/components/crm/staff.tsx-2015-              {submitting && <Loader2 className="size-4 animate-spin" />}
+/home/z/my-project/src/components/crm/staff.tsx-2016-              Delete
+/home/z/my-project/src/components/crm/staff.tsx-2017-            </Button>
+/home/z/my-project/src/components/crm/staff.tsx:2018:          </DialogFooter>
+/home/z/my-project/src/components/crm/staff.tsx-2019-        </DialogContent>
+/home/z/my-project/src/components/crm/staff.tsx-2020-      </Dialog>
+/home/z/my-project/src/components/crm/staff.tsx-2021-    </div>
+/home/z/my-project/src/components/crm/staff.tsx-2022-  )
+/home/z/my-project/src/components/crm/staff.tsx-2023-}
+--
+/home/z/my-project/src/components/crm/sales.tsx:46:  DialogFooter,
+/home/z/my-project/src/components/crm/sales.tsx-47-} from "@/components/ui/dialog";
+/home/z/my-project/src/components/crm/sales.tsx-48-import {
+/home/z/my-project/src/components/crm/sales.tsx-49-  Table,
+/home/z/my-project/src/components/crm/sales.tsx-50-  TableBody,
+/home/z/my-project/src/components/crm/sales.tsx-51-  TableCell,
+/home/z/my-project/src/components/crm/sales.tsx-52-  TableHead,
+/home/z/my-project/src/components/crm/sales.tsx-53-  TableHeader,
+/home/z/my-project/src/components/crm/sales.tsx-54-  TableRow,
+/home/z/my-project/src/components/crm/sales.tsx-55-  TableFooter,
+/home/z/my-project/src/components/crm/sales.tsx-56-} from "@/components/ui/table";
+/home/z/my-project/src/components/crm/sales.tsx-57-import {
+/home/z/my-project/src/components/crm/sales.tsx-58-  Select,
+/home/z/my-project/src/components/crm/sales.tsx-59-  SelectContent,
+/home/z/my-project/src/components/crm/sales.tsx-60-  SelectItem,
+/home/z/my-project/src/components/crm/sales.tsx-61-  SelectTrigger,
+/home/z/my-project/src/components/crm/sales.tsx-62-  SelectValue,
+/home/z/my-project/src/components/crm/sales.tsx-63-} from "@/components/ui/select";
+/home/z/my-project/src/components/crm/sales.tsx-64-import { Alert, AlertDescription } from "@/components/ui/alert";
+/home/z/my-project/src/components/crm/sales.tsx-65-
+/home/z/my-project/src/components/crm/sales.tsx-66-// ---------------------------------------------------------------------------
+--
+/home/z/my-project/src/components/crm/sales.tsx:1078:          <DialogFooter className="gap-2 sm:gap-2">
+/home/z/my-project/src/components/crm/sales.tsx-1079-            <Button
+/home/z/my-project/src/components/crm/sales.tsx-1080-              type="button"
+/home/z/my-project/src/components/crm/sales.tsx-1081-              variant="outline"
+/home/z/my-project/src/components/crm/sales.tsx-1082-              onClick={() => {
+/home/z/my-project/src/components/crm/sales.tsx-1083-                resetForm();
+/home/z/my-project/src/components/crm/sales.tsx-1084-                onOpenChange(false);
+/home/z/my-project/src/components/crm/sales.tsx-1085-              }}
+/home/z/my-project/src/components/crm/sales.tsx-1086-            >
+/home/z/my-project/src/components/crm/sales.tsx-1087-              Cancel
+/home/z/my-project/src/components/crm/sales.tsx-1088-            </Button>
+/home/z/my-project/src/components/crm/sales.tsx-1089-            <Button
+/home/z/my-project/src/components/crm/sales.tsx-1090-              type="button"
+/home/z/my-project/src/components/crm/sales.tsx-1091-              onClick={handleCreate}
+/home/z/my-project/src/components/crm/sales.tsx-1092-              disabled={submitting || !selectedCustomer || !hasValidItems || !splitValid}
+/home/z/my-project/src/components/crm/sales.tsx-1093-            >
+/home/z/my-project/src/components/crm/sales.tsx-1094-              {submitting ? (
+/home/z/my-project/src/components/crm/sales.tsx-1095-                <Loader2 className="size-4 animate-spin" />
+/home/z/my-project/src/components/crm/sales.tsx-1096-              ) : (
+/home/z/my-project/src/components/crm/sales.tsx-1097-                <FileText className="size-4" />
+/home/z/my-project/src/components/crm/sales.tsx-1098-              )}
+--
+/home/z/my-project/src/components/crm/sales.tsx:1101:          </DialogFooter>
+/home/z/my-project/src/components/crm/sales.tsx-1102-        </div>
+/home/z/my-project/src/components/crm/sales.tsx-1103-      </DialogContent>
+/home/z/my-project/src/components/crm/sales.tsx-1104-    </Dialog>
+/home/z/my-project/src/components/crm/sales.tsx-1105-  );
+/home/z/my-project/src/components/crm/sales.tsx-1106-}
+/home/z/my-project/src/components/crm/sales.tsx-1107-
+/home/z/my-project/src/components/crm/sales.tsx-1108-// ---------------------------------------------------------------------------
+/home/z/my-project/src/components/crm/sales.tsx-1109-// Component: Sale Detail Dialog
+/home/z/my-project/src/components/crm/sales.tsx-1110-// ---------------------------------------------------------------------------
+/home/z/my-project/src/components/crm/sales.tsx-1111-
+/home/z/my-project/src/components/crm/sales.tsx-1112-interface SaleDetailDialogProps {
+/home/z/my-project/src/components/crm/sales.tsx-1113-  sale: Sale | null;
+/home/z/my-project/src/components/crm/sales.tsx-1114-  open: boolean;
+/home/z/my-project/src/components/crm/sales.tsx-1115-  onOpenChange: (open: boolean) => void;
+/home/z/my-project/src/components/crm/sales.tsx-1116-  onReturn: (sale: Sale) => void;
+/home/z/my-project/src/components/crm/sales.tsx-1117-  onToggleStatus: (sale: Sale) => void;
+/home/z/my-project/src/components/crm/sales.tsx-1118-}
+/home/z/my-project/src/components/crm/sales.tsx-1119-
+/home/z/my-project/src/components/crm/sales.tsx-1120-function SaleDetailDialog({ sale, open, onOpenChange, onReturn, onToggleStatus }: SaleDetailDialogProps) {
+/home/z/my-project/src/components/crm/sales.tsx-1121-  if (!sale) return null;
+--
+/home/z/my-project/src/components/crm/sales.tsx:1547:        <DialogFooter>
+/home/z/my-project/src/components/crm/sales.tsx-1548-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+/home/z/my-project/src/components/crm/sales.tsx-1549-            Cancel
+/home/z/my-project/src/components/crm/sales.tsx-1550-          </Button>
+/home/z/my-project/src/components/crm/sales.tsx-1551-          <Button
+/home/z/my-project/src/components/crm/sales.tsx-1552-            variant="destructive"
+/home/z/my-project/src/components/crm/sales.tsx-1553-            onClick={handleProcessReturn}
+/home/z/my-project/src/components/crm/sales.tsx-1554-            disabled={submitting || !hasItems || !reason.trim()}
+/home/z/my-project/src/components/crm/sales.tsx-1555-          >
+/home/z/my-project/src/components/crm/sales.tsx-1556-            {submitting ? (
+/home/z/my-project/src/components/crm/sales.tsx-1557-              <Loader2 className="size-4 animate-spin" />
+/home/z/my-project/src/components/crm/sales.tsx-1558-            ) : (
+/home/z/my-project/src/components/crm/sales.tsx-1559-              <RotateCcw className="size-4" />
+/home/z/my-project/src/components/crm/sales.tsx-1560-            )}
+/home/z/my-project/src/components/crm/sales.tsx-1561-            Process Return
+/home/z/my-project/src/components/crm/sales.tsx-1562-          </Button>
+/home/z/my-project/src/components/crm/sales.tsx:1563:        </DialogFooter>
+/home/z/my-project/src/components/crm/sales.tsx-1564-      </DialogContent>
+/home/z/my-project/src/components/crm/sales.tsx-1565-    </Dialog>
+/home/z/my-project/src/components/crm/sales.tsx-1566-  );
+/home/z/my-project/src/components/crm/sales.tsx-1567-}
+/home/z/my-project/src/components/crm/sales.tsx-1568-
+/home/z/my-project/src/components/crm/sales.tsx-1569-// ---------------------------------------------------------------------------
+/home/z/my-project/src/components/crm/sales.tsx-1570-// Component: Pagination Controls
+/home/z/my-project/src/components/crm/sales.tsx-1571-// ---------------------------------------------------------------------------
+/home/z/my-project/src/components/crm/sales.tsx-1572-
+/home/z/my-project/src/components/crm/sales.tsx-1573-interface PaginationControlsProps {
+/home/z/my-project/src/components/crm/sales.tsx-1574-  page: number;
+/home/z/my-project/src/components/crm/sales.tsx-1575-  totalPages: number;
+/home/z/my-project/src/components/crm/sales.tsx-1576-  onPageChange: (page: number) => void;
+/home/z/my-project/src/components/crm/sales.tsx-1577-}
+/home/z/my-project/src/components/crm/sales.tsx-1578-
+/home/z/my-project/src/components/crm/sales.tsx-1579-function PaginationControls({ page, totalPages, onPageChange }: PaginationControlsProps) {
+/home/z/my-project/src/components/crm/sales.tsx-1580-  if (totalPages <= 1) return null;
+/home/z/my-project/src/components/crm/sales.tsx-1581-
+/home/z/my-project/src/components/crm/sales.tsx-1582-  const pages: (number | "ellipsis")[] = [];
+/home/z/my-project/src/components/crm/sales.tsx-1583-  if (totalPages <= 7) {
+--
+/home/z/my-project/src/components/crm/customers.tsx:52:  DialogFooter,
+/home/z/my-project/src/components/crm/customers.tsx-53-} from '@/components/ui/dialog';
+/home/z/my-project/src/components/crm/customers.tsx-54-import {
+/home/z/my-project/src/components/crm/customers.tsx-55-  Table,
+/home/z/my-project/src/components/crm/customers.tsx-56-  TableBody,
+/home/z/my-project/src/components/crm/customers.tsx-57-  TableCell,
+/home/z/my-project/src/components/crm/customers.tsx-58-  TableHead,
+/home/z/my-project/src/components/crm/customers.tsx-59-  TableHeader,
+/home/z/my-project/src/components/crm/customers.tsx-60-  TableRow,
+/home/z/my-project/src/components/crm/customers.tsx-61-} from '@/components/ui/table';
+/home/z/my-project/src/components/crm/customers.tsx-62-import {
+/home/z/my-project/src/components/crm/customers.tsx-63-  Select,
+/home/z/my-project/src/components/crm/customers.tsx-64-  SelectContent,
+/home/z/my-project/src/components/crm/customers.tsx-65-  SelectItem,
+/home/z/my-project/src/components/crm/customers.tsx-66-  SelectTrigger,
+/home/z/my-project/src/components/crm/customers.tsx-67-  SelectValue,
+/home/z/my-project/src/components/crm/customers.tsx-68-} from '@/components/ui/select';
+/home/z/my-project/src/components/crm/customers.tsx-69-import {
+/home/z/my-project/src/components/crm/customers.tsx-70-  Card,
+/home/z/my-project/src/components/crm/customers.tsx-71-  CardContent,
+/home/z/my-project/src/components/crm/customers.tsx-72-  CardDescription,
+--
+/home/z/my-project/src/components/crm/customers.tsx:1642:          <DialogFooter className="gap-2 sm:gap-0">
+/home/z/my-project/src/components/crm/customers.tsx-1643-            <Button
+/home/z/my-project/src/components/crm/customers.tsx-1644-              variant="outline"
+/home/z/my-project/src/components/crm/customers.tsx-1645-              onClick={() => setCustomerDialogOpen(false)}
+/home/z/my-project/src/components/crm/customers.tsx-1646-              disabled={customerSubmitting}
+/home/z/my-project/src/components/crm/customers.tsx-1647-            >
+/home/z/my-project/src/components/crm/customers.tsx-1648-              Cancel
+/home/z/my-project/src/components/crm/customers.tsx-1649-            </Button>
+/home/z/my-project/src/components/crm/customers.tsx-1650-            <Button onClick={handleCustomerSubmit} disabled={customerSubmitting}>
+/home/z/my-project/src/components/crm/customers.tsx-1651-              {customerSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
+/home/z/my-project/src/components/crm/customers.tsx-1652-              {editingCustomer ? 'Update Customer' : 'Add Customer'}
+/home/z/my-project/src/components/crm/customers.tsx-1653-            </Button>
+/home/z/my-project/src/components/crm/customers.tsx:1654:          </DialogFooter>
+/home/z/my-project/src/components/crm/customers.tsx-1655-        </DialogContent>
+/home/z/my-project/src/components/crm/customers.tsx-1656-      </Dialog>
+/home/z/my-project/src/components/crm/customers.tsx-1657-
+/home/z/my-project/src/components/crm/customers.tsx-1658-      {/* ─── Loyalty Points Dialog ───────────────────────────────────── */}
+/home/z/my-project/src/components/crm/customers.tsx-1659-      <Dialog open={loyaltyDialogOpen} onOpenChange={setLoyaltyDialogOpen}>
+/home/z/my-project/src/components/crm/customers.tsx-1660-        <DialogContent className="sm:max-w-md">
+/home/z/my-project/src/components/crm/customers.tsx-1661-          <DialogHeader>
+/home/z/my-project/src/components/crm/customers.tsx-1662-            <DialogTitle>
+/home/z/my-project/src/components/crm/customers.tsx-1663-              {loyaltyType === 'earn' ? 'Earn Loyalty Points' : 'Redeem Loyalty Points'}
+/home/z/my-project/src/components/crm/customers.tsx-1664-            </DialogTitle>
+/home/z/my-project/src/components/crm/customers.tsx-1665-            <DialogDescription>
+/home/z/my-project/src/components/crm/customers.tsx-1666-              {loyaltyType === 'earn'
+/home/z/my-project/src/components/crm/customers.tsx-1667-                ? 'Add loyalty points to this customer manually.'
+/home/z/my-project/src/components/crm/customers.tsx-1668-                : `Customer has ${selectedCustomer?.loyaltyPoints ?? 0} points available. 100 points = ₹50 discount.`}
+/home/z/my-project/src/components/crm/customers.tsx-1669-            </DialogDescription>
+/home/z/my-project/src/components/crm/customers.tsx-1670-          </DialogHeader>
+/home/z/my-project/src/components/crm/customers.tsx-1671-          <div className="flex flex-col gap-4">
+/home/z/my-project/src/components/crm/customers.tsx-1672-            <div className="grid gap-2">
+/home/z/my-project/src/components/crm/customers.tsx-1673-              <Label htmlFor="loyalty-points">
+/home/z/my-project/src/components/crm/customers.tsx-1674-                Points {loyaltyType === 'earn' ? 'to Add' : 'to Redeem'}
+--
+/home/z/my-project/src/components/crm/customers.tsx:1701:          <DialogFooter className="gap-2 sm:gap-0 mt-4">
+/home/z/my-project/src/components/crm/customers.tsx-1702-            <Button variant="outline" onClick={() => setLoyaltyDialogOpen(false)} disabled={loyaltySubmitting}>
+/home/z/my-project/src/components/crm/customers.tsx-1703-              Cancel
+/home/z/my-project/src/components/crm/customers.tsx-1704-            </Button>
+/home/z/my-project/src/components/crm/customers.tsx-1705-            <Button onClick={handleLoyaltySubmit} disabled={loyaltySubmitting || !loyaltyPoints}>
+/home/z/my-project/src/components/crm/customers.tsx-1706-              {loyaltySubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
+/home/z/my-project/src/components/crm/customers.tsx-1707-              {loyaltyType === 'earn' ? 'Earn Points' : 'Redeem Points'}
+/home/z/my-project/src/components/crm/customers.tsx-1708-            </Button>
+/home/z/my-project/src/components/crm/customers.tsx:1709:          </DialogFooter>
+/home/z/my-project/src/components/crm/customers.tsx-1710-        </DialogContent>
+/home/z/my-project/src/components/crm/customers.tsx-1711-      </Dialog>
+/home/z/my-project/src/components/crm/customers.tsx-1712-
+/home/z/my-project/src/components/crm/customers.tsx-1713-      {/* ─── Prescription Dialog ────────────────────────────────────── */}
+/home/z/my-project/src/components/crm/customers.tsx-1714-      <Dialog open={prescriptionDialogOpen} onOpenChange={setPrescriptionDialogOpen}>
+/home/z/my-project/src/components/crm/customers.tsx-1715-        <DialogContent className="max-h-[90vh] sm:max-w-lg">
+/home/z/my-project/src/components/crm/customers.tsx-1716-          <DialogHeader>
+/home/z/my-project/src/components/crm/customers.tsx-1717-            <DialogTitle>Add Prescription</DialogTitle>
+/home/z/my-project/src/components/crm/customers.tsx-1718-            <DialogDescription>
+/home/z/my-project/src/components/crm/customers.tsx-1719-              Enter the eye power details for the prescription.
+/home/z/my-project/src/components/crm/customers.tsx-1720-            </DialogDescription>
+/home/z/my-project/src/components/crm/customers.tsx-1721-          </DialogHeader>
+/home/z/my-project/src/components/crm/customers.tsx-1722-
+/home/z/my-project/src/components/crm/customers.tsx-1723-          <ScrollArea className="max-h-[60vh]">
+/home/z/my-project/src/components/crm/customers.tsx-1724-            <div className="flex flex-col gap-4 p-1">
+/home/z/my-project/src/components/crm/customers.tsx-1725-              {/* Date */}
+/home/z/my-project/src/components/crm/customers.tsx-1726-              <div className="grid gap-2">
+/home/z/my-project/src/components/crm/customers.tsx-1727-                <Label htmlFor="rx-date">
+/home/z/my-project/src/components/crm/customers.tsx-1728-                  Date <span className="text-destructive">*</span>
+/home/z/my-project/src/components/crm/customers.tsx-1729-                </Label>
+--
+/home/z/my-project/src/components/crm/customers.tsx:1880:          <DialogFooter className="gap-2 sm:gap-0">
+/home/z/my-project/src/components/crm/customers.tsx-1881-            <Button
+/home/z/my-project/src/components/crm/customers.tsx-1882-              variant="outline"
+/home/z/my-project/src/components/crm/customers.tsx-1883-              onClick={() => setPrescriptionDialogOpen(false)}
+/home/z/my-project/src/components/crm/customers.tsx-1884-              disabled={prescriptionSubmitting}
+/home/z/my-project/src/components/crm/customers.tsx-1885-            >
+/home/z/my-project/src/components/crm/customers.tsx-1886-              Cancel
+/home/z/my-project/src/components/crm/customers.tsx-1887-            </Button>
+/home/z/my-project/src/components/crm/customers.tsx-1888-            <Button
+/home/z/my-project/src/components/crm/customers.tsx-1889-              onClick={handlePrescriptionSubmit}
+/home/z/my-project/src/components/crm/customers.tsx-1890-              disabled={prescriptionSubmitting || !prescriptionForm.date}
+/home/z/my-project/src/components/crm/customers.tsx-1891-            >
+/home/z/my-project/src/components/crm/customers.tsx-1892-              {prescriptionSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
+/home/z/my-project/src/components/crm/customers.tsx-1893-              Save Prescription
+/home/z/my-project/src/components/crm/customers.tsx-1894-            </Button>
+/home/z/my-project/src/components/crm/customers.tsx:1895:          </DialogFooter>
+/home/z/my-project/src/components/crm/customers.tsx-1896-        </DialogContent>
+/home/z/my-project/src/components/crm/customers.tsx-1897-      </Dialog>
+/home/z/my-project/src/components/crm/customers.tsx-1898-
+/home/z/my-project/src/components/crm/customers.tsx-1899-      {/* ─── Visit Dialog ───────────────────────────────────────────── */}
+/home/z/my-project/src/components/crm/customers.tsx-1900-      <Dialog open={visitDialogOpen} onOpenChange={setVisitDialogOpen}>
+/home/z/my-project/src/components/crm/customers.tsx-1901-        <DialogContent className="sm:max-w-md">
+/home/z/my-project/src/components/crm/customers.tsx-1902-          <DialogHeader>
+/home/z/my-project/src/components/crm/customers.tsx-1903-            <DialogTitle>Add Visit</DialogTitle>
+/home/z/my-project/src/components/crm/customers.tsx-1904-            <DialogDescription>
+/home/z/my-project/src/components/crm/customers.tsx-1905-              Record a customer visit entry.
+/home/z/my-project/src/components/crm/customers.tsx-1906-            </DialogDescription>
+/home/z/my-project/src/components/crm/customers.tsx-1907-          </DialogHeader>
+/home/z/my-project/src/components/crm/customers.tsx-1908-
+/home/z/my-project/src/components/crm/customers.tsx-1909-          <div className="flex flex-col gap-4">
+/home/z/my-project/src/components/crm/customers.tsx-1910-            {/* Date */}
+/home/z/my-project/src/components/crm/customers.tsx-1911-            <div className="grid gap-2">
+/home/z/my-project/src/components/crm/customers.tsx-1912-              <Label htmlFor="visit-date">
+/home/z/my-project/src/components/crm/customers.tsx-1913-                Date <span className="text-destructive">*</span>
+/home/z/my-project/src/components/crm/customers.tsx-1914-              </Label>
+/home/z/my-project/src/components/crm/customers.tsx-1915-              <Input
+--
+/home/z/my-project/src/components/crm/customers.tsx:1955:          <DialogFooter className="gap-2 sm:gap-0">
+/home/z/my-project/src/components/crm/customers.tsx-1956-            <Button
+/home/z/my-project/src/components/crm/customers.tsx-1957-              variant="outline"
+/home/z/my-project/src/components/crm/customers.tsx-1958-              onClick={() => setVisitDialogOpen(false)}
+/home/z/my-project/src/components/crm/customers.tsx-1959-              disabled={visitSubmitting}
+/home/z/my-project/src/components/crm/customers.tsx-1960-            >
+/home/z/my-project/src/components/crm/customers.tsx-1961-              Cancel
+/home/z/my-project/src/components/crm/customers.tsx-1962-            </Button>
+/home/z/my-project/src/components/crm/customers.tsx-1963-            <Button
+/home/z/my-project/src/components/crm/customers.tsx-1964-              onClick={handleVisitSubmit}
+/home/z/my-project/src/components/crm/customers.tsx-1965-              disabled={visitSubmitting || !visitForm.date || !visitForm.purpose.trim()}
+/home/z/my-project/src/components/crm/customers.tsx-1966-            >
+/home/z/my-project/src/components/crm/customers.tsx-1967-              {visitSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
+/home/z/my-project/src/components/crm/customers.tsx-1968-              Save Visit
+/home/z/my-project/src/components/crm/customers.tsx-1969-            </Button>
+/home/z/my-project/src/components/crm/customers.tsx:1970:          </DialogFooter>
+/home/z/my-project/src/components/crm/customers.tsx-1971-        </DialogContent>
+/home/z/my-project/src/components/crm/customers.tsx-1972-      </Dialog>
+/home/z/my-project/src/components/crm/customers.tsx-1973-    </div>
+/home/z/my-project/src/components/crm/customers.tsx-1974-  );
+/home/z/my-project/src/components/crm/customers.tsx-1975-}
+--
+/home/z/my-project/src/components/crm/inventory.tsx:45:  DialogFooter,
+/home/z/my-project/src/components/crm/inventory.tsx-46-  DialogHeader,
+/home/z/my-project/src/components/crm/inventory.tsx-47-  DialogTitle,
+/home/z/my-project/src/components/crm/inventory.tsx-48-} from '@/components/ui/dialog'
+/home/z/my-project/src/components/crm/inventory.tsx-49-import {
+/home/z/my-project/src/components/crm/inventory.tsx-50-  Select,
+/home/z/my-project/src/components/crm/inventory.tsx-51-  SelectContent,
+/home/z/my-project/src/components/crm/inventory.tsx-52-  SelectItem,
+/home/z/my-project/src/components/crm/inventory.tsx-53-  SelectTrigger,
+/home/z/my-project/src/components/crm/inventory.tsx-54-  SelectValue,
+/home/z/my-project/src/components/crm/inventory.tsx-55-} from '@/components/ui/select'
+/home/z/my-project/src/components/crm/inventory.tsx-56-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+/home/z/my-project/src/components/crm/inventory.tsx-57-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
+/home/z/my-project/src/components/crm/inventory.tsx-58-import { Progress } from '@/components/ui/progress'
+/home/z/my-project/src/components/crm/inventory.tsx-59-
+/home/z/my-project/src/components/crm/inventory.tsx-60-// ─── Types ───────────────────────────────────────────────────────────────────
+/home/z/my-project/src/components/crm/inventory.tsx-61-
+/home/z/my-project/src/components/crm/inventory.tsx-62-interface Product {
+/home/z/my-project/src/components/crm/inventory.tsx-63-  id: string
+/home/z/my-project/src/components/crm/inventory.tsx-64-  sku: string
+/home/z/my-project/src/components/crm/inventory.tsx-65-  name: string
+--
+/home/z/my-project/src/components/crm/inventory.tsx:1377:          <DialogFooter>
+/home/z/my-project/src/components/crm/inventory.tsx-1378-            <Button
+/home/z/my-project/src/components/crm/inventory.tsx-1379-              variant="outline"
+/home/z/my-project/src/components/crm/inventory.tsx-1380-              onClick={() => {
+/home/z/my-project/src/components/crm/inventory.tsx-1381-                setDialogOpen(false)
+/home/z/my-project/src/components/crm/inventory.tsx-1382-                setEditingProduct(null)
+/home/z/my-project/src/components/crm/inventory.tsx-1383-                setForm(emptyForm)
+/home/z/my-project/src/components/crm/inventory.tsx-1384-              }}
+/home/z/my-project/src/components/crm/inventory.tsx-1385-              disabled={submitting}
+/home/z/my-project/src/components/crm/inventory.tsx-1386-            >
+/home/z/my-project/src/components/crm/inventory.tsx-1387-              Cancel
+/home/z/my-project/src/components/crm/inventory.tsx-1388-            </Button>
+/home/z/my-project/src/components/crm/inventory.tsx-1389-            <Button
+/home/z/my-project/src/components/crm/inventory.tsx-1390-              onClick={handleSubmit}
+/home/z/my-project/src/components/crm/inventory.tsx-1391-              disabled={
+/home/z/my-project/src/components/crm/inventory.tsx-1392-                submitting ||
+/home/z/my-project/src/components/crm/inventory.tsx-1393-                !form.name.trim() ||
+/home/z/my-project/src/components/crm/inventory.tsx-1394-                !form.category ||
+/home/z/my-project/src/components/crm/inventory.tsx-1395-                !form.price.trim() ||
+/home/z/my-project/src/components/crm/inventory.tsx-1396-                !form.stock.trim()
+/home/z/my-project/src/components/crm/inventory.tsx-1397-              }
+--
+/home/z/my-project/src/components/crm/inventory.tsx:1402:          </DialogFooter>
+/home/z/my-project/src/components/crm/inventory.tsx-1403-        </DialogContent>
+/home/z/my-project/src/components/crm/inventory.tsx-1404-      </Dialog>
+/home/z/my-project/src/components/crm/inventory.tsx-1405-
+/home/z/my-project/src/components/crm/inventory.tsx-1406-      {/* ─── Delete Confirmation Dialog ───────────────────────────────────── */}
+/home/z/my-project/src/components/crm/inventory.tsx-1407-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+/home/z/my-project/src/components/crm/inventory.tsx-1408-        <DialogContent className="sm:max-w-md">
+/home/z/my-project/src/components/crm/inventory.tsx-1409-          <DialogHeader>
+/home/z/my-project/src/components/crm/inventory.tsx-1410-            <DialogTitle>Delete Product</DialogTitle>
+/home/z/my-project/src/components/crm/inventory.tsx-1411-            <DialogDescription>
+/home/z/my-project/src/components/crm/inventory.tsx-1412-              Are you sure you want to delete{' '}
+/home/z/my-project/src/components/crm/inventory.tsx-1413-              <span className="font-semibold text-foreground">
+/home/z/my-project/src/components/crm/inventory.tsx-1414-                {deletingProduct?.name}
+/home/z/my-project/src/components/crm/inventory.tsx-1415-              </span>
+/home/z/my-project/src/components/crm/inventory.tsx-1416-              ? This action cannot be undone.
+/home/z/my-project/src/components/crm/inventory.tsx-1417-            </DialogDescription>
+/home/z/my-project/src/components/crm/inventory.tsx-1418-          </DialogHeader>
+/home/z/my-project/src/components/crm/inventory.tsx:1419:          <DialogFooter>
+/home/z/my-project/src/components/crm/inventory.tsx-1420-            <Button
+/home/z/my-project/src/components/crm/inventory.tsx-1421-              variant="outline"
+/home/z/my-project/src/components/crm/inventory.tsx-1422-              onClick={() => {
+/home/z/my-project/src/components/crm/inventory.tsx-1423-                setDeleteDialogOpen(false)
+/home/z/my-project/src/components/crm/inventory.tsx-1424-                setDeletingProduct(null)
+/home/z/my-project/src/components/crm/inventory.tsx-1425-              }}
+/home/z/my-project/src/components/crm/inventory.tsx-1426-              disabled={deleting}
+/home/z/my-project/src/components/crm/inventory.tsx-1427-            >
+/home/z/my-project/src/components/crm/inventory.tsx-1428-              Cancel
+/home/z/my-project/src/components/crm/inventory.tsx-1429-            </Button>
+/home/z/my-project/src/components/crm/inventory.tsx-1430-            <Button
+/home/z/my-project/src/components/crm/inventory.tsx-1431-              variant="destructive"
+/home/z/my-project/src/components/crm/inventory.tsx-1432-              onClick={handleDelete}
+/home/z/my-project/src/components/crm/inventory.tsx-1433-              disabled={deleting}
+/home/z/my-project/src/components/crm/inventory.tsx-1434-            >
+/home/z/my-project/src/components/crm/inventory.tsx-1435-              {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+/home/z/my-project/src/components/crm/inventory.tsx-1436-              Delete
+/home/z/my-project/src/components/crm/inventory.tsx-1437-            </Button>
+/home/z/my-project/src/components/crm/inventory.tsx:1438:          </DialogFooter>
+/home/z/my-project/src/components/crm/inventory.tsx-1439-        </DialogContent>
+/home/z/my-project/src/components/crm/inventory.tsx-1440-      </Dialog>
+/home/z/my-project/src/components/crm/inventory.tsx-1441-
+/home/z/my-project/src/components/crm/inventory.tsx-1442-      {/* ─── Bulk CSV Import Dialog ───────────────────────────────────────── */}
+/home/z/my-project/src/components/crm/inventory.tsx-1443-      <Dialog open={csvDialogOpen} onOpenChange={(open) => {
+/home/z/my-project/src/components/crm/inventory.tsx-1444-        setCsvDialogOpen(open)
+/home/z/my-project/src/components/crm/inventory.tsx-1445-        if (!open) {
+/home/z/my-project/src/components/crm/inventory.tsx-1446-          setCsvData('')
+/home/z/my-project/src/components/crm/inventory.tsx-1447-          setImportResult(null)
+/home/z/my-project/src/components/crm/inventory.tsx-1448-        }
+/home/z/my-project/src/components/crm/inventory.tsx-1449-      }}>
+/home/z/my-project/src/components/crm/inventory.tsx-1450-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+/home/z/my-project/src/components/crm/inventory.tsx-1451-          <DialogHeader>
+/home/z/my-project/src/components/crm/inventory.tsx-1452-            <DialogTitle>
+/home/z/my-project/src/components/crm/inventory.tsx-1453-              <span className="inline-flex items-center gap-2">
+/home/z/my-project/src/components/crm/inventory.tsx-1454-                <Upload className="h-5 w-5" />
+/home/z/my-project/src/components/crm/inventory.tsx-1455-                Bulk Import CSV
+/home/z/my-project/src/components/crm/inventory.tsx-1456-              </span>
+/home/z/my-project/src/components/crm/inventory.tsx-1457-            </DialogTitle>
+/home/z/my-project/src/components/crm/inventory.tsx-1458-            <DialogDescription>
+--
+/home/z/my-project/src/components/crm/inventory.tsx:1528:          <DialogFooter>
+/home/z/my-project/src/components/crm/inventory.tsx-1529-            <Button
+/home/z/my-project/src/components/crm/inventory.tsx-1530-              variant="outline"
+/home/z/my-project/src/components/crm/inventory.tsx-1531-              onClick={() => {
+/home/z/my-project/src/components/crm/inventory.tsx-1532-                setCsvDialogOpen(false)
+/home/z/my-project/src/components/crm/inventory.tsx-1533-                setCsvData('')
+/home/z/my-project/src/components/crm/inventory.tsx-1534-                setImportResult(null)
+/home/z/my-project/src/components/crm/inventory.tsx-1535-              }}
+/home/z/my-project/src/components/crm/inventory.tsx-1536-              disabled={importing}
+/home/z/my-project/src/components/crm/inventory.tsx-1537-              className="min-h-[44px] touch-manipulation"
+/home/z/my-project/src/components/crm/inventory.tsx-1538-            >
+/home/z/my-project/src/components/crm/inventory.tsx-1539-              Close
+/home/z/my-project/src/components/crm/inventory.tsx-1540-            </Button>
+/home/z/my-project/src/components/crm/inventory.tsx-1541-            <Button
+/home/z/my-project/src/components/crm/inventory.tsx-1542-              variant="outline"
+/home/z/my-project/src/components/crm/inventory.tsx-1543-              onClick={() => fileInputRef.current?.click()}
+/home/z/my-project/src/components/crm/inventory.tsx-1544-              disabled={importing}
+/home/z/my-project/src/components/crm/inventory.tsx-1545-              className="gap-2 min-h-[44px] touch-manipulation"
+/home/z/my-project/src/components/crm/inventory.tsx-1546-            >
+/home/z/my-project/src/components/crm/inventory.tsx-1547-              <Upload className="h-4 w-4" />
+/home/z/my-project/src/components/crm/inventory.tsx-1548-              Upload .csv File
+--
+/home/z/my-project/src/components/crm/inventory.tsx:1576:          </DialogFooter>
+/home/z/my-project/src/components/crm/inventory.tsx-1577-        </DialogContent>
+/home/z/my-project/src/components/crm/inventory.tsx-1578-      </Dialog>
+/home/z/my-project/src/components/crm/inventory.tsx-1579-
+/home/z/my-project/src/components/crm/inventory.tsx-1580-      {/* ─── Low-Stock Report Dialog ──────────────────────────────────────── */}
+/home/z/my-project/src/components/crm/inventory.tsx-1581-      <Dialog open={reportDialogOpen} onOpenChange={(open) => {
+/home/z/my-project/src/components/crm/inventory.tsx-1582-        setReportDialogOpen(open)
+/home/z/my-project/src/components/crm/inventory.tsx-1583-        if (!open) {
+/home/z/my-project/src/components/crm/inventory.tsx-1584-          setReportData(null)
+/home/z/my-project/src/components/crm/inventory.tsx-1585-        }
+/home/z/my-project/src/components/crm/inventory.tsx-1586-      }}>
+/home/z/my-project/src/components/crm/inventory.tsx-1587-        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+/home/z/my-project/src/components/crm/inventory.tsx-1588-          <DialogHeader>
+/home/z/my-project/src/components/crm/inventory.tsx-1589-            <DialogTitle>
+/home/z/my-project/src/components/crm/inventory.tsx-1590-              <span className="inline-flex items-center gap-2">
+/home/z/my-project/src/components/crm/inventory.tsx-1591-                <FileBarChart className="h-5 w-5" />
+/home/z/my-project/src/components/crm/inventory.tsx-1592-                Low Stock Report
+/home/z/my-project/src/components/crm/inventory.tsx-1593-              </span>
+/home/z/my-project/src/components/crm/inventory.tsx-1594-            </DialogTitle>
+/home/z/my-project/src/components/crm/inventory.tsx-1595-            <DialogDescription>
+/home/z/my-project/src/components/crm/inventory.tsx-1596-              Overview of all products that need reordering.
+--
+/home/z/my-project/src/components/crm/inventory.tsx:1722:          <DialogFooter>
+/home/z/my-project/src/components/crm/inventory.tsx-1723-            <Button
+/home/z/my-project/src/components/crm/inventory.tsx-1724-              variant="outline"
+/home/z/my-project/src/components/crm/inventory.tsx-1725-              onClick={() => {
+/home/z/my-project/src/components/crm/inventory.tsx-1726-                setReportDialogOpen(false)
+/home/z/my-project/src/components/crm/inventory.tsx-1727-                setReportData(null)
+/home/z/my-project/src/components/crm/inventory.tsx-1728-              }}
+/home/z/my-project/src/components/crm/inventory.tsx-1729-            >
+/home/z/my-project/src/components/crm/inventory.tsx-1730-              Close
+/home/z/my-project/src/components/crm/inventory.tsx-1731-            </Button>
+/home/z/my-project/src/components/crm/inventory.tsx:1732:          </DialogFooter>
+/home/z/my-project/src/components/crm/inventory.tsx-1733-        </DialogContent>
+/home/z/my-project/src/components/crm/inventory.tsx-1734-      </Dialog>
+/home/z/my-project/src/components/crm/inventory.tsx-1735-
+/home/z/my-project/src/components/crm/inventory.tsx-1736-      {/* ─── Quick Stock Adjust Dialog ────────────────────────────────── */}
+/home/z/my-project/src/components/crm/inventory.tsx-1737-      <Dialog open={!!adjustProduct} onOpenChange={(open) => { if (!open) setAdjustProduct(null) }}>
+/home/z/my-project/src/components/crm/inventory.tsx-1738-        <DialogContent className="sm:max-w-sm">
+/home/z/my-project/src/components/crm/inventory.tsx-1739-          <DialogHeader>
+/home/z/my-project/src/components/crm/inventory.tsx-1740-            <DialogTitle>Quick Stock Adjust</DialogTitle>
+/home/z/my-project/src/components/crm/inventory.tsx-1741-            <DialogDescription>
+/home/z/my-project/src/components/crm/inventory.tsx-1742-              {adjustProduct && (
+/home/z/my-project/src/components/crm/inventory.tsx-1743-                <span className="font-medium">{adjustProduct.name}</span>
+/home/z/my-project/src/components/crm/inventory.tsx-1744-              )}
+/home/z/my-project/src/components/crm/inventory.tsx-1745-              {' '}— Current stock: <span className="font-mono font-semibold">{adjustProduct?.stock ?? 0}</span>
+/home/z/my-project/src/components/crm/inventory.tsx-1746-            </DialogDescription>
+/home/z/my-project/src/components/crm/inventory.tsx-1747-          </DialogHeader>
+/home/z/my-project/src/components/crm/inventory.tsx-1748-          <div className="space-y-4 py-2">
+/home/z/my-project/src/components/crm/inventory.tsx-1749-            <div className="flex items-center gap-3">
+/home/z/my-project/src/components/crm/inventory.tsx-1750-              <Button variant="outline" size="icon" className="h-10 w-10 text-lg" onClick={() => setAdjustQty(q => q - 1)} disabled={adjustQty <= -99}>
+/home/z/my-project/src/components/crm/inventory.tsx-1751-                −
+/home/z/my-project/src/components/crm/inventory.tsx-1752-              </Button>
+--
+/home/z/my-project/src/components/crm/inventory.tsx:1780:          <DialogFooter>
+
+[Showing results with pagination = limit: 500]

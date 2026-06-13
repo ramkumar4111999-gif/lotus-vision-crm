@@ -443,12 +443,13 @@ function NewCustomerForm({ onSave, onCancel }: NewCustomerFormProps) {
         </div>
       </div>
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" size="sm" onClick={onCancel}>
+        <Button type="button" variant="outline" size="sm" className="min-h-[44px] touch-manipulation" onClick={onCancel}>
           Cancel
         </Button>
         <Button
           type="button"
           size="sm"
+          className="min-h-[44px] touch-manipulation"
           disabled={!valid}
           onClick={() => {
             if (!valid) return;
@@ -853,7 +854,7 @@ function CreateSaleDialog({ open, onOpenChange, onCreated }: CreateSaleDialogPro
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label className="text-base font-semibold">Items</Label>
-              <Button type="button" variant="outline" size="sm" onClick={handleAddItem}>
+              <Button type="button" variant="outline" size="sm" className="min-h-[44px] touch-manipulation" onClick={handleAddItem}>
                 <Plus className="size-3.5 mr-1" />
                 Add Item
               </Button>
@@ -1079,6 +1080,7 @@ function CreateSaleDialog({ open, onOpenChange, onCreated }: CreateSaleDialogPro
             <Button
               type="button"
               variant="outline"
+              className="min-h-[44px] min-w-[44px] touch-manipulation"
               onClick={() => {
                 resetForm();
                 onOpenChange(false);
@@ -1088,6 +1090,7 @@ function CreateSaleDialog({ open, onOpenChange, onCreated }: CreateSaleDialogPro
             </Button>
             <Button
               type="button"
+              className="min-h-[44px] min-w-[44px] touch-manipulation"
               onClick={handleCreate}
               disabled={submitting || !selectedCustomer || !hasValidItems || !splitValid}
             >
@@ -1336,7 +1339,7 @@ function SaleDetailDialog({ sale, open, onOpenChange, onReturn, onToggleStatus }
                 Process Return
               </Button>
             )}
-            <Button variant="ghost" size="sm" className="ml-auto" onClick={() => onOpenChange(false)}>
+            <Button variant="ghost" size="sm" className="min-h-[44px] ml-auto touch-manipulation" onClick={() => onOpenChange(false)}>
               Close
             </Button>
           </div>
@@ -1545,11 +1548,12 @@ function ReturnDialog({ sale, open, onOpenChange, onProcessed }: ReturnDialogPro
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" className="min-h-[44px] min-w-[44px] touch-manipulation" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button
             variant="destructive"
+            className="min-h-[44px] min-w-[44px] touch-manipulation"
             onClick={handleProcessReturn}
             disabled={submitting || !hasItems || !reason.trim()}
           >
@@ -1818,7 +1822,7 @@ export default function Sales() {
       setLoading(false);
       fetchCreditTotal();
     }
-  }, [search, page, fromDate, toDate, creditFilter, statusFilter, paymentModeFilter]);
+  }, [search, page, fromDate, toDate, creditFilter, statusFilter, paymentModeFilter, fetchCreditTotal]);
 
   React.useEffect(() => {
     fetchSales();
@@ -2084,8 +2088,8 @@ export default function Sales() {
                         setSearch("");
                         setFromDate("");
                         setToDate("");
-                        setStatusFilter("");
-                        setPaymentModeFilter("");
+                        setStatusFilter("all");
+                        setPaymentModeFilter("all");
                         setPage(1);
                       }}
                     >

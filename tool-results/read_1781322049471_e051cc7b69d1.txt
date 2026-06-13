@@ -1,0 +1,502 @@
+  1001→  1001→                            e.stopPropagation();
+  1002→  1002→                            handleSelectCustomer(customer);
+  1003→  1003→                          }}
+  1004→  1004→                          aria-label="View details"
+  1005→  1005→                        >
+  1006→  1006→                          <Eye className="size-4" />
+  1007→  1007→                        </Button>
+  1008→  1008→                        <Button
+  1009→  1009→                          variant="ghost"
+  1010→  1010→                          size="icon"
+  1011→  1011→                          className="min-w-[44px] min-h-[44px] touch-manipulation"
+  1012→  1012→                          onClick={(e) => {
+  1013→  1013→                            e.stopPropagation();
+  1014→  1014→                            openEditCustomerDialog(customer);
+  1015→  1015→                          }}
+  1016→  1016→                          aria-label="Edit customer"
+  1017→  1017→                        >
+  1018→  1018→                          <Pencil className="size-4" />
+  1019→  1019→                        </Button>
+  1020→  1020→                      </div>
+  1021→  1021→                    </TableCell>
+  1022→  1022→                  </TableRow>
+  1023→  1023→                ))
+  1024→  1024→              )}
+  1025→  1025→            </TableBody>
+  1026→  1026→          </Table>
+  1027→  1027→          </div>
+  1028→  1028→        </CardContent>
+  1029→  1029→
+  1030→  1030→        {/* ─── Pagination ──────────────────────────────────────────────── */}
+  1031→  1031→        {totalPages > 1 && (
+  1032→  1032→          <div className="flex items-center justify-between border-t px-4 py-3">
+  1033→  1033→            <p className="text-muted-foreground text-sm">
+  1034→  1034→              Page {page} of {totalPages}
+  1035→  1035→            </p>
+  1036→  1036→            <div className="flex gap-2">
+  1037→  1037→              <Button
+  1038→  1038→                variant="outline"
+  1039→  1039→                size="sm"
+  1040→  1040→                disabled={page <= 1}
+  1041→  1041→                onClick={() => setPage((p) => Math.max(1, p - 1))}
+  1042→  1042→              >
+  1043→  1043→                <ChevronLeft className="mr-1 size-4" />
+  1044→  1044→                Previous
+  1045→  1045→              </Button>
+  1046→  1046→              <Button
+  1047→  1047→                variant="outline"
+  1048→  1048→                size="sm"
+  1049→  1049→                disabled={page >= totalPages}
+  1050→  1050→                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+  1051→  1051→              >
+  1052→  1052→                Next
+  1053→  1053→                <ChevronRight className="ml-1 size-4" />
+  1054→  1054→              </Button>
+  1055→  1055→            </div>
+  1056→  1056→          </div>
+  1057→  1057→        )}
+  1058→  1058→      </Card>
+  1059→  1059→
+  1060→  1060→      {/* ─── Customer Detail Panel (Drawer/Sheet-like) ────────────────── */}
+  1061→  1061→      <Dialog
+  1062→  1062→        open={!!selectedCustomer}
+  1063→  1063→        onOpenChange={(open) => {
+  1064→  1064→          if (!open) handleCloseDetail();
+  1065→  1065→        }}
+  1066→  1066→      >
+  1067→  1067→        <DialogContent className="max-h-[90vh] sm:max-w-2xl">
+  1068→  1068→          {selectedCustomer ? (
+  1069→  1069→            <>
+  1070→  1070→              <DialogHeader>
+  1071→  1071→                <DialogTitle className="flex items-center gap-2 text-xl">
+  1072→  1072→                  {selectedCustomer.name}
+  1073→  1073→                  {renderGroupBadge(selectedCustomer.group)}
+  1074→  1074→                </DialogTitle>
+  1075→  1075→                <DialogDescription>Customer details and history</DialogDescription>
+  1076→  1076→              </DialogHeader>
+  1077→  1077→
+  1078→  1078→              {/* Customer Info Grid */}
+  1079→  1079→              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+  1080→  1080→                <div className="flex items-center gap-2 text-sm">
+  1081→  1081→                  <Phone className="text-muted-foreground size-4 shrink-0" />
+  1082→  1082→                  <span>{selectedCustomer.phone}</span>
+  1083→  1083→                </div>
+  1084→  1084→                {selectedCustomer.email && (
+  1085→  1085→                  <div className="flex items-center gap-2 text-sm">
+  1086→  1086→                    <Mail className="text-muted-foreground size-4 shrink-0" />
+  1087→  1087→                    <span className="truncate">{selectedCustomer.email}</span>
+  1088→  1088→                  </div>
+  1089→  1089→                )}
+  1090→  1090→                {selectedCustomer.dob && (
+  1091→  1091→                  <div className="flex items-center gap-2 text-sm">
+  1092→  1092→                    <Calendar className="text-muted-foreground size-4 shrink-0" />
+  1093→  1093→                    <span>DOB: {formatDate(selectedCustomer.dob)}</span>
+  1094→  1094→                  </div>
+  1095→  1095→                )}
+  1096→  1096→                {selectedCustomer.aadhar && (
+  1097→  1097→                  <div className="flex items-center gap-2 text-sm">
+  1098→  1098→                    <CreditCard className="text-muted-foreground size-4 shrink-0" />
+  1099→  1099→                    <span>Aadhar: {selectedCustomer.aadhar}</span>
+  1100→  1100→                  </div>
+  1101→  1101→                )}
+  1102→  1102→                {selectedCustomer.address && (
+  1103→  1103→                  <div className="flex items-start gap-2 text-sm sm:col-span-2">
+  1104→  1104→                    <MapPin className="text-muted-foreground mt-0.5 size-4 shrink-0" />
+  1105→  1105→                    <span>{selectedCustomer.address}</span>
+  1106→  1106→                  </div>
+  1107→  1107→                )}
+  1108→  1108→              </div>
+  1109→  1109→
+  1110→  1110→              <Separator />
+  1111→  1111→
+  1112→  1112→              {/* Summary stats */}
+  1113→  1113→              <div className="grid grid-cols-3 gap-4">
+  1114→  1114→                <div className="rounded-lg border p-3 text-center">
+  1115→  1115→                  <p className="text-muted-foreground text-xs">Points</p>
+  1116→  1116→                  <p className="text-lg font-semibold tabular-nums">
+  1117→  1117→                    {selectedCustomer.loyaltyPoints.toLocaleString()}
+  1118→  1118→                  </p>
+  1119→  1119→                </div>
+  1120→  1120→                <div className="rounded-lg border p-3 text-center">
+  1121→  1121→                  <p className="text-muted-foreground text-xs">Total Spent</p>
+  1122→  1122→                  <p className="text-lg font-semibold tabular-nums">
+  1123→  1123→                    {formatCurrency(selectedCustomer.totalSpent)}
+  1124→  1124→                  </p>
+  1125→  1125→                </div>
+  1126→  1126→                <div className="rounded-lg border p-3 text-center">
+  1127→  1127→                  <p className="text-muted-foreground text-xs">Outstanding</p>
+  1128→  1128→                  <p className="text-lg font-semibold tabular-nums text-destructive">
+  1129→  1129→                    {formatCurrency(
+  1130→  1130→                      dues
+  1131→  1131→                        .filter((d) => d.status === 'pending' || d.status === 'overdue')
+  1132→  1132→                        .reduce((sum, d) => sum + d.amount, 0)
+  1133→  1133→                    )}
+  1134→  1134→                  </p>
+  1135→  1135→                </div>
+  1136→  1136→              </div>
+  1137→  1137→
+  1138→  1138→              {/* Quick actions */}
+  1139→  1139→              <div className="flex flex-wrap gap-2">
+  1140→  1140→                <Button
+  1141→  1141→                  size="sm"
+  1142→  1142→                  variant="outline"
+  1143→  1143→                  onClick={() => openPrescriptionDialog()}
+  1144→  1144→                >
+  1145→  1145→                  <Stethoscope className="mr-1.5 size-3.5" />
+  1146→  1146→                  Add Prescription
+  1147→  1147→                </Button>
+  1148→  1148→                <Button
+  1149→  1149→                  size="sm"
+  1150→  1150→                  variant="outline"
+  1151→  1151→                  onClick={() => openVisitDialog()}
+  1152→  1152→                >
+  1153→  1153→                  <History className="mr-1.5 size-3.5" />
+  1154→  1154→                  Add Visit
+  1155→  1155→                </Button>
+  1156→  1156→                <Button
+  1157→  1157→                  size="sm"
+  1158→  1158→                  variant="outline"
+  1159→  1159→                  onClick={() => openLoyaltyDialog('earn')}
+  1160→  1160→                >
+  1161→  1161→                  <Gift className="mr-1.5 size-3.5" />
+  1162→  1162→                  Earn Points
+  1163→  1163→                </Button>
+  1164→  1164→                <Button
+  1165→  1165→                  size="sm"
+  1166→  1166→                  variant="outline"
+  1167→  1167→                  onClick={() => openLoyaltyDialog('redeem')}
+  1168→  1168→                >
+  1169→  1169→                  <Star className="mr-1.5 size-3.5" />
+  1170→  1170→                  Redeem Points
+  1171→  1171→                </Button>
+  1172→  1172→                <Button size="sm" variant="outline" className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/50" onClick={() => openWhatsApp(selectedCustomer.phone, selectedCustomer.name)}>
+  1173→  1173→                  <MessageCircle className="mr-1.5 size-3.5" />
+  1174→  1174→                  WhatsApp
+  1175→  1175→                </Button>
+  1176→  1176→                <Button size="sm">
+  1177→  1177→                  <ShoppingCart className="mr-1.5 size-3.5" />
+  1178→  1178→                  New Sale
+  1179→  1179→                </Button>
+  1180→  1180→              </div>
+  1181→  1181→
+  1182→  1182→              <Separator />
+  1183→  1183→
+  1184→  1184→              {/* Tabs: Prescriptions, Visit History, Dues */}
+  1185→  1185→              {detailLoading ? (
+  1186→  1186→                <div className="flex items-center justify-center py-12">
+  1187→  1187→                  <Loader2 className="text-muted-foreground size-6 animate-spin" />
+  1188→  1188→                  <span className="ml-2 text-sm text-muted-foreground">Loading details...</span>
+  1189→  1189→                </div>
+  1190→  1190→              ) : detailError ? (
+  1191→  1191→                <div className="flex flex-col items-center gap-2 py-8">
+  1192→  1192→                  <AlertCircle className="size-6 text-destructive" />
+  1193→  1193→                  <p className="text-sm text-destructive">{detailError}</p>
+  1194→  1194→                  <Button
+  1195→  1195→                    variant="outline"
+  1196→  1196→                    size="sm"
+  1197→  1197→                    onClick={() => fetchCustomerDetails(selectedCustomer.id)}
+  1198→  1198→                  >
+  1199→  1199→                    Retry
+  1200→  1200→                  </Button>
+  1201→  1201→                </div>
+  1202→  1202→              ) : (
+  1203→  1203→                <Tabs defaultValue="prescriptions" className="w-full">
+  1204→  1204→                  <TabsList className="w-full">
+  1205→  1205→                    <TabsTrigger value="prescriptions" className="flex-1">
+  1206→  1206→                      <FileText className="mr-1.5 size-3.5" />
+  1207→  1207→                      Prescriptions
+  1208→  1208→                      {prescriptions.length > 0 && (
+  1209→  1209→                        <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">
+  1210→  1210→                          {prescriptions.length}
+  1211→  1211→                        </Badge>
+  1212→  1212→                      )}
+  1213→  1213→                    </TabsTrigger>
+  1214→  1214→                    <TabsTrigger value="visits" className="flex-1">
+  1215→  1215→                      <Clock className="mr-1.5 size-3.5" />
+  1216→  1216→                      Visits
+  1217→  1217→                      {visits.length > 0 && (
+  1218→  1218→                        <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">
+  1219→  1219→                          {visits.length}
+  1220→  1220→                        </Badge>
+  1221→  1221→                      )}
+  1222→  1222→                    </TabsTrigger>
+  1223→  1223→                    <TabsTrigger value="purchases" className="flex-1">
+  1224→  1224→                      <Receipt className="mr-1.5 size-3.5" />
+  1225→  1225→                      Purchases
+  1226→  1226→                      {purchases.length > 0 && (
+  1227→  1227→                        <Badge variant="secondary" className="ml-1.5 px-1.5 py-0 text-xs">
+  1228→  1228→                          {purchases.length}
+  1229→  1229→                        </Badge>
+  1230→  1230→                      )}
+  1231→  1231→                    </TabsTrigger>
+  1232→  1232→                    <TabsTrigger value="dues" className="flex-1">
+  1233→  1233→                      <IndianRupee className="mr-1.5 size-3.5" />
+  1234→  1234→                      Dues
+  1235→  1235→                      {dues.filter((d) => d.status !== 'paid').length > 0 && (
+  1236→  1236→                        <Badge variant="destructive" className="ml-1.5 px-1.5 py-0 text-xs">
+  1237→  1237→                          {dues.filter((d) => d.status !== 'paid').length}
+  1238→  1238→                        </Badge>
+  1239→  1239→                      )}
+  1240→  1240→                    </TabsTrigger>
+  1241→  1241→                  </TabsList>
+  1242→  1242→
+  1243→  1243→                  {/* Prescriptions Tab */}
+  1244→  1244→                  <TabsContent value="prescriptions">
+  1245→  1245→                    <ScrollArea className="max-h-72">
+  1246→  1246→                      {prescriptions.length === 0 ? (
+  1247→  1247→                        <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
+  1248→  1248→                          <FileText className="size-8" />
+  1249→  1249→                          <p className="text-sm">No prescriptions recorded yet.</p>
+  1250→  1250→                          <Button
+  1251→  1251→                            variant="outline"
+  1252→  1252→                            size="sm"
+  1253→  1253→                            onClick={openPrescriptionDialog}
+  1254→  1254→                          >
+  1255→  1255→                            <Plus className="mr-1 size-3" />
+  1256→  1256→                            Add First Prescription
+  1257→  1257→                          </Button>
+  1258→  1258→                        </div>
+  1259→  1259→                      ) : (
+  1260→  1260→                        <div className="flex flex-col gap-3">
+  1261→  1261→                          {prescriptions.map((rx) => (
+  1262→  1262→                            <Card key={rx.id}>
+  1263→  1263→                              <CardHeader className="p-3 pb-0">
+  1264→  1264→                                <div className="flex items-center justify-between">
+  1265→  1265→                                  <CardTitle className="text-sm font-medium">
+  1266→  1266→                                    {formatDate(rx.date)}
+  1267→  1267→                                  </CardTitle>
+  1268→  1268→                                </div>
+  1269→  1269→                              </CardHeader>
+  1270→  1270→                              <CardContent className="p-3 pt-2">
+  1271→  1271→                                <div className="grid grid-cols-2 gap-3">
+  1272→  1272→                                  <div>
+  1273→  1273→                                    <p className="text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wider">
+  1274→  1274→                                      Left Eye
+  1275→  1275→                                    </p>
+  1276→  1276→                                    <p className="text-sm">
+  1277→  1277→                                      {formatEyePower(
+  1278→  1278→                                        rx.leftSph,
+  1279→  1279→                                        rx.leftCyl,
+  1280→  1280→                                        rx.leftAxis,
+  1281→  1281→                                        rx.leftPd
+  1282→  1282→                                      )}
+  1283→  1283→                                    </p>
+  1284→  1284→                                  </div>
+  1285→  1285→                                  <div>
+  1286→  1286→                                    <p className="text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wider">
+  1287→  1287→                                      Right Eye
+  1288→  1288→                                    </p>
+  1289→  1289→                                    <p className="text-sm">
+  1290→  1290→                                      {formatEyePower(
+  1291→  1291→                                        rx.rightSph,
+  1292→  1292→                                        rx.rightCyl,
+  1293→  1293→                                        rx.rightAxis,
+  1294→  1294→                                        rx.rightPd
+  1295→  1295→                                      )}
+  1296→  1296→                                    </p>
+  1297→  1297→                                  </div>
+  1298→  1298→                                </div>
+  1299→  1299→                                {rx.notes && (
+  1300→  1300→                                  <p className="text-muted-foreground mt-2 border-t pt-2 text-xs">
+  1301→  1301→                                    {rx.notes}
+  1302→  1302→                                  </p>
+  1303→  1303→                                )}
+  1304→  1304→                              </CardContent>
+  1305→  1305→                            </Card>
+  1306→  1306→                          ))}
+  1307→  1307→                        </div>
+  1308→  1308→                      )}
+  1309→  1309→                    </ScrollArea>
+  1310→  1310→                  </TabsContent>
+  1311→  1311→
+  1312→  1312→                  {/* Visits Tab - Timeline View */}
+  1313→  1313→                  <TabsContent value="visits">
+  1314→  1314→                    <ScrollArea className="max-h-72">
+  1315→  1315→                      {visits.length === 0 ? (
+  1316→  1316→                        <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
+  1317→  1317→                          <Clock className="size-8" />
+  1318→  1318→                          <p className="text-sm">No visit history yet.</p>
+  1319→  1319→                          <Button
+  1320→  1320→                            variant="outline"
+  1321→  1321→                            size="sm"
+  1322→  1322→                            onClick={openVisitDialog}
+  1323→  1323→                          >
+  1324→  1324→                            <Plus className="mr-1 size-3" />
+  1325→  1325→                            Add First Visit
+  1326→  1326→                          </Button>
+  1327→  1327→                        </div>
+  1328→  1328→                      ) : (
+  1329→  1329→                        <div className="relative pl-6">
+  1330→  1330→                          {/* Vertical line */}
+  1331→  1331→                          <div className="absolute left-[9px] top-2 bottom-2 w-0.5 bg-border" />
+  1332→  1332→                          <div className="flex flex-col gap-4 py-2">
+  1333→  1333→                            {visits.map((visit, idx) => (
+  1334→  1334→                              <div key={visit.id} className="relative flex gap-3">
+  1335→  1335→                                {/* Dot on the line */}
+  1336→  1336→                                <div className="absolute left-[-15px] top-1.5 size-3.5 rounded-full border-2 border-background bg-emerald-500 z-10" />
+  1337→  1337→                                <div className="flex-1 min-w-0 rounded-lg border p-3">
+  1338→  1338→                                  <div className="flex items-center justify-between gap-2 mb-1">
+  1339→  1339→                                    <p className="text-sm font-medium truncate">
+  1340→  1340→                                      {visit.purpose}
+  1341→  1341→                                    </p>
+  1342→  1342→                                    <span className="text-muted-foreground shrink-0 text-xs">
+  1343→  1343→                                      {formatRelativeTime(visit.date)}
+  1344→  1344→                                    </span>
+  1345→  1345→                                  </div>
+  1346→  1346→                                  <p className="text-muted-foreground text-xs mb-1">
+  1347→  1347→                                    {formatDate(visit.date)}
+  1348→  1348→                                  </p>
+  1349→  1349→                                  {visit.notes && (
+  1350→  1350→                                    <p className="text-muted-foreground text-xs line-clamp-2 border-t pt-1 mt-1">
+  1351→  1351→                                      {visit.notes}
+  1352→  1352→                                    </p>
+  1353→  1353→                                  )}
+  1354→  1354→                                </div>
+  1355→  1355→                              </div>
+  1356→  1356→                            ))}
+  1357→  1357→                          </div>
+  1358→  1358→                        </div>
+  1359→  1359→                      )}
+  1360→  1360→                    </ScrollArea>
+  1361→  1361→                  </TabsContent>
+  1362→  1362→
+  1363→  1363→                  {/* Purchases Tab */}
+  1364→  1364→                  <TabsContent value="purchases">
+  1365→  1365→                    <ScrollArea className="max-h-72">
+  1366→  1366→                      {purchases.length === 0 ? (
+  1367→  1367→                        <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
+  1368→  1368→                          <Receipt className="size-8" />
+  1369→  1369→                          <p className="text-sm">No purchase history yet.</p>
+  1370→  1370→                        </div>
+  1371→  1371→                      ) : (
+  1372→  1372→                        <Table>
+  1373→  1373→                          <TableHeader>
+  1374→  1374→                            <TableRow>
+  1375→  1375→                              <TableHead className="text-xs">Invoice #</TableHead>
+  1376→  1376→                              <TableHead className="text-xs text-right">Total</TableHead>
+  1377→  1377→                              <TableHead className="text-xs">Date</TableHead>
+  1378→  1378→                              <TableHead className="text-xs">Status</TableHead>
+  1379→  1379→                            </TableRow>
+  1380→  1380→                          </TableHeader>
+  1381→  1381→                          <TableBody>
+  1382→  1382→                            {purchases.map((p) => (
+  1383→  1383→                              <TableRow key={p.id}>
+  1384→  1384→                                <TableCell className="font-mono text-xs">{p.invoiceNo}</TableCell>
+  1385→  1385→                                <TableCell className="text-right font-mono text-xs font-medium">
+  1386→  1386→                                  {formatCurrency(p.total)}
+  1387→  1387→                                </TableCell>
+  1388→  1388→                                <TableCell className="text-xs text-muted-foreground">
+  1389→  1389→                                  {formatDate(p.createdAt)}
+  1390→  1390→                                </TableCell>
+  1391→  1391→                                <TableCell>
+  1392→  1392→                                  <Badge
+  1393→  1393→                                    variant={
+  1394→  1394→                                      p.status === 'Completed' ? 'default' : p.status === 'Pending' ? 'secondary' : 'outline'
+  1395→  1395→                                    }
+  1396→  1396→                                    className="text-[10px] px-1.5 py-0"
+  1397→  1397→                                  >
+  1398→  1398→                                    {p.status}
+  1399→  1399→                                  </Badge>
+  1400→  1400→                                </TableCell>
+  1401→  1401→                              </TableRow>
+  1402→  1402→                            ))}
+  1403→  1403→                          </TableBody>
+  1404→  1404→                        </Table>
+  1405→  1405→                      )}
+  1406→  1406→                    </ScrollArea>
+  1407→  1407→                  </TabsContent>
+  1408→  1408→
+  1409→  1409→                  {/* Dues Tab */}
+  1410→  1410→                  <TabsContent value="dues">
+  1411→  1411→                    <ScrollArea className="max-h-72">
+  1412→  1412→                      {dues.length === 0 ? (
+  1413→  1413→                        <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
+  1414→  1414→                          <Receipt className="size-8" />
+  1415→  1415→                          <p className="text-sm">No dues recorded.</p>
+  1416→  1416→                        </div>
+  1417→  1417→                      ) : (
+  1418→  1418→                        <div className="flex flex-col gap-2">
+  1419→  1419→                          {dues.map((due) => (
+  1420→  1420→                            <div
+  1421→  1421→                              key={due.id}
+  1422→  1422→                              className="flex items-center justify-between rounded-lg border p-3"
+  1423→  1423→                            >
+  1424→  1424→                              <div className="flex items-center gap-3">
+  1425→  1425→                                <div
+  1426→  1426→                                  className={`flex size-8 shrink-0 items-center justify-center rounded-full ${
+  1427→  1427→                                    due.status === 'paid'
+  1428→  1428→                                      ? 'bg-emerald-100 dark:bg-emerald-900'
+  1429→  1429→                                      : due.status === 'overdue'
+  1430→  1430→                                      ? 'bg-red-100 dark:bg-red-900'
+  1431→  1431→                                      : 'bg-amber-100 dark:bg-amber-900'
+  1432→  1432→                                  }`}
+  1433→  1433→                                >
+  1434→  1434→                                  <IndianRupee
+  1435→  1435→                                    className={`size-4 ${
+  1436→  1436→                                      due.status === 'paid'
+  1437→  1437→                                        ? 'text-emerald-600 dark:text-emerald-400'
+  1438→  1438→                                        : due.status === 'overdue'
+  1439→  1439→                                        ? 'text-red-600 dark:text-red-400'
+  1440→  1440→                                        : 'text-amber-600 dark:text-amber-400'
+  1441→  1441→                                    }`}
+  1442→  1442→                                  />
+  1443→  1443→                                </div>
+  1444→  1444→                                <div>
+  1445→  1445→                                  <p className="text-sm font-medium">
+  1446→  1446→                                    {due.description || 'Due payment'}
+  1447→  1447→                                  </p>
+  1448→  1448→                                  <p className="text-muted-foreground text-xs">
+  1449→  1449→                                    {formatDate(due.date)}
+  1450→  1450→                                  </p>
+  1451→  1451→                                </div>
+  1452→  1452→                              </div>
+  1453→  1453→                              <div className="text-right">
+  1454→  1454→                                <p className="text-sm font-semibold tabular-nums">
+  1455→  1455→                                  {formatCurrency(due.amount)}
+  1456→  1456→                                </p>
+  1457→  1457→                                <Badge
+  1458→  1458→                                  variant={
+  1459→  1459→                                    due.status === 'paid'
+  1460→  1460→                                      ? 'default'
+  1461→  1461→                                      : due.status === 'overdue'
+  1462→  1462→                                      ? 'destructive'
+  1463→  1463→                                      : 'secondary'
+  1464→  1464→                                  }
+  1465→  1465→                                  className="text-[10px] px-1.5 py-0"
+  1466→  1466→                                >
+  1467→  1467→                                  {due.status}
+  1468→  1468→                                </Badge>
+  1469→  1469→                              </div>
+  1470→  1470→                            </div>
+  1471→  1471→                          ))}
+  1472→  1472→                        </div>
+  1473→  1473→                      )}
+  1474→  1474→                    </ScrollArea>
+  1475→  1475→                  </TabsContent>
+  1476→  1476→                </Tabs>
+  1477→  1477→              )}
+  1478→  1478→            </>
+  1479→  1479→          ) : null}
+  1480→  1480→        </DialogContent>
+  1481→  1481→      </Dialog>
+  1482→  1482→
+  1483→  1483→      {/* ─── Add/Edit Customer Dialog ────────────────────────────────── */}
+  1484→  1484→      <Dialog open={customerDialogOpen} onOpenChange={setCustomerDialogOpen}>
+  1485→  1485→        <DialogContent className="max-h-[90vh] sm:max-w-lg">
+  1486→  1486→          <DialogHeader>
+  1487→  1487→            <DialogTitle>
+  1488→  1488→              {editingCustomer ? 'Edit Customer' : 'Add Customer'}
+  1489→  1489→            </DialogTitle>
+  1490→  1490→            <DialogDescription>
+  1491→  1491→              {editingCustomer
+  1492→  1492→                ? 'Update customer information below.'
+  1493→  1493→                : 'Fill in the details to add a new customer.'}
+  1494→  1494→            </DialogDescription>
+  1495→  1495→          </DialogHeader>
+  1496→  1496→
+  1497→  1497→          {customerFormErrors._form && (
+  1498→  1498→            <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+  1499→  1499→              <AlertCircle className="size-4 shrink-0" />
+  1500→  1500→              {customerFormErrors._form}
+
+[showing lines 1001-1500 of 1962; use offset=1501 with limit to continue reading]

@@ -25,6 +25,8 @@ interface CrmState {
   loadingBar: boolean;
   triggerNewSale: number; // increment to signal "open new sale dialog"
   searchInputRef: React.RefObject<HTMLInputElement | null>;
+  sidebarCollapsed: boolean;
+  moreSheetOpen: boolean;
 }
 
 interface CrmContextValue extends CrmState {
@@ -39,6 +41,9 @@ interface CrmContextValue extends CrmState {
   triggerNewSaleDialog: () => void;
   focusSearchInput: () => void;
   setSearchInputRef: (ref: React.RefObject<HTMLInputElement | null>) => void;
+  setSidebarCollapsed: (collapsed: boolean) => void;
+  toggleSidebarCollapsed: () => void;
+  setMoreSheetOpen: (open: boolean) => void;
 }
 
 const CrmContext = createContext<CrmContextValue>({
@@ -50,6 +55,8 @@ const CrmContext = createContext<CrmContextValue>({
   loadingBar: false,
   triggerNewSale: 0,
   searchInputRef: { current: null } as React.RefObject<HTMLInputElement | null>,
+  sidebarCollapsed: false,
+  moreSheetOpen: false,
   setActiveSection: () => {},
   toggleSidebar: () => {},
   setSidebarOpen: () => {},
@@ -61,6 +68,9 @@ const CrmContext = createContext<CrmContextValue>({
   triggerNewSaleDialog: () => {},
   focusSearchInput: () => {},
   setSearchInputRef: () => {},
+  setSidebarCollapsed: () => {},
+  toggleSidebarCollapsed: () => {},
+  setMoreSheetOpen: () => {},
 });
 
 export function CrmProvider({ children }: { children: ReactNode }) {
@@ -73,6 +83,8 @@ export function CrmProvider({ children }: { children: ReactNode }) {
     loadingBar: false,
     triggerNewSale: 0,
     searchInputRef: { current: null } as React.RefObject<HTMLInputElement | null>,
+    sidebarCollapsed: false,
+    moreSheetOpen: false,
   });
 
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -125,6 +137,18 @@ export function CrmProvider({ children }: { children: ReactNode }) {
     (searchInputRef as React.MutableRefObject<HTMLInputElement | null>).current = ref.current;
   }, []);
 
+  const setSidebarCollapsed = useCallback((collapsed: boolean) => {
+    setState((prev) => ({ ...prev, sidebarCollapsed: collapsed }));
+  }, []);
+
+  const toggleSidebarCollapsed = useCallback(() => {
+    setState((prev) => ({ ...prev, sidebarCollapsed: !prev.sidebarCollapsed }));
+  }, []);
+
+  const setMoreSheetOpen = useCallback((open: boolean) => {
+    setState((prev) => ({ ...prev, moreSheetOpen: open }));
+  }, []);
+
   const store: CrmContextValue = {
     ...state,
     searchInputRef: searchInputRef as unknown as React.RefObject<HTMLInputElement | null>,
@@ -139,6 +163,9 @@ export function CrmProvider({ children }: { children: ReactNode }) {
     triggerNewSaleDialog,
     focusSearchInput,
     setSearchInputRef,
+    setSidebarCollapsed,
+    toggleSidebarCollapsed,
+    setMoreSheetOpen,
   };
 
   return (

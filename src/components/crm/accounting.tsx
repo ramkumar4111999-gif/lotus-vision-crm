@@ -638,6 +638,28 @@ export default function Accounting() {
 
   const plNetProfit = plRevenue - plTotalExpenses;
 
+  // ─── 6-Month P&L Trend Data ──────────────────────────────────────────
+  const plTrendData = useMemo(() => {
+    const months: { month: string; revenue: number; expenses: number; netProfit: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const mDate = subMonths(new Date(), i);
+      const mStart = startOfMonth(mDate);
+      const mEnd = new Date(endOfMonth(mDate).getTime() + 86399999); // include last day
+      const mLabel = format(mDate, 'MMM yy');
+
+      const mRevenue = sales
+        .filter((s) => { try { const d = new Date(s.createdAt); return d >= mStart && d <= mEnd; } catch { return false; } })
+        .reduce((sum, s) => sum + (s.total || 0), 0);
+
+      const mExpenses = expenses
+        .filter((e) => { try { const d = new Date(e.date); return d >= mStart && d <= mEnd; } catch { return false; } })
+        .reduce((sum, e) => sum + (e.amount || 0), 0);
+
+      months.push({ month: mLabel, revenue: mRevenue, expenses: mExpenses, netProfit: mRevenue - mExpenses });
+    }
+    return months;
+  }, [sales, expenses]);
+
   // ─── Today's Cash Data (for Cash Reconcile) ────────────────────────────
 
   const todayCashData = useMemo(() => {
@@ -1509,6 +1531,35 @@ export default function Accounting() {
                 </div>
               )}
 
+              {/* Per-Category Spending Alerts */}
+              {monthlyExpensesTotal > 0 && (
+                <div className="mt-4">
+                  <Separator className="mb-4" />
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-amber-500" />
+                    Category Spending Alerts
+                  </h3>
+                  <div className="space-y-2">
+                    {plExpensesByCategory.map((cat) => {
+                      const pct = (cat.total / monthlyExpensesTotal) * 100;
+                      const isHigh = pct >= 30;
+                      return (
+                        <div key={cat.category} className={`rounded-lg border p-3 ${isHigh ? 'border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/20' : ''}`}>
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-medium">{cat.category}</span>
+                              {isHigh && <Badge variant="outline" className="text-[10px] text-amber-700 border-amber-300 dark:text-amber-400 dark:border-amber-700">{pct.toFixed(0)}% of total</Badge>}
+                            </div>
+                            <span className="text-xs font-mono font-semibold">{formatINR(cat.total)}</span>
+                          </div>
+                          <Progress value={Math.min(pct, 100)} className={`h-1.5 ${isHigh ? '[&>div]:bg-amber-500' : '[&>div]:bg-emerald-500'}`} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {loadingExpenses ? (
                 <TableSkeleton rows={6} cols={6} />
               ) : expenses.length === 0 ? (
@@ -1698,6 +1749,19 @@ export default function Accounting() {
                     <Label className="text-xs whitespace-nowrap">To</Label>
                     <Input type="date" value={plToDate} onChange={(e) => setPlToDate(e.target.value)} className="h-8 w-[140px] text-xs" />
                   </div>
+                  <div className="flex items-center gap-1.5 flex-wrap mt-2 sm:mt-0">
+                    {[
+                      { label: 'This Month', getRange: () => ({ from: format(startOfMonth(new Date()), 'yyyy-MM-dd'), to: getTodayStr() }) },
+                      { label: 'Last Month', getRange: () => { const lm = subMonths(new Date(), 1); return { from: format(startOfMonth(lm), 'yyyy-MM-dd'), to: format(endOfMonth(lm), 'yyyy-MM-dd') }; } },
+                      { label: 'Q1', getRange: () => ({ from: `${new Date().getFullYear()}-01-01`, to: `${new Date().getFullYear()}-03-31` }) },
+                      { label: 'This Year', getRange: () => ({ from: `${new Date().getFullYear()}-01-01`, to: getTodayStr() }) },
+                    ].map((preset) => (
+                      <Button key={preset.label} variant="outline" size="sm" className="text-xs h-9 min-w-[44px] min-h-[44px] touch-manipulation active:scale-95 transition-transform"
+                        onClick={() => { const r = preset.getRange(); setPlFromDate(r.from); setPlToDate(r.to); }}>
+                        {preset.label}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </CardHeader>
@@ -1841,6 +1905,27 @@ export default function Accounting() {
                       </div>
                     </div>
                   </div>
+
+                  {/* 6-Month P&L Trend */}
+                  {plTrendData.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                        <BarChart3 className="h-4 w-4" />
+                        6-Month P&amp;L Trend
+                      </h3>
+                      <ChartContainer config={{ revenue: { label: 'Revenue', color: 'hsl(var(--chart-1))' }, expenses: { label: 'Expenses', color: 'hsl(var(--chart-5))' }, netProfit: { label: 'Net Profit', color: 'hsl(var(--chart-2))' } }} className="h-[260px] w-full">
+                        <BarChart data={plTrendData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                          <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                          <XAxis dataKey="month" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                          <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+                          <ChartTooltip content={<ChartTooltipContent />} />
+                          <Bar dataKey="revenue" fill="hsl(var(--chart-1))" radius={[3, 3, 0, 0]} barSize={16} />
+                          <Bar dataKey="expenses" fill="hsl(var(--chart-5))" radius={[3, 3, 0, 0]} barSize={16} />
+                          <Bar dataKey="netProfit" fill="hsl(var(--chart-2))" radius={[3, 3, 0, 0]} barSize={16} />
+                        </BarChart>
+                      </ChartContainer>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>

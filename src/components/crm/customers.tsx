@@ -76,6 +76,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useCrmStore } from '@/components/crm/store';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -887,7 +888,7 @@ export default function Customers() {
             />
           </div>
           {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={handleClearFilters}>
+            <Button variant="ghost" size="sm" onClick={handleClearFilters} className="min-h-[44px] touch-manipulation">
               <X className="mr-1 size-3" />
               Clear
             </Button>
@@ -925,17 +926,20 @@ export default function Customers() {
                 <TableHead className="text-right cursor-pointer select-none" onClick={() => handleSort('totalSpent')}>
                   <div className="flex items-center justify-end gap-1">Total Spent <SortIcon field="totalSpent" /></div>
                 </TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => handleSort('createdAt')}>
+                  <div className="flex items-center gap-1">Created <SortIcon field="createdAt" /></div>
+                </TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {error ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-48 text-center">
+                  <TableCell colSpan={7} className="h-48 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <AlertCircle className="size-8 text-destructive" />
                       <p className="text-sm text-destructive">{error}</p>
-                      <Button variant="outline" size="sm" onClick={fetchCustomers}>
+                      <Button variant="outline" size="sm" onClick={fetchCustomers} className="min-h-[44px] touch-manipulation">
                         Retry
                       </Button>
                     </div>
@@ -945,14 +949,14 @@ export default function Customers() {
                 renderTableSkeleton()
               ) : customers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-48 text-center">
+                  <TableCell colSpan={7} className="h-48 text-center">
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
                       <User className="size-8" />
                       <p className="text-sm">
                         {search ? 'No customers found for your search.' : 'No customers yet.'}
                       </p>
                       {!search && (
-                        <Button variant="outline" size="sm" onClick={openAddCustomerDialog}>
+                        <Button variant="outline" size="sm" onClick={openAddCustomerDialog} className="min-h-[44px] touch-manipulation">
                           <Plus className="mr-1 size-3" />
                           Add your first customer
                         </Button>
@@ -990,6 +994,9 @@ export default function Customers() {
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {formatCurrency(customer.totalSpent)}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                      {formatRelativeTime(customer.createdAt)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
@@ -1039,6 +1046,7 @@ export default function Customers() {
                 size="sm"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="min-w-[44px] min-h-[44px] touch-manipulation"
               >
                 <ChevronLeft className="mr-1 size-4" />
                 Previous
@@ -1048,6 +1056,7 @@ export default function Customers() {
                 size="sm"
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                className="min-w-[44px] min-h-[44px] touch-manipulation"
               >
                 Next
                 <ChevronRight className="ml-1 size-4" />
@@ -1140,6 +1149,7 @@ export default function Customers() {
                 <Button
                   size="sm"
                   variant="outline"
+                  className="min-h-[44px] touch-manipulation"
                   onClick={() => openPrescriptionDialog()}
                 >
                   <Stethoscope className="mr-1.5 size-3.5" />
@@ -1148,6 +1158,7 @@ export default function Customers() {
                 <Button
                   size="sm"
                   variant="outline"
+                  className="min-h-[44px] touch-manipulation"
                   onClick={() => openVisitDialog()}
                 >
                   <History className="mr-1.5 size-3.5" />
@@ -1156,6 +1167,7 @@ export default function Customers() {
                 <Button
                   size="sm"
                   variant="outline"
+                  className="min-h-[44px] touch-manipulation"
                   onClick={() => openLoyaltyDialog('earn')}
                 >
                   <Gift className="mr-1.5 size-3.5" />
@@ -1164,16 +1176,17 @@ export default function Customers() {
                 <Button
                   size="sm"
                   variant="outline"
+                  className="min-h-[44px] touch-manipulation"
                   onClick={() => openLoyaltyDialog('redeem')}
                 >
                   <Star className="mr-1.5 size-3.5" />
                   Redeem Points
                 </Button>
-                <Button size="sm" variant="outline" className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/50" onClick={() => openWhatsApp(selectedCustomer.phone, selectedCustomer.name)}>
+                <Button size="sm" variant="outline" className="min-h-[44px] touch-manipulation text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/50" onClick={() => openWhatsApp(selectedCustomer.phone, selectedCustomer.name)}>
                   <MessageCircle className="mr-1.5 size-3.5" />
                   WhatsApp
                 </Button>
-                <Button size="sm">
+                <Button size="sm" variant="outline" className="min-h-[44px] touch-manipulation" onClick={() => { useCrmStore.getState().setActiveSection('sales'); }}>
                   <ShoppingCart className="mr-1.5 size-3.5" />
                   New Sale
                 </Button>
@@ -1195,6 +1208,7 @@ export default function Customers() {
                     variant="outline"
                     size="sm"
                     onClick={() => fetchCustomerDetails(selectedCustomer.id)}
+                    className="min-h-[44px] touch-manipulation"
                   >
                     Retry
                   </Button>
@@ -1251,6 +1265,7 @@ export default function Customers() {
                             variant="outline"
                             size="sm"
                             onClick={openPrescriptionDialog}
+                            className="min-h-[44px] touch-manipulation"
                           >
                             <Plus className="mr-1 size-3" />
                             Add First Prescription
@@ -1320,6 +1335,7 @@ export default function Customers() {
                             variant="outline"
                             size="sm"
                             onClick={openVisitDialog}
+                            className="min-h-[44px] touch-manipulation"
                           >
                             <Plus className="mr-1 size-3" />
                             Add First Visit
@@ -1369,6 +1385,7 @@ export default function Customers() {
                           <p className="text-sm">No purchase history yet.</p>
                         </div>
                       ) : (
+                        <div className="overflow-x-auto">
                         <Table>
                           <TableHeader>
                             <TableRow>
@@ -1402,6 +1419,7 @@ export default function Customers() {
                             ))}
                           </TableBody>
                         </Table>
+                        </div>
                       )}
                     </ScrollArea>
                   </TabsContent>
@@ -1631,10 +1649,11 @@ export default function Customers() {
               variant="outline"
               onClick={() => setCustomerDialogOpen(false)}
               disabled={customerSubmitting}
+              className="min-h-[44px] min-w-[44px] touch-manipulation"
             >
               Cancel
             </Button>
-            <Button onClick={handleCustomerSubmit} disabled={customerSubmitting}>
+            <Button onClick={handleCustomerSubmit} disabled={customerSubmitting} className="min-h-[44px] min-w-[44px] touch-manipulation">
               {customerSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
               {editingCustomer ? 'Update Customer' : 'Add Customer'}
             </Button>
@@ -1686,10 +1705,10 @@ export default function Customers() {
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0 mt-4">
-            <Button variant="outline" onClick={() => setLoyaltyDialogOpen(false)} disabled={loyaltySubmitting}>
+            <Button variant="outline" onClick={() => setLoyaltyDialogOpen(false)} disabled={loyaltySubmitting} className="min-h-[44px] min-w-[44px] touch-manipulation">
               Cancel
             </Button>
-            <Button onClick={handleLoyaltySubmit} disabled={loyaltySubmitting || !loyaltyPoints}>
+            <Button onClick={handleLoyaltySubmit} disabled={loyaltySubmitting || !loyaltyPoints} className="min-h-[44px] min-w-[44px] touch-manipulation">
               {loyaltySubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
               {loyaltyType === 'earn' ? 'Earn Points' : 'Redeem Points'}
             </Button>
@@ -1869,12 +1888,14 @@ export default function Customers() {
               variant="outline"
               onClick={() => setPrescriptionDialogOpen(false)}
               disabled={prescriptionSubmitting}
+              className="min-h-[44px] min-w-[44px] touch-manipulation"
             >
               Cancel
             </Button>
             <Button
               onClick={handlePrescriptionSubmit}
               disabled={prescriptionSubmitting || !prescriptionForm.date}
+              className="min-h-[44px] min-w-[44px] touch-manipulation"
             >
               {prescriptionSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
               Save Prescription
@@ -1944,12 +1965,14 @@ export default function Customers() {
               variant="outline"
               onClick={() => setVisitDialogOpen(false)}
               disabled={visitSubmitting}
+              className="min-h-[44px] min-w-[44px] touch-manipulation"
             >
               Cancel
             </Button>
             <Button
               onClick={handleVisitSubmit}
               disabled={visitSubmitting || !visitForm.date || !visitForm.purpose.trim()}
+              className="min-h-[44px] min-w-[44px] touch-manipulation"
             >
               {visitSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
               Save Visit
