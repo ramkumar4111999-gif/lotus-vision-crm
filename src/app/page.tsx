@@ -1,12 +1,6 @@
 'use client';
 
-import { initMockApi } from '@/lib/mock-api';
 import { useEffect, useState, useCallback, useRef } from 'react';
-
-// Initialize mock API for static deployments (no-op when server API is available)
-if (typeof window !== 'undefined') {
-  initMockApi();
-}
 import {
   LayoutDashboard, Users, Package, Receipt, FlaskConical, CalendarDays, Wallet,
   BarChart3, UserCog, Megaphone, Menu, Moon, Sun, LogOut, X, Search,
