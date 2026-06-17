@@ -28,7 +28,7 @@ concurrency:
 
 env:
   NODE_VERSION: "20"
-  DATABASE_URL: "file:./db/custom.db"
+  # DATABASE_URL is stored in GitHub Secrets (not exposed in code)
 
 jobs:
   # ═══════════════════════════════════════════════════════════
@@ -64,7 +64,7 @@ jobs:
             exit 1
           fi
         env:
-          DATABASE_URL: "file:./db/custom.db"
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
   # ═══════════════════════════════════════════════════════════
   # JOB 2: Export Customer Data
@@ -104,7 +104,7 @@ jobs:
             })().finally(() => db.\$disconnect());
           "
         env:
-          DATABASE_URL: "file:./db/custom.db"
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - uses: actions/upload-artifact@v4
         with:
           name: customers-data
@@ -149,7 +149,7 @@ jobs:
             })().finally(() => db.\$disconnect());
           "
         env:
-          DATABASE_URL: "file:./db/custom.db"
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - uses: actions/upload-artifact@v4
         with:
           name: inventory-data
@@ -194,7 +194,7 @@ jobs:
             })().finally(() => db.\$disconnect());
           "
         env:
-          DATABASE_URL: "file:./db/custom.db"
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - uses: actions/upload-artifact@v4
         with:
           name: sales-data
@@ -239,7 +239,7 @@ jobs:
             })().finally(() => db.\$disconnect());
           "
         env:
-          DATABASE_URL: "file:./db/custom.db"
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - uses: actions/upload-artifact@v4
         with:
           name: operations-data
@@ -284,7 +284,7 @@ jobs:
             })().finally(() => db.\$disconnect());
           "
         env:
-          DATABASE_URL: "file:./db/custom.db"
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - uses: actions/upload-artifact@v4
         with:
           name: marketing-data
@@ -331,7 +331,7 @@ jobs:
             })().finally(() => db.\$disconnect());
           "
         env:
-          DATABASE_URL: "file:./db/custom.db"
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - uses: actions/upload-artifact@v4
         with:
           name: db-stats
@@ -371,7 +371,7 @@ jobs:
             })().finally(() => db.\$disconnect());
           "
         env:
-          DATABASE_URL: "file:./db/custom.db"
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - uses: actions/upload-artifact@v4
         with:
           name: db-schema
@@ -417,7 +417,7 @@ jobs:
             })().finally(() => db.\$disconnect());
           "
         env:
-          DATABASE_URL: "file:./db/custom.db"
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - uses: actions/upload-artifact@v4
         with:
           name: db-relations
@@ -483,7 +483,7 @@ jobs:
             })().finally(() => db.\$disconnect());
           "
         env:
-          DATABASE_URL: "file:./db/custom.db"
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
   # ═══════════════════════════════════════════════════════════
   # JOB 11: Generate Prisma Client Artifacts
@@ -541,7 +541,7 @@ jobs:
             })().finally(() => db.\$disconnect());
           "
         env:
-          DATABASE_URL: "file:./db/custom.db"
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - uses: actions/upload-artifact@v4
         with:
           name: db-indexes
@@ -587,7 +587,7 @@ jobs:
             })().finally(() => db.\$disconnect());
           "
         env:
-          DATABASE_URL: "file:./db/custom.db"
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - uses: actions/upload-artifact@v4
         with:
           name: customer-groups
@@ -636,7 +636,7 @@ jobs:
             })().finally(() => db.\$disconnect());
           "
         env:
-          DATABASE_URL: "file:./db/custom.db"
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - uses: actions/upload-artifact@v4
         with:
           name: product-categories
@@ -693,7 +693,7 @@ jobs:
             })().finally(() => db.\$disconnect());
           "
         env:
-          DATABASE_URL: "file:./db/custom.db"
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - uses: actions/upload-artifact@v4
         with:
           name: sales-analytics
@@ -747,7 +747,7 @@ jobs:
             })().finally(() => db.\$disconnect());
           "
         env:
-          DATABASE_URL: "file:./db/custom.db"
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - uses: actions/upload-artifact@v4
         with:
           name: financials
@@ -801,7 +801,7 @@ jobs:
             })().finally(() => db.\$disconnect());
           "
         env:
-          DATABASE_URL: "file:./db/custom.db"
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - uses: actions/upload-artifact@v4
         with:
           name: db-health
@@ -827,7 +827,7 @@ jobs:
         run: |
           node scripts/export-db-to-json.mjs
         env:
-          DATABASE_URL: "file:./db/custom.db"
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - uses: actions/upload-artifact@v4
         with:
           name: full-dump
@@ -920,7 +920,7 @@ jobs:
       - name: Build Next.js Static Site
         run: npm run build
         env:
-          DATABASE_URL: "file:./db/custom.db"
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       # Verify build output
       - name: Verify build output
