@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useMockApiFallback } from '@/lib/mock-api-fallback';
 import {
   LayoutDashboard, Users, Package, Receipt, FlaskConical, CalendarDays, Wallet,
   BarChart3, UserCog, Megaphone, Menu, Moon, Sun, LogOut, X, Search,
@@ -1256,9 +1257,11 @@ function CrmLayout() {
   );
 }
 
-// ─── Root Page ──────────────────────────────────────────────────────────
+
+# ─── Root Page ──────────────────────────────────────────────────
 
 export default function Home() {
+  useMockApiFallback();
   return (
     <CrmProvider>
       <CrmLayout />
