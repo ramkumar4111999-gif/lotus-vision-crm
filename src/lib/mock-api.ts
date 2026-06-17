@@ -1,7 +1,7 @@
 // Client-side API fallback for static deployments
 // Loads seed-data.json and intercepts fetch calls to /api/* routes
 
-import type { Customer, Product, Sale, SaleItem, Appointment, LabOrder, Expense, Due, Staff, Prescription, Visit, Campaign, Notification } from './types';
+import { seedData } from './seed-data';
 
 interface SeedData {
   Customer?: Record<string, any>[];
@@ -23,46 +23,18 @@ interface SeedData {
   PurchaseOrder?: Record<string, any>[];
 }
 
-let seed: SeedData | null = null;
-let dataLoaded = false;
-let dataPromise: Promise<void> | null = null;
+// Use inline seed data (no fetch needed)
+const seed: SeedData = seedData;
 
 function parseDate(s: string): Date | null {
   if (!s) return null;
   try { return new Date(s); } catch { return null; }
 }
 
-// For demo: treat ALL seed data as current month/today
-function isSameDay(_d: Date, dateStr: string): boolean {
-  return !!dateStr;
-}
+function isSameDay(_d: Date, dateStr: string): boolean { return !!dateStr; }
+function isThisMonth(_d: Date, dateStr: string): boolean { return !!dateStr; }
 
-function isThisMonth(_d: Date, dateStr: string): boolean {
-  return !!dateStr;
-}
-
-async function loadData(): Promise<void> {
-  if (dataLoaded) return;
-  if (dataPromise) { await dataPromise; return; }
-  dataPromise = (async () => {
-    try {
-      // Detect basePath from current URL (e.g., /lotus-vision-crm)
-      const pathSegments = window.location.pathname.split('/').filter(Boolean);
-      const possibleBase = pathSegments.length > 0 ? '/' + pathSegments[0] : '';
-      const url = `${possibleBase}/seed-data.json`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      seed = await res.json();
-      dataLoaded = true;
-      console.log('Mock API: loaded seed data', Object.keys(seed));
-    } catch (e) {
-      console.warn('Mock API: Failed to load seed-data.json:', e);
-      seed = {};
-      dataLoaded = true;
-    }
-  })();
-  await dataPromise;
-}
+async function loadData(): Promise<void> { /* no-op, data is inline */ }
 
 // Dashboard handler
 function handleDashboard(): Response {
