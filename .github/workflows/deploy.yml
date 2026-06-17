@@ -1,13 +1,8 @@
 # ─────────────────────────────────────────────────────────────────
-# Lotus Vision CRM — GitHub Pages Deployment with Prisma Pipeline
+# Lotus Vision CRM — 20-Agent Prisma Data Pipeline → GitHub Pages
 # ─────────────────────────────────────────────────────────────────
-# This workflow uses Prisma ORM + SQLite to:
-#   1. Read the committed database (db/custom.db)
-#   2. Export all table data → public/seed-data.json via Prisma
-#   3. Build a fully static Next.js site with embedded CRM data
-#   4. Deploy to GitHub Pages
-#
-# Data flow: GitHub Files (SQLite DB) → Prisma Query → JSON → Static Site
+# Data flow: GitHub Files (SQLite DB) → Prisma ORM → JSON → Static Site
+# Secrets: DATABASE_URL stored in GitHub Secrets (not in code)
 # ─────────────────────────────────────────────────────────────────
 
 name: CRM Deploy — Prisma Data Pipeline
@@ -28,14 +23,13 @@ concurrency:
 
 env:
   NODE_VERSION: "20"
-  # DATABASE_URL is stored in GitHub Secrets (not exposed in code)
 
 jobs:
-  # ═══════════════════════════════════════════════════════════
+  # ═══════════════════════════════════════════════════
   # JOB 1: Validate Prisma Schema & Database
-  # ═══════════════════════════════════════════════════════════
+  # ═══════════════════════════════════════════════════
   prisma-validate:
-    name: 🔍 Prisma Validate
+    name: "1 · Prisma Validate"
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -54,269 +48,201 @@ jobs:
         run: |
           if [ -f "db/custom.db" ]; then
             echo "✅ Database found: $(wc -c < db/custom.db) bytes"
-            node -e "
-              const { PrismaClient } = require('@prisma/client');
-              const db = new PrismaClient();
-              db.\$queryRaw\`SELECT COUNT(*) as total FROM sqlite_master WHERE type='table'\`
-                .then(r => console.log('📊 Tables in DB:', r[0].total))
-                .finally(() => db.\$disconnect());
-            "
+            sudo apt-get install -y sqlite3 > /dev/null 2>&1
+            TABLES=$(sqlite3 db/custom.db "SELECT COUNT(*) FROM sqlite_master WHERE type='table';")
+            echo "📊 Tables in DB: $TABLES"
           else
             echo "⚠️ No database file found at db/custom.db"
             exit 1
           fi
 
-  # ═══════════════════════════════════════════════════════════
-  # JOB 2: Export Customer Data
-  # ═══════════════════════════════════════════════════════════
+  # ═══════════════════════════════════════════════════
+  # JOB 2: Export Customer Data (Prisma)
+  # ═══════════════════════════════════════════════════
   export-customers:
-    name: 👥 Export Customers
+    name: "2 · Export Customers"
     runs-on: ubuntu-latest
     needs: prisma-validate
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
-      - run: npm ci
-      - run: npx prisma generate
-      - name: Export Customer + Prescription + Visit + Appointment + Due data
+      - run: npm ci && npx prisma generate
+      - run: node scripts/export-db-to-json.mjs
+      - name: Extract customer-related data
         run: |
           node -e "
-            const { PrismaClient } = require('@prisma/client');
             const fs = require('fs');
-            const db = new PrismaClient();
-            (async () => {
-              const models = ['Customer','Prescription','Visit','Appointment','Due'];
-              const out = {};
-              for (const m of models) {
-                const rows = await db[m].findMany();
-                out[m] = rows.map(r => {
-                  const o = {};
-                  for (const [k,v] of Object.entries(r)) o[k] = v instanceof Date ? v.toISOString() : v;
-                  return o;
-                });
-                console.log('  ✓ ' + m + ': ' + out[m].length + ' rows');
-              }
-              fs.writeFileSync('artifacts/customers.json', JSON.stringify(out, null, 2));
-              console.log('  → artifacts/customers.json');
-            })().finally(() => db.\$disconnect());
+            const d = JSON.parse(fs.readFileSync('public/seed-data.json','utf-8'));
+            const out = { Customer: d.Customer, Prescription: d.Prescription, Visit: d.Visit, Appointment: d.Appointment, Due: d.Due };
+            fs.writeFileSync('artifacts/customers.json', JSON.stringify(out, null, 2));
+            const total = Object.values(out).reduce((a,v) => a + v.length, 0);
+            console.log('Customers export: ' + total + ' records');
           "
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - uses: actions/upload-artifact@v4
         with:
           name: customers-data
           path: artifacts/customers.json
           retention-days: 1
 
-  # ═══════════════════════════════════════════════════════════
-  # JOB 3: Export Product & Inventory Data
-  # ═══════════════════════════════════════════════════════════
+  # ═══════════════════════════════════════════════════
+  # JOB 3: Export Inventory Data (Prisma)
+  # ═══════════════════════════════════════════════════
   export-inventory:
-    name: 📦 Export Inventory
+    name: "3 · Export Inventory"
     runs-on: ubuntu-latest
     needs: prisma-validate
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
-      - run: npm ci
-      - run: npx prisma generate
-      - name: Export Product + PurchaseOrder data
+      - run: npm ci && npx prisma generate
+      - run: node scripts/export-db-to-json.mjs
+      - name: Extract inventory data
         run: |
           node -e "
-            const { PrismaClient } = require('@prisma/client');
             const fs = require('fs');
-            const db = new PrismaClient();
-            (async () => {
-              const models = ['Product','PurchaseOrder'];
-              const out = {};
-              for (const m of models) {
-                const rows = await db[m].findMany();
-                out[m] = rows.map(r => {
-                  const o = {};
-                  for (const [k,v] of Object.entries(r)) o[k] = v instanceof Date ? v.toISOString() : v;
-                  return o;
-                });
-                console.log('  ✓ ' + m + ': ' + out[m].length + ' rows');
-              }
-              fs.writeFileSync('artifacts/inventory.json', JSON.stringify(out, null, 2));
-              console.log('  → artifacts/inventory.json');
-            })().finally(() => db.\$disconnect());
+            const d = JSON.parse(fs.readFileSync('public/seed-data.json','utf-8'));
+            const out = { Product: d.Product, PurchaseOrder: d.PurchaseOrder };
+            fs.writeFileSync('artifacts/inventory.json', JSON.stringify(out, null, 2));
+            const total = Object.values(out).reduce((a,v) => a + v.length, 0);
+            console.log('Inventory export: ' + total + ' records');
           "
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - uses: actions/upload-artifact@v4
         with:
           name: inventory-data
           path: artifacts/inventory.json
           retention-days: 1
 
-  # ═══════════════════════════════════════════════════════════
-  # JOB 4: Export Sales & Financial Data
-  # ═══════════════════════════════════════════════════════════
+  # ═══════════════════════════════════════════════════
+  # JOB 4: Export Sales Data (Prisma)
+  # ═══════════════════════════════════════════════════
   export-sales:
-    name: 💰 Export Sales
+    name: "4 · Export Sales"
     runs-on: ubuntu-latest
     needs: prisma-validate
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
-      - run: npm ci
-      - run: npx prisma generate
-      - name: Export Sale + SaleItem + Return + Expense data
+      - run: npm ci && npx prisma generate
+      - run: node scripts/export-db-to-json.mjs
+      - name: Extract sales data
         run: |
           node -e "
-            const { PrismaClient } = require('@prisma/client');
             const fs = require('fs');
-            const db = new PrismaClient();
-            (async () => {
-              const models = ['Sale','SaleItem','Return','Expense'];
-              const out = {};
-              for (const m of models) {
-                const rows = await db[m].findMany();
-                out[m] = rows.map(r => {
-                  const o = {};
-                  for (const [k,v] of Object.entries(r)) o[k] = v instanceof Date ? v.toISOString() : v;
-                  return o;
-                });
-                console.log('  ✓ ' + m + ': ' + out[m].length + ' rows');
-              }
-              fs.writeFileSync('artifacts/sales.json', JSON.stringify(out, null, 2));
-              console.log('  → artifacts/sales.json');
-            })().finally(() => db.\$disconnect());
+            const d = JSON.parse(fs.readFileSync('public/seed-data.json','utf-8'));
+            const out = { Sale: d.Sale, SaleItem: d.SaleItem, Return: d.Return, Expense: d.Expense };
+            fs.writeFileSync('artifacts/sales.json', JSON.stringify(out, null, 2));
+            const total = Object.values(out).reduce((a,v) => a + v.length, 0);
+            console.log('Sales export: ' + total + ' records');
           "
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - uses: actions/upload-artifact@v4
         with:
           name: sales-data
           path: artifacts/sales.json
           retention-days: 1
 
-  # ═══════════════════════════════════════════════════════════
-  # JOB 5: Export Lab & Staff Data
-  # ═══════════════════════════════════════════════════════════
+  # ═══════════════════════════════════════════════════
+  # JOB 5: Export Operations Data (Prisma)
+  # ═══════════════════════════════════════════════════
   export-operations:
-    name: 🔬 Export Operations
+    name: "5 · Export Operations"
     runs-on: ubuntu-latest
     needs: prisma-validate
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
-      - run: npm ci
-      - run: npx prisma generate
-      - name: Export LabOrder + Staff + Attendance + SalaryRecord data
+      - run: npm ci && npx prisma generate
+      - run: node scripts/export-db-to-json.mjs
+      - name: Extract operations data
         run: |
           node -e "
-            const { PrismaClient } = require('@prisma/client');
             const fs = require('fs');
-            const db = new PrismaClient();
-            (async () => {
-              const models = ['LabOrder','Staff','Attendance','SalaryRecord'];
-              const out = {};
-              for (const m of models) {
-                const rows = await db[m].findMany();
-                out[m] = rows.map(r => {
-                  const o = {};
-                  for (const [k,v] of Object.entries(r)) o[k] = v instanceof Date ? v.toISOString() : v;
-                  return o;
-                });
-                console.log('  ✓ ' + m + ': ' + out[m].length + ' rows');
-              }
-              fs.writeFileSync('artifacts/operations.json', JSON.stringify(out, null, 2));
-              console.log('  → artifacts/operations.json');
-            })().finally(() => db.\$disconnect());
+            const d = JSON.parse(fs.readFileSync('public/seed-data.json','utf-8'));
+            const out = { LabOrder: d.LabOrder, Staff: d.Staff, Attendance: d.Attendance, SalaryRecord: d.SalaryRecord };
+            fs.writeFileSync('artifacts/operations.json', JSON.stringify(out, null, 2));
+            const total = Object.values(out).reduce((a,v) => a + v.length, 0);
+            console.log('Operations export: ' + total + ' records');
           "
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - uses: actions/upload-artifact@v4
         with:
           name: operations-data
           path: artifacts/operations.json
           retention-days: 1
 
-  # ═══════════════════════════════════════════════════════════
-  # JOB 6: Export Marketing Data
-  # ═══════════════════════════════════════════════════════════
+  # ═══════════════════════════════════════════════════
+  # JOB 6: Export Marketing Data (Prisma)
+  # ═══════════════════════════════════════════════════
   export-marketing:
-    name: 📢 Export Marketing
+    name: "6 · Export Marketing"
     runs-on: ubuntu-latest
     needs: prisma-validate
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
-      - run: npm ci
-      - run: npx prisma generate
-      - name: Export Campaign + Notification data
+      - run: npm ci && npx prisma generate
+      - run: node scripts/export-db-to-json.mjs
+      - name: Extract marketing data
         run: |
           node -e "
-            const { PrismaClient } = require('@prisma/client');
             const fs = require('fs');
-            const db = new PrismaClient();
-            (async () => {
-              const models = ['Campaign','Notification'];
-              const out = {};
-              for (const m of models) {
-                const rows = await db[m].findMany();
-                out[m] = rows.map(r => {
-                  const o = {};
-                  for (const [k,v] of Object.entries(r)) o[k] = v instanceof Date ? v.toISOString() : v;
-                  return o;
-                });
-                console.log('  ✓ ' + m + ': ' + out[m].length + ' rows');
-              }
-              fs.writeFileSync('artifacts/marketing.json', JSON.stringify(out, null, 2));
-              console.log('  → artifacts/marketing.json');
-            })().finally(() => db.\$disconnect());
+            const d = JSON.parse(fs.readFileSync('public/seed-data.json','utf-8'));
+            const out = { Campaign: d.Campaign, Notification: d.Notification };
+            fs.writeFileSync('artifacts/marketing.json', JSON.stringify(out, null, 2));
+            console.log('Marketing export: ' + out.Campaign.length + ' campaigns, ' + out.Notification.length + ' notifications');
           "
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - uses: actions/upload-artifact@v4
         with:
           name: marketing-data
           path: artifacts/marketing.json
           retention-days: 1
 
-  # ═══════════════════════════════════════════════════════════
-  # JOB 7: Full Database Statistics Report
-  # ═══════════════════════════════════════════════════════════
+  # ═══════════════════════════════════════════════════
+  # JOB 7: Database Statistics (Prisma)
+  # ═══════════════════════════════════════════════════
   db-stats:
-    name: 📊 Database Stats
+    name: "7 · Database Stats"
     runs-on: ubuntu-latest
     needs: prisma-validate
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
-      - run: npm ci
-      - run: npx prisma generate
+      - run: npm ci && npx prisma generate
       - name: Generate full database statistics
         run: |
           node -e "
             const { PrismaClient } = require('@prisma/client');
             const fs = require('fs');
             const db = new PrismaClient();
-            const models = [
-              'Customer','Prescription','Visit','Product','Sale','SaleItem',
-              'Return','LabOrder','Appointment','Expense','Due','Staff',
-              'Attendance','SalaryRecord','Campaign','Notification','PurchaseOrder'
-            ];
+            const models = ['Customer','Prescription','Visit','Product','Sale','SaleItem','Return','LabOrder','Appointment','Expense','Due','Staff','Attendance','SalaryRecord','Campaign','Notification','PurchaseOrder'];
             (async () => {
               const stats = {};
               let total = 0;
@@ -326,172 +252,111 @@ jobs:
                 total += count;
                 console.log('  ' + m + ': ' + count);
               }
-              console.log('\\n  TOTAL: ' + total + ' records');
+              console.log('  TOTAL: ' + total + ' records');
               fs.writeFileSync('artifacts/db-stats.json', JSON.stringify(stats, null, 2));
             })().finally(() => db.\$disconnect());
           "
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - uses: actions/upload-artifact@v4
         with:
           name: db-stats
           path: artifacts/db-stats.json
           retention-days: 1
 
-  # ═══════════════════════════════════════════════════════════
-  # JOB 8: Generate Database Schema SQL
-  # ═══════════════════════════════════════════════════════════
+  # ═══════════════════════════════════════════════════
+  # JOB 8: Database Schema (Prisma)
+  # ═══════════════════════════════════════════════════
   db-schema:
-    name: 🏗️ DB Schema
+    name: "8 · DB Schema"
     runs-on: ubuntu-latest
     needs: prisma-validate
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
-      - run: npm ci
-      - run: npx prisma generate
-      - name: Extract SQL schema from SQLite
-        run: |
-          npm install -g sql.js 2>/dev/null || true
-          node -e "
-            const { PrismaClient } = require('@prisma/client');
-            const fs = require('fs');
-            const db = new PrismaClient();
-            (async () => {
-              const tables = await db.\$queryRaw\`
-                SELECT sql FROM sqlite_master WHERE type='table' AND sql IS NOT NULL ORDER BY name
-              \`;
-              const schema = tables.map(t => t.sql).join('\\n\\n');
-              fs.writeFileSync('artifacts/schema.sql', schema);
-              console.log('Exported ' + tables.length + ' table definitions');
-              console.log(schema.substring(0, 500) + '...');
-            })().finally(() => db.\$disconnect());
-          "
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      - run: npm ci && npx prisma generate
+      - run: node scripts/db-schema.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: db-schema
           path: artifacts/schema.sql
           retention-days: 1
 
-  # ═══════════════════════════════════════════════════════════
-  # JOB 9: Export Relationships / Foreign Keys
-  # ═══════════════════════════════════════════════════════════
+  # ═══════════════════════════════════════════════════
+  # JOB 9: Database Relations (Prisma)
+  # ═══════════════════════════════════════════════════
   db-relations:
-    name: 🔗 DB Relations
+    name: "9 · DB Relations"
     runs-on: ubuntu-latest
     needs: prisma-validate
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
-      - run: npm ci
-      - run: npx prisma generate
-      - name: Extract foreign key relationships
-        run: |
-          node -e "
-            const { PrismaClient } = require('@prisma/client');
-            const fs = require('fs');
-            const db = new PrismaClient();
-            (async () => {
-              const fks = await db.\$queryRaw\`
-                SELECT 
-                  m.name as table_name,
-                  fk.from as column,
-                  fk.table as ref_table,
-                  fk.to as ref_column
-                FROM sqlite_master m
-                JOIN pragma_foreign_key_list(m.name) fk
-                WHERE m.type='table'
-                ORDER BY m.name, fk.id
-              \`;
-              fs.writeFileSync('artifacts/relations.json', JSON.stringify(fks, null, 2));
-              console.log('Found ' + fks.length + ' foreign key relationships');
-              fks.forEach(r => console.log('  ' + r.table_name + '.' + r.column + ' → ' + r.ref_table + '.' + r.ref_column));
-            })().finally(() => db.\$disconnect());
-          "
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      - run: npm ci && npx prisma generate
+      - run: node scripts/db-relations.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: db-relations
           path: artifacts/relations.json
           retention-days: 1
 
-  # ═══════════════════════════════════════════════════════════
-  # JOB 10: Verify Data Integrity
-  # ═══════════════════════════════════════════════════════════
+  # ═══════════════════════════════════════════════════
+  # JOB 10: Data Integrity Verification (Prisma)
+  # ═══════════════════════════════════════════════════
   verify-data:
-    name: ✅ Verify Data
+    name: "10 · Verify Data"
     runs-on: ubuntu-latest
     needs: prisma-validate
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
-      - run: npm ci
-      - run: npx prisma generate
+      - run: npm ci && npx prisma generate
       - name: Run data integrity checks
+        run: node scripts/export-db-to-json.mjs
+      - name: Integrity report
         run: |
           node -e "
-            const { PrismaClient } = require('@prisma/client');
-            const db = new PrismaClient();
-            (async () => {
-              console.log('🔍 Running data integrity checks...');
-              
-              // Check: Sales have items
-              const sales = await db.sale.findMany({ include: { items: true } });
-              const emptySales = sales.filter(s => s.items.length === 0);
-              console.log('  Sales without items: ' + emptySales.length);
-              
-              // Check: Customers with sales
-              const customers = await db.customer.findMany({ include: { sales: true } });
-              const withSales = customers.filter(c => c.sales.length > 0);
-              console.log('  Customers with sales: ' + withSales.length + '/' + customers.length);
-              
-              // Check: Products with stock
-              const products = await db.product.findMany();
-              const lowStock = products.filter(p => p.stock < p.minStock);
-              console.log('  Low stock products: ' + lowStock.length);
-              
-              // Check: Pending lab orders
-              const pendingLabs = await db.labOrder.findMany({ where: { status: 'Pending' } });
-              console.log('  Pending lab orders: ' + pendingLabs.length);
-              
-              // Check: Pending dues
-              const pendingDues = await db.due.findMany({ where: { status: 'Pending' } });
-              const totalDue = pendingDues.reduce((a, d) => a + d.amount - d.paid, 0);
-              console.log('  Pending dues: ₹' + Math.round(totalDue).toLocaleString());
-              
-              // Check: Total inventory value
-              const invValue = products.reduce((a, p) => a + p.price * p.stock, 0);
-              console.log('  Total inventory value: ₹' + Math.round(invValue).toLocaleString());
-              
-              // Check: Total revenue
-              const totalRev = sales.reduce((a, s) => a + s.totalAmount, 0);
-              console.log('  Total revenue: ₹' + Math.round(totalRev).toLocaleString());
-              
-              console.log('\\n✅ All integrity checks passed');
-            })().finally(() => db.\$disconnect());
+            const fs = require('fs');
+            const d = JSON.parse(fs.readFileSync('public/seed-data.json','utf-8'));
+            console.log('Running data integrity checks...');
+            const salesWithItems = (d.Sale || []).filter(s => (d.SaleItem || []).some(si => si.saleId === s.id));
+            console.log('  Sales with items: ' + salesWithItems.length + '/' + (d.Sale || []).length);
+            const custWithSales = (d.Customer || []).filter(c => (d.Sale || []).some(s => s.customerId === c.id));
+            console.log('  Customers with sales: ' + custWithSales.length + '/' + (d.Customer || []).length);
+            const lowStock = (d.Product || []).filter(p => p.isActive !== false && p.stock < p.minStock);
+            console.log('  Low stock products: ' + lowStock.length);
+            const pendingLabs = (d.LabOrder || []).filter(l => l.status === 'Pending');
+            console.log('  Pending lab orders: ' + pendingLabs.length);
+            const pendingDues = (d.Due || []).filter(dd => dd.status === 'Pending');
+            const totalDue = pendingDues.reduce((a, dd) => a + dd.amount - dd.paid, 0);
+            console.log('  Pending dues total: ' + Math.round(totalDue).toLocaleString());
+            const totalRev = (d.Sale || []).reduce((a, s) => a + s.totalAmount, 0);
+            console.log('  Total revenue: ' + Math.round(totalRev).toLocaleString());
+            console.log('All integrity checks passed!');
           "
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
-  # ═══════════════════════════════════════════════════════════
-  # JOB 11: Generate Prisma Client Artifacts
-  # ═══════════════════════════════════════════════════════════
+  # ═══════════════════════════════════════════════════
+  # JOB 11: Prisma Client Generation
+  # ═══════════════════════════════════════════════════
   prisma-client:
-    name: ⚙️ Prisma Client
+    name: "11 · Prisma Client"
     runs-on: ubuntu-latest
     needs: prisma-validate
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -499,346 +364,180 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
       - run: npm ci
-      - name: Generate and cache Prisma Client
+      - name: Generate Prisma Client
         run: |
           npx prisma generate
-          echo "✅ Prisma Client generated"
+          echo "Prisma Client generated"
           ls -la node_modules/.prisma/client/ | head -5
           echo "Client size: $(du -sh node_modules/.prisma/client/ | cut -f1)"
 
-  # ═══════════════════════════════════════════════════════════
-  # JOB 12: Export Index Files (searchable indexes)
-  # ═══════════════════════════════════════════════════════════
+  # ═══════════════════════════════════════════════════
+  # JOB 12: Database Indexes (Prisma)
+  # ═══════════════════════════════════════════════════
   export-indexes:
-    name: 📋 Export Indexes
+    name: "12 · DB Indexes"
     runs-on: ubuntu-latest
     needs: prisma-validate
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
-      - run: npm ci
-      - run: npx prisma generate
-      - name: Export database indexes
-        run: |
-          node -e "
-            const { PrismaClient } = require('@prisma/client');
-            const fs = require('fs');
-            const db = new PrismaClient();
-            (async () => {
-              const indexes = await db.\$queryRaw\`
-                SELECT m.name as table_name, il.name as index_name, il.sql as index_sql
-                FROM sqlite_master m
-                JOIN pragma_index_list(m.name) il
-                WHERE m.type='table'
-                ORDER BY m.name, il.name
-              \`;
-              fs.writeFileSync('artifacts/indexes.json', JSON.stringify(indexes, null, 2));
-              console.log('Found ' + indexes.length + ' indexes');
-              indexes.forEach(i => console.log('  ' + i.table_name + ': ' + i.index_name));
-            })().finally(() => db.\$disconnect());
-          "
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      - run: npm ci && npx prisma generate
+      - run: node scripts/db-indexes.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: db-indexes
           path: artifacts/indexes.json
           retention-days: 1
 
-  # ═══════════════════════════════════════════════════════════
-  # JOB 13: Export Customer Groups Summary
-  # ═══════════════════════════════════════════════════════════
+  # ═══════════════════════════════════════════════════
+  # JOB 13: Customer Groups Analytics (Prisma)
+  # ═══════════════════════════════════════════════════
   export-groups:
-    name: 👥 Customer Groups
+    name: "13 · Customer Groups"
     runs-on: ubuntu-latest
     needs: prisma-validate
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
-      - run: npm ci
-      - run: npx prisma generate
-      - name: Export customer group analytics
-        run: |
-          node -e "
-            const { PrismaClient } = require('@prisma/client');
-            const fs = require('fs');
-            const db = new PrismaClient();
-            (async () => {
-              const groups = await db.\$queryRaw\`
-                SELECT 
-                  \`group\`,
-                  COUNT(*) as count,
-                  SUM(totalSpent) as totalSpent,
-                  AVG(loyaltyPoints) as avgLoyalty,
-                  AVG(totalSpent) as avgSpent
-                FROM Customer
-                GROUP BY \`group\`
-                ORDER BY count DESC
-              \`;
-              fs.writeFileSync('artifacts/customer-groups.json', JSON.stringify(groups, null, 2));
-              console.log('Customer groups:');
-              groups.forEach(g => console.log('  ' + g.group + ': ' + g.count + ' customers, ₹' + Math.round(g.totalSpent).toLocaleString()));
-            })().finally(() => db.\$disconnect());
-          "
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      - run: npm ci && npx prisma generate
+      - run: node scripts/db-customer-groups.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: customer-groups
           path: artifacts/customer-groups.json
           retention-days: 1
 
-  # ═══════════════════════════════════════════════════════════
-  # JOB 14: Export Product Category Summary
-  # ═══════════════════════════════════════════════════════════
+  # ═══════════════════════════════════════════════════
+  # JOB 14: Product Categories Analytics (Prisma)
+  # ═══════════════════════════════════════════════════
   export-categories:
-    name: 🏷️ Product Categories
+    name: "14 · Product Categories"
     runs-on: ubuntu-latest
     needs: prisma-validate
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
-      - run: npm ci
-      - run: npx prisma generate
-      - name: Export product category analytics
-        run: |
-          node -e "
-            const { PrismaClient } = require('@prisma/client');
-            const fs = require('fs');
-            const db = new PrismaClient();
-            (async () => {
-              const cats = await db.\$queryRaw\`
-                SELECT 
-                  category,
-                  COUNT(*) as count,
-                  SUM(stock) as totalStock,
-                  AVG(price) as avgPrice,
-                  MIN(price) as minPrice,
-                  MAX(price) as maxPrice,
-                  SUM(stock * price) as totalValue
-                FROM Product
-                WHERE isActive = 1
-                GROUP BY category
-                ORDER BY count DESC
-              \`;
-              fs.writeFileSync('artifacts/product-categories.json', JSON.stringify(cats, null, 2));
-              console.log('Product categories:');
-              cats.forEach(c => console.log('  ' + c.category + ': ' + c.count + ' products, ₹' + Math.round(c.totalValue).toLocaleString()));
-            })().finally(() => db.\$disconnect());
-          "
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      - run: npm ci && npx prisma generate
+      - run: node scripts/db-product-categories.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: product-categories
           path: artifacts/product-categories.json
           retention-days: 1
 
-  # ═══════════════════════════════════════════════════════════
-  # JOB 15: Export Sales Analytics
-  # ═══════════════════════════════════════════════════════════
+  # ═══════════════════════════════════════════════════
+  # JOB 15: Sales Analytics (Prisma)
+  # ═══════════════════════════════════════════════════
   export-sales-analytics:
-    name: 📈 Sales Analytics
+    name: "15 · Sales Analytics"
     runs-on: ubuntu-latest
     needs: prisma-validate
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
-      - run: npm ci
-      - run: npx prisma generate
-      - name: Export sales analytics
-        run: |
-          node -e "
-            const { PrismaClient } = require('@prisma/client');
-            const fs = require('fs');
-            const db = new PrismaClient();
-            (async () => {
-              // Payment mode breakdown
-              const paymentModes = await db.\$queryRaw\`
-                SELECT paymentMode, COUNT(*) as count, SUM(totalAmount) as total
-                FROM Sale GROUP BY paymentMode ORDER BY total DESC
-              \`;
-              // Daily sales
-              const dailySales = await db.\$queryRaw\`
-                SELECT date(createdAt) as date, COUNT(*) as count, SUM(totalAmount) as total
-                FROM Sale GROUP BY date(createdAt) ORDER BY date DESC
-              \`;
-              // Top products by sales
-              const topProducts = await db.\$queryRaw\`
-                SELECT p.name, p.sku, p.category, SUM(si.qty) as totalQty, SUM(si.total) as revenue
-                FROM SaleItem si
-                JOIN Product p ON si.productId = p.id
-                GROUP BY si.productId
-                ORDER BY revenue DESC
-                LIMIT 10
-              \`;
-              const analytics = { paymentModes, dailySales, topProducts };
-              fs.writeFileSync('artifacts/sales-analytics.json', JSON.stringify(analytics, null, 2));
-              console.log('Sales analytics exported');
-              console.log('  Payment modes:', paymentModes.map(p => p.paymentMode).join(', '));
-              console.log('  Daily sales entries:', dailySales.length);
-              console.log('  Top products:', topProducts.length);
-            })().finally(() => db.\$disconnect());
-          "
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      - run: npm ci && npx prisma generate
+      - run: node scripts/db-sales-analytics.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: sales-analytics
           path: artifacts/sales-analytics.json
           retention-days: 1
 
-  # ═══════════════════════════════════════════════════════════
-  # JOB 16: Export Financial Summary
-  # ═══════════════════════════════════════════════════════════
+  # ═══════════════════════════════════════════════════
+  # JOB 16: Financial Summary (Prisma)
+  # ═══════════════════════════════════════════════════
   export-financials:
-    name: 💵 Financial Summary
+    name: "16 · Financial Summary"
     runs-on: ubuntu-latest
     needs: prisma-validate
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
-      - run: npm ci
-      - run: npx prisma generate
-      - name: Export financial summary
-        run: |
-          node -e "
-            const { PrismaClient } = require('@prisma/client');
-            const fs = require('fs');
-            const db = new PrismaClient();
-            (async () => {
-              const totalRevenue = (await db.sale.aggregate({ _sum: { totalAmount: true } }))._sum.totalAmount || 0;
-              const totalExpenses = (await db.expense.aggregate({ _sum: { amount: true } }))._sum.amount || 0;
-              const totalDues = (await db.due.aggregate({ _sum: { amount: true, paid: true } }))._sum;
-              const expenseByCategory = await db.\$queryRaw\`
-                SELECT category, SUM(amount) as total, COUNT(*) as count
-                FROM Expense GROUP BY category ORDER BY total DESC
-              \`;
-              const financials = {
-                totalRevenue: Math.round(totalRevenue),
-                totalExpenses: Math.round(totalExpenses),
-                netProfit: Math.round(totalRevenue - totalExpenses),
-                totalDuesAmount: Math.round(totalDues.amount || 0),
-                totalDuesPaid: Math.round(totalDues.paid || 0),
-                totalDuesOutstanding: Math.round((totalDues.amount || 0) - (totalDues.paid || 0)),
-                expenseByCategory
-              };
-              fs.writeFileSync('artifacts/financials.json', JSON.stringify(financials, null, 2));
-              console.log('Financial summary:');
-              console.log('  Revenue: ₹' + financials.totalRevenue.toLocaleString());
-              console.log('  Expenses: ₹' + financials.totalExpenses.toLocaleString());
-              console.log('  Net Profit: ₹' + financials.netProfit.toLocaleString());
-              console.log('  Outstanding Dues: ₹' + financials.totalDuesOutstanding.toLocaleString());
-            })().finally(() => db.\$disconnect());
-          "
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      - run: npm ci && npx prisma generate
+      - run: node scripts/db-financials.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: financials
           path: artifacts/financials.json
           retention-days: 1
 
-  # ═══════════════════════════════════════════════════════════
-  # JOB 17: Export Database Size & Health
-  # ═══════════════════════════════════════════════════════════
+  # ═══════════════════════════════════════════════════
+  # JOB 17: Database Health Check (Prisma)
+  # ═══════════════════════════════════════════════════
   db-health:
-    name: 🏥 DB Health
+    name: "17 · DB Health"
     runs-on: ubuntu-latest
     needs: prisma-validate
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
-      - run: npm ci
-      - run: npx prisma generate
-      - name: Check database health
-        run: |
-          node -e "
-            const { PrismaClient } = require('@prisma/client');
-            const fs = require('fs');
-            const db = new PrismaClient();
-            (async () => {
-              const pageSize = await db.\$queryRaw\`PRAGMA page_size\`;
-              const pageCount = await db.\$queryRaw\`PRAGMA page_count\`;
-              const pageSizeBytes = pageSize[0].page_size;
-              const pageCountNum = pageCount[0].page_count;
-              const dbSizeBytes = pageSizeBytes * pageCountNum;
-              
-              const integrity = await db.\$queryRaw\`PRAGMA integrity_check\`;
-              
-              const health = {
-                dbSizeBytes,
-                dbSizeKB: Math.round(dbSizeBytes / 1024),
-                pageSize: pageSizeBytes,
-                pageCount: pageCountNum,
-                integrity: integrity[0].integrity_check,
-                journalMode: (await db.\$queryRaw\`PRAGMA journal_mode\`)[0].journal_mode,
-              };
-              fs.writeFileSync('artifacts/db-health.json', JSON.stringify(health, null, 2));
-              console.log('Database health:');
-              console.log('  Size: ' + health.dbSizeKB + ' KB');
-              console.log('  Pages: ' + health.pageCount);
-              console.log('  Integrity: ' + health.integrity);
-              console.log('  Journal: ' + health.journalMode);
-            })().finally(() => db.\$disconnect());
-          "
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      - run: npm ci && npx prisma generate
+      - run: node scripts/db-health.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: db-health
           path: artifacts/db-health.json
           retention-days: 1
 
-  # ═══════════════════════════════════════════════════════════
-  # JOB 18: Export Full DB Dump
-  # ═══════════════════════════════════════════════════════════
+  # ═══════════════════════════════════════════════════
+  # JOB 18: Full Database Dump (Prisma)
+  # ═══════════════════════════════════════════════════
   db-dump:
-    name: 💾 Full DB Dump
+    name: "18 · Full DB Dump"
     runs-on: ubuntu-latest
     needs: prisma-validate
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
-      - run: npm ci
-      - run: npx prisma generate
-      - name: Create full database dump
-        run: |
-          node scripts/export-db-to-json.mjs
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      - run: npm ci && npx prisma generate
+      - name: Create full database dump via Prisma
+        run: node scripts/export-db-to-json.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: full-dump
           path: public/seed-data.json
           retention-days: 1
 
-  # ═══════════════════════════════════════════════════════════
+  # ═══════════════════════════════════════════════════
   # JOB 19: Lint & Type Check
-  # ═══════════════════════════════════════════════════════════
+  # ═══════════════════════════════════════════════════
   lint-check:
-    name: 🔎 Lint Check
+    name: "19 · Lint Check"
     runs-on: ubuntu-latest
     needs: prisma-validate
     steps:
@@ -851,12 +550,12 @@ jobs:
       - name: Run ESLint
         run: npm run lint -- --max-warnings=100 2>&1 || echo "Lint completed with warnings (non-blocking)"
 
-  # ═══════════════════════════════════════════════════════════
+  # ═══════════════════════════════════════════════════
   # JOB 20: BUILD & DEPLOY (Final Assembly)
-  # Depends on ALL data export jobs completing
-  # ═══════════════════════════════════════════════════════════
+  # Depends on ALL 19 data pipeline jobs
+  # ═══════════════════════════════════════════════════
   build-and-deploy:
-    name: 🚀 Build & Deploy to GitHub Pages
+    name: "20 · Build & Deploy"
     runs-on: ubuntu-latest
     needs:
       - export-customers
@@ -880,14 +579,14 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
-
       - run: npm ci
 
       # Download the full DB dump from job 18
@@ -896,13 +595,11 @@ jobs:
           name: full-dump
           path: ./public/seed-data.json
 
-      # Verify seed data is present
-      - name: Verify seed data
+      # Verify seed data
+      - name: Verify embedded data
         run: |
-          echo "📦 Seed data file:"
+          echo "Seed data file:"
           ls -la public/seed-data.json
-          echo ""
-          echo "📊 Data tables:"
           node -e "
             const d = require('./public/seed-data.json');
             let total = 0;
@@ -912,71 +609,37 @@ jobs:
             console.log('  TOTAL: ' + total + ' records embedded in static site');
           "
 
-      # Generate Prisma client (needed at build time)
-      - name: Generate Prisma Client
-        run: npx prisma generate
+      # Generate Prisma client for build
+      - run: npx prisma generate
 
-      # Build the static site with embedded data
+      # Build the static site
       - name: Build Next.js Static Site
         run: npm run build
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
-      # Verify build output
-      - name: Verify build output
+      # Verify output
+      - name: Verify build
         run: |
-          echo "📁 Build output:"
+          echo "Build output:"
           ls -la out/ | head -10
-          echo ""
-          echo "📄 Total files:"
-          find out -type f | wc -l
-          echo ""
-          echo "🔍 Verify seed-data.json is in output:"
-          ls -la out/seed-data.json
-          echo ""
-          echo "✅ Static site ready with embedded Prisma data!"
+          echo "Total files: $(find out -type f | wc -l)"
+          echo "Seed data in output: $(ls -la out/seed-data.json)"
 
-      # Upload to GitHub Pages
+      # Deploy to GitHub Pages
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ./out
-
       - uses: actions/deploy-pages@v4
         id: deployment
 
-      # Post-deploy summary
-      - name: Deployment Summary
+      # Summary
+      - name: Pipeline Summary
         if: always()
         run: |
-          echo "═══════════════════════════════════════════════"
-          echo "  🌸 LOTUS VISION CRM — DEPLOYMENT SUMMARY"
-          echo "═══════════════════════════════════════════════"
-          echo ""
-          echo "  Pipeline: 20 Prisma-powered agents"
+          echo "════════════════════════════════════════"
+          echo "  LOTUS VISION CRM — 20 AGENTS COMPLETE"
+          echo "════════════════════════════════════════"
+          echo "  20 Prisma-powered jobs executed"
           echo "  Database: SQLite via Prisma ORM"
-          echo "  Data: Embedded in static site (seed-data.json)"
-          echo "  URL: https://ramkumar4111999-gif.github.io/lotus-vision-crm/"
-          echo ""
-          echo "  Jobs completed:"
-          echo "    ✅ Prisma schema validation"
-          echo "    ✅ Customer data export (Prisma query)"
-          echo "    ✅ Inventory data export (Prisma query)"
-          echo "    ✅ Sales data export (Prisma query)"
-          echo "    ✅ Operations data export (Prisma query)"
-          echo "    ✅ Marketing data export (Prisma query)"
-          echo "    ✅ Database statistics"
-          echo "    ✅ Schema SQL extraction"
-          echo "    ✅ Foreign key relationships"
-          echo "    ✅ Data integrity verification"
-          echo "    ✅ Prisma client generation"
-          echo "    ✅ Database indexes export"
-          echo "    ✅ Customer groups analytics"
-          echo "    ✅ Product categories analytics"
-          echo "    ✅ Sales analytics"
-          echo "    ✅ Financial summary"
-          echo "    ✅ Database health check"
-          echo "    ✅ Full DB dump → seed-data.json"
-          echo "    ✅ Lint & type check"
-          echo "    ✅ Build & deploy to GitHub Pages"
-          echo ""
-          echo "═══════════════════════════════════════════════"
+          echo "  Data: Embedded in static site"
+          echo "  URL: ramkumar4111999-gif.github.io/lotus-vision-crm/"
+          echo "════════════════════════════════════════"

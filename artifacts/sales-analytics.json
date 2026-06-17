@@ -1,0 +1,103 @@
+{
+  "paymentModes": [
+    {
+      "paymentMode": "Bank Transfer",
+      "count": 1,
+      "total": 21830
+    },
+    {
+      "paymentMode": "Card",
+      "count": 2,
+      "total": 19470
+    },
+    {
+      "paymentMode": "Cash",
+      "count": 3,
+      "total": 17310.6
+    },
+    {
+      "paymentMode": "UPI",
+      "count": 2,
+      "total": 10502
+    }
+  ],
+  "dailySales": [
+    {
+      "date": null,
+      "count": 8,
+      "total": 69112.6
+    }
+  ],
+  "topProducts": [
+    {
+      "name": "Fastrack Round Metal",
+      "sku": "FT-RND-RG-001",
+      "category": "Frames",
+      "totalQty": 10,
+      "revenue": 12000
+    },
+    {
+      "name": "Vincent Chase FC",
+      "sku": "VC-FC-TR-001",
+      "category": "Frames",
+      "totalQty": 10,
+      "revenue": 9500
+    },
+    {
+      "name": "Essilor Varilux Progressive",
+      "sku": "ES-VP-001",
+      "category": "Lenses",
+      "totalQty": 1,
+      "revenue": 5500
+    },
+    {
+      "name": "Essilor Crizal Easy Pro",
+      "sku": "ES-CEP-001",
+      "category": "Lenses",
+      "totalQty": 2,
+      "revenue": 5000
+    },
+    {
+      "name": "Ray-Ban Clubmaster Classic",
+      "sku": "RB-CLB-BG-001",
+      "category": "Sunglasses",
+      "totalQty": 1,
+      "revenue": 4800
+    },
+    {
+      "name": "Acuvue Oasys",
+      "sku": "AJ-OAS-001",
+      "category": "Contact Lenses",
+      "totalQty": 3,
+      "revenue": 4500
+    },
+    {
+      "name": "Titan Rimless Titanium",
+      "sku": "TT-RM-SI-001",
+      "category": "Frames",
+      "totalQty": 1,
+      "revenue": 4200
+    },
+    {
+      "name": "Zeiss Duravision BlueProtect",
+      "sku": "ZS-DBP-001",
+      "category": "Lenses",
+      "totalQty": 1,
+      "revenue": 3800
+    },
+    {
+      "name": "Bausch+Lomb Ultra",
+      "sku": "BL-ULT-001",
+      "category": "Contact Lenses",
+      "totalQty": 2,
+      "revenue": 3600
+    },
+    {
+      "name": "Ray-Ban Aviator Gold",
+      "sku": "RB-AVI-GG-001",
+      "category": "Frames",
+      "totalQty": 1,
+      "revenue": 3500
+    }
+  ]
+}

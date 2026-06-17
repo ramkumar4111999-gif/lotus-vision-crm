@@ -1,0 +1,73 @@
+[
+  {
+    "type": "unique",
+    "field": "sku"
+  },
+  {
+    "type": "unique",
+    "field": "invoiceNo"
+  },
+  {
+    "type": "unique",
+    "field": "loginId"
+  },
+  {
+    "type": "unique",
+    "field": "poNumber"
+  },
+  {
+    "type": "table",
+    "model": "Customer",
+    "rows": 16
+  },
+  {
+    "type": "table",
+    "model": "Prescription",
+    "rows": 5
+  },
+  {
+    "type": "table",
+    "model": "Visit",
+    "rows": 8
+  },
+  {
+    "type": "table",
+    "model": "Product",
+    "rows": 28
+  },
+  {
+    "type": "table",
+    "model": "Sale",
+    "rows": 8
+  },
+  {
+    "type": "table",
+    "model": "SaleItem",
+    "rows": 18
+  },
+  {
+    "type": "table",
+    "model": "LabOrder",
+    "rows": 6
+  },
+  {
+    "type": "table",
+    "model": "Appointment",
+    "rows": 5
+  },
+  {
+    "type": "table",
+    "model": "Expense",
+    "rows": 13
+  },
+  {
+    "type": "table",
+    "model": "Due",
+    "rows": 6
+  },
+  {
+    "type": "table",
+    "model": "Staff",
+    "rows": 1
+  }
+]

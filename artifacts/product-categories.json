@@ -1,0 +1,56 @@
+[
+  {
+    "category": "Lenses",
+    "count": 8,
+    "totalStock": 114,
+    "avgPrice": 3750,
+    "minPrice": 800,
+    "maxPrice": 5500,
+    "totalValue": 302300
+  },
+  {
+    "category": "Frames",
+    "count": 8,
+    "totalStock": 92,
+    "avgPrice": 2643.75,
+    "minPrice": 800,
+    "maxPrice": 5500,
+    "totalValue": 191150
+  },
+  {
+    "category": "Sunglasses",
+    "count": 4,
+    "totalStock": 26,
+    "avgPrice": 4575,
+    "minPrice": 1500,
+    "maxPrice": 9800,
+    "totalValue": 86000
+  },
+  {
+    "category": "Contact Lenses",
+    "count": 4,
+    "totalStock": 48,
+    "avgPrice": 1537.5,
+    "minPrice": 650,
+    "maxPrice": 2200,
+    "totalValue": 84050
+  },
+  {
+    "category": "Solutions",
+    "count": 2,
+    "totalStock": 52,
+    "avgPrice": 315,
+    "minPrice": 280,
+    "maxPrice": 350,
+    "totalValue": 16100
+  },
+  {
+    "category": "Accessories",
+    "count": 2,
+    "totalStock": 90,
+    "avgPrice": 135,
+    "minPrice": 120,
+    "maxPrice": 150,
+    "totalValue": 12000
+  }
+]

@@ -1,0 +1,55 @@
+{
+  "totalRevenue": 69113,
+  "totalExpenses": 178850,
+  "netProfit": -109737,
+  "totalDuesAmount": 48300,
+  "totalDuesPaid": 16500,
+  "totalDuesOutstanding": 31800,
+  "expenseByCategory": [
+    {
+      "category": "Inventory",
+      "total": 80000,
+      "count": 2
+    },
+    {
+      "category": "Rent",
+      "total": 50000,
+      "count": 2
+    },
+    {
+      "category": "Salary",
+      "total": 30000,
+      "count": 2
+    },
+    {
+      "category": "Marketing",
+      "total": 7800,
+      "count": 2
+    },
+    {
+      "category": "Electricity",
+      "total": 4200,
+      "count": 1
+    },
+    {
+      "category": "Maintenance",
+      "total": 3500,
+      "count": 1
+    },
+    {
+      "category": "Office Supplies",
+      "total": 1800,
+      "count": 1
+    },
+    {
+      "category": "Logistics",
+      "total": 1500,
+      "count": 1
+    },
+    {
+      "category": "Test",
+      "total": 50,
+      "count": 1
+    }
+  ]
+}

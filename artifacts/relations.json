@@ -1,0 +1,42 @@
+[
+  {
+    "fields": "customerId",
+    "references": "id"
+  },
+  {
+    "fields": "customerId",
+    "references": "id"
+  },
+  {
+    "fields": "customerId",
+    "references": "id"
+  },
+  {
+    "fields": "saleId",
+    "references": "id"
+  },
+  {
+    "fields": "productId",
+    "references": "id"
+  },
+  {
+    "fields": "saleId",
+    "references": "id"
+  },
+  {
+    "fields": "customerId",
+    "references": "id"
+  },
+  {
+    "fields": "customerId",
+    "references": "id"
+  },
+  {
+    "fields": "staffId",
+    "references": "id"
+  },
+  {
+    "fields": "staffId",
+    "references": "id"
+  }
+]

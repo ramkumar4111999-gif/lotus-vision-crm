@@ -1,0 +1,8 @@
+{
+  "dbSizeBytes": 172032,
+  "dbSizeKB": 168,
+  "pageSize": 4096,
+  "pageCount": 42,
+  "integrity": "ok",
+  "journalMode": "delete"
+}

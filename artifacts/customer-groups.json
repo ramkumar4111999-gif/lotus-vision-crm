@@ -1,0 +1,30 @@
+[
+  {
+    "group": "Regular",
+    "count": 9,
+    "totalSpent": 80000,
+    "avgLoyalty": 161.66666666666666,
+    "avgSpent": 8888.888888888889
+  },
+  {
+    "group": "Premium",
+    "count": 3,
+    "totalSpent": 152500,
+    "avgLoyalty": 956.6666666666666,
+    "avgSpent": 50833.333333333336
+  },
+  {
+    "group": "Wholesale",
+    "count": 2,
+    "totalSpent": 73000,
+    "avgLoyalty": 425,
+    "avgSpent": 36500
+  },
+  {
+    "group": "New",
+    "count": 2,
+    "totalSpent": 0,
+    "avgLoyalty": 0,
+    "avgSpent": 0
+  }
+]
