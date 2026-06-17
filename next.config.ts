@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "export",
+  basePath: "/lotus-vision-crm",
   images: {
     unoptimized: true,
   },
