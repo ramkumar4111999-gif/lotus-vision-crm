@@ -46,13 +46,17 @@ async function loadData(): Promise<void> {
   if (dataPromise) { await dataPromise; return; }
   dataPromise = (async () => {
     try {
-      const basePath = (document.querySelector('base')?.href || '').replace(/\/$/, '');
-      const url = `${basePath || ''}/seed-data.json`;
+      // Detect basePath from current URL (e.g., /lotus-vision-crm)
+      const pathSegments = window.location.pathname.split('/').filter(Boolean);
+      const possibleBase = pathSegments.length > 0 ? '/' + pathSegments[0] : '';
+      const url = `${possibleBase}/seed-data.json`;
       const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       seed = await res.json();
       dataLoaded = true;
+      console.log('Mock API: loaded seed data', Object.keys(seed));
     } catch (e) {
-      console.warn('Failed to load seed-data.json:', e);
+      console.warn('Mock API: Failed to load seed-data.json:', e);
       seed = {};
       dataLoaded = true;
     }
