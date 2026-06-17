@@ -111,9 +111,11 @@ function SectionRenderer() {
   }, [activeSection, setLoadingBar]);
 
   return (
-    <div key={activeSection} className="section-enter">
-      <Component />
-    </div>
+    <>
+      <div key={activeSection} className="section-enter">
+        <Component />
+      </div>
+    </>
   );
 }
 
@@ -1256,7 +1258,19 @@ function CrmLayout() {
 
 // ─── Root Page ──────────────────────────────────────────────────────────
 
+// Inject mock API before anything else (client-side only)
+function useMockApiInit() {
+  useEffect(() => {
+    const s = document.createElement('script');
+    s.src = '/lotus-vision-crm/mock-api-init.js';
+    s.async = false;
+    document.head.appendChild(s);
+  }, []);
+}
+
 export default function Home() {
+  useMockApiInit();
+
   return (
     <CrmProvider>
       <CrmLayout />
