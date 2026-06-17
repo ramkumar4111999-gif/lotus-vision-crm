@@ -83,7 +83,7 @@ function buildMockData(data: Record<string, any[]>) {
       appointmentsToday: (data.Appointment || []).length,
       lowStockItems: (data.Product || []).filter((p: any) => p.isActive !== false && p.stock < p.minStock).length,
     },
-    todayPaymentModes: [{ mode: 'Cash', amount: (data.Sale || []).reduce((a, s: any) => a + (s.paymentMode === 'Cash' ? s.totalAmount : 0), count: 0 }, { mode: 'UPI', amount: (data.Sale || []).reduce((a, s: any) => a + (s.paymentMode === 'UPI' ? s.totalAmount : 0), count: 0 }, { mode: 'Card', amount: (data.Sale || []).reduce((a, s: any) => a + (s.paymentMode === 'Card' ? s.totalAmount : 0), count: 0 }],
+    todayPaymentModes: [{ mode: 'Cash', amount: Math.round((data.Sale || []).reduce((a: number, s: any) => a + (s.paymentMode === 'Cash' ? s.totalAmount : 0), 0)) }, { mode: 'UPI', amount: Math.round((data.Sale || []).reduce((a: number, s: any) => a + (s.paymentMode === 'UPI' ? s.totalAmount : 0), 0)) }, { mode: 'Card', amount: Math.round((data.Sale || []).reduce((a: number, s: any) => a + (s.paymentMode === 'Card' ? s.totalAmount : 0), 0)) }],
     todayAvgOrderValue: (data.Sale || []).length ? Math.round((data.Sale || []).reduce((a, s: any) => a + s.totalAmount, 0) / (data.Sale || []).length) : 0,
   });
 
@@ -222,7 +222,7 @@ function buildMockData(data: Record<string, any[]>) {
   // Return a router function
   return (url: string) => {
     const path = url.includes('?') ? url.split('?')[0] : url;
-    for (const route in Object.keys(handlers)) {
+    for (const route of Object.keys(handlers)) {
       if (path.includes(route)) return handlers[route](url);
     }
     return null;

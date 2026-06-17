@@ -40,8 +40,8 @@ yarn-error.log*
 next-env.d.ts
 local-*
 
-# databases (seed-data.json IS tracked)
-/db/*.db
+# databases — custom.db IS tracked (committed to repo for GitHub workflow)
+# /db/*.db
 /prisma/db.sqlite
 
 # Internal tool artifacts

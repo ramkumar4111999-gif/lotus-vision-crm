@@ -1258,7 +1258,7 @@ function CrmLayout() {
 }
 
 
-# ─── Root Page ──────────────────────────────────────────────────
+// ─── Root Page ──────────────────────────────────────────────────
 
 export default function Home() {
   useMockApiFallback();
