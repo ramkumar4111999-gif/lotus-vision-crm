@@ -40,7 +40,7 @@ yarn-error.log*
 next-env.d.ts
 local-*
 
-# databases
+# databases (seed-data.json IS tracked)
 /db/*.db
 /prisma/db.sqlite
 
@@ -64,6 +64,7 @@ local-*
 !postcss.config.mjs
 !tailwind.config.ts
 !eslint.config.mjs
+!prisma/seed-data.json
 
 # Workspace utility scripts
 keepalive.sh
