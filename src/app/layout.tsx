@@ -14,20 +14,23 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Lotus Vision Opticals — CRM",
-  description: "Complete Customer Relationship Management system for Lotus Vision Opticals",
-  icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
-  },
-};
-
 export const viewport: Viewport = {
   themeColor: '#059669',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+};
+
+export const metadata: Metadata = {
+  title: "Lotus Vision Opticals — CRM",
+  description: "Complete Customer Relationship Management system for Lotus Vision Opticals",
+  icons: {
+    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+  },
+  scripts: [
+    { src: "/lotus-vision-crm/mock-api-init.js" },
+  ],
 };
 
 export default function RootLayout({
