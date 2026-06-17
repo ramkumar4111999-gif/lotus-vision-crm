@@ -37,6 +37,8 @@ jobs:
   prisma-validate:
     name: 🔍 Prisma Validate
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -63,8 +65,6 @@ jobs:
             echo "⚠️ No database file found at db/custom.db"
             exit 1
           fi
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
   # ═══════════════════════════════════════════════════════════
   # JOB 2: Export Customer Data
