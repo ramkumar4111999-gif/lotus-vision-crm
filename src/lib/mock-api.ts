@@ -32,17 +32,13 @@ function parseDate(s: string): Date | null {
   try { return new Date(s); } catch { return null; }
 }
 
-function isSameDay(d: Date, dateStr: string): boolean {
-  if (!dateStr) return false;
-  const target = parseDate(dateStr);
-  if (!target) return false;
-  return d.getFullYear() === target.getFullYear() && d.getMonth() === target.getMonth() && d.getDate() === target.getDate();
+// For demo: treat ALL seed data as current month/today
+function isSameDay(_d: Date, dateStr: string): boolean {
+  return !!dateStr;
 }
 
-function isThisMonth(d: Date, dateStr: string): boolean {
-  const target = parseDate(dateStr);
-  if (!target) return false;
-  return d.getFullYear() === target.getFullYear() && d.getMonth() === target.getMonth();
+function isThisMonth(_d: Date, dateStr: string): boolean {
+  return !!dateStr;
 }
 
 async function loadData(): Promise<void> {
