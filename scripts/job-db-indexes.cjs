@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { PrismaClient } from '@prisma/client';
-import { writeFileSync, mkdirSync } from 'fs';
+const { PrismaClient } = require('@prisma/client');
+const fs = require('fs');
 
 const db = new PrismaClient();
 (async () => {
@@ -9,7 +9,7 @@ const db = new PrismaClient();
     FROM sqlite_master m
     JOIN pragma_index_list(m.name) il
     WHERE m.type='table' ORDER BY m.name`;
-  mkdirSync('artifacts', { recursive: true });
-  writeFileSync('artifacts/indexes.json', JSON.stringify(indexes, null, 2));
+  fs.mkdirSync('artifacts', { recursive: true });
+  fs.writeFileSync('artifacts/indexes.json', JSON.stringify(indexes, null, 2));
   console.log('Found ' + indexes.length + ' indexes');
 })().finally(() => db.$disconnect());

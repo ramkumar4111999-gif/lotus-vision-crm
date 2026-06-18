@@ -59,7 +59,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20", cache: "npm" }
       - run: npm ci && npx prisma generate
-      - run: node scripts/export-db-to-json.mjs
+      - run: node scripts/export-db-to-json.cjs
       - name: Extract customer data
         run: |
           node -e "const fs=require('fs');const d=JSON.parse(fs.readFileSync('public/seed-data.json','utf-8'));const o={Customer:d.Customer,Prescription:d.Prescription,Visit:d.Visit,Appointment:d.Appointment,Due:d.Due};fs.mkdirSync('artifacts',{recursive:true});fs.writeFileSync('artifacts/customers.json',JSON.stringify(o,null,2));console.log('Customers: '+o.Customer.length+' records')"
@@ -78,7 +78,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20", cache: "npm" }
       - run: npm ci && npx prisma generate
-      - run: node scripts/export-db-to-json.mjs
+      - run: node scripts/export-db-to-json.cjs
       - name: Extract inventory data
         run: |
           node -e "const fs=require('fs');const d=JSON.parse(fs.readFileSync('public/seed-data.json','utf-8'));const o={Product:d.Product,PurchaseOrder:d.PurchaseOrder};fs.mkdirSync('artifacts',{recursive:true});fs.writeFileSync('artifacts/inventory.json',JSON.stringify(o,null,2));console.log('Products: '+o.Product.length+' records')"
@@ -97,7 +97,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20", cache: "npm" }
       - run: npm ci && npx prisma generate
-      - run: node scripts/export-db-to-json.mjs
+      - run: node scripts/export-db-to-json.cjs
       - name: Extract sales data
         run: |
           node -e "const fs=require('fs');const d=JSON.parse(fs.readFileSync('public/seed-data.json','utf-8'));const o={Sale:d.Sale,SaleItem:d.SaleItem,Return:d.Return,Expense:d.Expense};fs.mkdirSync('artifacts',{recursive:true});fs.writeFileSync('artifacts/sales.json',JSON.stringify(o,null,2));console.log('Sales: '+o.Sale.length+' records')"
@@ -116,7 +116,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20", cache: "npm" }
       - run: npm ci && npx prisma generate
-      - run: node scripts/export-db-to-json.mjs
+      - run: node scripts/export-db-to-json.cjs
       - name: Extract operations data
         run: |
           node -e "const fs=require('fs');const d=JSON.parse(fs.readFileSync('public/seed-data.json','utf-8'));const o={LabOrder:d.LabOrder,Staff:d.Staff,Attendance:d.Attendance,SalaryRecord:d.SalaryRecord};fs.mkdirSync('artifacts',{recursive:true});fs.writeFileSync('artifacts/operations.json',JSON.stringify(o,null,2));console.log('Lab Orders: '+o.LabOrder.length+' records')"
@@ -135,7 +135,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20", cache: "npm" }
       - run: npm ci && npx prisma generate
-      - run: node scripts/export-db-to-json.mjs
+      - run: node scripts/export-db-to-json.cjs
       - name: Extract marketing data
         run: |
           node -e "const fs=require('fs');const d=JSON.parse(fs.readFileSync('public/seed-data.json','utf-8'));const o={Campaign:d.Campaign,Notification:d.Notification};fs.mkdirSync('artifacts',{recursive:true});fs.writeFileSync('artifacts/marketing.json',JSON.stringify(o,null,2));console.log('Campaigns: '+o.Campaign.length+' records')"
@@ -154,7 +154,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20", cache: "npm" }
       - run: npm ci && npx prisma generate
-      - run: node scripts/job-db-stats.mjs
+      - run: node scripts/job-db-stats.cjs
       - uses: actions/upload-artifact@v4
         with: { name: db-stats, path: artifacts/db-stats.json, retention-days: 1 }
 
@@ -170,7 +170,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20", cache: "npm" }
       - run: npm ci && npx prisma generate
-      - run: node scripts/job-db-schema.mjs
+      - run: node scripts/job-db-schema.cjs
       - uses: actions/upload-artifact@v4
         with: { name: db-schema, path: artifacts/schema.sql, retention-days: 1 }
 
@@ -186,7 +186,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20", cache: "npm" }
       - run: npm ci && npx prisma generate
-      - run: node scripts/job-db-relations.mjs
+      - run: node scripts/job-db-relations.cjs
       - uses: actions/upload-artifact@v4
         with: { name: db-relations, path: artifacts/relations.json, retention-days: 1 }
 
@@ -202,7 +202,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20", cache: "npm" }
       - run: npm ci && npx prisma generate
-      - run: node scripts/job-verify-data.mjs
+      - run: node scripts/job-verify-data.cjs
 
   # ═══════════════════════════════════════════════════
   # JOB 11: Prisma Client Generation
@@ -230,7 +230,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20", cache: "npm" }
       - run: npm ci && npx prisma generate
-      - run: node scripts/job-db-indexes.mjs
+      - run: node scripts/job-db-indexes.cjs
       - uses: actions/upload-artifact@v4
         with: { name: db-indexes, path: artifacts/indexes.json, retention-days: 1 }
 
@@ -246,7 +246,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20", cache: "npm" }
       - run: npm ci && npx prisma generate
-      - run: node scripts/job-customer-groups.mjs
+      - run: node scripts/job-customer-groups.cjs
       - uses: actions/upload-artifact@v4
         with: { name: customer-groups, path: artifacts/customer-groups.json, retention-days: 1 }
 
@@ -262,7 +262,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20", cache: "npm" }
       - run: npm ci && npx prisma generate
-      - run: node scripts/job-product-categories.mjs
+      - run: node scripts/job-product-categories.cjs
       - uses: actions/upload-artifact@v4
         with: { name: product-categories, path: artifacts/product-categories.json, retention-days: 1 }
 
@@ -278,7 +278,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20", cache: "npm" }
       - run: npm ci && npx prisma generate
-      - run: node scripts/job-sales-analytics.mjs
+      - run: node scripts/job-sales-analytics.cjs
       - uses: actions/upload-artifact@v4
         with: { name: sales-analytics, path: artifacts/sales-analytics.json, retention-days: 1 }
 
@@ -294,7 +294,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20", cache: "npm" }
       - run: npm ci && npx prisma generate
-      - run: node scripts/job-financials.mjs
+      - run: node scripts/job-financials.cjs
       - uses: actions/upload-artifact@v4
         with: { name: financials, path: artifacts/financials.json, retention-days: 1 }
 
@@ -310,7 +310,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20", cache: "npm" }
       - run: npm ci && npx prisma generate
-      - run: node scripts/job-db-health.mjs
+      - run: node scripts/job-db-health.cjs
       - uses: actions/upload-artifact@v4
         with: { name: db-health, path: artifacts/db-health.json, retention-days: 1 }
 
@@ -326,7 +326,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20", cache: "npm" }
       - run: npm ci && npx prisma generate
-      - run: node scripts/export-db-to-json.mjs
+      - run: node scripts/export-db-to-json.cjs
       - uses: actions/upload-artifact@v4
         with: { name: full-dump, path: public/seed-data.json, retention-days: 1 }
 

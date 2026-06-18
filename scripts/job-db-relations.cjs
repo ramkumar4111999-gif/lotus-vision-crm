@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { PrismaClient } from '@prisma/client';
-import { writeFileSync, mkdirSync } from 'fs';
+const { PrismaClient } = require('@prisma/client');
+const fs = require('fs');
 
 const db = new PrismaClient();
 (async () => {
@@ -9,8 +9,8 @@ const db = new PrismaClient();
     FROM sqlite_master m
     JOIN pragma_foreign_key_list(m.name) fk
     WHERE m.type='table' ORDER BY m.name, fk.id`;
-  mkdirSync('artifacts', { recursive: true });
-  writeFileSync('artifacts/relations.json', JSON.stringify(fks, null, 2));
+  fs.mkdirSync('artifacts', { recursive: true });
+  fs.writeFileSync('artifacts/relations.json', JSON.stringify(fks, null, 2));
   console.log('Found ' + fks.length + ' foreign key relationships');
   fks.forEach(r => console.log('  ' + r.table_name + '.' + r.column + ' -> ' + r.ref_table + '.' + r.ref_column));
 })().finally(() => db.$disconnect());

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { PrismaClient } from '@prisma/client';
-import { writeFileSync, mkdirSync } from 'fs';
+const { PrismaClient } = require('@prisma/client');
+const fs = require('fs');
 
 const db = new PrismaClient();
 (async () => {
@@ -10,8 +10,8 @@ const db = new PrismaClient();
     FROM SaleItem si JOIN Product p ON si.productId = p.id
     GROUP BY si.productId ORDER BY revenue DESC LIMIT 10`;
   const analytics = { paymentModes: modes, topProducts: top };
-  mkdirSync('artifacts', { recursive: true });
-  writeFileSync('artifacts/sales-analytics.json', JSON.stringify(analytics, null, 2));
+  fs.mkdirSync('artifacts', { recursive: true });
+  fs.writeFileSync('artifacts/sales-analytics.json', JSON.stringify(analytics, null, 2));
   console.log('Payment modes:', modes.map(m => m.paymentMode).join(', '));
   console.log('Top products:', top.length);
 })().finally(() => db.$disconnect());

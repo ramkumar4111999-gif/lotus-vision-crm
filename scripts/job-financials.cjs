@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { PrismaClient } from '@prisma/client';
-import { writeFileSync, mkdirSync } from 'fs';
+const { PrismaClient } = require('@prisma/client');
+const fs = require('fs');
 
 const db = new PrismaClient();
 (async () => {
@@ -12,8 +12,8 @@ const db = new PrismaClient();
     totalRevenue: Math.round(rev), totalExpenses: Math.round(exp), netProfit: Math.round(rev - exp),
     outstandingDues: Math.round((dues.amount || 0) - (dues.paid || 0)), expenseByCategory: byCat
   };
-  mkdirSync('artifacts', { recursive: true });
-  writeFileSync('artifacts/financials.json', JSON.stringify(f, null, 2));
+  fs.mkdirSync('artifacts', { recursive: true });
+  fs.writeFileSync('artifacts/financials.json', JSON.stringify(f, null, 2));
   console.log('Revenue: Rs.' + f.totalRevenue.toLocaleString());
   console.log('Expenses: Rs.' + f.totalExpenses.toLocaleString());
   console.log('Net Profit: Rs.' + f.netProfit.toLocaleString());

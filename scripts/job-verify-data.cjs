@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { PrismaClient } from '@prisma/client';
+const { PrismaClient } = require('@prisma/client');
 
 const db = new PrismaClient();
 (async () => {

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { PrismaClient } from '@prisma/client';
-import { writeFileSync, mkdirSync } from 'fs';
+const { PrismaClient } = require('@prisma/client');
+const fs = require('fs');
 
 const db = new PrismaClient();
 const models = ['Customer','Prescription','Visit','Product','Sale','SaleItem','Return','LabOrder','Appointment','Expense','Due','Staff','Attendance','SalaryRecord','Campaign','Notification','PurchaseOrder'];
@@ -13,6 +13,6 @@ const models = ['Customer','Prescription','Visit','Product','Sale','SaleItem','R
     console.log('  ' + m + ': ' + c);
   }
   console.log('  TOTAL: ' + total + ' records');
-  mkdirSync('artifacts', { recursive: true });
-  writeFileSync('artifacts/db-stats.json', JSON.stringify(stats, null, 2));
+  fs.mkdirSync('artifacts', { recursive: true });
+  fs.writeFileSync('artifacts/db-stats.json', JSON.stringify(stats, null, 2));
 })().finally(() => db.$disconnect());
