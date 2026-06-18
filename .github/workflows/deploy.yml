@@ -535,7 +535,8 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20", cache: "npm" }
       - run: npm ci
-      - run: npm run lint -- --max-warnings=100 2>&1 || echo "Lint: warnings only (non-blocking)"
+      - name: Run ESLint
+        run: npm run lint -- --max-warnings=100 2>&1 || true
 
   # ═══════════════════════════════════════════════════
   # JOB 20: BUILD & DEPLOY
