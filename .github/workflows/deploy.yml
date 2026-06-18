@@ -35,18 +35,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
+        with: { node-version: "20", cache: "npm" }
       - run: npm ci
       - run: npx prisma validate
       - run: npx prisma generate
       - name: Verify database
         run: |
           if [ -f "db/custom.db" ]; then
-            echo "✅ Database: $(wc -c < db/custom.db) bytes"
+            echo "Database: $(wc -c < db/custom.db) bytes"
           else
-            echo "❌ db/custom.db not found"; exit 1
+            echo "db/custom.db not found"; exit 1
           fi
 
   # ═══════════════════════════════════════════════════
@@ -64,13 +62,7 @@ jobs:
       - run: node scripts/export-db-to-json.mjs
       - name: Extract customer data
         run: |
-          node -e "
-            const fs=require('fs');
-            const d=JSON.parse(fs.readFileSync('public/seed-data.json','utf-8'));
-            const out={Customer:d.Customer,Prescription:d.Prescription,Visit:d.Visit,Appointment:d.Appointment,Due:d.Due};
-            fs.writeFileSync('artifacts/customers.json',JSON.stringify(out,null,2));
-            console.log('Customers: '+out.Customer.length+' records');
-          "
+          node -e "const fs=require('fs');const d=JSON.parse(fs.readFileSync('public/seed-data.json','utf-8'));const o={Customer:d.Customer,Prescription:d.Prescription,Visit:d.Visit,Appointment:d.Appointment,Due:d.Due};fs.mkdirSync('artifacts',{recursive:true});fs.writeFileSync('artifacts/customers.json',JSON.stringify(o,null,2));console.log('Customers: '+o.Customer.length+' records')"
       - uses: actions/upload-artifact@v4
         with: { name: customers-data, path: artifacts/customers.json, retention-days: 1 }
 
@@ -89,13 +81,7 @@ jobs:
       - run: node scripts/export-db-to-json.mjs
       - name: Extract inventory data
         run: |
-          node -e "
-            const fs=require('fs');
-            const d=JSON.parse(fs.readFileSync('public/seed-data.json','utf-8'));
-            const out={Product:d.Product,PurchaseOrder:d.PurchaseOrder};
-            fs.writeFileSync('artifacts/inventory.json',JSON.stringify(out,null,2));
-            console.log('Products: '+out.Product.length+' records');
-          "
+          node -e "const fs=require('fs');const d=JSON.parse(fs.readFileSync('public/seed-data.json','utf-8'));const o={Product:d.Product,PurchaseOrder:d.PurchaseOrder};fs.mkdirSync('artifacts',{recursive:true});fs.writeFileSync('artifacts/inventory.json',JSON.stringify(o,null,2));console.log('Products: '+o.Product.length+' records')"
       - uses: actions/upload-artifact@v4
         with: { name: inventory-data, path: artifacts/inventory.json, retention-days: 1 }
 
@@ -114,13 +100,7 @@ jobs:
       - run: node scripts/export-db-to-json.mjs
       - name: Extract sales data
         run: |
-          node -e "
-            const fs=require('fs');
-            const d=JSON.parse(fs.readFileSync('public/seed-data.json','utf-8'));
-            const out={Sale:d.Sale,SaleItem:d.SaleItem,Return:d.Return,Expense:d.Expense};
-            fs.writeFileSync('artifacts/sales.json',JSON.stringify(out,null,2));
-            console.log('Sales: '+out.Sale.length+' records');
-          "
+          node -e "const fs=require('fs');const d=JSON.parse(fs.readFileSync('public/seed-data.json','utf-8'));const o={Sale:d.Sale,SaleItem:d.SaleItem,Return:d.Return,Expense:d.Expense};fs.mkdirSync('artifacts',{recursive:true});fs.writeFileSync('artifacts/sales.json',JSON.stringify(o,null,2));console.log('Sales: '+o.Sale.length+' records')"
       - uses: actions/upload-artifact@v4
         with: { name: sales-data, path: artifacts/sales.json, retention-days: 1 }
 
@@ -139,13 +119,7 @@ jobs:
       - run: node scripts/export-db-to-json.mjs
       - name: Extract operations data
         run: |
-          node -e "
-            const fs=require('fs');
-            const d=JSON.parse(fs.readFileSync('public/seed-data.json','utf-8'));
-            const out={LabOrder:d.LabOrder,Staff:d.Staff,Attendance:d.Attendance,SalaryRecord:d.SalaryRecord};
-            fs.writeFileSync('artifacts/operations.json',JSON.stringify(out,null,2));
-            console.log('Lab Orders: '+out.LabOrder.length+' records');
-          "
+          node -e "const fs=require('fs');const d=JSON.parse(fs.readFileSync('public/seed-data.json','utf-8'));const o={LabOrder:d.LabOrder,Staff:d.Staff,Attendance:d.Attendance,SalaryRecord:d.SalaryRecord};fs.mkdirSync('artifacts',{recursive:true});fs.writeFileSync('artifacts/operations.json',JSON.stringify(o,null,2));console.log('Lab Orders: '+o.LabOrder.length+' records')"
       - uses: actions/upload-artifact@v4
         with: { name: operations-data, path: artifacts/operations.json, retention-days: 1 }
 
@@ -164,13 +138,7 @@ jobs:
       - run: node scripts/export-db-to-json.mjs
       - name: Extract marketing data
         run: |
-          node -e "
-            const fs=require('fs');
-            const d=JSON.parse(fs.readFileSync('public/seed-data.json','utf-8'));
-            const out={Campaign:d.Campaign,Notification:d.Notification};
-            fs.writeFileSync('artifacts/marketing.json',JSON.stringify(out,null,2));
-            console.log('Campaigns: '+out.Campaign.length+' records');
-          "
+          node -e "const fs=require('fs');const d=JSON.parse(fs.readFileSync('public/seed-data.json','utf-8'));const o={Campaign:d.Campaign,Notification:d.Notification};fs.mkdirSync('artifacts',{recursive:true});fs.writeFileSync('artifacts/marketing.json',JSON.stringify(o,null,2));console.log('Campaigns: '+o.Campaign.length+' records')"
       - uses: actions/upload-artifact@v4
         with: { name: marketing-data, path: artifacts/marketing.json, retention-days: 1 }
 
@@ -186,20 +154,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20", cache: "npm" }
       - run: npm ci && npx prisma generate
-      - name: Count all records via Prisma
-        run: |
-          node -e "
-            const {PrismaClient}=require('@prisma/client');
-            const fs=require('fs');
-            const db=new PrismaClient();
-            const models=['Customer','Prescription','Visit','Product','Sale','SaleItem','Return','LabOrder','Appointment','Expense','Due','Staff','Attendance','SalaryRecord','Campaign','Notification','PurchaseOrder'];
-            (async()=>{
-              const stats={};let total=0;
-              for(const m of models){const c=await db[m].count();stats[m]=c;total+=c;console.log('  '+m+': '+c);}
-              console.log('  TOTAL: '+total+' records');
-              fs.writeFileSync('artifacts/db-stats.json',JSON.stringify(stats,null,2));
-            })().finally(()=>db.\$disconnect());
-          "
+      - run: node scripts/job-db-stats.mjs
       - uses: actions/upload-artifact@v4
         with: { name: db-stats, path: artifacts/db-stats.json, retention-days: 1 }
 
@@ -215,19 +170,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20", cache: "npm" }
       - run: npm ci && npx prisma generate
-      - name: Extract SQL schema via Prisma
-        run: |
-          node -e "
-            const {PrismaClient}=require('@prisma/client');
-            const fs=require('fs');
-            const db=new PrismaClient();
-            (async()=>{
-              const tables=await db.\$queryRaw\`SELECT sql FROM sqlite_master WHERE type='table' AND sql IS NOT NULL ORDER BY name\`;
-              const schema=tables.map(t=>t.sql).join('\n\n');
-              fs.writeFileSync('artifacts/schema.sql',schema);
-              console.log('Exported '+tables.length+' table definitions');
-            })().finally(()=>db.\$disconnect());
-          "
+      - run: node scripts/job-db-schema.mjs
       - uses: actions/upload-artifact@v4
         with: { name: db-schema, path: artifacts/schema.sql, retention-days: 1 }
 
@@ -243,28 +186,12 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20", cache: "npm" }
       - run: npm ci && npx prisma generate
-      - name: Extract foreign keys via Prisma
-        run: |
-          node -e "
-            const {PrismaClient}=require('@prisma/client');
-            const fs=require('fs');
-            const db=new PrismaClient();
-            (async()=>{
-              const fks=await db.\$queryRaw\`
-                SELECT m.name as table_name, fk.\"from\" as column, fk.\"table\" as ref_table, fk.\"to\" as ref_column
-                FROM sqlite_master m
-                JOIN pragma_foreign_key_list(m.name) fk
-                WHERE m.type='table' ORDER BY m.name, fk.id\`;
-              fs.writeFileSync('artifacts/relations.json',JSON.stringify(fks,null,2));
-              console.log('Found '+fks.length+' foreign key relationships');
-              fks.forEach(r=>console.log('  '+r.table_name+'.'+r.column+' -> '+r.ref_table+'.'+r.ref_column));
-            })().finally(()=>db.\$disconnect());
-          "
+      - run: node scripts/job-db-relations.mjs
       - uses: actions/upload-artifact@v4
         with: { name: db-relations, path: artifacts/relations.json, retention-days: 1 }
 
   # ═══════════════════════════════════════════════════
-  # JOB 10: Verify Data Integrity (Prisma)
+  # JOB 10: Verify Data (Prisma)
   # ═══════════════════════════════════════════════════
   verify-data:
     name: "10 · Verify Data"
@@ -275,30 +202,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20", cache: "npm" }
       - run: npm ci && npx prisma generate
-      - name: Integrity checks via Prisma
-        run: |
-          node -e "
-            const {PrismaClient}=require('@prisma/client');
-            const db=new PrismaClient();
-            (async()=>{
-              console.log('Running data integrity checks...');
-              const sales=await db.sale.findMany({include:{items:true}});
-              const lowStock=await db.product.findMany({where:{isActive:true,stock:{lt:db.product.fields.minStock}}});
-              const pendingLabs=await db.labOrder.findMany({where:{status:'Pending'}});
-              const pendingDues=await db.due.findMany({where:{status:'Pending'}});
-              const totalDue=pendingDues.reduce((a,d)=>a+d.amount-d.paid,0);
-              const totalRev=(await db.sale.aggregate({_sum:{totalAmount:true}}))._sum.totalAmount||0;
-              const totalProducts=await db.product.count();
-              const invValue=(await db.product.findMany()).reduce((a,p)=>a+p.price*p.stock,0);
-              console.log('  Sales: '+sales.length+' ('+sales.filter(s=>s.items.length>0).length+' with items)');
-              console.log('  Low stock: '+lowStock.length+'/'+totalProducts+' products');
-              console.log('  Pending lab orders: '+pendingLabs.length);
-              console.log('  Pending dues: Rs.'+Math.round(totalDue).toLocaleString());
-              console.log('  Total revenue: Rs.'+Math.round(totalRev).toLocaleString());
-              console.log('  Inventory value: Rs.'+Math.round(invValue).toLocaleString());
-              console.log('All checks passed!');
-            })().finally(()=>db.\$disconnect());
-          "
+      - run: node scripts/job-verify-data.mjs
 
   # ═══════════════════════════════════════════════════
   # JOB 11: Prisma Client Generation
@@ -313,7 +217,6 @@ jobs:
         with: { node-version: "20", cache: "npm" }
       - run: npm ci
       - run: npx prisma generate
-      - run: echo "✅ Prisma Client generated" && ls node_modules/.prisma/client/ | head -5
 
   # ═══════════════════════════════════════════════════
   # JOB 12: DB Indexes (Prisma)
@@ -327,22 +230,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20", cache: "npm" }
       - run: npm ci && npx prisma generate
-      - name: Extract indexes via Prisma
-        run: |
-          node -e "
-            const {PrismaClient}=require('@prisma/client');
-            const fs=require('fs');
-            const db=new PrismaClient();
-            (async()=>{
-              const indexes=await db.\$queryRaw\`
-                SELECT m.name as table_name, il.name as index_name
-                FROM sqlite_master m
-                JOIN pragma_index_list(m.name) il
-                WHERE m.type='table' ORDER BY m.name\`;
-              fs.writeFileSync('artifacts/indexes.json',JSON.stringify(indexes,null,2));
-              console.log('Found '+indexes.length+' indexes');
-            })().finally(()=>db.\$disconnect());
-          "
+      - run: node scripts/job-db-indexes.mjs
       - uses: actions/upload-artifact@v4
         with: { name: db-indexes, path: artifacts/indexes.json, retention-days: 1 }
 
@@ -358,21 +246,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20", cache: "npm" }
       - run: npm ci && npx prisma generate
-      - name: Customer group analytics via Prisma
-        run: |
-          node -e "
-            const {PrismaClient}=require('@prisma/client');
-            const fs=require('fs');
-            const db=new PrismaClient();
-            (async()=>{
-              const groups=await db.\$queryRaw\`
-                SELECT 'group' as name, COUNT(*) as count, SUM(totalSpent) as totalSpent
-                FROM Customer GROUP BY 'group' ORDER BY count DESC\`;
-              fs.writeFileSync('artifacts/customer-groups.json',JSON.stringify(groups,null,2));
-              console.log('Customer groups:');
-              groups.forEach(g=>console.log('  '+g.name+': '+g.count+' customers'));
-            })().finally(()=>db.\$disconnect());
-          "
+      - run: node scripts/job-customer-groups.mjs
       - uses: actions/upload-artifact@v4
         with: { name: customer-groups, path: artifacts/customer-groups.json, retention-days: 1 }
 
@@ -388,22 +262,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20", cache: "npm" }
       - run: npm ci && npx prisma generate
-      - name: Product category analytics via Prisma
-        run: |
-          node -e "
-            const {PrismaClient}=require('@prisma/client');
-            const fs=require('fs');
-            const db=new PrismaClient();
-            (async()=>{
-              const cats=await db.\$queryRaw\`
-                SELECT category, COUNT(*) as count, SUM(stock) as totalStock,
-                       AVG(price) as avgPrice, SUM(stock * price) as totalValue
-                FROM Product WHERE isActive = 1 GROUP BY category ORDER BY count DESC\`;
-              fs.writeFileSync('artifacts/product-categories.json',JSON.stringify(cats,null,2));
-              console.log('Product categories:');
-              cats.forEach(c=>console.log('  '+c.category+': '+c.count+' products'));
-            })().finally(()=>db.\$disconnect());
-          "
+      - run: node scripts/job-product-categories.mjs
       - uses: actions/upload-artifact@v4
         with: { name: product-categories, path: artifacts/product-categories.json, retention-days: 1 }
 
@@ -419,24 +278,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20", cache: "npm" }
       - run: npm ci && npx prisma generate
-      - name: Sales analytics via Prisma
-        run: |
-          node -e "
-            const {PrismaClient}=require('@prisma/client');
-            const fs=require('fs');
-            const db=new PrismaClient();
-            (async()=>{
-              const modes=await db.\$queryRaw\`SELECT paymentMode, COUNT(*) as count, SUM(totalAmount) as total FROM Sale GROUP BY paymentMode\`;
-              const top=await db.\$queryRaw\`
-                SELECT p.name, p.sku, SUM(si.qty) as qty, SUM(si.total) as revenue
-                FROM SaleItem si JOIN Product p ON si.productId = p.id
-                GROUP BY si.productId ORDER BY revenue DESC LIMIT 10\`;
-              const analytics={paymentModes:modes,topProducts:top};
-              fs.writeFileSync('artifacts/sales-analytics.json',JSON.stringify(analytics,null,2));
-              console.log('Payment modes:', modes.map(m=>m.paymentMode).join(', '));
-              console.log('Top products:', top.length);
-            })().finally(()=>db.\$disconnect());
-          "
+      - run: node scripts/job-sales-analytics.mjs
       - uses: actions/upload-artifact@v4
         with: { name: sales-analytics, path: artifacts/sales-analytics.json, retention-days: 1 }
 
@@ -452,25 +294,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20", cache: "npm" }
       - run: npm ci && npx prisma generate
-      - name: Financial summary via Prisma
-        run: |
-          node -e "
-            const {PrismaClient}=require('@prisma/client');
-            const fs=require('fs');
-            const db=new PrismaClient();
-            (async()=>{
-              const rev=(await db.sale.aggregate({_sum:{totalAmount:true}}))._sum.totalAmount||0;
-              const exp=(await db.expense.aggregate({_sum:{amount:true}}))._sum.amount||0;
-              const dues=(await db.due.aggregate({_sum:{amount:true,paid:true}}))._sum;
-              const byCat=await db.\$queryRaw\`SELECT category, SUM(amount) as total FROM Expense GROUP BY category ORDER BY total DESC\`;
-              const f={totalRevenue:Math.round(rev),totalExpenses:Math.round(exp),netProfit:Math.round(rev-exp),
-                outstandingDues:Math.round((dues.amount||0)-(dues.paid||0)),expenseByCategory:byCat};
-              fs.writeFileSync('artifacts/financials.json',JSON.stringify(f,null,2));
-              console.log('Revenue: Rs.'+f.totalRevenue.toLocaleString());
-              console.log('Expenses: Rs.'+f.totalExpenses.toLocaleString());
-              console.log('Net Profit: Rs.'+f.netProfit.toLocaleString());
-            })().finally(()=>db.\$disconnect());
-          "
+      - run: node scripts/job-financials.mjs
       - uses: actions/upload-artifact@v4
         with: { name: financials, path: artifacts/financials.json, retention-days: 1 }
 
@@ -486,23 +310,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20", cache: "npm" }
       - run: npm ci && npx prisma generate
-      - name: Health check via Prisma
-        run: |
-          node -e "
-            const {PrismaClient}=require('@prisma/client');
-            const fs=require('fs');
-            const db=new PrismaClient();
-            (async()=>{
-              const ps=await db.\$queryRaw\`PRAGMA page_size\`;
-              const pc=await db.\$queryRaw\`PRAGMA page_count\`;
-              const size=ps[0].page_size*pc[0].page_count;
-              const integrity=await db.\$queryRaw\`PRAGMA integrity_check\`;
-              const health={sizeKB:Math.round(size/1024),pageCount:pc[0].page_count,integrity:integrity[0].integrity_check};
-              fs.writeFileSync('artifacts/db-health.json',JSON.stringify(health,null,2));
-              console.log('DB Size: '+health.sizeKB+' KB');
-              console.log('Integrity: '+health.integrity);
-            })().finally(()=>db.\$disconnect());
-          "
+      - run: node scripts/job-db-health.mjs
       - uses: actions/upload-artifact@v4
         with: { name: db-health, path: artifacts/db-health.json, retention-days: 1 }
 
@@ -518,8 +326,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20", cache: "npm" }
       - run: npm ci && npx prisma generate
-      - name: Full dump via Prisma → seed-data.json
-        run: node scripts/export-db-to-json.mjs
+      - run: node scripts/export-db-to-json.mjs
       - uses: actions/upload-artifact@v4
         with: { name: full-dump, path: public/seed-data.json, retention-days: 1 }
 
@@ -536,7 +343,7 @@ jobs:
         with: { node-version: "20", cache: "npm" }
       - run: npm ci
       - name: Run ESLint
-        run: npm run lint -- --max-warnings=100 2>&1 || true
+        run: npm run lint -- --max-warnings=100 || true
 
   # ═══════════════════════════════════════════════════
   # JOB 20: BUILD & DEPLOY
@@ -581,14 +388,9 @@ jobs:
 
       - name: Verify embedded data
         run: |
-          echo "📦 Seed data:"
+          echo "Seed data:"
           ls -la public/seed-data.json
-          node -e "
-            const d=require('./public/seed-data.json');
-            let t=0;
-            for(const [k,v] of Object.entries(d)){if(v.length>0){console.log('  '+k+': '+v.length);t+=v.length;}}
-            console.log('  TOTAL: '+t+' records embedded');
-          "
+          node -e "const d=require('./public/seed-data.json');let t=0;for(const [k,v] of Object.entries(d)){if(v.length>0){console.log('  '+k+': '+v.length);t+=v.length;}}console.log('  TOTAL: '+t+' records embedded')"
 
       - name: Generate Prisma Client
         run: npx prisma generate
@@ -606,12 +408,3 @@ jobs:
 
       - uses: actions/deploy-pages@v4
         id: deployment
-
-      - name: "✅ Deployment Complete"
-        if: always()
-        run: |
-          echo "════════════════════════════════════"
-          echo "  LOTUS VISION CRM — DEPLOYED"
-          echo "  20 Prisma agents executed"
-          echo "  DB data embedded in static site"
-          echo "════════════════════════════════════"
