@@ -319,7 +319,9 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: full-dump
-          path: ./public/seed-data.json
+          path: ./downloaded-data
+      - name: Move seed data to public
+        run: mv downloaded-data/seed-data.json public/seed-data.json
       - name: Verify data
         run: node scripts/run-analytics.cjs db-stats
       - run: npx prisma generate
